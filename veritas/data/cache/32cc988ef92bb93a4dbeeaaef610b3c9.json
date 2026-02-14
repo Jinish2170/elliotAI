@@ -1,0 +1,6 @@
+{
+  "response": "The page does not contain any pre-selected checkboxes, pre-opted-in options, or add-ons that are already checked/selected without user action. Therefore, the response in JSON format would be:\n\n{\"pre_selected_found\": false, \"items\": [], \"pattern_type\": \"pre_selected_options\", \"confidence\": 0.9}\n\nThis indicates that no pre-selected items were found on the page.",
+  "model": "meta/llama-3.2-90b-vision-instruct",
+  "fallback_mode": false,
+  "_timestamp": 1771045112.1255352
+}

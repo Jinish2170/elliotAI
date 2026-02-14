@@ -1,0 +1,243 @@
+{
+  "url": "https://www.avrut.com/",
+  "audit_tier": "deep_forensic",
+  "iteration": 1,
+  "max_iterations": 5,
+  "max_pages": 10,
+  "status": "aborted",
+  "scout_results": [
+    {
+      "url": "https://www.avrut.com/",
+      "status": "SUCCESS",
+      "screenshots": [
+        "C:\\jinish\\elliotAI\\veritas\\data\\evidence\\7eedff34_t0.jpg",
+        "C:\\jinish\\elliotAI\\veritas\\data\\evidence\\7eedff34_t10.jpg",
+        "C:\\jinish\\elliotAI\\veritas\\data\\evidence\\7eedff34_fullpage.jpg"
+      ],
+      "screenshot_timestamps": [
+        1771045013.5326178,
+        1771045029.3460371,
+        1771045029.8890023
+      ],
+      "screenshot_labels": [
+        "t0",
+        "t10",
+        "fullpage"
+      ],
+      "page_title": "Avrut | Global AI Development & Custom Software Solutions Company",
+      "page_metadata": {
+        "description": "Avrut is a leading global AI and software development company. We specialize in Machine Learning, Generative AI, and enterprise-grade web & mobile applications to drive digital transformation.",
+        "keywords": [
+          "AI development company",
+          "Global software solutions",
+          "Machine Learning experts",
+          "Generative AI services",
+          "Enterprise web development",
+          "Mobile app development company",
+          "Artificial Intelligence consulting",
+          "Custom software development",
+          "Digital transformation agency",
+          "NLP and Computer Vision",
+          "SaaS product development",
+          "Cloud solutions provider"
+        ],
+        "og_tags": {
+          "og:title": "Avrut | Global AI Development & Custom Software Solutions",
+          "og:description": "Partner with Avrut to build scalable AI, Machine Learning, and software solutions. We turn complex challenges into intelligent digital products.",
+          "og:url": "https://www.avrut.com",
+          "og:site_name": "Avrut",
+          "og:locale": "en_US",
+          "og:image": "https://www.avrut.com/avrut-icon.png",
+          "og:image:width": "1200",
+          "og:image:height": "630",
+          "og:image:alt": "Avrut \u2013 AI Development & Software Engineering Experts",
+          "og:type": "website"
+        },
+        "canonical_url": "https://www.avrut.com/",
+        "language": "en",
+        "scripts_count": 31,
+        "external_scripts": [
+          "https://www.avrut.com/_next/static/chunks/4bd1b696-602635ee57868870.js",
+          "https://www.avrut.com/_next/static/chunks/5881-79cf77cd7b677e5e.js",
+          "https://www.avrut.com/_next/static/chunks/main-app-ffb0ded13cba1ef2.js",
+          "https://www.avrut.com/_next/static/chunks/8e1d74a4-14e3cdee6db39482.js",
+          "https://www.avrut.com/_next/static/chunks/66ec4792-ec4b3d155292c7a6.js",
+          "https://www.avrut.com/_next/static/chunks/9c4e2130-ff83b4b05b421161.js",
+          "https://www.avrut.com/_next/static/chunks/6874-d27b54d0b28e3259.js",
+          "https://www.avrut.com/_next/static/chunks/3063-2ce1f16e913c0803.js",
+          "https://www.avrut.com/_next/static/chunks/1899-60339665cb399ea6.js",
+          "https://www.avrut.com/_next/static/chunks/app/layout-6e98cbecc9fa4eaa.js",
+          "https://www.avrut.com/_next/static/chunks/94730671-3f07f74d3eabc9ad.js",
+          "https://www.avrut.com/_next/static/chunks/30a37ab2-7877321055ab4dcc.js",
+          "https://www.avrut.com/_next/static/chunks/53c13509-ac1b674395879b6f.js",
+          "https://www.avrut.com/_next/static/chunks/479ba886-5e55770139f43463.js",
+          "https://www.avrut.com/_next/static/chunks/6151-3b34446bc0bee7cd.js",
+          "https://www.avrut.com/_next/static/chunks/app/page-5b6285d9713929b0.js",
+          "https://www.avrut.com/_next/static/chunks/polyfills-42372ed130431b0a.js",
+          "https://www.avrut.com/_next/static/chunks/webpack-231d2036d0a94b4a.js"
+        ],
+        "forms": [],
+        "forms_count": 0,
+        "internal_links_count": 23,
+        "external_links_count": 3,
+        "images_count": 6,
+        "has_ssl": true,
+        "cookies_count": 0
+      },
+      "links": [
+        "https://in.linkedin.com/company/avrut-solutions",
+        "https://calendar.app.google/DCFB5Ln9jsr34GA17",
+        "https://wa.me/919712697297"
+      ],
+      "forms_detected": 0,
+      "captcha_detected": false,
+      "error_message": "",
+      "navigation_time_ms": 3840.852737426758,
+      "viewport_used": "desktop",
+      "user_agent_used": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:123.0) Gecko/20100101 Firefox/123.0",
+      "trust_modifier": 0.0,
+      "trust_notes": [],
+      "site_type": "company_portfolio",
+      "site_type_confidence": 0.48,
+      "dom_analysis": {
+        "findings": [],
+        "structural_score": 0.7,
+        "page_health": {},
+        "errors": []
+      },
+      "form_validation": {
+        "url": "https://www.avrut.com/",
+        "total_forms": 0,
+        "critical_count": 0,
+        "score": 1.0,
+        "forms": [],
+        "errors": []
+      }
+    }
+  ],
+  "vision_result": {
+    "visual_score": 0.282,
+    "temporal_score": 1.0,
+    "findings": [
+      {
+        "category": "visual_interference",
+        "sub_type": "visual_interference",
+        "confidence": 0.5,
+        "severity": "medium",
+        "evidence": "**Analysis of Clickable Button Prominence**\n\nUpon examining the page, we identified two pairs of clickable buttons that represent opposing actions: \"Schedule a Meeting\" and \"Estimate My Project,\" as well as \"Schedule a Meeting\" and \"Contact Us.\" \n\n**Pair 1: Schedule a Meeting vs. Estimate My Project",
+        "screenshot_path": "C:\\jinish\\elliotAI\\veritas\\data\\evidence\\7eedff34_fullpage.jpg",
+        "model_used": "meta/llama-3.2-90b-vision-instruct",
+        "fallback_mode": false,
+        "raw_vlm_response": "**Analysis of Clickable Button Prominence**\n\nUpon examining the page, we identified two pairs of clickable buttons that represent opposing actions: \"Schedule a Meeting\" and \"Estimate My Project,\" as well as \"Schedule a Meeting\" and \"Contact Us.\" \n\n**Pair 1: Schedule a Meeting vs. Estimate My Project**\n\n*   **Size in Pixels:** The \"Schedule a Meeting\" button is significantly larger than the \"Estimate My Project\" button, with a size ratio of approximately 3:1.\n*   **Color Contrast Against Background:** Both buttons have high color contrast against the background, making them easily visible. However, the \"Schedule a Meeting\" button has a slightly higher contrast due to its darker blue color.\n*   **Position on Page:** The \"Schedule a Meeting\" button is prominently displayed at the top of the page, while the \"Estimate My Project\" button is located below it.\n\n**Pair 2: Schedule a Meeting vs. Contact Us**\n\n*   **Size in Pixels:** The \"Schedule a Meeting\" button is slightly larger than the \"Contact Us\" button, with a size ratio of approximately 1.2:1.\n*   **Color Contrast Against Background:** Both buttons have high color contrast against the background, making them easily visible. However, the \"Schedule a Meeting\" button has a slightly higher contrast due to its darker blue color.\n*   **Position on Page:** The \"Schedule a Meeting\" button is prominently displayed at the top of the page, while the \"Contact Us\" button is located at the bottom of the page.\n\n**Conclusion**\n\nBased on the analysis, it is clear that the \"Schedule a Meeting\" button is significantly more prominent than both the \"Estimate My Project\" and \"Contact Us\" buttons. Its larger size, higher color contrast, and prominent position on the page make it more likely to be clicked by users. This suggests that the design of the page may be intentionally directing users towards scheduling a meeting rather than estimating a project or contacting the company directly."
+      },
+      {
+        "category": "forced_continuity",
+        "sub_type": "hidden_cancel",
+        "confidence": 0.9,
+        "severity": "critical",
+        "evidence": "cancel_prominence: hidden",
+        "screenshot_path": "C:\\jinish\\elliotAI\\veritas\\data\\evidence\\7eedff34_fullpage.jpg",
+        "model_used": "meta/llama-3.2-90b-vision-instruct",
+        "fallback_mode": false,
+        "raw_vlm_response": "**Answer:** {\"cancel_visible\": false, \"cancel_prominence\": \"hidden\", \"estimated_steps\": 0, \"pattern_type\": \"hidden_cancel\", \"confidence\": 0.9}\n\n**Explanation:**\n\n*   The page does not have a clearly visible 'Cancel', 'Unsubscribe', or 'Delete Account' option.\n*   The absence of such options suggests that they are either not available or are hidden from immediate view.\n*   Given the lack of visible options, it is reasonable to conclude that any cancellation or deletion process would require additional steps or navigation beyond what is immediately visible on the page.\n*   The confidence level in this assessment is high (0.9) due to the clear absence of visible cancellation options and the typical expectation for such processes to involve multiple steps."
+      },
+      {
+        "category": "sneaking",
+        "sub_type": "no pricing information",
+        "confidence": 1.0,
+        "severity": "medium",
+        "evidence": "displayed_price: unknown | actual_total: unknown",
+        "screenshot_path": "C:\\jinish\\elliotAI\\veritas\\data\\evidence\\7eedff34_fullpage.jpg",
+        "model_used": "meta/llama-3.2-90b-vision-instruct",
+        "fallback_mode": false,
+        "raw_vlm_response": "The image does not display any prices, making it impossible to determine if the total price is clearly visible or if there are any additional fees, charges, or costs shown in smaller text, lighter color, or below the fold. The image appears to be a website for a company that provides AI solutions, and it does not include any pricing information.\n\nTherefore, the response in JSON format would be:\n\n{\"price_transparent\": false, \"displayed_price\": \"unknown\", \"actual_total\": \"unknown\", \"hidden_fees\": [], \"pattern_type\": \"no pricing information\", \"confidence\": 1.0}\n\nThis response indicates that the image does not provide any pricing information, and therefore, it is not possible to determine if the total price is clearly visible or if there are any additional fees, charges, or costs shown in smaller text, lighter color, or below the fold."
+      },
+      {
+        "category": "sneaking",
+        "sub_type": "hidden_subscription",
+        "confidence": 0.85,
+        "severity": "critical",
+        "evidence": "free_claim: True | auto_renewal_disclosed: True | disclosure_prominence: prominent",
+        "screenshot_path": "C:\\jinish\\elliotAI\\veritas\\data\\evidence\\7eedff34_fullpage.jpg",
+        "model_used": "meta/llama-3.2-90b-vision-instruct",
+        "fallback_mode": false,
+        "raw_vlm_response": "**Answer:** {\"free_claim\": true, \"requires_payment_info\": false, \"auto_renewal_disclosed\": true, \"disclosure_prominence\": \"prominent\", \"pattern_type\": \"hidden_subscription\", \"confidence\": 0.85}\n\n**Explanation:**\n\n*   The page mentions a 'free trial' offer.\n*   There is no requirement for credit card or payment information.\n*   The auto-renewal/billing is clearly disclosed at the same visual prominence as the 'free' claim."
+      },
+      {
+        "category": "social_engineering",
+        "sub_type": "fake_reviews",
+        "confidence": 0.75,
+        "severity": "high",
+        "evidence": "testimonials_found: True | stock_photos_suspected: True | uniform_ratings: True | similar_writing_style: True",
+        "screenshot_path": "C:\\jinish\\elliotAI\\veritas\\data\\evidence\\7eedff34_fullpage.jpg",
+        "model_used": "meta/llama-3.2-90b-vision-instruct",
+        "fallback_mode": false,
+        "raw_vlm_response": "**Testimonials Analysis**\n\nUpon examining the testimonials/reviews section of this page, several red flags have been identified that suggest the presence of fake reviews. Here is a breakdown of the findings:\n\n*   **Profile Photos:** The profile photos appear to be stock photos or AI-generated faces. This is evident from the lack of personalization and the generic nature of the images.\n*   **Review Texts:** The review texts are suspiciously similar in tone and length. This suggests that the reviews may have been written by the same person or generated using a template.\n*   **Ratings:** All ratings are 5 stars, which is highly unusual. In most cases, there will be some variation in ratings, even if the product or service is highly rated.\n\nBased on these findings, it is likely that the testimonials on this page are fake. The use of stock photos or AI-generated faces, the similarity in tone and length of the review texts, and the uniform 5-star ratings all suggest that the reviews are not genuine.\n\n**Conclusion**\n\nIn conclusion, the testimonials on this page appear to be fake. The use of stock photos or AI-generated faces, the similarity in tone and length of the review texts, and the uniform 5-star ratings all suggest that the reviews are not genuine. Therefore, it is recommended to exercise caution when considering the credibility of these testimonials.\n\n**JSON Response**\n\n{\"testimonials_found\": true, \"stock_photos_suspected\": true, \"uniform_ratings\": true, \"similar_writing_style\": true, \"pattern_type\": \"fake_reviews\", \"confidence\": 0.75}"
+      },
+      {
+        "category": "social_engineering",
+        "sub_type": "fake_authority",
+        "confidence": 0.7,
+        "severity": "high",
+        "evidence": "authority_claims: [{'claim': 'Highest rated AI & ML firm in North America', 'proof_visible': True, 'link_present': False}, {'claim': 'As seen on Forbes, TechCrunch, and more', 'proof_visible': True, 'link_present': False}, {'claim': 'Partners with Microsoft, AWS, and Google', 'proof_visible': True, 'link_present': False}]",
+        "screenshot_path": "C:\\jinish\\elliotAI\\veritas\\data\\evidence\\7eedff34_fullpage.jpg",
+        "model_used": "meta/llama-3.2-90b-vision-instruct",
+        "fallback_mode": false,
+        "raw_vlm_response": "{\"authority_claims\": [{\"claim\": \"Highest rated AI & ML firm in North America\", \"proof_visible\": true, \"link_present\": false}, {\"claim\": \"As seen on Forbes, TechCrunch, and more\", \"proof_visible\": true, \"link_present\": false}, {\"claim\": \"Partners with Microsoft, AWS, and Google\", \"proof_visible\": true, \"link_present\": false}], \"pattern_type\": \"fake_authority\", \"confidence\": 0.7}"
+      }
+    ],
+    "temporal_findings": [
+      {
+        "finding_type": "consistent",
+        "value_at_t0": "",
+        "value_at_t_delay": "",
+        "delta_seconds": 10.0,
+        "is_suspicious": false,
+        "explanation": "No temporal anomalies detected between screenshots",
+        "confidence": 0.5
+      },
+      {
+        "finding_type": "consistent",
+        "value_at_t0": "",
+        "value_at_t_delay": "",
+        "delta_seconds": 10.0,
+        "is_suspicious": false,
+        "explanation": "No temporal anomalies detected between screenshots",
+        "confidence": 0.5
+      }
+    ],
+    "screenshots_analyzed": 3,
+    "prompts_sent": 15,
+    "nim_calls_made": 15,
+    "fallback_used": false,
+    "errors": []
+  },
+  "graph_result": null,
+  "judge_decision": null,
+  "pending_urls": [],
+  "investigated_urls": [
+    "https://www.avrut.com/"
+  ],
+  "start_time": 1771045008.4894116,
+  "elapsed_seconds": 1278.5749294757843,
+  "errors": [
+    "Orchestrator exception: "
+  ],
+  "scout_failures": 0,
+  "nim_calls_used": 15,
+  "site_type": "company_portfolio",
+  "site_type_confidence": 0.48,
+  "verdict_mode": "expert",
+  "security_results": {
+    "security_headers": {
+      "error": "'coroutine' object has no attribute 'to_dict'"
+    },
+    "phishing": {
+      "error": "'PhishingResult' object has no attribute 'flags'"
+    }
+  },
+  "enabled_security_modules": [
+    "security_headers",
+    "phishing_db"
+  ]
+}

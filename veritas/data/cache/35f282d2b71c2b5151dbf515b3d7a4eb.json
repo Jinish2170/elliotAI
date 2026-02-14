@@ -1,6 +1,0 @@
-{
-  "response": "{\"entities\": [ \n  {\"type\": \"company\", \"value\": \"Avrut\", \"context\": \"leading global AI and software development company\"}\n]}",
-  "model": "meta/llama-3.1-70b-instruct",
-  "fallback_mode": false,
-  "_timestamp": 1770884674.7729754
-}

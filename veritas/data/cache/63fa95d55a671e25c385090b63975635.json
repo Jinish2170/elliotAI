@@ -1,0 +1,6 @@
+{
+  "response": "{\"authority_claims\": [{\"claim\": \"Highest rated AI & ML firm in North America\", \"proof_visible\": true, \"link_present\": false}, {\"claim\": \"As seen on Forbes, TechCrunch, and more\", \"proof_visible\": true, \"link_present\": false}, {\"claim\": \"Partners with Microsoft, AWS, and Google\", \"proof_visible\": true, \"link_present\": false}], \"pattern_type\": \"fake_authority\", \"confidence\": 0.7}",
+  "model": "meta/llama-3.2-90b-vision-instruct",
+  "fallback_mode": false,
+  "_timestamp": 1771045170.6916585
+}

@@ -1,0 +1,234 @@
+{
+  "url": "https://www.avrut.com/",
+  "audit_tier": "deep_forensic",
+  "iteration": 1,
+  "max_iterations": 5,
+  "max_pages": 10,
+  "status": "aborted",
+  "scout_results": [
+    {
+      "url": "https://www.avrut.com/",
+      "status": "SUCCESS",
+      "screenshots": [
+        "C:\\jinish\\elliotAI\\veritas\\data\\evidence\\6bcee777_t0.jpg",
+        "C:\\jinish\\elliotAI\\veritas\\data\\evidence\\6bcee777_t10.jpg",
+        "C:\\jinish\\elliotAI\\veritas\\data\\evidence\\6bcee777_fullpage.jpg"
+      ],
+      "screenshot_timestamps": [
+        1771043297.749333,
+        1771043313.9770837,
+        1771043314.5221047
+      ],
+      "screenshot_labels": [
+        "t0",
+        "t10",
+        "fullpage"
+      ],
+      "page_title": "Avrut | Global AI Development & Custom Software Solutions Company",
+      "page_metadata": {
+        "description": "Avrut is a leading global AI and software development company. We specialize in Machine Learning, Generative AI, and enterprise-grade web & mobile applications to drive digital transformation.",
+        "keywords": [
+          "AI development company",
+          "Global software solutions",
+          "Machine Learning experts",
+          "Generative AI services",
+          "Enterprise web development",
+          "Mobile app development company",
+          "Artificial Intelligence consulting",
+          "Custom software development",
+          "Digital transformation agency",
+          "NLP and Computer Vision",
+          "SaaS product development",
+          "Cloud solutions provider"
+        ],
+        "og_tags": {
+          "og:title": "Avrut | Global AI Development & Custom Software Solutions",
+          "og:description": "Partner with Avrut to build scalable AI, Machine Learning, and software solutions. We turn complex challenges into intelligent digital products.",
+          "og:url": "https://www.avrut.com",
+          "og:site_name": "Avrut",
+          "og:locale": "en_US",
+          "og:image": "https://www.avrut.com/avrut-icon.png",
+          "og:image:width": "1200",
+          "og:image:height": "630",
+          "og:image:alt": "Avrut \u2013 AI Development & Software Engineering Experts",
+          "og:type": "website"
+        },
+        "canonical_url": "https://www.avrut.com/",
+        "language": "en",
+        "scripts_count": 33,
+        "external_scripts": [
+          "https://www.avrut.com/_next/static/chunks/4bd1b696-602635ee57868870.js",
+          "https://www.avrut.com/_next/static/chunks/5881-79cf77cd7b677e5e.js",
+          "https://www.avrut.com/_next/static/chunks/main-app-ffb0ded13cba1ef2.js",
+          "https://www.avrut.com/_next/static/chunks/8e1d74a4-14e3cdee6db39482.js",
+          "https://www.avrut.com/_next/static/chunks/66ec4792-ec4b3d155292c7a6.js",
+          "https://www.avrut.com/_next/static/chunks/9c4e2130-ff83b4b05b421161.js",
+          "https://www.avrut.com/_next/static/chunks/6874-d27b54d0b28e3259.js",
+          "https://www.avrut.com/_next/static/chunks/3063-2ce1f16e913c0803.js",
+          "https://www.avrut.com/_next/static/chunks/1899-60339665cb399ea6.js",
+          "https://www.avrut.com/_next/static/chunks/app/layout-6e98cbecc9fa4eaa.js",
+          "https://www.avrut.com/_next/static/chunks/app/not-found-c8328c3e1ed89f92.js",
+          "https://www.avrut.com/_next/static/chunks/94730671-3f07f74d3eabc9ad.js",
+          "https://www.avrut.com/_next/static/chunks/30a37ab2-7877321055ab4dcc.js",
+          "https://www.avrut.com/_next/static/chunks/b563f954-16cbc0ff2841d11c.js",
+          "https://www.avrut.com/_next/static/chunks/53c13509-ac1b674395879b6f.js",
+          "https://www.avrut.com/_next/static/chunks/479ba886-5e55770139f43463.js",
+          "https://www.avrut.com/_next/static/chunks/6151-3b34446bc0bee7cd.js",
+          "https://www.avrut.com/_next/static/chunks/app/page-5b6285d9713929b0.js",
+          "https://www.avrut.com/_next/static/chunks/polyfills-42372ed130431b0a.js",
+          "https://www.avrut.com/_next/static/chunks/webpack-231d2036d0a94b4a.js"
+        ],
+        "forms": [],
+        "forms_count": 0,
+        "internal_links_count": 23,
+        "external_links_count": 3,
+        "images_count": 6,
+        "has_ssl": true,
+        "cookies_count": 0
+      },
+      "links": [
+        "https://in.linkedin.com/company/avrut-solutions",
+        "https://calendar.app.google/DCFB5Ln9jsr34GA17",
+        "https://wa.me/919712697297"
+      ],
+      "forms_detected": 0,
+      "captcha_detected": false,
+      "error_message": "",
+      "navigation_time_ms": 3749.864101409912,
+      "viewport_used": "desktop",
+      "user_agent_used": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+      "trust_modifier": 0.0,
+      "trust_notes": [],
+      "site_type": "company_portfolio",
+      "site_type_confidence": 0.48,
+      "dom_analysis": {
+        "findings": [],
+        "structural_score": 0.7,
+        "page_health": {},
+        "errors": []
+      },
+      "form_validation": {
+        "url": "https://www.avrut.com/",
+        "total_forms": 0,
+        "critical_count": 0,
+        "score": 1.0,
+        "forms": [],
+        "errors": []
+      }
+    }
+  ],
+  "vision_result": {
+    "visual_score": 0.453,
+    "temporal_score": 1.0,
+    "findings": [
+      {
+        "category": "visual_interference",
+        "sub_type": "visual_interference",
+        "confidence": 0.5,
+        "severity": "medium",
+        "evidence": "The image presents a website for Avrut Solutions, a company specializing in artificial intelligence (AI) and machine learning (ML) solutions. The website features various sections, including \"Empowering Businesses Through AI,\" \"Empowering Your Business with AI Innovations,\" \"Covering the most Techno",
+        "screenshot_path": "C:\\jinish\\elliotAI\\veritas\\data\\evidence\\6bcee777_fullpage.jpg",
+        "model_used": "meta/llama-3.2-90b-vision-instruct",
+        "fallback_mode": false,
+        "raw_vlm_response": "The image presents a website for Avrut Solutions, a company specializing in artificial intelligence (AI) and machine learning (ML) solutions. The website features various sections, including \"Empowering Businesses Through AI,\" \"Empowering Your Business with AI Innovations,\" \"Covering the most Technologies available,\" \"Why 'Human + AI' Wins,\" \"Our Core Software Development Services,\" \"Our Work Process,\" and \"Why Choose Avrut Solutions.\" \n\nUpon analyzing the visual prominence of all clickable buttons on this page, it is evident that there are no opposing action button pairs present. Therefore, there is no comparison to be made between the size in pixels, color contrast against background, or position on page of such pairs. As a result, there is no dominant action and no pattern type to report.\n\nIn conclusion, the findings indicate that there are no opposing action button pairs on this webpage, rendering any comparison or analysis of their visual prominence unnecessary."
+      },
+      {
+        "category": "forced_continuity",
+        "sub_type": "hidden_cancel",
+        "confidence": 0.9,
+        "severity": "critical",
+        "evidence": "cancel_prominence: hidden",
+        "screenshot_path": "C:\\jinish\\elliotAI\\veritas\\data\\evidence\\6bcee777_fullpage.jpg",
+        "model_used": "meta/llama-3.2-90b-vision-instruct",
+        "fallback_mode": false,
+        "raw_vlm_response": "{\"cancel_visible\": false, \"cancel_prominence\": \"hidden\", \"estimated_steps\": 0, \"pattern_type\": \"hidden_cancel\", \"confidence\": 0.9}"
+      },
+      {
+        "category": "sneaking",
+        "sub_type": "no pricing information",
+        "confidence": 1.0,
+        "severity": "medium",
+        "evidence": "displayed_price: unknown | actual_total: unknown",
+        "screenshot_path": "C:\\jinish\\elliotAI\\veritas\\data\\evidence\\6bcee777_fullpage.jpg",
+        "model_used": "meta/llama-3.2-90b-vision-instruct",
+        "fallback_mode": false,
+        "raw_vlm_response": "The page does not display a total price. The content is focused on showcasing the company's services and expertise in AI and automation, without providing any pricing information. Therefore, it is not possible to compare the prominently displayed price with the actual total or identify any hidden fees.\n\n**Answer:** {\"price_transparent\": false, \"displayed_price\": \"unknown\", \"actual_total\": \"unknown\", \"hidden_fees\": [], \"pattern_type\": \"no pricing information\", \"confidence\": 1.0}"
+      },
+      {
+        "category": "social_engineering",
+        "sub_type": "fake_reviews",
+        "confidence": 0.75,
+        "severity": "high",
+        "evidence": "testimonials_found: True | stock_photos_suspected: True | uniform_ratings: True | similar_writing_style: True",
+        "screenshot_path": "C:\\jinish\\elliotAI\\veritas\\data\\evidence\\6bcee777_fullpage.jpg",
+        "model_used": "meta/llama-3.2-90b-vision-instruct",
+        "fallback_mode": false,
+        "raw_vlm_response": "**Answer:** {\"testimonials_found\": true, \"stock_photos_suspected\": true, \"uniform_ratings\": true, \"similar_writing_style\": true, \"pattern_type\": \"fake_reviews\", \"confidence\": 0.75}\n\n**Explanation:**\n\n*   The testimonials section is present on the page.\n*   The profile photos appear to be stock photos or AI-generated faces, as they lack distinct features and seem overly uniform.\n*   All ratings are 5 stars, which is unusual for genuine reviews.\n*   The review texts exhibit a similar tone and length, suggesting they may have been generated using a template or AI tool.\n\n**Conclusion:**\n\nBased on these observations, it is likely that the testimonials are fake and were generated using AI tools. The uniformity of the ratings, the lack of distinct features in the profile photos, and the similarity in tone and length of the review texts all suggest that the testimonials are not genuine. Therefore, the confidence level for this conclusion is 0.75."
+      },
+      {
+        "category": "social_engineering",
+        "sub_type": "fake_authority",
+        "confidence": 0.7,
+        "severity": "high",
+        "evidence": "authority_claims: [{'claim': 'As seen on Forbes', 'proof_visible': False, 'link_present': False}, {'claim': 'As seen on Entrepreneur', 'proof_visible': False, 'link_present': False}, {'claim': 'As seen on Bloomberg', 'proof_visible': False, 'link_present': False}]",
+        "screenshot_path": "C:\\jinish\\elliotAI\\veritas\\data\\evidence\\6bcee777_fullpage.jpg",
+        "model_used": "meta/llama-3.2-90b-vision-instruct",
+        "fallback_mode": false,
+        "raw_vlm_response": "The page claims to have been featured in several media outlets, including Forbes, Entrepreneur, and Bloomberg. However, there is no visible proof or link to support these claims.\n\nHere is the response in JSON format:\n\n```\n{\n  \"authority_claims\": [\n    {\n      \"claim\": \"As seen on Forbes\",\n      \"proof_visible\": false,\n      \"link_present\": false\n    },\n    {\n      \"claim\": \"As seen on Entrepreneur\",\n      \"proof_visible\": false,\n      \"link_present\": false\n    },\n    {\n      \"claim\": \"As seen on Bloomberg\",\n      \"proof_visible\": false,\n      \"link_present\": false\n    }\n  ],\n  \"pattern_type\": \"fake_authority\",\n  \"confidence\": 0.7\n}\n```\n\nNote that the confidence level is set to 0.7, indicating that the claims are likely to be false or exaggerated."
+      }
+    ],
+    "temporal_findings": [
+      {
+        "finding_type": "consistent",
+        "value_at_t0": "",
+        "value_at_t_delay": "",
+        "delta_seconds": 10.0,
+        "is_suspicious": false,
+        "explanation": "No temporal anomalies detected between screenshots",
+        "confidence": 0.5
+      },
+      {
+        "finding_type": "consistent",
+        "value_at_t0": "",
+        "value_at_t_delay": "",
+        "delta_seconds": 10.0,
+        "is_suspicious": false,
+        "explanation": "No temporal anomalies detected between screenshots",
+        "confidence": 0.5
+      }
+    ],
+    "screenshots_analyzed": 3,
+    "prompts_sent": 15,
+    "nim_calls_made": 15,
+    "fallback_used": false,
+    "errors": []
+  },
+  "graph_result": null,
+  "judge_decision": null,
+  "pending_urls": [],
+  "investigated_urls": [
+    "https://www.avrut.com/"
+  ],
+  "start_time": 1771043284.8174107,
+  "elapsed_seconds": 3002.2476665973663,
+  "errors": [
+    "Orchestrator exception: "
+  ],
+  "scout_failures": 0,
+  "nim_calls_used": 15,
+  "site_type": "company_portfolio",
+  "site_type_confidence": 0.48,
+  "verdict_mode": "expert",
+  "security_results": {
+    "security_headers": {
+      "error": "'coroutine' object has no attribute 'to_dict'"
+    },
+    "phishing": {
+      "error": "'PhishingResult' object has no attribute 'flags'"
+    }
+  },
+  "enabled_security_modules": [
+    "security_headers",
+    "phishing_db"
+  ]
+}

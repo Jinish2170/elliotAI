@@ -1,0 +1,6 @@
+{
+  "response": "**Answer:** {\"guilt_language_found\": false, \"phrases\": [], \"pattern_type\": \"guilt_tripping\", \"confidence\": 0.85}\n\n**Explanation:**\n\n*   The page does not use emotional, guilt-inducing, or manipulative language to discourage the user from leaving, cancelling, or declining.\n*   There are no phrases like 'You'll miss out', 'Are you sure?', 'No thanks, I don't want [positive thing]' on the page.\n*   The page is focused on providing information about the company's services and features, without using guilt-tripping tactics.",
+  "model": "meta/llama-3.2-90b-vision-instruct",
+  "fallback_mode": false,
+  "_timestamp": 1771045101.971688
+}

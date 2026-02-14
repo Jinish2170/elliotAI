@@ -1,0 +1,6 @@
+{
+  "response": "{\"findings\": []}",
+  "model": "meta/llama-3.2-90b-vision-instruct",
+  "fallback_mode": false,
+  "_timestamp": 1771045078.6693063
+}

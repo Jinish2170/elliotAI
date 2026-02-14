@@ -1,0 +1,6 @@
+{
+  "response": "{\"timer_found\": false, \"timer_value\": \"\", \"timer_location\": \"\", \"confidence\": 0.9}",
+  "model": "meta/llama-3.2-90b-vision-instruct",
+  "fallback_mode": false,
+  "_timestamp": 1771045178.4555676
+}
