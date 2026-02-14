@@ -1,18 +1,18 @@
 "use client";
 
-import { use, useState, useEffect } from "react";
-import { useAuditStore } from "@/lib/store";
-import type { AuditResult } from "@/lib/types";
 import { ParticleField } from "@/components/ambient/ParticleField";
-import { ReportHeader } from "@/components/report/ReportHeader";
-import { TrustScoreHero } from "@/components/report/TrustScoreHero";
-import { SignalBreakdown } from "@/components/report/SignalBreakdown";
+import { AuditMetadata } from "@/components/report/AuditMetadata";
 import { DarkPatternGrid } from "@/components/report/DarkPatternGrid";
 import { EntityDetails } from "@/components/report/EntityDetails";
-import { SecurityPanel } from "@/components/report/SecurityPanel";
 import { Recommendations } from "@/components/report/Recommendations";
-import { AuditMetadata } from "@/components/report/AuditMetadata";
+import { ReportHeader } from "@/components/report/ReportHeader";
+import { SecurityPanel } from "@/components/report/SecurityPanel";
+import { SignalBreakdown } from "@/components/report/SignalBreakdown";
+import { TrustScoreHero } from "@/components/report/TrustScoreHero";
 import { SAFETY_TIPS } from "@/lib/education";
+import { useAuditStore } from "@/lib/store";
+import type { AuditResult } from "@/lib/types";
+import { use, useEffect, useState } from "react";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 

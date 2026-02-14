@@ -3,17 +3,17 @@
    Global state for the live audit session
    ======================================== */
 
-import { create } from "zustand";
 import type {
-  Phase,
-  PhaseState,
-  Finding,
-  Screenshot,
-  AuditStats,
-  LogEntry,
-  SecurityResultItem,
-  AuditResult,
+    AuditResult,
+    AuditStats,
+    Finding,
+    LogEntry,
+    Phase,
+    PhaseState,
+    Screenshot,
+    SecurityResultItem,
 } from "@/lib/types";
+import { create } from "zustand";
 
 interface AuditStore {
   // Connection

@@ -1,19 +1,24 @@
 "use client";
 
-import { useEffect, useRef, useCallback } from "react";
 import { useAuditStore } from "@/lib/store";
+import { useCallback, useEffect, useRef } from "react";
 
 const WS_BASE =
   process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8000";
 
-export function useAuditStream(auditId: string | null) {
+export function useAuditStream(auditId: string | null, url?: string, tier?: string) {
   const wsRef = useRef<WebSocket | null>(null);
   const store = useAuditStore();
 
   const connect = useCallback(() => {
     if (!auditId) return;
 
-    store.setStatus("connecting");
+    // Set audit info (URL + tier) on the store before connecting
+    if (url) {
+      store.setAudit(auditId, url, tier || "standard_audit");
+    } else {
+      store.setStatus("connecting");
+    }
 
     const ws = new WebSocket(`${WS_BASE}/api/audit/stream/${auditId}`);
     wsRef.current = ws;

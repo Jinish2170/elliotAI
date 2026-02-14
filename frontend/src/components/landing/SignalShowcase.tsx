@@ -1,8 +1,8 @@
 "use client";
 
+import { TRUST_SIGNALS } from "@/lib/education";
 import { motion } from "framer-motion";
 import { useState } from "react";
-import { TRUST_SIGNALS } from "@/lib/education";
 
 export function SignalShowcase() {
   const [hovered, setHovered] = useState<string | null>(null);

@@ -1,0 +1,6 @@
+{
+  "response": "{\"pre_selected_found\": false, \"items\": [], \"pattern_type\": \"pre_selected_options\", \"confidence\": 0.9}",
+  "model": "meta/llama-3.2-90b-vision-instruct",
+  "fallback_mode": false,
+  "_timestamp": 1771051570.5578997
+}

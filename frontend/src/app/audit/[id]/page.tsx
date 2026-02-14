@@ -1,15 +1,16 @@
 "use client";
 
-import { use, useState } from "react";
-import { AnimatePresence } from "framer-motion";
-import { useAuditStream } from "@/hooks/useAuditStream";
 import { ParticleField } from "@/components/ambient/ParticleField";
-import { AuditHeader } from "@/components/audit/AuditHeader";
 import { AgentPipeline } from "@/components/audit/AgentPipeline";
-import { NarrativeFeed } from "@/components/audit/NarrativeFeed";
+import { AuditHeader } from "@/components/audit/AuditHeader";
+import { CompletionOverlay } from "@/components/audit/CompletionOverlay";
 import { EvidencePanel } from "@/components/audit/EvidencePanel";
 import { ForensicLog } from "@/components/audit/ForensicLog";
-import { CompletionOverlay } from "@/components/audit/CompletionOverlay";
+import { NarrativeFeed } from "@/components/audit/NarrativeFeed";
+import { useAuditStream } from "@/hooks/useAuditStream";
+import { AnimatePresence } from "framer-motion";
+import { use, useState } from "react";
+import { useSearchParams } from "next/navigation";
 
 // Phase-dependent particle colors
 const PHASE_COLORS: Record<string, string> = {
@@ -22,7 +23,10 @@ const PHASE_COLORS: Record<string, string> = {
 
 export default function AuditPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const store = useAuditStream(id);
+  const searchParams = useSearchParams();
+  const url = searchParams.get("url") || undefined;
+  const tier = searchParams.get("tier") || undefined;
+  const store = useAuditStream(id, url, tier);
   const [showOverlay, setShowOverlay] = useState(true);
 
   const particleColor = store.currentPhase

@@ -1,0 +1,6 @@
+{
+  "response": "The image does not contain any trust badges, certification logos, or security seals. Therefore, the response in JSON format would be:\n\n{\"badges_found\": false, \"badges\": [], \"pattern_type\": null, \"confidence\": 1.0}",
+  "model": "meta/llama-3.2-90b-vision-instruct",
+  "fallback_mode": false,
+  "_timestamp": 1771051691.0197155
+}

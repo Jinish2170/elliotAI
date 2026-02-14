@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import type { Finding } from "@/lib/types";
 import { SeverityBadge } from "@/components/data-display/SeverityBadge";
 import { DARK_PATTERN_CATEGORIES } from "@/lib/education";
+import type { Finding } from "@/lib/types";
+import { AnimatePresence, motion } from "framer-motion";
+import { useState } from "react";
 
 interface DarkPatternGridProps {
   findings: Finding[];

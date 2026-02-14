@@ -1,8 +1,8 @@
 "use client";
 
-import { motion } from "framer-motion";
 import type { Phase, PhaseState } from "@/lib/types";
 import { PHASE_META } from "@/lib/types";
+import { motion } from "framer-motion";
 
 interface AgentCardProps {
   phase: Phase;

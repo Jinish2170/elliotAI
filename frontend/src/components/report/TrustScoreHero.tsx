@@ -1,8 +1,8 @@
 "use client";
 
-import { motion } from "framer-motion";
-import { TrustGauge } from "@/components/data-display/TrustGauge";
 import { RiskBadge } from "@/components/data-display/RiskBadge";
+import { TrustGauge } from "@/components/data-display/TrustGauge";
+import { motion } from "framer-motion";
 
 interface TrustScoreHeroProps {
   score: number;

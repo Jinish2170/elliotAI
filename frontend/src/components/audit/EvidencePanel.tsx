@@ -1,11 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import type { Screenshot, Finding } from "@/lib/types";
 import { SeverityBadge } from "@/components/data-display/SeverityBadge";
 import { StatCounter } from "@/components/data-display/StatCounter";
-import type { AuditStats } from "@/lib/types";
+import type { AuditStats, Finding, Screenshot } from "@/lib/types";
+import { AnimatePresence, motion } from "framer-motion";
+import { useState } from "react";
 
 interface EvidencePanelProps {
   screenshots: Screenshot[];

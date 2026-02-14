@@ -1,5 +1,5 @@
-import { cn } from "@/lib/utils";
 import { RISK_COLORS, RISK_LABELS } from "@/lib/types";
+import { cn } from "@/lib/utils";
 
 interface RiskBadgeProps {
   riskLevel: string;

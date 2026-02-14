@@ -1,7 +1,7 @@
 "use client";
 
-import { motion } from "framer-motion";
 import type { DomainInfo } from "@/lib/types";
+import { motion } from "framer-motion";
 
 interface EntityDetailsProps {
   domainInfo: DomainInfo;

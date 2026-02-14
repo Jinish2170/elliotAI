@@ -1,9 +1,9 @@
 "use client";
 
-import { useRef, useEffect, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import type { LogEntry } from "@/lib/types";
+import { AnimatePresence, motion } from "framer-motion";
 import { ChevronDown, ChevronUp, Terminal } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 
 interface ForensicLogProps {
   logs: LogEntry[];

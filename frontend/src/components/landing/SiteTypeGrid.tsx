@@ -1,7 +1,7 @@
 "use client";
 
-import { motion } from "framer-motion";
 import { SITE_TYPES } from "@/lib/education";
+import { motion } from "framer-motion";
 
 export function SiteTypeGrid() {
   return (

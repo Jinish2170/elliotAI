@@ -9,7 +9,6 @@ from typing import Optional
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel
-
 from services.audit_runner import AuditRunner, generate_audit_id
 
 logger = logging.getLogger("veritas.routes.audit")

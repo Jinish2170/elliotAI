@@ -1,0 +1,6 @@
+{
+  "response": "{\"badges_found\": false, \"badges\": [], \"pattern_type\": \"no_badges\", \"confidence\": 1.0}",
+  "model": "meta/llama-3.2-90b-vision-instruct",
+  "fallback_mode": false,
+  "_timestamp": 1771051614.49141
+}

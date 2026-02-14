@@ -1,8 +1,8 @@
 "use client";
 
-import { motion } from "framer-motion";
-import { SignalRadarChart } from "@/components/data-display/SignalRadarChart";
 import { SignalBar } from "@/components/data-display/SignalBar";
+import { SignalRadarChart } from "@/components/data-display/SignalRadarChart";
+import { motion } from "framer-motion";
 
 const SIGNAL_META: Record<string, { label: string; icon: string }> = {
   visual: { label: "Visual Intelligence", icon: "👁️" },

@@ -1,11 +1,11 @@
 "use client";
 
-import { useRef, useEffect, useState, useMemo } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import type { Phase, Finding, Screenshot, LogEntry } from "@/lib/types";
-import { PHASE_META } from "@/lib/types";
 import { SeverityBadge } from "@/components/data-display/SeverityBadge";
 import { DARK_PATTERN_FACTS, PHASE_TERMS } from "@/lib/education";
+import type { Finding, LogEntry, Phase, Screenshot } from "@/lib/types";
+import { PHASE_META } from "@/lib/types";
+import { AnimatePresence, motion } from "framer-motion";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 interface NarrativeFeedProps {
   currentPhase: Phase | null;

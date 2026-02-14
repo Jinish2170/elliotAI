@@ -3,20 +3,41 @@ Veritas Audit Runner — Wraps VeritasOrchestrator for WebSocket streaming.
 
 Captures ##PROGRESS stdout markers from the orchestrator and converts them
 into typed WebSocket JSON events for the frontend.
+
+Uses subprocess.Popen + asyncio.run_in_executor for Windows compatibility
+(asyncio.create_subprocess_exec raises NotImplementedError on Windows
+when the event loop is SelectorEventLoop).
 """
 
 import asyncio
-import json
-import sys
-import io
-import uuid
-import time
 import base64
+import functools
+import json
 import logging
+import os
+import subprocess
+import sys
+import time
+import uuid
 from pathlib import Path
-from typing import Optional, Callable, Any
+from typing import Any, Callable, Optional
 
 logger = logging.getLogger("veritas.audit_runner")
+
+
+def _find_venv_python() -> str:
+    """Locate the .venv Python executable relative to the project root."""
+    project_root = Path(__file__).resolve().parent.parent.parent
+    if sys.platform == "win32":
+        venv_python = project_root / ".venv" / "Scripts" / "python.exe"
+    else:
+        venv_python = project_root / ".venv" / "bin" / "python"
+
+    if venv_python.exists():
+        return str(venv_python)
+
+    # Fallback to current interpreter
+    return sys.executable
 
 
 class AuditRunner:
@@ -40,9 +61,12 @@ class AuditRunner:
         """
         Run the audit as a subprocess and stream typed events via `send`.
         `send` is an async callable that takes a dict and sends it as JSON.
+
+        Uses subprocess.Popen + run_in_executor to avoid the Windows
+        NotImplementedError with asyncio.create_subprocess_exec.
         """
         veritas_dir = Path(__file__).resolve().parent.parent.parent / "veritas"
-        python_exe = sys.executable
+        python_exe = _find_venv_python()
 
         cmd = [
             python_exe, "-m", "veritas",
@@ -55,26 +79,39 @@ class AuditRunner:
         if self.security_modules:
             cmd.extend(["--security-modules", ",".join(self.security_modules)])
 
-        env = {**__import__("os").environ}
+        env = {**os.environ}
         env["PYTHONIOENCODING"] = "utf-8"
 
-        logger.info(f"[{self.audit_id}] Starting subprocess: {' '.join(cmd)}")
+        cwd = str(veritas_dir.parent)
 
-        process = await asyncio.create_subprocess_exec(
-            *cmd,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-            cwd=str(veritas_dir.parent),
+        logger.info(f"[{self.audit_id}] Python: {python_exe}")
+        logger.info(f"[{self.audit_id}] CWD:    {cwd}")
+        logger.info(f"[{self.audit_id}] CMD:    {' '.join(cmd)}")
+
+        # Start subprocess (sync Popen — works on all platforms)
+        loop = asyncio.get_running_loop()
+        process = subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            cwd=cwd,
             env=env,
         )
 
-        # Parse stdout line-by-line
-        json_buffer = []
+        # Parse stdout line-by-line (blocking reads run in thread pool)
+        json_buffer: list[str] = []
         collecting_json = False
         start_time = time.time()
 
         try:
-            async for raw_line in process.stdout:
+            while True:
+                # Read one line in a thread so we don't block the event loop
+                raw_line = await loop.run_in_executor(
+                    None, process.stdout.readline
+                )
+                if not raw_line:
+                    break  # EOF — subprocess finished writing
+
                 line = raw_line.decode("utf-8", errors="replace").rstrip("\n\r")
 
                 if line.startswith("##PROGRESS:"):
@@ -97,7 +134,17 @@ class AuditRunner:
                     except json.JSONDecodeError:
                         pass
 
-            await process.wait()
+            # Wait for process to finish
+            await loop.run_in_executor(None, process.wait)
+
+            # Log stderr if any
+            stderr_bytes = await loop.run_in_executor(
+                None, process.stderr.read
+            )
+            if stderr_bytes:
+                stderr_text = stderr_bytes.decode("utf-8", errors="replace")
+                for stderr_line in stderr_text.strip().splitlines()[-10:]:
+                    logger.info(f"[{self.audit_id}] stderr: {stderr_line}")
 
             # Ensure completion event
             elapsed = time.time() - start_time
@@ -114,6 +161,10 @@ class AuditRunner:
                 "audit_id": self.audit_id,
                 "error": str(e),
             })
+        finally:
+            # Clean up if process is still running
+            if process.poll() is None:
+                process.terminate()
 
     async def _handle_progress(self, data: dict, send: Callable):
         """Convert a ##PROGRESS message into typed WebSocket events."""

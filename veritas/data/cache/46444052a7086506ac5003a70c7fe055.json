@@ -1,0 +1,6 @@
+{
+  "response": "The page does not display a 'Cancel', 'Unsubscribe', or 'Delete Account' option. The response in JSON format is:\n\n{\"cancel_visible\": false, \"cancel_prominence\": \"hidden\", \"estimated_steps\": 0, \"pattern_type\": \"none\", \"confidence\": 1.0}",
+  "model": "meta/llama-3.2-90b-vision-instruct",
+  "fallback_mode": false,
+  "_timestamp": 1771051641.6659646
+}

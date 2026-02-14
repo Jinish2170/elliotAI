@@ -1,9 +1,9 @@
-import { HeroSection } from "@/components/landing/HeroSection";
-import { SignalShowcase } from "@/components/landing/SignalShowcase";
-import { DarkPatternCarousel } from "@/components/landing/DarkPatternCarousel";
-import { HowItWorks } from "@/components/landing/HowItWorks";
-import { SiteTypeGrid } from "@/components/landing/SiteTypeGrid";
 import { ParticleField } from "@/components/ambient/ParticleField";
+import { DarkPatternCarousel } from "@/components/landing/DarkPatternCarousel";
+import { HeroSection } from "@/components/landing/HeroSection";
+import { HowItWorks } from "@/components/landing/HowItWorks";
+import { SignalShowcase } from "@/components/landing/SignalShowcase";
+import { SiteTypeGrid } from "@/components/landing/SiteTypeGrid";
 
 export default function Home() {
   return (

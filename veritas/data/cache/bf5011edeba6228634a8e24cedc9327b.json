@@ -1,0 +1,6 @@
+{
+  "response": "The image does not display any prices or fees. The page appears to be a placeholder for documentation examples, with no visible prices or charges.\n\n**Answer:** {\"price_transparent\": false, \"displayed_price\": \"unknown\", \"actual_total\": \"unknown\", \"hidden_fees\": [], \"pattern_type\": \"no_prices\", \"confidence\": 1.0}",
+  "model": "meta/llama-3.2-90b-vision-instruct",
+  "fallback_mode": false,
+  "_timestamp": 1771051666.714522
+}

@@ -1,12 +1,12 @@
 "use client";
 
 import {
-  Radar,
-  RadarChart as RechartsRadarChart,
-  PolarGrid,
-  PolarAngleAxis,
-  PolarRadiusAxis,
-  ResponsiveContainer,
+    PolarAngleAxis,
+    PolarGrid,
+    PolarRadiusAxis,
+    Radar,
+    RadarChart as RechartsRadarChart,
+    ResponsiveContainer,
 } from "recharts";
 
 interface SignalRadarChartProps {
