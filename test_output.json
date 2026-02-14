@@ -1,0 +1,198 @@
+{
+  "url": "https://example.com",
+  "audit_tier": "quick_scan",
+  "iteration": 2,
+  "max_iterations": 5,
+  "max_pages": 1,
+  "status": "completed",
+  "scout_results": [
+    {
+      "url": "https://example.com",
+      "status": "SUCCESS",
+      "screenshots": [
+        "C:\\jinish\\elliotAI\\veritas\\data\\evidence\\512a7648_t0.jpg",
+        "C:\\jinish\\elliotAI\\veritas\\data\\evidence\\512a7648_t10.jpg",
+        "C:\\jinish\\elliotAI\\veritas\\data\\evidence\\512a7648_fullpage.jpg"
+      ],
+      "screenshot_timestamps": [
+        1770786052.3029969,
+        1770786068.72385,
+        1770786068.806095
+      ],
+      "screenshot_labels": [
+        "t0",
+        "t10",
+        "fullpage"
+      ],
+      "page_title": "Example Domain",
+      "page_metadata": {
+        "description": "",
+        "keywords": [],
+        "og_tags": {},
+        "canonical_url": "",
+        "language": "en",
+        "scripts_count": 0,
+        "external_scripts": [],
+        "forms": [],
+        "forms_count": 0,
+        "internal_links_count": 0,
+        "external_links_count": 1,
+        "images_count": 0,
+        "has_ssl": true,
+        "cookies_count": 0
+      },
+      "links": [
+        "https://iana.org/domains/example"
+      ],
+      "forms_detected": 0,
+      "captcha_detected": false,
+      "error_message": "",
+      "navigation_time_ms": 698.7853050231934,
+      "viewport_used": "desktop",
+      "user_agent_used": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.3 Safari/605.1.15",
+      "trust_modifier": 0.0,
+      "trust_notes": []
+    }
+  ],
+  "vision_result": {
+    "visual_score": 1.0,
+    "temporal_score": 1.0,
+    "findings": [],
+    "temporal_findings": [
+      {
+        "finding_type": "consistent",
+        "value_at_t0": "",
+        "value_at_t_delay": "",
+        "delta_seconds": 10.0,
+        "is_suspicious": false,
+        "explanation": "No temporal anomalies detected between screenshots",
+        "confidence": 0.5
+      },
+      {
+        "finding_type": "consistent",
+        "value_at_t0": "",
+        "value_at_t_delay": "",
+        "delta_seconds": 10.0,
+        "is_suspicious": false,
+        "explanation": "No temporal anomalies detected between screenshots",
+        "confidence": 0.5
+      }
+    ],
+    "screenshots_analyzed": 3,
+    "prompts_sent": 15,
+    "nim_calls_made": 30,
+    "fallback_used": true,
+    "errors": []
+  },
+  "graph_result": {
+    "graph_score": 0.5,
+    "meta_score": 0.85,
+    "domain_age_days": 11139,
+    "has_ssl": true,
+    "claims_extracted": [],
+    "verifications": [],
+    "inconsistencies": [],
+    "graph_data": {
+      "nodes": [
+        {
+          "id": "https://example.com",
+          "label": "https://example.com",
+          "node_type": "WebsiteNode",
+          "domain": "example.com",
+          "ip": "104.18.26.120",
+          "ssl_issuer": "((('countryName', 'US'),), (('organizationName', 'SSL Corporation'),), (('commonName', 'Cloudflare TLS Issuing ECC CA 3'),))",
+          "domain_age_days": "11139",
+          "creation_date": "1995-08-14 04:00:00+00:00"
+        },
+        {
+          "id": "site:iana.org",
+          "label": "site:iana.org",
+          "node_type": "WebsiteNode",
+          "domain": "iana.org"
+        }
+      ],
+      "edges": [
+        {
+          "source": "https://example.com",
+          "target": "site:iana.org",
+          "edge_type": "LINKS_TO",
+          "link_type": "outbound"
+        }
+      ]
+    },
+    "graph_node_count": 2,
+    "graph_edge_count": 1,
+    "domain_intel": {
+      "domain": "example.com",
+      "registrar": "RESERVED-Internet Assigned Numbers Authority",
+      "age_days": 11139,
+      "ssl_issuer": "((('countryName', 'US'),), (('organizationName', 'SSL Corporation'),), (('commonName', 'Cloudflare TLS Issuing ECC CA 3'),))",
+      "is_privacy_protected": false
+    },
+    "tavily_searches": 0,
+    "errors": []
+  },
+  "judge_decision": {
+    "action": "RENDER_VERDICT",
+    "reason": "Budget exhausted \u2014 verdict based on available evidence",
+    "narrative": "Audit terminated due to page budget. Based on partial evidence: visual score 1.00, graph score 0.50, meta score 0.85. Domain age: 11139 days. Trust score: 49/100 (suspicious).",
+    "recommendations": [
+      "Run a deeper audit tier for a more thorough investigation."
+    ],
+    "dark_pattern_summary": [],
+    "entity_verification_summary": [],
+    "evidence_timeline": [],
+    "trust_score_result": {
+      "final_score": 49,
+      "risk_level": "suspicious",
+      "pre_override_score": 49,
+      "weighted_breakdown": {
+        "visual": 0.175,
+        "structural": 0.0225,
+        "temporal": 0.09,
+        "graph": 0.105,
+        "meta": 0.102
+      },
+      "overrides_applied": [],
+      "sub_signals": {
+        "visual": {
+          "raw_score": 1.0,
+          "confidence": 0.7,
+          "weighted_value": 0.175
+        },
+        "structural": {
+          "raw_score": 0.5,
+          "confidence": 0.3,
+          "weighted_value": 0.0225
+        },
+        "temporal": {
+          "raw_score": 1.0,
+          "confidence": 0.6,
+          "weighted_value": 0.09
+        },
+        "graph": {
+          "raw_score": 0.5,
+          "confidence": 0.7,
+          "weighted_value": 0.105
+        },
+        "meta": {
+          "raw_score": 0.85,
+          "confidence": 0.8,
+          "weighted_value": 0.102
+        }
+      },
+      "explanation": "Trust Score: 49/100 (suspicious)\nPre-override score: 49\nSignal breakdown:\n  visual: 1.00 \u00d7 0.25 (confidence: 70%) \u2192 0.1750\n  graph: 0.50 \u00d7 0.30 (confidence: 70%) \u2192 0.1050\n  meta: 0.85 \u00d7 0.15 (confidence: 80%) \u2192 0.1020\n  temporal: 1.00 \u00d7 0.15 (confidence: 60%) \u2192 0.0900\n  structural: 0.50 \u00d7 0.15 (confidence: 30%) \u2192 0.0225"
+    }
+  },
+  "pending_urls": [
+    "https://iana.org/domains/example"
+  ],
+  "investigated_urls": [
+    "https://example.com"
+  ],
+  "start_time": 1770786050.491457,
+  "elapsed_seconds": 24.52018713951111,
+  "errors": [],
+  "scout_failures": 0,
+  "nim_calls_used": 30
+}

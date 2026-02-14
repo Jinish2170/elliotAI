@@ -1,0 +1,55 @@
+# ============================================================
+# Veritas — Requirements (Verified for 8GB RAM)
+# Estimated total RAM: ~1.5GB
+# ============================================================
+
+# --- Core Framework ---
+langchain>=0.3.0
+langgraph>=0.2.0
+pydantic>=2.5.0
+
+# --- NVIDIA NIM (OpenAI-compatible API) ---
+openai>=1.0.0
+
+# --- Browser Automation ---
+playwright>=1.40.0
+
+# --- Vector Store (disk-based, NOT in-memory) ---
+lancedb>=0.4.0
+sentence-transformers>=2.2.0    # all-MiniLM-L6-v2 (~90MB model)
+
+# --- Graph ---
+networkx>=3.2
+matplotlib>=3.8.0               # Graph visualization → PNG
+
+# --- RAG / Search ---
+rank-bm25>=0.2.2
+numpy>=1.24.0
+
+# --- External Search ---
+tavily-python>=0.3.0
+
+# --- Domain Analysis ---
+python-whois>=0.9.0
+dnspython>=2.4.0
+
+# --- OCR Fallback ---
+Pillow>=10.0.0
+pytesseract>=0.3.10
+
+# --- Reporting ---
+WeasyPrint>=60.0
+Jinja2>=3.1.0
+
+# --- UI ---
+streamlit>=1.30.0
+
+# --- Utilities ---
+python-dotenv>=1.0.0
+tenacity>=8.2.0                 # Retry logic with exponential backoff
+aiohttp>=3.9.0
+
+# --- Testing ---
+pytest>=7.4.0
+pytest-asyncio>=0.23.0
+httpx>=0.25.0

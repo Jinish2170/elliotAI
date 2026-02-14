@@ -1,0 +1,6 @@
+{
+  "response": "{\"scarcity_found\": false, \"scarcity_text\": \"\", \"scarcity_type\": \"\", \"confidence\": 1.0}",
+  "model": "meta/llama-3.2-90b-vision-instruct",
+  "fallback_mode": false,
+  "_timestamp": 1770884658.3393316
+}

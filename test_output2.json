@@ -1,0 +1,304 @@
+{
+  "url": "https://example.com",
+  "audit_tier": "quick_scan",
+  "iteration": 2,
+  "max_iterations": 5,
+  "max_pages": 1,
+  "status": "completed",
+  "scout_results": [
+    {
+      "url": "https://example.com",
+      "status": "SUCCESS",
+      "screenshots": [
+        "C:\\jinish\\elliotAI\\veritas\\data\\evidence\\cad0c218_t0.jpg",
+        "C:\\jinish\\elliotAI\\veritas\\data\\evidence\\cad0c218_t10.jpg",
+        "C:\\jinish\\elliotAI\\veritas\\data\\evidence\\cad0c218_fullpage.jpg"
+      ],
+      "screenshot_timestamps": [
+        1770812081.8115454,
+        1770812096.5861807,
+        1770812096.6666489
+      ],
+      "screenshot_labels": [
+        "t0",
+        "t10",
+        "fullpage"
+      ],
+      "page_title": "Example Domain",
+      "page_metadata": {
+        "description": "",
+        "keywords": [],
+        "og_tags": {},
+        "canonical_url": "",
+        "language": "en",
+        "scripts_count": 0,
+        "external_scripts": [],
+        "forms": [],
+        "forms_count": 0,
+        "internal_links_count": 0,
+        "external_links_count": 1,
+        "images_count": 0,
+        "has_ssl": true,
+        "cookies_count": 0
+      },
+      "links": [
+        "https://iana.org/domains/example"
+      ],
+      "forms_detected": 0,
+      "captcha_detected": false,
+      "error_message": "",
+      "navigation_time_ms": 2968.696117401123,
+      "viewport_used": "desktop",
+      "user_agent_used": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.3 Safari/605.1.15",
+      "trust_modifier": 0.0,
+      "trust_notes": []
+    }
+  ],
+  "vision_result": {
+    "visual_score": 0.53,
+    "temporal_score": 1.0,
+    "findings": [
+      {
+        "category": "visual_interference",
+        "sub_type": "visual_interference",
+        "confidence": 0.5,
+        "severity": "medium",
+        "evidence": "Based on the provided image, there is only one clickable button on the page, which is \"Learn more\". Since there are no opposing actions or button pairs, it's not possible to compare their visual prominence.\n\nHowever, I can provide some general observations about the \"Learn more\" button:\n\n*   The but",
+        "screenshot_path": "C:\\jinish\\elliotAI\\veritas\\data\\evidence\\cad0c218_fullpage.jpg",
+        "model_used": "meta/llama-3.2-90b-vision-instruct",
+        "fallback_mode": false,
+        "raw_vlm_response": "Based on the provided image, there is only one clickable button on the page, which is \"Learn more\". Since there are no opposing actions or button pairs, it's not possible to compare their visual prominence.\n\nHowever, I can provide some general observations about the \"Learn more\" button:\n\n*   The button is relatively small in size, with a font size of around 14-16 pixels.\n*   The button has a moderate level of color contrast against the background, making it somewhat visible but not highly prominent.\n*   The button is positioned at the top of the page, which is a common location for calls-to-action (CTAs).\n\nOverall, while the \"Learn more\" button is present on the page, it does not have any opposing actions or button pairs to compare its visual prominence with. Therefore, I cannot provide a JSON response with findings on button pairs.\n\nIf you have any further questions or would like me to analyze a different image, please let me know."
+      },
+      {
+        "category": "visual_interference",
+        "sub_type": "hidden_unsubscribe",
+        "confidence": 0.8,
+        "severity": "high",
+        "evidence": "element: Learn more | issue: tiny_size",
+        "screenshot_path": "C:\\jinish\\elliotAI\\veritas\\data\\evidence\\cad0c218_fullpage.jpg",
+        "model_used": "meta/llama-3.2-90b-vision-instruct",
+        "fallback_mode": false,
+        "raw_vlm_response": "Based on the provided image, there is a single clickable element on the page: the \"Learn more\" link. This link is displayed in a small font size, approximately 12px, and has low contrast against its background. The link is positioned at the top of the page, making it relatively easy to find.\n\nHowever, considering the small font size and low contrast, it can be challenging for users to notice and click on the link, especially for those with visual impairments. Therefore, I would categorize this element as having a \"tiny_size\" issue.\n\nHere is the JSON response:\n\n{\"findings\": [{\"element\": \"Learn more\", \"issue\": \"tiny_size\", \"estimated_size\": \"12px\", \"pattern_type\": \"hidden_unsubscribe\", \"confidence\": 0.8}]}"
+      },
+      {
+        "category": "forced_continuity",
+        "sub_type": "hidden_cancel",
+        "confidence": 1.0,
+        "severity": "critical",
+        "evidence": "cancel_prominence: hidden",
+        "screenshot_path": "C:\\jinish\\elliotAI\\veritas\\data\\evidence\\cad0c218_fullpage.jpg",
+        "model_used": "meta/llama-3.2-90b-vision-instruct",
+        "fallback_mode": false,
+        "raw_vlm_response": "The page does not display a 'Cancel', 'Unsubscribe', or 'Delete Account' option. Therefore, the answer is:\n\n{\"cancel_visible\": false, \"cancel_prominence\": \"hidden\", \"estimated_steps\": 0, \"pattern_type\": \"hidden_cancel\", \"confidence\": 1.0}"
+      },
+      {
+        "category": "sneaking",
+        "sub_type": "no_prices",
+        "confidence": 1.0,
+        "severity": "medium",
+        "evidence": "displayed_price: unknown | actual_total: unknown",
+        "screenshot_path": "C:\\jinish\\elliotAI\\veritas\\data\\evidence\\cad0c218_fullpage.jpg",
+        "model_used": "meta/llama-3.2-90b-vision-instruct",
+        "fallback_mode": false,
+        "raw_vlm_response": "The image does not display any prices or fees. The page appears to be a placeholder for documentation examples, with no visible prices or charges.\n\n**Answer:** {\"price_transparent\": false, \"displayed_price\": \"unknown\", \"actual_total\": \"unknown\", \"hidden_fees\": [], \"pattern_type\": \"no_prices\", \"confidence\": 1.0}"
+      }
+    ],
+    "temporal_findings": [
+      {
+        "finding_type": "consistent",
+        "value_at_t0": "",
+        "value_at_t_delay": "",
+        "delta_seconds": 10.0,
+        "is_suspicious": false,
+        "explanation": "No temporal anomalies detected between screenshots",
+        "confidence": 0.5
+      },
+      {
+        "finding_type": "consistent",
+        "value_at_t0": "",
+        "value_at_t_delay": "",
+        "delta_seconds": 10.0,
+        "is_suspicious": false,
+        "explanation": "No temporal anomalies detected between screenshots",
+        "confidence": 0.5
+      }
+    ],
+    "screenshots_analyzed": 3,
+    "prompts_sent": 15,
+    "nim_calls_made": 15,
+    "fallback_used": false,
+    "errors": []
+  },
+  "graph_result": {
+    "graph_score": 0.5,
+    "meta_score": 0.85,
+    "domain_age_days": 11139,
+    "has_ssl": true,
+    "claims_extracted": [],
+    "verifications": [],
+    "inconsistencies": [],
+    "graph_data": {
+      "nodes": [
+        {
+          "id": "https://example.com",
+          "label": "https://example.com",
+          "node_type": "WebsiteNode",
+          "domain": "example.com",
+          "ip": "104.18.27.120",
+          "ssl_issuer": "((('countryName', 'US'),), (('organizationName', 'SSL Corporation'),), (('commonName', 'Cloudflare TLS Issuing ECC CA 3'),))",
+          "domain_age_days": "11139",
+          "creation_date": "1995-08-14 04:00:00+00:00"
+        },
+        {
+          "id": "site:iana.org",
+          "label": "site:iana.org",
+          "node_type": "WebsiteNode",
+          "domain": "iana.org"
+        }
+      ],
+      "edges": [
+        {
+          "source": "https://example.com",
+          "target": "site:iana.org",
+          "edge_type": "LINKS_TO",
+          "link_type": "outbound"
+        }
+      ]
+    },
+    "graph_node_count": 2,
+    "graph_edge_count": 1,
+    "domain_intel": {
+      "domain": "example.com",
+      "registrar": "RESERVED-Internet Assigned Numbers Authority",
+      "age_days": 11139,
+      "ssl_issuer": "((('countryName', 'US'),), (('organizationName', 'SSL Corporation'),), (('commonName', 'Cloudflare TLS Issuing ECC CA 3'),))",
+      "is_privacy_protected": false
+    },
+    "tavily_searches": 0,
+    "errors": []
+  },
+  "judge_decision": {
+    "action": "RENDER_VERDICT",
+    "reason": "Trust Score: 46/100 (suspicious)",
+    "narrative": "**Audit Report: Website Investigation**\n\nWe conducted a forensic audit of the website https://example.com, which resulted in a Trust Score of 46/100, indicating a suspicious rating. Our analysis revealed several dark patterns and inconsistencies that raise concerns about the website's transparency and user experience.\n\n**Visual Analysis Findings**\n\nOur visual analysis of the website's homepage revealed four dark patterns, including one critical pattern. Specifically, we found:\n\n* A single clickable button, \"Learn more,\" which may be designed to limit user options (confidence score: 50%).\n* The \"Learn more\" button has a tiny size, potentially making it difficult for users to click on alternative options (confidence score: 80%).\n* The website employs a forced continuity tactic, hiding the cancel option (confidence score: 100%).\n* The website does not display prices or provide a clear total cost, potentially misleading users (confidence score: 100%).\n\n**Entity Verification Findings**\n\nOur entity verification analysis confirmed that the domain age is approximately 30.5 years (11,139 days), which is a positive indicator of the website's legitimacy. However, we did not find any inconsistencies in the domain's registration information.\n\n**Domain Intelligence Findings**\n\nOur domain intelligence analysis revealed that the website has a valid SSL certificate, indicating a secure connection. However, the WHOIS information was not available for review.\n\n**Conclusion and Risk Assessment**\n\nBased on our findings, we conclude that the website https://example.com exhibits suspicious behavior and employs dark patterns that may compromise user experience. The website's low Trust Score and the presence of critical dark patterns, such as forced continuity and hidden cancel options, raise concerns about the website's transparency and potential for user exploitation. We recommend exercising caution when interacting with this website and considering alternative options.",
+    "recommendations": [
+      "Exercise caution. Verify the business through independent channels before transacting.",
+      "Check for the business on official registries (Better Business Bureau, etc.)."
+    ],
+    "dark_pattern_summary": [
+      {
+        "category": "visual_interference",
+        "pattern": "visual_interference",
+        "severity": "medium",
+        "confidence": 0.5,
+        "evidence": "Based on the provided image, there is only one clickable button on the page, which is \"Learn more\". Since there are no opposing actions or button pairs, it's not possible to compare their visual promi",
+        "screenshot": "C:\\jinish\\elliotAI\\veritas\\data\\evidence\\cad0c218_fullpage.jpg"
+      },
+      {
+        "category": "visual_interference",
+        "pattern": "hidden_unsubscribe",
+        "severity": "high",
+        "confidence": 0.8,
+        "evidence": "element: Learn more | issue: tiny_size",
+        "screenshot": "C:\\jinish\\elliotAI\\veritas\\data\\evidence\\cad0c218_fullpage.jpg"
+      },
+      {
+        "category": "forced_continuity",
+        "pattern": "hidden_cancel",
+        "severity": "critical",
+        "confidence": 1.0,
+        "evidence": "cancel_prominence: hidden",
+        "screenshot": "C:\\jinish\\elliotAI\\veritas\\data\\evidence\\cad0c218_fullpage.jpg"
+      },
+      {
+        "category": "sneaking",
+        "pattern": "no_prices",
+        "severity": "medium",
+        "confidence": 1.0,
+        "evidence": "displayed_price: unknown | actual_total: unknown",
+        "screenshot": "C:\\jinish\\elliotAI\\veritas\\data\\evidence\\cad0c218_fullpage.jpg"
+      }
+    ],
+    "entity_verification_summary": [],
+    "evidence_timeline": [
+      {
+        "step": 1,
+        "agent": "Scout",
+        "action": "Navigated to https://example.com",
+        "status": "SUCCESS",
+        "result": "3 screenshots, 0 forms",
+        "duration_ms": 2968.696117401123
+      },
+      {
+        "step": 2,
+        "agent": "Vision",
+        "action": "Analyzed 3 screenshots",
+        "status": "COMPLETE",
+        "result": "4 dark patterns, 2 temporal checks"
+      },
+      {
+        "step": 3,
+        "agent": "Graph",
+        "action": "Investigated 0 entity claims",
+        "status": "COMPLETE",
+        "result": "0 verified, 0 inconsistencies, domain age=11139d"
+      },
+      {
+        "step": 4,
+        "agent": "Judge",
+        "action": "Rendered final verdict",
+        "status": "COMPLETE"
+      }
+    ],
+    "trust_score_result": {
+      "final_score": 46,
+      "risk_level": "suspicious",
+      "pre_override_score": 46,
+      "weighted_breakdown": {
+        "visual": 0.1126,
+        "structural": 0.0577,
+        "temporal": 0.105,
+        "graph": 0.075,
+        "meta": 0.1084
+      },
+      "overrides_applied": [],
+      "sub_signals": {
+        "visual": {
+          "raw_score": 0.53,
+          "confidence": 0.85,
+          "weighted_value": 0.1126
+        },
+        "temporal": {
+          "raw_score": 1.0,
+          "confidence": 0.7,
+          "weighted_value": 0.105
+        },
+        "graph": {
+          "raw_score": 0.5,
+          "confidence": 0.5,
+          "weighted_value": 0.075
+        },
+        "meta": {
+          "raw_score": 0.85,
+          "confidence": 0.85,
+          "weighted_value": 0.1084
+        },
+        "structural": {
+          "raw_score": 0.55,
+          "confidence": 0.7,
+          "weighted_value": 0.0577
+        }
+      },
+      "explanation": "Trust Score: 46/100 (suspicious)\nPre-override score: 46\nSignal breakdown:\n  visual: 0.53 \u00d7 0.25 (confidence: 85%) \u2192 0.1126\n  meta: 0.85 \u00d7 0.15 (confidence: 85%) \u2192 0.1084\n  temporal: 1.00 \u00d7 0.15 (confidence: 70%) \u2192 0.1050\n  graph: 0.50 \u00d7 0.30 (confidence: 50%) \u2192 0.0750\n  structural: 0.55 \u00d7 0.15 (confidence: 70%) \u2192 0.0577"
+    }
+  },
+  "pending_urls": [],
+  "investigated_urls": [
+    "https://example.com"
+  ],
+  "start_time": 1770812070.9019783,
+  "elapsed_seconds": 197.37133383750916,
+  "errors": [],
+  "scout_failures": 0,
+  "nim_calls_used": 15
+}

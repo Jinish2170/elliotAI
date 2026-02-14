@@ -1,0 +1,6 @@
+{
+  "response": "The page does not use emotional, guilt-inducing, or manipulative language to discourage the user from leaving, cancelling, or declining. The text is neutral and informative, providing a clear message about the purpose of the domain without any attempt to persuade or manipulate the user.\n\n{\"guilt_language_found\": false, \"phrases\": [], \"pattern_type\": \"neutral\", \"confidence\": 0.95}",
+  "model": "meta/llama-3.2-90b-vision-instruct",
+  "fallback_mode": false,
+  "_timestamp": 1770812158.0877142
+}

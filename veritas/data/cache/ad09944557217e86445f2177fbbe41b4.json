@@ -1,0 +1,6 @@
+{
+  "response": "{\"findings\": [{\"element\": \"Call-to-Action (CTA) buttons\", \"pattern_type\": \"disguised_ads\", \"confidence\": 0.8}, {\"element\": \"Sponsored content sections\", \"pattern_type\": \"disguised_ads\", \"confidence\": 0.6}]}",
+  "model": "meta/llama-3.2-90b-vision-instruct",
+  "fallback_mode": false,
+  "_timestamp": 1770884679.5095284
+}

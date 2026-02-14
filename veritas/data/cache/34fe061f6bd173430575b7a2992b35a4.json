@@ -1,0 +1,6 @@
+{
+  "response": "**Pre-selected Checkboxes, Pre-opted-in Options, or Add-ons**\n\nUpon examining the page, I found no pre-selected checkboxes, pre-opted-in options, or add-ons that are already checked/selected without user action.\n\n**JSON Response**\n\n{\"pre_selected_found\": false, \"items\": [], \"pattern_type\": \"pre_selected_options\", \"confidence\": 0.9}",
+  "model": "meta/llama-3.2-90b-vision-instruct",
+  "fallback_mode": false,
+  "_timestamp": 1770884555.3391414
+}

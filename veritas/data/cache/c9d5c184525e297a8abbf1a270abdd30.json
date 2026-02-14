@@ -1,0 +1,6 @@
+{
+  "response": "{\"authority_claims\": [{\"claim\": \"40+ Projects Delivered\", \"proof_visible\": false, \"link_present\": false}, {\"claim\": \"100+ Hours Came\", \"proof_visible\": false, \"link_present\": false}, {\"claim\": \"2016 Avrut Solutions. All rights reserved. Building the future with AI.\", \"proof_visible\": false, \"link_present\": false}], \"pattern_type\": \"fake_authority\", \"confidence\": 0.7}",
+  "model": "meta/llama-3.2-90b-vision-instruct",
+  "fallback_mode": false,
+  "_timestamp": 1770884612.4383562
+}

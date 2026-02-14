@@ -1,0 +1,25 @@
+services:
+  # The Brain (FastAPI)
+  backend:
+    build: ./backend
+    container_name: glass-box-backend
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./backend:/app # Syncs code changes instantly
+    env_file:
+      - .env
+
+  # The Face (Next.js)
+  frontend:
+    build: ./frontend
+    container_name: glass-box-frontend
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules # Prevents overwriting container node_modules
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:5000
+    depends_on:
+      - backend

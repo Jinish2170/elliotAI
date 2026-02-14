@@ -1,0 +1,6 @@
+{
+  "response": "{\"badges_found\": true, \"badges\": [{\"name\": \"Norton Secured\", \"appears_clickable\": true, \"appears_verifiable\": true}], \"pattern_type\": \"real_badges\", \"confidence\": 0.9}",
+  "model": "meta/llama-3.2-90b-vision-instruct",
+  "fallback_mode": false,
+  "_timestamp": 1770890774.8630543
+}

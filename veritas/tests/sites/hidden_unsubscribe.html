@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Premium Subscription — Manage Account</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; margin: 0; background: #F9FAFB; color: #111827; }
+        .header { background: #1E40AF; color: white; padding: 16px 32px; }
+        .header h1 { font-size: 1.2rem; margin: 0; }
+        .container { max-width: 600px; margin: 40px auto; padding: 20px; }
+
+        .plan-card { background: white; border: 1px solid #E5E7EB; border-radius: 12px;
+                     padding: 24px; margin-bottom: 20px; }
+        .plan-card h2 { margin: 0 0 8px 0; }
+        .plan-card .price { font-size: 2rem; font-weight: 700; color: #1E40AF; }
+
+        .upgrade-btn { display: block; width: 100%; padding: 16px; background: #1E40AF;
+                       color: white; font-size: 1.1rem; border: none; border-radius: 8px;
+                       cursor: pointer; margin: 16px 0; font-weight: 600; }
+
+        /* The cancel/unsubscribe is deliberately buried and disguised */
+        .account-links { margin-top: 40px; font-size: 0.75rem; color: #D1D5DB; }
+        .account-links a { color: #E5E7EB; text-decoration: none; }
+        .account-links a:hover { text-decoration: underline; }
+
+        /* Confirmshaming on the decline option */
+        .decline-link { color: #9CA3AF; font-size: 0.65rem; text-align: center;
+                        margin-top: 12px; font-style: italic; }
+        .decline-link a { color: #D1D5DB; }
+
+        /* Multi-step cancel maze */
+        .cancel-step { display: none; }
+        .cancel-step.active { display: block; }
+
+        .sad-face { font-size: 3rem; text-align: center; margin: 20px; }
+
+        .retention-offer { background: #FEF3C7; border: 1px solid #FDE68A;
+                           border-radius: 8px; padding: 16px; margin: 16px 0; }
+
+        .survey { margin: 16px 0; }
+        .survey label { display: block; padding: 8px; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>PremiumService™ — Account Management</h1>
+</div>
+
+<div class="container">
+    <div class="plan-card">
+        <h2>Your Current Plan: Basic</h2>
+        <p>Limited features. Upgrade to unlock everything!</p>
+        <div class="price">$29.99<span style="font-size:0.8rem;color:#6B7280;">/month</span></div>
+    </div>
+
+    <button class="upgrade-btn">🚀 UPGRADE TO PREMIUM — $49.99/month</button>
+
+    <div class="decline-link">
+        <a href="#cancel-step-1" onclick="showStep(1)">No thanks, I prefer limited features and a worse experience</a>
+    </div>
+
+    <!-- Cancel maze: step 1 -->
+    <div class="cancel-step" id="cancel-step-1">
+        <div class="sad-face">😢</div>
+        <h3>We're sorry to see you go!</h3>
+        <p>Before you leave, can you tell us why?</p>
+        <div class="survey">
+            <label><input type="radio" name="reason" value="price"> Too expensive</label>
+            <label><input type="radio" name="reason" value="features"> Missing features</label>
+            <label><input type="radio" name="reason" value="competitor"> Found a better alternative</label>
+            <label><input type="radio" name="reason" value="other"> Other reason</label>
+        </div>
+        <button class="upgrade-btn" onclick="showStep(2)">Continue Cancellation</button>
+        <button class="upgrade-btn" style="background:#16A34A;" onclick="hideAll()">💚 Keep My Subscription</button>
+    </div>
+
+    <!-- Cancel maze: step 2 — retention offer -->
+    <div class="cancel-step" id="cancel-step-2">
+        <div class="retention-offer">
+            <h3>🎉 SPECIAL OFFER — Just for You!</h3>
+            <p>Stay with us and get <strong>50% off</strong> for the next 3 months!</p>
+            <button class="upgrade-btn" style="background:#16A34A;" onclick="hideAll()">Accept 50% Off</button>
+        </div>
+        <div class="decline-link">
+            <a href="#cancel-step-3" onclick="showStep(3)">No, I still want to give up this amazing deal</a>
+        </div>
+    </div>
+
+    <!-- Cancel maze: step 3 — final guilt trip -->
+    <div class="cancel-step" id="cancel-step-3">
+        <div class="sad-face">💔</div>
+        <h3>Are you really sure?</h3>
+        <p>You'll lose access to:</p>
+        <ul>
+            <li>✨ All premium features</li>
+            <li>📊 Your saved data and settings</li>
+            <li>🎁 Exclusive member discounts</li>
+            <li>💬 Priority customer support</li>
+        </ul>
+        <button class="upgrade-btn" style="background:#DC2626;">Confirm Cancellation</button>
+        <button class="upgrade-btn" style="background:#16A34A;" onclick="hideAll()">💚 I Changed My Mind — Keep It</button>
+    </div>
+
+    <!-- Buried unsubscribe link -->
+    <div class="account-links">
+        <a href="/account">Account Settings</a> ·
+        <a href="/billing">Billing</a> ·
+        <a href="/help">Help Center</a> ·
+        <a href="/unsubscribe" style="font-size:0.6rem; opacity:0.4;">unsubscribe from emails</a>
+    </div>
+</div>
+
+<script>
+    function showStep(n) {
+        document.querySelectorAll('.cancel-step').forEach(el => el.classList.remove('active'));
+        const step = document.getElementById(`cancel-step-${n}`);
+        if (step) step.classList.add('active');
+    }
+    function hideAll() {
+        document.querySelectorAll('.cancel-step').forEach(el => el.classList.remove('active'));
+    }
+</script>
+
+</body>
+</html>

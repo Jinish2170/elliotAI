@@ -1,0 +1,6 @@
+{
+  "response": "{\"guilt_language_found\": false, \"phrases\": [], \"pattern_type\": \"guilt_tripping\", \"confidence\": 0.85}",
+  "model": "meta/llama-3.2-90b-vision-instruct",
+  "fallback_mode": false,
+  "_timestamp": 1770890728.6611147
+}

@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Veritas Audit Report — {{ url }}</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 2cm;
+            @bottom-center {
+                content: "Veritas Audit Report — Page " counter(page) " of " counter(pages);
+                font-size: 9px;
+                color: #9CA3AF;
+            }
+        }
+
+        :root {
+            --primary: #1E40AF;
+            --danger: #DC2626;
+            --warning: #CA8A04;
+            --success: #16A34A;
+            --gray-50: #F9FAFB;
+            --gray-100: #F3F4F6;
+            --gray-200: #E5E7EB;
+            --gray-600: #4B5563;
+            --gray-900: #111827;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+            color: var(--gray-900);
+            font-size: 11px;
+            line-height: 1.5;
+        }
+
+        .header {
+            display: flex; justify-content: space-between; align-items: center;
+            border-bottom: 3px solid var(--primary);
+            padding-bottom: 12px; margin-bottom: 20px;
+        }
+        .header-left h1 { font-size: 22px; color: var(--primary); }
+        .header-left p { font-size: 10px; color: var(--gray-600); }
+        .header-right { text-align: right; font-size: 10px; color: var(--gray-600); }
+
+        .trust-card {
+            display: flex; align-items: center; gap: 24px;
+            border: 2px solid var(--gray-200); border-radius: 12px;
+            padding: 20px; margin-bottom: 20px; background: var(--gray-50);
+        }
+        .trust-gauge { text-align: center; min-width: 120px; }
+        .trust-gauge .score { font-size: 42px; font-weight: 800; }
+        .trust-gauge .label { font-size: 10px; color: var(--gray-600); }
+
+        .score-critical { color: #DC2626; }
+        .score-high     { color: #EA580C; }
+        .score-medium   { color: #CA8A04; }
+        .score-low      { color: #2563EB; }
+        .score-safe     { color: #16A34A; }
+
+        .risk-badge {
+            display: inline-block; padding: 4px 14px; border-radius: 20px;
+            font-weight: 700; font-size: 12px;
+        }
+        .badge-critical  { background: #FEE2E2; color: #991B1B; }
+        .badge-high      { background: #FFEDD5; color: #9A3412; }
+        .badge-medium    { background: #FEF9C3; color: #854D0E; }
+        .badge-low       { background: #DBEAFE; color: #1E40AF; }
+        .badge-safe      { background: #DCFCE7; color: #166534; }
+
+        .trust-details { flex: 1; }
+        .trust-details table { width: 100%; border-collapse: collapse; font-size: 10px; }
+        .trust-details td { padding: 4px 8px; }
+        .trust-details .bar-cell { width: 50%; }
+        .signal-bar { height: 10px; background: var(--gray-200); border-radius: 5px; overflow: hidden; }
+        .signal-bar-fill { height: 100%; border-radius: 5px; }
+
+        .section { margin-bottom: 20px; page-break-inside: avoid; }
+        .section h2 {
+            font-size: 14px; color: var(--primary);
+            border-bottom: 1px solid var(--gray-200);
+            padding-bottom: 4px; margin-bottom: 10px;
+        }
+
+        .finding {
+            border: 1px solid var(--gray-200); border-radius: 8px;
+            padding: 10px; margin-bottom: 8px; page-break-inside: avoid;
+        }
+        .finding-header {
+            display: flex; justify-content: space-between;
+            align-items: center; margin-bottom: 4px;
+        }
+        .finding-title { font-weight: 700; font-size: 11px; }
+        .severity {
+            display: inline-block; padding: 2px 8px; border-radius: 10px;
+            font-size: 9px; font-weight: 700;
+        }
+        .sev-low      { background: #DBEAFE; color: #1E40AF; }
+        .sev-medium   { background: #FEF9C3; color: #854D0E; }
+        .sev-high     { background: #FFEDD5; color: #9A3412; }
+        .sev-critical { background: #FEE2E2; color: #991B1B; }
+        .finding-evidence { font-size: 10px; color: var(--gray-600); }
+
+        table.data-table {
+            width: 100%; border-collapse: collapse;
+            font-size: 10px; margin-bottom: 12px;
+        }
+        .data-table th {
+            background: var(--gray-100); padding: 6px 8px;
+            text-align: left; font-weight: 600;
+        }
+        .data-table td { padding: 6px 8px; border-bottom: 1px solid var(--gray-200); }
+
+        .screenshot { text-align: center; margin: 10px 0; page-break-inside: avoid; }
+        .screenshot img { max-width: 100%; border: 1px solid var(--gray-200); border-radius: 6px; }
+        .screenshot .caption { font-size: 9px; color: var(--gray-600); margin-top: 4px; }
+
+        .recommendation {
+            padding: 6px 10px; border-left: 3px solid var(--primary);
+            background: var(--gray-50); margin-bottom: 6px; font-size: 10px;
+        }
+
+        .footer {
+            margin-top: 30px; padding-top: 10px;
+            border-top: 1px solid var(--gray-200);
+            font-size: 9px; color: var(--gray-600); text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <div class="header-left">
+        <h1>VERITAS Audit Report</h1>
+        <p>Autonomous Multi-Modal Forensic Web Auditor</p>
+    </div>
+    <div class="header-right">
+        <strong>{{ url }}</strong><br>
+        Tier: {{ tier | replace('_', ' ') | title }}<br>
+        Date: {{ timestamp }}<br>
+        Report ID: {{ report_id }}
+    </div>
+</div>
+
+<div class="trust-card">
+    <div class="trust-gauge">
+        <div class="score {{ score_class }}">{{ trust_score }}/100</div>
+        <div class="label">Trust Score</div>
+        <div style="margin-top: 6px;">
+            <span class="risk-badge {{ badge_class }}">{{ risk_level | replace('_', ' ') | title }}</span>
+        </div>
+    </div>
+    <div class="trust-details">
+        <table>
+            {% for signal in sub_signals %}
+            <tr>
+                <td>{{ signal.name | replace('_', ' ') | title }}</td>
+                <td class="bar-cell">
+                    <div class="signal-bar">
+                        <div class="signal-bar-fill" style="width: {{ (signal.raw_score * 100) | round(0) }}%; background: {{ signal.color }};"></div>
+                    </div>
+                </td>
+                <td style="text-align:right;">{{ (signal.raw_score * 100) | round(0) }}%</td>
+                <td style="text-align:right; color:#9CA3AF;">conf {{ (signal.confidence * 100) | round(0) }}%</td>
+            </tr>
+            {% endfor %}
+        </table>
+        {% if overrides %}
+        <p style="margin-top:8px; color: #DC2626; font-size:10px;">
+            <strong>Override rules applied:</strong>
+            {% for o in overrides %}{{ o.name if o is mapping else o }}{% if not loop.last %} &middot; {% endif %}{% endfor %}
+        </p>
+        {% endif %}
+    </div>
+</div>
+
+<div class="section">
+    <h2>Analysis Summary</h2>
+    <p>{{ narrative | default("No analysis narrative was generated for this audit.") }}</p>
+</div>
+
+<div class="section">
+    <h2>Dark Pattern Findings ({{ findings | length }})</h2>
+    {% if findings %}
+        {% for f in findings %}
+        <div class="finding">
+            <div class="finding-header">
+                <span class="finding-title">{{ f.category | replace('_', ' ') | title }} / {{ f.sub_type | replace('_', ' ') | title }}</span>
+                <span class="severity sev-{{ f.severity }}">{{ f.severity | upper }} ({{ (f.confidence * 100) | round(0) }}%)</span>
+            </div>
+            <div class="finding-evidence">{{ f.evidence }}</div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <p style="color: var(--success); font-weight:600;">No dark patterns detected.</p>
+    {% endif %}
+</div>
+
+{% if domain_intel %}
+<div class="section">
+    <h2>Domain Intelligence</h2>
+    <table class="data-table">
+        <tr><th>Property</th><th>Value</th></tr>
+        <tr><td>Domain</td><td>{{ domain_intel.domain | default('Unknown') }}</td></tr>
+        <tr><td>Domain Age</td><td>{{ domain_intel.age_days | default('Unknown') }} days</td></tr>
+        <tr><td>Registrar</td><td>{{ domain_intel.registrar | default('Unknown') }}</td></tr>
+        <tr><td>SSL Valid</td><td>{{ 'Yes' if has_ssl else 'No' }}</td></tr>
+        <tr><td>WHOIS Privacy</td><td>{{ 'Protected' if domain_intel.is_privacy_protected else 'Public' }}</td></tr>
+    </table>
+</div>
+{% endif %}
+
+{% if entities %}
+<div class="section">
+    <h2>Entity Verification ({{ entities | length }})</h2>
+    <table class="data-table">
+        <tr><th>Entity</th><th>Claim</th><th>Verified</th><th>Source</th></tr>
+        {% for e in entities %}
+        <tr>
+            <td>{{ e.name }}</td>
+            <td>{{ e.claim }}</td>
+            <td>{{ 'Yes' if e.verified else '?' }}</td>
+            <td>{{ e.source | default('N/A') }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+</div>
+{% endif %}
+
+{% if inconsistencies %}
+<div class="section">
+    <h2>Graph Inconsistencies ({{ inconsistencies | length }})</h2>
+    {% for inc in inconsistencies %}
+    <div class="finding">
+        <div class="finding-header">
+            <span class="finding-title">{{ inc.type | default('Inconsistency') | replace('_', ' ') | title }}</span>
+            <span class="severity sev-{{ inc.severity | default('medium') }}">{{ inc.severity | default('MEDIUM') | upper }}</span>
+        </div>
+        <div class="finding-evidence">{{ inc.description }}</div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+{% if screenshots %}
+<div class="section" style="page-break-before: always;">
+    <h2>Screenshot Evidence</h2>
+    {% for ss in screenshots %}
+    <div class="screenshot">
+        <img src="file://{{ ss.path }}" alt="{{ ss.label }}">
+        <div class="caption">{{ ss.label }}</div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+{% if recommendations %}
+<div class="section">
+    <h2>Recommendations</h2>
+    {% for rec in recommendations %}
+    <div class="recommendation">{{ rec }}</div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<div class="section">
+    <h2>Audit Metadata</h2>
+    <table class="data-table">
+        <tr><th>Property</th><th>Value</th></tr>
+        <tr><td>Target URL</td><td>{{ url }}</td></tr>
+        <tr><td>Audit Tier</td><td>{{ tier | replace('_', ' ') | title }}</td></tr>
+        <tr><td>Iterations</td><td>{{ iterations | default(0) }}</td></tr>
+        <tr><td>Pages Scanned</td><td>{{ pages_visited | default(0) }}</td></tr>
+        <tr><td>NIM Calls</td><td>{{ nim_calls | default(0) }}</td></tr>
+        <tr><td>Duration</td><td>{% if elapsed_seconds %}{{ elapsed_seconds | round(1) }}s{% else %}N/A{% endif %}</td></tr>
+        <tr><td>Timestamp</td><td>{{ timestamp }}</td></tr>
+    </table>
+</div>
+
+<div class="footer">
+    Veritas &mdash; Autonomous Multi-Modal Forensic Web Auditor<br>
+    This report was generated automatically. Findings should be verified by human review.<br>
+    &copy; {{ year }} Veritas Project
+</div>
+
+</body>
+</html>

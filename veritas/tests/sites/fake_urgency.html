@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>MEGA DEAL — Only 2 Left!</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; background: #111; color: #fff; }
+        .banner { background: #DC2626; text-align: center; padding: 20px; }
+        .banner h1 { font-size: 2rem; margin: 0; animation: blink 1s infinite; }
+        @keyframes blink { 50% { opacity: 0.5; } }
+
+        .timer { font-size: 3rem; text-align: center; margin: 30px; color: #FBBF24; }
+        .stock { font-size: 1.5rem; text-align: center; color: #F87171; margin: 20px; }
+        .viewers { text-align: center; color: #93C5FD; margin: 10px; }
+
+        .cta { display: block; margin: 30px auto; padding: 20px 60px; background: #16A34A;
+               color: white; font-size: 1.5rem; border: none; border-radius: 8px; cursor: pointer; }
+        .cta:hover { background: #15803D; }
+
+        .cancel { color: #333; font-size: 8px; text-align: center; margin-top: 40px; opacity: 0.3; }
+        .cancel a { color: #444; text-decoration: none; }
+
+        .badge { display: inline-block; margin: 5px; padding: 4px 10px; background: #1E293B;
+                 border-radius: 4px; font-size: 0.8rem; }
+        .badges { text-align: center; margin: 20px; }
+
+        .checkbox-row { text-align: center; margin: 20px; }
+        .checkbox-row label { font-size: 0.7rem; color: #666; }
+    </style>
+</head>
+<body>
+
+<div class="banner">
+    <h1>⚡ FLASH SALE — ENDING SOON ⚡</h1>
+</div>
+
+<!-- Fake countdown timer (resets every minute) -->
+<div class="timer" id="timer">04:59</div>
+
+<!-- Fake stock counter -->
+<div class="stock">Only <span id="stock">2</span> items left in stock!</div>
+
+<!-- Fake social proof -->
+<div class="viewers">👁️ <span id="viewers">847</span> people viewing this right now</div>
+
+<!-- Fake trust badges -->
+<div class="badges">
+    <span class="badge">✅ Verified Seller</span>
+    <span class="badge">🔒 Norton Secured</span>
+    <span class="badge">⭐ 4.9/5 (12,847 reviews)</span>
+    <span class="badge">🏆 Best of 2024</span>
+</div>
+
+<button class="cta">BUY NOW — $9.99 (was $199.99)</button>
+
+<!-- Hidden pre-selected checkbox -->
+<div class="checkbox-row">
+    <input type="checkbox" id="newsletter" checked>
+    <label for="newsletter">Sign me up for premium newsletter ($4.99/month)</label>
+</div>
+
+<div class="checkbox-row">
+    <input type="checkbox" id="insurance" checked>
+    <label for="insurance">Add purchase protection ($2.99)</label>
+</div>
+
+<!-- Tiny hidden cancel link -->
+<div class="cancel">
+    <a href="/cancel">no thanks, I don't want to save money</a>
+</div>
+
+<script>
+    // Fake timer that resets (never actually ends)
+    let seconds = 299;
+    setInterval(() => {
+        seconds--;
+        if (seconds <= 0) seconds = 299; // RESET — it's fake
+        const m = Math.floor(seconds / 60);
+        const s = seconds % 60;
+        document.getElementById('timer').textContent =
+            `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    }, 1000);
+
+    // Fake viewer count (random fluctuation, never goes down meaningfully)
+    setInterval(() => {
+        const el = document.getElementById('viewers');
+        const current = parseInt(el.textContent);
+        el.textContent = current + Math.floor(Math.random() * 5) - 1;
+    }, 3000);
+
+    // Stock never changes (it's always 2)
+</script>
+
+</body>
+</html>

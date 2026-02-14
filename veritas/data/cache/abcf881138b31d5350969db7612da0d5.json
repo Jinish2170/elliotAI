@@ -1,0 +1,6 @@
+{
+  "response": "There are no pre-selected checkboxes, pre-opted-in options, or add-ons that are already checked/selected without user action on this page. The page is a blank example domain page with no interactive elements.\n\n{\"pre_selected_found\": false, \"items\": [], \"pattern_type\": \"pre_selected_options\", \"confidence\": 0.9}",
+  "model": "meta/llama-3.2-90b-vision-instruct",
+  "fallback_mode": false,
+  "_timestamp": 1770812166.1722953
+}

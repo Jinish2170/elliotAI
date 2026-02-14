@@ -1,0 +1,6 @@
+{
+  "response": "The page does not display a total price. The content is focused on showcasing the company's services and expertise in AI and software development, without providing any pricing information. Therefore, it is not possible to compare the prominently displayed price with the actual total or identify any hidden fees.\n\n**Answer:** {\"price_transparent\": false, \"displayed_price\": \"unknown\", \"actual_total\": \"unknown\", \"hidden_fees\": [], \"pattern_type\": \"no pricing information\", \"confidence\": 1.0}",
+  "model": "meta/llama-3.2-90b-vision-instruct",
+  "fallback_mode": false,
+  "_timestamp": 1770884723.1958838
+}

@@ -1,0 +1,15 @@
+--- VLM models (image input) ---
+  OK  meta/llama-3.2-90b-vision-instruct -> This domain is for use in documentation examples without needing permission. Avo
+  FAIL meta/llama-3.2-11b-vision-instruct -> InternalServerError: Error code: 500 - {'type': 'urn:inference-connection:problem-details:internal-server-error', 'title': 'Internal Server E
+  OK  microsoft/phi-3.5-vision-instruct ->  A webpage with a message about domain usage.
+  FAIL nvidia/neva-22b -> NotFoundError: Error code: 404 - {'status': 404, 'title': 'Not Found', 'detail': "Function 'bc205f8e-1740-40df-8d32-c4321763498a': Not 
+  FAIL google/deformable-detr -> NotFoundError: 404 page not found
+  FAIL nvidia/vila -> NotFoundError: Error code: 404 - {'status': 404, 'title': 'Not Found', 'detail': "Function '1c8df143-2303-419b-8b28-b4dd82cfe113': Not 
+  FAIL adept/fuyu-8b -> NotFoundError: Error code: 404 - {'status': 404, 'title': 'Not Found', 'detail': "Function 'e598bfc1-b058-41af-869d-556d3c7e1b48': Not 
+
+--- Text LLM models ---
+  OK  meta/llama-3.1-70b-instruct -> Hello.
+  OK  meta/llama-3.1-8b-instruct -> Hello.
+  FAIL nvidia/llama-3.1-nemotron-70b-instruct -> NotFoundError: Error code: 404 - {'status': 404, 'title': 'Not Found', 'detail': "Function '9b96341b-9791-4db9-a00d-4e43aa192a39': Not 
+
+Working VLM models: ['meta/llama-3.2-90b-vision-instruct', 'microsoft/phi-3.5-vision-instruct']

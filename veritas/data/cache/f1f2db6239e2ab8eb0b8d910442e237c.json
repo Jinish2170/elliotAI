@@ -1,0 +1,6 @@
+{
+  "response": "The page claims to have been featured in several media outlets, including Forbes, Entrepreneur, and Inc.com. However, there is no visible proof or link to support these claims.\n\nHere is the JSON response:\n\n```\n{\n  \"authority_claims\": [\n    {\n      \"claim\": \"As seen on Forbes, Entrepreneur, and Inc.com\",\n      \"proof_visible\": false,\n      \"link_present\": false\n    }\n  ],\n  \"pattern_type\": \"fake_authority\",\n  \"confidence\": 0.7\n}\n```\n\nNote that the confidence level is set to 0.7, indicating that the claim is likely to be fake or exaggerated.",
+  "model": "meta/llama-3.2-90b-vision-instruct",
+  "fallback_mode": false,
+  "_timestamp": 1770884770.4159553
+}

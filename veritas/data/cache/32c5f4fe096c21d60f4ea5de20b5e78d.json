@@ -1,0 +1,6 @@
+{
+  "response": "{\"cancel_visible\": false, \"cancel_prominence\": \"hidden\", \"estimated_steps\": 0, \"pattern_type\": \"hidden_cancel\", \"confidence\": 0.9}",
+  "model": "meta/llama-3.2-90b-vision-instruct",
+  "fallback_mode": false,
+  "_timestamp": 1771043359.1818757
+}

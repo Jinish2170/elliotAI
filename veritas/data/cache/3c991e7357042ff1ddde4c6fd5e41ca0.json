@@ -1,0 +1,6 @@
+{
+  "response": "The page does not claim any awards, media features ('As seen on...'), partnerships, or endorsements. Therefore, the JSON response would be:\n\n{\"authority_claims\": [], \"pattern_type\": \"fake_authority\", \"confidence\": 0.0}",
+  "model": "meta/llama-3.2-90b-vision-instruct",
+  "fallback_mode": false,
+  "_timestamp": 1770812221.3667226
+}

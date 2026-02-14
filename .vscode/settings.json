@@ -1,0 +1,8 @@
+{
+    "chat.tools.terminal.autoApprove": {
+        "/^cd c:\\\\jinish\\\\elliotAI\\\\veritas && c:\\\\jinish\\\\elliotAI\\\\\\.venv\\\\Scripts\\\\python\\.exe -c \"import py_compile; py_compile\\.compile\\('ui/app\\.py', doraise=True\\); print\\('SYNTAX OK'\\)\"$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
+    }
+}

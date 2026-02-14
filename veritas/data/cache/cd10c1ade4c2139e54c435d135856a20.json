@@ -1,0 +1,6 @@
+{
+  "response": "The page does not display any trust badges, certification logos, or security seals. Therefore, there are no badges to evaluate for clickability or verifiability.\n\n{\"badges_found\": false, \"badges\": [], \"pattern_type\": \"no_badges\", \"confidence\": 1.0}",
+  "model": "meta/llama-3.2-90b-vision-instruct",
+  "fallback_mode": false,
+  "_timestamp": 1770884759.05058
+}
