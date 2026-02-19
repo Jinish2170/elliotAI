@@ -22,6 +22,7 @@ import json
 import logging
 import re
 import socket
+import ssl
 import sys
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -157,6 +158,14 @@ class GraphInvestigator:
         self._nim = nim_client or NIMClient()
         self._tavily_client = None
         self._search_count = 0
+        self._whois_timeout_s = max(1, int(getattr(settings, "GRAPH_WHOIS_TIMEOUT_S", 12)))
+        self._dns_timeout_s = max(1, int(getattr(settings, "GRAPH_DNS_TIMEOUT_S", 6)))
+        self._ssl_timeout_s = max(1, int(getattr(settings, "GRAPH_SSL_TIMEOUT_S", 6)))
+        self._meta_timeout_s = max(1, int(getattr(settings, "GRAPH_META_TIMEOUT_S", 12)))
+        self._verify_timeout_s = max(1, int(getattr(settings, "GRAPH_VERIFY_TIMEOUT_S", 20)))
+        self._search_timeout_s = max(1, int(getattr(settings, "GRAPH_SEARCH_TIMEOUT_S", 15)))
+        self._verify_concurrency = max(1, int(getattr(settings, "GRAPH_VERIFY_CONCURRENCY", 3)))
+        self._search_follow_links = bool(getattr(settings, "GRAPH_SEARCH_FOLLOW_LINKS", False))
 
     # ================================================================
     # Public: Full Investigation
@@ -290,7 +299,11 @@ class GraphInvestigator:
         try:
             from analysis.meta_analyzer import MetaAnalyzer
             meta_az = MetaAnalyzer()
-            meta_result = await meta_az.analyze(domain)
+            meta_result = await self._run_with_timeout(
+                meta_az.analyze(domain),
+                timeout_s=self._meta_timeout_s,
+                step=f"meta-analysis:{domain}",
+            )
             result.meta_analysis = meta_az.to_dict(meta_result)
             logger.info(
                 f"MetaAnalyzer: score={meta_result.meta_score:.2f}, "
@@ -299,8 +312,13 @@ class GraphInvestigator:
                 f"SPF={meta_result.dns_info.has_spf}, "
                 f"DMARC={meta_result.dns_info.has_dmarc}"
             )
+        except TimeoutError:
+            msg = f"MetaAnalyzer timed out after {self._meta_timeout_s}s"
+            logger.warning(msg)
+            result.errors.append(msg)
         except Exception as e:
             logger.warning(f"MetaAnalyzer failed (non-critical): {e}")
+            result.errors.append(f"MetaAnalyzer failed: {e}")
 
         # -----------------------------------------------------------
         # Phase 4c: IP Geolocation
@@ -351,8 +369,12 @@ class GraphInvestigator:
 
         # WHOIS lookup
         try:
-            import whois
-            w = whois.whois(domain)
+            w = await self._run_blocking(
+                self._whois_lookup_sync,
+                timeout_s=self._whois_timeout_s,
+                step=f"whois:{domain}",
+                domain=domain,
+            )
 
             intel.registrar = str(w.registrar or "")
             intel.registrant_org = str(w.org or "")
@@ -387,26 +409,42 @@ class GraphInvestigator:
             whois_text_lower = intel.raw_whois.lower()
             intel.is_privacy_protected = any(kw in whois_text_lower for kw in privacy_keywords)
 
+        except TimeoutError as e:
+            logger.warning(f"WHOIS lookup timed out for {domain}: {e}")
+            intel.errors.append(f"WHOIS timeout after {self._whois_timeout_s}s")
         except Exception as e:
             logger.warning(f"WHOIS lookup failed for {domain}: {e}")
             intel.errors.append(f"WHOIS failed: {str(e)}")
 
         # DNS lookup
         try:
-            intel.ip_address = socket.gethostbyname(domain)
+            intel.ip_address = await self._run_blocking(
+                self._dns_lookup_sync,
+                timeout_s=self._dns_timeout_s,
+                step=f"dns:{domain}",
+                domain=domain,
+            )
+        except TimeoutError:
+            logger.warning(f"DNS lookup timed out for {domain}")
+            intel.errors.append(f"DNS timeout after {self._dns_timeout_s}s")
         except socket.gaierror as e:
+            logger.warning(f"DNS lookup failed for {domain}: {e}")
+            intel.errors.append(f"DNS failed: {str(e)}")
+        except Exception as e:
             logger.warning(f"DNS lookup failed for {domain}: {e}")
             intel.errors.append(f"DNS failed: {str(e)}")
 
         # SSL check
         try:
-            import ssl
-            ctx = ssl.create_default_context()
-            with ctx.wrap_socket(socket.socket(), server_hostname=domain) as s:
-                s.settimeout(5)
-                s.connect((domain, 443))
-                cert = s.getpeercert()
-                intel.ssl_issuer = str(cert.get("issuer", ""))
+            intel.ssl_issuer = await self._run_blocking(
+                self._ssl_issuer_lookup_sync,
+                timeout_s=self._ssl_timeout_s,
+                step=f"ssl:{domain}",
+                domain=domain,
+                ssl_timeout_s=self._ssl_timeout_s,
+            )
+        except TimeoutError:
+            logger.debug(f"SSL lookup timed out for {domain}")
         except Exception:
             pass  # No SSL or unreachable — will be reflected in scoring
 
@@ -531,9 +569,43 @@ class GraphInvestigator:
             c for c in sorted_claims if c.entity_type in verifiable_types
         ][:max_verifications]
 
-        for claim in to_verify:
-            verification = await self._verify_single_claim(claim, domain)
-            verifications.append(verification)
+        if not to_verify:
+            return verifications
+
+        semaphore = asyncio.Semaphore(self._verify_concurrency)
+
+        async def _verify_with_limits(claim: EntityClaim) -> VerificationResult:
+            async with semaphore:
+                try:
+                    return await self._run_with_timeout(
+                        self._verify_single_claim(claim, domain),
+                        timeout_s=self._verify_timeout_s,
+                        step=f"verify:{claim.entity_type}",
+                    )
+                except TimeoutError:
+                    logger.warning(
+                        f"Verification timeout for {claim.entity_type}={claim.entity_value[:64]}"
+                    )
+                    return VerificationResult(
+                        claim=claim,
+                        status="unverifiable",
+                        evidence_source="Timeout",
+                        evidence_detail=f"Verification timed out after {self._verify_timeout_s}s",
+                        confidence=0.2,
+                    )
+                except Exception as e:
+                    logger.warning(
+                        f"Verification failed for {claim.entity_type}={claim.entity_value[:64]}: {e}"
+                    )
+                    return VerificationResult(
+                        claim=claim,
+                        status="unverifiable",
+                        evidence_source="Error",
+                        evidence_detail=str(e),
+                        confidence=0.1,
+                    )
+
+        verifications = await asyncio.gather(*[_verify_with_limits(claim) for claim in to_verify])
 
         return verifications
 
@@ -593,10 +665,14 @@ class GraphInvestigator:
                 if not self._tavily_client:
                     self._tavily_client = AsyncTavilyClient(api_key=settings.TAVILY_API_KEY)
 
-                response = await self._tavily_client.search(
-                    query=query,
-                    search_depth="basic",
-                    max_results=3,
+                response = await self._run_with_timeout(
+                    self._tavily_client.search(
+                        query=query,
+                        search_depth="basic",
+                        max_results=3,
+                    ),
+                    timeout_s=self._search_timeout_s,
+                    step="tavily-search",
                 )
 
                 results = response.get("results", [])
@@ -615,7 +691,16 @@ class GraphInvestigator:
         # Fallback: custom Playwright-based DuckDuckGo scraper
         try:
             from core.web_searcher import web_search
-            return await web_search(query=query, max_results=3, follow_links=True)
+            return await self._run_with_timeout(
+                web_search(
+                    query=query,
+                    max_results=3,
+                    follow_links=self._search_follow_links,
+                    timeout_ms=self._search_timeout_s * 1000,
+                ),
+                timeout_s=self._search_timeout_s + 2,
+                step="duckduckgo-search",
+            )
         except Exception as e:
             logger.warning(f"Custom web search also failed: {e}")
             return []
@@ -960,24 +1045,62 @@ class GraphInvestigator:
     async def _ip_geolocation(self, ip: str) -> dict:
         """Resolve IP to geolocation using free ip-api.com."""
         try:
-            import urllib.request
-            url = f"http://ip-api.com/json/{ip}?fields=status,country,city,isp,org,as"
-            req = urllib.request.Request(url, headers={"User-Agent": "Veritas/1.0"})
-            with urllib.request.urlopen(req, timeout=5) as resp:
-                data = json.loads(resp.read().decode())
-                if data.get("status") == "success":
-                    geo = {
-                        "country": data.get("country", ""),
-                        "city": data.get("city", ""),
-                        "isp": data.get("isp", ""),
-                        "org": data.get("org", ""),
-                        "as": data.get("as", ""),
-                    }
-                    logger.info(f"IP geolocation: {ip} → {geo['country']}, {geo['city']} ({geo['org']})")
-                    return geo
+            data = await self._run_blocking(
+                self._ip_geolocation_sync,
+                timeout_s=max(2, self._dns_timeout_s),
+                step=f"ip-geo:{ip}",
+                ip=ip,
+            )
+            if data.get("status") == "success":
+                geo = {
+                    "country": data.get("country", ""),
+                    "city": data.get("city", ""),
+                    "isp": data.get("isp", ""),
+                    "org": data.get("org", ""),
+                    "as": data.get("as", ""),
+                }
+                logger.info(f"IP geolocation: {ip} → {geo['country']}, {geo['city']} ({geo['org']})")
+                return geo
+        except TimeoutError:
+            logger.debug(f"IP geolocation timed out for {ip}")
         except Exception as e:
             logger.debug(f"IP geolocation failed for {ip}: {e}")
         return {}
+
+    async def _run_with_timeout(self, coro, timeout_s: int, step: str):
+        """Run coroutine with explicit timeout to prevent graph-phase stalls."""
+        async with asyncio.timeout(timeout_s):
+            return await coro
+
+    async def _run_blocking(self, fn, timeout_s: int, step: str, **kwargs):
+        """Run blocking I/O in thread with timeout so event loop never blocks."""
+        try:
+            async with asyncio.timeout(timeout_s):
+                return await asyncio.to_thread(fn, **kwargs)
+        except TimeoutError:
+            raise TimeoutError(f"{step} exceeded {timeout_s}s")
+
+    def _whois_lookup_sync(self, domain: str):
+        import whois
+        return whois.whois(domain)
+
+    def _dns_lookup_sync(self, domain: str) -> str:
+        return socket.gethostbyname(domain)
+
+    def _ssl_issuer_lookup_sync(self, domain: str, ssl_timeout_s: int) -> str:
+        context = ssl.create_default_context()
+        with socket.create_connection((domain, 443), timeout=ssl_timeout_s) as sock:
+            with context.wrap_socket(sock, server_hostname=domain) as tls_sock:
+                cert = tls_sock.getpeercert() or {}
+                return str(cert.get("issuer", ""))
+
+    def _ip_geolocation_sync(self, ip: str) -> dict:
+        import urllib.request
+
+        url = f"http://ip-api.com/json/{ip}?fields=status,country,city,isp,org,as"
+        req = urllib.request.Request(url, headers={"User-Agent": "Veritas/1.0"})
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            return json.loads(resp.read().decode())
 
     # ================================================================
     # Public: Graph Export (for report visualization)

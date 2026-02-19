@@ -99,6 +99,16 @@ function FindingDetailCard({
   delay: number;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const rawPatternType =
+    finding.pattern_type || ((finding as unknown as { sub_type?: string }).sub_type ?? "unknown_pattern");
+  const patternTitle = rawPatternType
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+  const categoryLabel = (finding.category || "unknown").replace(/_/g, " ");
+  const descriptionText =
+    (mode === "simple" && finding.plain_english
+      ? finding.plain_english
+      : finding.description) || "No details available.";
 
   return (
     <motion.div
@@ -111,14 +121,10 @@ function FindingDetailCard({
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1">
           <h4 className="text-sm font-semibold text-[var(--v-text)] mb-1">
-            {finding.pattern_type
-              .replace(/_/g, " ")
-              .replace(/\b\w/g, (c) => c.toUpperCase())}
+            {patternTitle}
           </h4>
           <p className="text-xs text-[var(--v-text-secondary)]">
-            {mode === "simple" && finding.plain_english
-              ? finding.plain_english
-              : finding.description}
+            {descriptionText}
           </p>
         </div>
         <div className="flex flex-col items-end gap-1">
@@ -141,7 +147,7 @@ function FindingDetailCard({
               <div>
                 <span className="text-[var(--v-text-tertiary)]">Category:</span>{" "}
                 <span className="text-[var(--v-text-secondary)]">
-                  {finding.category.replace(/_/g, " ")}
+                  {categoryLabel}
                 </span>
               </div>
               <div>

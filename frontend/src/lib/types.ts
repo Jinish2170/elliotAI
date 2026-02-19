@@ -66,6 +66,7 @@ export interface DomainInfo {
 export interface AuditResult {
   url: string;
   status: string;
+  audit_tier?: string;
   trust_score: number;
   risk_level: string;
   signal_scores: Record<string, number>;

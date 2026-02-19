@@ -9,9 +9,10 @@ interface AuditMetadataProps {
 }
 
 export function AuditMetadata({ result, auditId }: AuditMetadataProps) {
+  const tierLabel = (result.audit_tier || "standard_audit").replace(/_/g, " ");
   const rows = [
     { label: "Audit ID", value: auditId },
-    { label: "Tier", value: result.verdict_mode || "standard" },
+    { label: "Tier", value: tierLabel },
     { label: "Duration", value: `${Math.floor(result.elapsed_seconds / 60)}m ${result.elapsed_seconds % 60}s` },
     { label: "Pages Analyzed", value: String(result.pages_scanned) },
     { label: "Screenshots", value: String(result.screenshots_count) },

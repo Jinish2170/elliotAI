@@ -61,6 +61,20 @@ TAVILY_REQUESTS_PER_MINUTE: int = int(os.getenv("TAVILY_REQUESTS_PER_MINUTE", "5
 
 
 # ============================================================
+# Graph Intelligence Timeouts / Concurrency
+# ============================================================
+GRAPH_PHASE_TIMEOUT_S: int = int(os.getenv("GRAPH_PHASE_TIMEOUT_S", "90"))
+GRAPH_WHOIS_TIMEOUT_S: int = int(os.getenv("GRAPH_WHOIS_TIMEOUT_S", "12"))
+GRAPH_DNS_TIMEOUT_S: int = int(os.getenv("GRAPH_DNS_TIMEOUT_S", "6"))
+GRAPH_SSL_TIMEOUT_S: int = int(os.getenv("GRAPH_SSL_TIMEOUT_S", "6"))
+GRAPH_META_TIMEOUT_S: int = int(os.getenv("GRAPH_META_TIMEOUT_S", "12"))
+GRAPH_VERIFY_TIMEOUT_S: int = int(os.getenv("GRAPH_VERIFY_TIMEOUT_S", "20"))
+GRAPH_SEARCH_TIMEOUT_S: int = int(os.getenv("GRAPH_SEARCH_TIMEOUT_S", "15"))
+GRAPH_VERIFY_CONCURRENCY: int = int(os.getenv("GRAPH_VERIFY_CONCURRENCY", "3"))
+GRAPH_SEARCH_FOLLOW_LINKS: bool = os.getenv("GRAPH_SEARCH_FOLLOW_LINKS", "false").lower() == "true"
+
+
+# ============================================================
 # Audit Budget Controls
 # ============================================================
 MAX_ITERATIONS: int = int(os.getenv("MAX_ITERATIONS", "5"))

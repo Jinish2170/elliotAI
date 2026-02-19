@@ -320,6 +320,13 @@ class NIMClient:
                 "model": model,
                 "fallback_mode": model != settings.NIM_VISION_MODEL,
             }
+        except asyncio.CancelledError:
+            error_msg = (
+                f"VLM call to {model} was cancelled; treating as recoverable and falling back"
+            )
+            logger.warning(error_msg)
+            self._errors.append(error_msg)
+            return None
         except Exception as e:
             error_msg = f"VLM call to {model} failed: {type(e).__name__}: {str(e)}"
             logger.warning(error_msg)
@@ -359,7 +366,12 @@ class NIMClient:
             )
 
             # Respect rate limit
-            await asyncio.sleep(self._min_delay)
+            try:
+                await asyncio.sleep(self._min_delay)
+            except asyncio.CancelledError:
+                logger.warning(
+                    "Rate-limit delay cancelled after successful NIM response; continuing without delay"
+                )
             return result
 
     # ================================================================

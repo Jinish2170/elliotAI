@@ -56,6 +56,7 @@ class AuditRunner:
         self.security_modules = security_modules
         self._screenshot_index = 0
         self._findings_sent: set[str] = set()
+        self._result_sent = False
 
     async def run(self, send: Callable):
         """
@@ -100,10 +101,24 @@ class AuditRunner:
 
         # Parse stdout line-by-line (blocking reads run in thread pool)
         json_buffer: list[str] = []
+        stdout_lines: list[str] = []
+        stderr_lines: list[str] = []
         collecting_json = False
         start_time = time.time()
 
+        async def _drain_stderr():
+            """Drain stderr continuously to avoid pipe backpressure deadlocks."""
+            while True:
+                raw_err = await loop.run_in_executor(None, process.stderr.readline)
+                if not raw_err:
+                    break
+                err_line = raw_err.decode("utf-8", errors="replace").rstrip("\n\r")
+                if err_line:
+                    stderr_lines.append(err_line)
+
         try:
+            stderr_task = asyncio.create_task(_drain_stderr())
+
             while True:
                 # Read one line in a thread so we don't block the event loop
                 raw_line = await loop.run_in_executor(
@@ -113,6 +128,7 @@ class AuditRunner:
                     break  # EOF — subprocess finished writing
 
                 line = raw_line.decode("utf-8", errors="replace").rstrip("\n\r")
+                stdout_lines.append(line)
 
                 if line.startswith("##PROGRESS:"):
                     payload = line[len("##PROGRESS:"):]
@@ -121,7 +137,7 @@ class AuditRunner:
                         await self._handle_progress(data, send)
                     except json.JSONDecodeError:
                         pass
-                elif line.strip().startswith("{") or collecting_json:
+                elif line.lstrip().startswith("{") or collecting_json:
                     collecting_json = True
                     json_buffer.append(line)
                     # Try to parse accumulated JSON
@@ -137,22 +153,37 @@ class AuditRunner:
             # Wait for process to finish
             await loop.run_in_executor(None, process.wait)
 
+            # Ensure stderr drain is fully consumed
+            try:
+                await asyncio.wait_for(stderr_task, timeout=5)
+            except Exception:
+                stderr_task.cancel()
+
             # Log stderr if any
-            stderr_bytes = await loop.run_in_executor(
-                None, process.stderr.read
-            )
-            if stderr_bytes:
-                stderr_text = stderr_bytes.decode("utf-8", errors="replace")
-                for stderr_line in stderr_text.strip().splitlines()[-10:]:
+            if stderr_lines:
+                for stderr_line in stderr_lines[-20:]:
                     logger.info(f"[{self.audit_id}] stderr: {stderr_line}")
+
+            # Fallback parse if streaming parse missed JSON block
+            if not self._result_sent:
+                fallback_result = self._extract_last_json_from_stdout(stdout_lines)
+                if fallback_result:
+                    await self._handle_result(fallback_result, send)
 
             # Ensure completion event
             elapsed = time.time() - start_time
-            await send({
-                "type": "audit_complete",
-                "audit_id": self.audit_id,
-                "elapsed": round(elapsed, 1),
-            })
+            if self._result_sent:
+                await send({
+                    "type": "audit_complete",
+                    "audit_id": self.audit_id,
+                    "elapsed": round(elapsed, 1),
+                })
+            else:
+                await send({
+                    "type": "audit_error",
+                    "audit_id": self.audit_id,
+                    "error": "Audit finished but final result JSON could not be parsed",
+                })
 
         except Exception as e:
             logger.error(f"[{self.audit_id}] Runner error: {e}", exc_info=True)
@@ -277,6 +308,65 @@ class AuditRunner:
 
     async def _handle_result(self, result: dict, send: Callable):
         """Process the final JSON result from the CLI and send detailed events."""
+        self._result_sent = True
+
+        graph_result = result.get("graph_result", {}) or {}
+        judge = result.get("judge_decision", {}) or {}
+        trust_result = judge.get("trust_score_result", {}) or {}
+        vision = result.get("vision_result", {}) or {}
+
+        # Normalize findings shape for frontend components
+        normalized_findings = []
+        for finding in vision.get("findings", []) or []:
+            pattern_type = finding.get("pattern_type") or finding.get("sub_type") or "unknown"
+            description = finding.get("description") or finding.get("evidence") or ""
+            normalized_findings.append({
+                **finding,
+                "id": finding.get("id") or f"{pattern_type}_{finding.get('confidence', 0)}",
+                "pattern_type": pattern_type,
+                "description": description,
+                "plain_english": finding.get("plain_english") or description,
+            })
+
+        # Normalize signal scores (UI expects 0-100)
+        signal_scores = trust_result.get("signal_scores", {}) or {}
+        if not signal_scores:
+            sub_signals = trust_result.get("sub_signals", {}) or {}
+            if isinstance(sub_signals, dict):
+                for key, data in sub_signals.items():
+                    if isinstance(data, dict):
+                        raw = data.get("raw_score", 0)
+                        try:
+                            raw_f = float(raw)
+                        except (TypeError, ValueError):
+                            raw_f = 0.0
+                        signal_scores[key] = round(raw_f * 100 if raw_f <= 1 else raw_f, 1)
+
+        # Normalize domain info
+        domain_intel = graph_result.get("domain_intel") or {}
+        ip_geo = graph_result.get("ip_geolocation") or {}
+        meta_analysis = graph_result.get("meta_analysis") or {}
+        meta_domain_age = (meta_analysis.get("domain_age") or {}) if isinstance(meta_analysis, dict) else {}
+        meta_ssl = (meta_analysis.get("ssl") or {}) if isinstance(meta_analysis, dict) else {}
+        meta_dns = (meta_analysis.get("dns") or {}) if isinstance(meta_analysis, dict) else {}
+
+        inconsistencies = []
+        for item in graph_result.get("inconsistencies", []) or []:
+            if isinstance(item, dict):
+                inconsistencies.append(
+                    item.get("explanation")
+                    or item.get("claim_text")
+                    or item.get("inconsistency_type")
+                    or "Inconsistency detected"
+                )
+            else:
+                inconsistencies.append(str(item))
+
+        verifications = graph_result.get("verifications", []) or []
+        entity_verified = any(
+            isinstance(v, dict) and v.get("status") == "confirmed"
+            for v in verifications
+        )
 
         # Extract screenshots
         for scout_result in result.get("scout_results", []):
@@ -320,8 +410,7 @@ class AuditRunner:
             })
 
         # Extract findings from vision
-        vision = result.get("vision_result", {}) or {}
-        for finding in vision.get("findings", []):
+        for finding in normalized_findings:
             fid = finding.get("pattern_type", "") + str(finding.get("confidence", 0))
             if fid not in self._findings_sent:
                 self._findings_sent.add(fid)
@@ -334,15 +423,9 @@ class AuditRunner:
                         "severity": finding.get("severity", "medium"),
                         "confidence": finding.get("confidence", 0.5),
                         "description": finding.get("description", ""),
-                        "plain_english": finding.get("plain_english",
-                                                     finding.get("description", "")),
+                        "plain_english": finding.get("plain_english", finding.get("description", "")),
                     },
                 })
-
-        # Extract judge decision
-        judge = result.get("judge_decision", {}) or {}
-        trust_result = judge.get("trust_score_result", {}) or {}
-        signal_scores = trust_result.get("signal_scores", {}) or {}
         overrides = trust_result.get("overrides_applied", []) or []
 
         # Stats update
@@ -370,25 +453,30 @@ class AuditRunner:
             "result": {
                 "url": result.get("url", self.url),
                 "status": result.get("status", "unknown"),
+                "audit_tier": result.get("audit_tier", "standard_audit"),
                 "trust_score": trust_result.get("final_score", 0),
                 "risk_level": trust_result.get("risk_level", "unknown"),
                 "signal_scores": signal_scores,
                 "overrides": overrides,
                 "narrative": judge.get("narrative", ""),
                 "recommendations": judge.get("recommendations", []),
-                "findings": vision.get("findings", []),
+                "findings": normalized_findings,
                 "dark_pattern_summary": vision.get("dark_pattern_summary", {}),
                 "security_results": result.get("security_results", {}),
                 "site_type": result.get("site_type", ""),
                 "site_type_confidence": result.get("site_type_confidence", 0),
                 "domain_info": {
-                    "age_days": (result.get("graph_result") or {}).get("domain_age_days"),
-                    "registrar": (result.get("graph_result") or {}).get("registrar"),
-                    "country": (result.get("graph_result") or {}).get("hosting_country"),
-                    "ip": (result.get("graph_result") or {}).get("ip_address"),
-                    "ssl_issuer": (result.get("graph_result") or {}).get("ssl_issuer"),
-                    "inconsistencies": (result.get("graph_result") or {}).get("inconsistencies", []),
-                    "entity_verified": (result.get("graph_result") or {}).get("entity_verified", False),
+                    "age_days": domain_intel.get("age_days") or graph_result.get("domain_age_days") or meta_domain_age.get("age_days"),
+                    "registrar": domain_intel.get("registrar") or meta_domain_age.get("registrar"),
+                    "country": ip_geo.get("country"),
+                    "ip": domain_intel.get("ip_address") or graph_result.get("ip_address") or (
+                        (meta_dns.get("a_records") or [None])[0]
+                        if isinstance(meta_dns, dict)
+                        else None
+                    ),
+                    "ssl_issuer": domain_intel.get("ssl_issuer") or meta_ssl.get("issuer"),
+                    "inconsistencies": inconsistencies,
+                    "entity_verified": entity_verified,
                 },
                 "pages_scanned": len(result.get("investigated_urls", [])),
                 "screenshots_count": n_screenshots,
@@ -397,6 +485,30 @@ class AuditRunner:
                 "verdict_mode": result.get("verdict_mode", "expert"),
             },
         })
+
+    def _extract_last_json_from_stdout(self, lines: list[str]) -> Optional[dict]:
+        """Best-effort extraction of the last top-level JSON object from stdout."""
+        if not lines:
+            return None
+
+        text = "\n".join(lines)
+        decoder = json.JSONDecoder()
+        last_obj: Optional[dict] = None
+
+        idx = 0
+        while True:
+            start = text.find("{", idx)
+            if start == -1:
+                break
+            try:
+                obj, end = decoder.raw_decode(text[start:])
+                if isinstance(obj, dict) and ("status" in obj or "judge_decision" in obj):
+                    last_obj = obj
+                idx = start + max(end, 1)
+            except json.JSONDecodeError:
+                idx = start + 1
+
+        return last_obj
 
 
 def generate_audit_id() -> str:

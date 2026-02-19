@@ -1,0 +1,95 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Python virtual environments
+env/
+venv/
+ENV/
+.venv/
+
+# VS Code settings
+.vscode/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Windows files
+Thumbs.db
+Desktop.ini
+
+# Python egg files
+*.egg
+*.egg-info/
+dist/
+build/
+
+# Logs
+*.log
+
+# Other
+*.swp
+*.bak
+*.tmp
+
+# Output and test files
+*.json
+*.txt
+*.out
+*.log
+*.bak
+
+# Ignore environment files
+.env
+.env.*
+
+# Ignore data folders (veritas)
+veritas/data/cache/
+veritas/data/evidence/
+veritas/data/reports/
+veritas/data/vectordb/
+
+# Ignore node_modules and frontend build artifacts
+node_modules/
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/build/
+frontend/dist/
+frontend/.turbo/
+
+# Ignore backend build artifacts
+backend/__pycache__/
+backend/.pytest_cache/
+backend/.mypy_cache/
+
+# Ignore base models projects build artifacts
+base models projects/*/backend/__pycache__/
+base models projects/*/backend/.pytest_cache/
+base models projects/*/backend/.mypy_cache/
+base models projects/*/frontend/node_modules/
+base models projects/*/frontend/.next/
+base models projects/*/frontend/out/
+base models projects/*/frontend/build/
+base models projects/*/frontend/dist/
+base models projects/*/frontend/.turbo/
+
+# Ignore Docker and SSH agent files
+*.pid
+*.sock
+eval `ssh-agent -s`
+eval `ssh-agent -s`.pub
+
+# Ignore test outputs
+test_output*.json
+test_nim_*.py
+nim_test_output.txt
+
+# Ignore backup and temp files
+*~
+*.tmp
+*.temp
+
+# Ignore .DS_Store (macOS)
+.DS_Store

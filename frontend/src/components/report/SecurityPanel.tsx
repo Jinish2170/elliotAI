@@ -17,8 +17,47 @@ export function SecurityPanel({ securityResults, mode }: SecurityPanelProps) {
   if (securityResults) {
     const hr = securityResults as Record<string, unknown>;
 
+    // Structured security headers module output
+    const securityHeaders = hr.security_headers as Record<string, unknown> | undefined;
+    const headerChecks = Array.isArray(securityHeaders?.checks)
+      ? (securityHeaders?.checks as Array<Record<string, unknown>>)
+      : [];
+    for (const check of headerChecks) {
+      const name = String(check.header || "Unknown Header");
+      headers.push({
+        name,
+        present: Boolean(check.present),
+        value: typeof check.value === "string" ? check.value : undefined,
+      });
+    }
+
+    // Structured phishing module output
+    const phishing = hr.phishing as Record<string, unknown> | undefined;
+    if (phishing) {
+      const sources = Array.isArray(phishing.sources) ? phishing.sources : [];
+      if (sources.length > 0) {
+        for (const source of sources) {
+          phishingChecks.push({ source: String(source), flagged: true });
+        }
+      } else {
+        phishingChecks.push({
+          source: "Heuristic/Database Scan",
+          flagged: Boolean(phishing.is_phishing),
+        });
+      }
+    }
+
+    // Structured form validation module output
+    const formValidation = hr.form_validation as Record<string, unknown> | undefined;
+    if (formValidation) {
+      const criticalCount = Number(formValidation.critical_count || 0);
+      if (criticalCount > 0) {
+        formIssues.push(`${criticalCount} critical form issue(s) detected`);
+      }
+    }
+
     // Try to extract headers
-    if (hr.headers && typeof hr.headers === "object") {
+    if (headers.length === 0 && hr.headers && typeof hr.headers === "object") {
       const h = hr.headers as Record<string, string | boolean>;
       const headerNames = [
         "Strict-Transport-Security",

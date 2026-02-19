@@ -7,7 +7,7 @@ import json
 import logging
 from typing import Optional
 
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel
 from services.audit_runner import AuditRunner, generate_audit_id
 
@@ -43,6 +43,8 @@ async def start_audit(req: AuditStartRequest):
         "verdict_mode": req.verdict_mode,
         "security_modules": req.security_modules,
         "status": "queued",
+        "result": None,
+        "error": None,
     }
 
     return AuditStartResponse(
@@ -78,6 +80,12 @@ async def stream_audit(ws: WebSocket, audit_id: str):
 
     async def send_event(data: dict):
         """Send a JSON event to the WebSocket client."""
+        event_type = data.get("type")
+        if event_type == "audit_result":
+            audit_info["result"] = data.get("result")
+        elif event_type == "audit_error":
+            audit_info["error"] = data.get("error")
+
         try:
             await ws.send_json(data)
         except Exception as e:
@@ -85,7 +93,7 @@ async def stream_audit(ws: WebSocket, audit_id: str):
 
     try:
         await runner.run(send_event)
-        audit_info["status"] = "completed"
+        audit_info["status"] = "completed" if audit_info.get("result") else "error"
     except WebSocketDisconnect:
         logger.info(f"[{audit_id}] Client disconnected")
         audit_info["status"] = "disconnected"
@@ -108,5 +116,11 @@ async def audit_status(audit_id: str):
     """Check audit status."""
     info = _audits.get(audit_id)
     if not info:
-        return {"error": "Audit not found"}, 404
-    return {"audit_id": audit_id, "status": info["status"], "url": info["url"]}
+        raise HTTPException(status_code=404, detail="Audit not found")
+    return {
+        "audit_id": audit_id,
+        "status": info["status"],
+        "url": info["url"],
+        "result": info.get("result"),
+        "error": info.get("error"),
+    }

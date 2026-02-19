@@ -322,15 +322,42 @@ async def graph_node(state: AuditState) -> dict:
     try:
         nim = NIMClient()
         agent = GraphInvestigator(nim_client=nim)
+        graph_timeout_s = max(10, int(getattr(settings, "GRAPH_PHASE_TIMEOUT_S", 90)))
 
-        result = await agent.investigate(
-            url=url,
-            page_metadata=metadata,
-            page_text=page_text,
-            external_links=external_links,
-            site_type=state.get("site_type", ""),
-            form_validation=primary.get("form_validation"),
-        )
+        try:
+            async with asyncio.timeout(graph_timeout_s):
+                result = await agent.investigate(
+                    url=url,
+                    page_metadata=metadata,
+                    page_text=page_text,
+                    external_links=external_links,
+                    site_type=state.get("site_type", ""),
+                    form_validation=primary.get("form_validation"),
+                )
+        except TimeoutError:
+            timeout_msg = f"Graph phase timeout after {graph_timeout_s}s"
+            logger.error(timeout_msg)
+            fallback_graph = {
+                "graph_score": 0.5,
+                "meta_score": 0.5,
+                "meta_analysis": {},
+                "ip_geolocation": {},
+                "domain_age_days": -1,
+                "has_ssl": False,
+                "claims_extracted": [],
+                "verifications": [],
+                "inconsistencies": [],
+                "graph_data": {"nodes": [], "edges": []},
+                "graph_node_count": 0,
+                "graph_edge_count": 0,
+                "domain_intel": None,
+                "tavily_searches": 0,
+                "errors": [timeout_msg],
+            }
+            return {
+                "graph_result": fallback_graph,
+                "errors": errors + [timeout_msg],
+            }
 
         # Serialize GraphResult (graph is exported separately)
         graph_dict = {
@@ -627,7 +654,7 @@ async def security_node(state: AuditState) -> dict:
         try:
             from analysis.security_headers import SecurityHeaderAnalyzer
             analyzer = SecurityHeaderAnalyzer()
-            res = analyzer.analyze(url)
+            res = await analyzer.analyze(url)
             results["security_headers"] = res.to_dict()
             logger.info(f"Security headers score: {res.score:.2f}")
         except Exception as e:
@@ -641,7 +668,10 @@ async def security_node(state: AuditState) -> dict:
             checker = PhishingChecker()
             res = await checker.check(url)
             results["phishing"] = res.to_dict()
-            logger.info(f"Phishing check: is_phishing={res.is_phishing}, flags={len(res.flags)}")
+            logger.info(
+                f"Phishing check: is_phishing={res.is_phishing}, "
+                f"heuristic_flags={len(res.heuristic_flags)}, sources={len(res.sources)}"
+            )
         except Exception as e:
             logger.warning(f"Phishing check failed: {e}")
             results["phishing"] = {"error": str(e)}
@@ -651,9 +681,11 @@ async def security_node(state: AuditState) -> dict:
         try:
             from analysis.redirect_analyzer import RedirectAnalyzer
             analyzer = RedirectAnalyzer()
-            res = analyzer.analyze(url)
+            res = await analyzer.analyze(url)
             results["redirects"] = res.to_dict()
-            logger.info(f"Redirect analysis: {res.total_hops} hops, suspicious={res.is_suspicious}")
+            logger.info(
+                f"Redirect analysis: {res.total_hops} hops, suspicious={bool(res.suspicion_flags)}"
+            )
         except Exception as e:
             logger.warning(f"Redirect analysis failed: {e}")
             results["redirects"] = {"error": str(e)}
