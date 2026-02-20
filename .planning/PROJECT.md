@@ -8,6 +8,20 @@ VERITAS is an autonomous multi-modal forensic web auditing platform that analyze
 
 **Every implementation works at commit time.** Build incrementally with explicit tests, verify each phase before proceeding, and deliver a production-ready system suitable for portfolio/job demonstration. Quality over speed - broken code is unacceptable.
 
+## Current Milestone: v1.0 Core Stabilization
+
+**Goal:** Fix all critical technical debt and establish production-grade foundation before implementing masterpiece features.
+
+**Target features:**
+- Replace fragile stdout IPC with multiprocessing.Queue
+- Create proper SecurityAgent class matching agent pattern
+- Fix LangGraph ainvoke or document workaround
+- Replace empty stubs with NotImplementedError
+- Implement SQLite persistence for audit storage
+- Add comprehensive test coverage for critical paths
+
+---
+
 ## Requirements
 
 ### Validated
@@ -114,4 +128,4 @@ This ensures that when features are added, they're building on a solid foundatio
 | Database persistence for audits | In-memory storage loses data; SQLite for v1, PostgreSQL for production | — Pending |
 
 ---
-*Last updated: 2026-02-20 after project initialization*
+*Last updated: 2026-02-20 after Milestone v1.0 started*
