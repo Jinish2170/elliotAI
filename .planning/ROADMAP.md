@@ -29,7 +29,14 @@
 4. Dual-mode operation enabled via `--use-queue-ipc` CLI flag for gradual migration
 5. Unit and integration tests verify Queue-based communication works correctly
 
-**Plans**: TBD
+**Plans**: 5 plans
+
+Plans:
+- [ ] 01-01-PLAN.md — Create core IPC infrastructure with ProgressEvent dataclass and Queue utilities
+- [ ] 01-02-PLAN.md — Add CLI flags and mode selection logic for dual-mode IPC
+- [ ] 01-03-PLAN.md — Modify VeritasOrchestrator to support dual-mode emission
+- [ ] 01-04-PLAN.md — Modify AuditRunner to create Queue and implement auto-fallback
+- [ ] 01-05-PLAN.md — Add integration tests for Queue IPC and fallback behavior
 
 ---
 
@@ -116,7 +123,7 @@
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. IPC Communication Stabilization | 0/3 | Not started | - |
+| 1. IPC Communication Stabilization | 0/5 | Planning complete | - |
 | 2. Agent Architecture Refactor | 0/2 | Not started | - |
 | 3. LangGraph State Machine Investigation | 0/2 | Not started | - |
 | 4. Stub Cleanup & Code Quality | 0/2 | Not started | - |
