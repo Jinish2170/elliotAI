@@ -1,0 +1,147 @@
+# Requirements: VERITAS Masterpiece Upgrade
+
+**Defined:** 2026-02-20
+**Core Value:** Every implementation works at commit time. Build incrementally with explicit tests, verify each phase before proceeding.
+
+## v1 Requirements (Core Stabilization)
+
+Requirements for Milestone v1.0: Fix critical technical debt and establish production-grade foundation.
+
+### IPC Communication
+
+- [ ] **CORE-02**: Backend can receive structured progress events from Veritas subprocess without parsing stdout
+- [ ] **CORE-02-2**: Implement multiprocessing.Queue for Windows + Python 3.14 subprocess communication
+- [ ] **CORE-02-3**: Replace `##PROGRESS:` marker parsing with Queue-based event streaming
+- [ ] **CORE-02-4**: Implement fallback to stdout mode for instant rollback capability
+- [ ] **CORE-02-5**: Dual-mode support with `--use-queue-ipc` CLI flag for gradual migration
+
+### Agent Architecture
+
+- [ ] **CORE-01**: SecurityAgent class matches VisionAgent and JudgeAgent patterns
+- [ ] **CORE-01-2**: SecurityAgent has async analyze() method returning SecurityResult dataclass
+- [ ] **CORE-01-3**: SecurityAgent includes all security modules (headers, phishing, redirects, JS analysis, form validation)
+- [ ] **CORE-01-4**: feature flag enables gradual migration from function to class-based agent
+
+### State Machine
+
+- [ ] **CORE-03**: LangGraph StateGraph executes via ainvoke() without Python 3.14 CancelledError
+- [ ] **CORE-03-2**: Proper LangGraph debugging, visualization, and checkpointing enabled
+- [ ] **CORE-03-3**: Isolated reproduction test documents root cause of CancelledError
+- [ ] **CORE-03-4**: Workaround documented if version pin or hybrid execution needed
+- [ ] **CORE-03-5**: Sequential execution fallback maintained for instant rollback
+
+### Code Quality
+
+- [ ] **CORE-04**: Empty return stubs replaced with NotImplementedError or proper implementations
+- [ ] **CORE-04-2**: evidence_store.py stubs (lines 207, 250, 309, 327, 351, 362) raise NotImplementedError
+- [ ] **CORE-04-3**: judge.py empty returns (lines 943, 960) raise NotImplementedError
+- [ ] **CORE-04-4**: dom_analyzer.py empty returns (lines 318, 345) raise NotImplementedError
+- [ ] **CORE-04-5**: dark_patterns.py empty return (line 407) raise NotImplementedError
+
+### Data Persistence
+
+- [ ] **CORE-05**: Audit results persist across backend restart in SQLite database
+- [ ] **CORE-05-2**: SQLite uses WAL mode for concurrent write support
+- [ ] **CORE-05-3**: Dual-write migration (memory + SQLite) enables gradual data migration
+- [ ] **CORE-05-4**: Screenshots stored in filesystem, references stored in database
+- [ ] **CORE-05-5**: Audit history API supports historical audit retrieval and comparison
+
+### Testing
+
+- [ ] **CORE-06**: IPC Queue communication has unit and integration tests
+- [ ] **CORE-06-2**: SecurityAgent class follows same test pattern as VisionAgent/JudgeAgent
+- [ ] **CORE-06-3**: LangGraph reproduction test covers Python 3.14 async behavior
+- [ ] **CORE-06-4**: Stub cleanup verified by tests that raise NotImplementedError
+- [ ] **CORE-06-5**: SQLite persistence tested with concurrent audit simulation
+
+## v2 Requirements (Masterpiece Features)
+
+Deferred to Milestone v2.0. Implement features incrementally after stabilization complete.
+
+### Vision Agent Enhancement
+
+- **VISION-01**: Implement 5-pass Vision Agent with multi-pass pipeline
+- **VISION-02**: Design sophisticated VLM prompts for each pass
+- **VISION-03**: Implement computer vision temporal analysis
+- **VISION-04**: Build progress showcase emitter for frontend
+
+### OSINT & Graph Power-Up
+
+- **OSINT-01**: Implement 15+ OSINT intelligence sources
+- **OSINT-02**: Build Darknet analyzer (6 marketplaces)
+- **OSINT-03**: Enhance Graph Investigator with OSINT integration
+
+### Judge System Dual-Tier
+
+- **JUDGE-01**: Design dual-tier verdict data classes
+- **JUDGE-02**: Implement site-type-specific scoring strategies
+- **JUDGE-03**: Build Judge Agent with dual-tier generation
+
+### Cybersecurity Deep Dive
+
+- **SEC-01**: Implement 25+ enterprise security modules
+- **SEC-02**: Build darknet-level threat detection
+
+### Content Showcase & UX
+
+- **SHOWCASE-01**: Design psychology-driven content flow
+- **SHOWCASE-02**: Implement real-time Agent Theater components
+- **SHOWCASE-03**: Build Screenshot Carousel with gradual reveal
+- **SHOWCASE-04**: Build Running Log with task flexing
+
+## Out of Scope
+
+Explicitly excluded from both v1 and v2. Documented to prevent scope creep.
+
+| Feature | Reason |
+|---------|--------|
+| Authentication system | Public API suitable for thesis/portfolio demo |
+| Multi-user/tenant deployment | Single-server deployment sufficient |
+| Production hosting infrastructure | Local/dev deployment only |
+| Real-time alerting/analytics | Focus on audit execution, not monitoring |
+| Alternative AI providers | Sticking with NVIDIA NIM (already working) |
+
+## Traceability
+
+Which phases cover which requirements. Updated during roadmap creation.
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| CORE-02 | Phase 1 | Pending |
+| CORE-02-2 | Phase 1 | Pending |
+| CORE-02-3 | Phase 1 | Pending |
+| CORE-02-4 | Phase 1 | Pending |
+| CORE-02-5 | Phase 1 | Pending |
+| CORE-01 | Phase 2 | Pending |
+| CORE-01-2 | Phase 2 | Pending |
+| CORE-01-3 | Phase 2 | Pending |
+| CORE-01-4 | Phase 2 | Pending |
+| CORE-03 | Phase 3 | Pending |
+| CORE-03-2 | Phase 3 | Pending |
+| CORE-03-3 | Phase 3 | Pending |
+| CORE-03-4 | Phase 3 | Pending |
+| CORE-03-5 | Phase 3 | Pending |
+| CORE-04 | Phase 4 | Pending |
+| CORE-04-2 | Phase 4 | Pending |
+| CORE-04-3 | Phase 4 | Pending |
+| CORE-04-4 | Phase 4 | Pending |
+| CORE-04-5 | Phase 4 | Pending |
+| CORE-05 | Phase 5 | Pending |
+| CORE-05-2 | Phase 5 | Pending |
+| CORE-05-3 | Phase 5 | Pending |
+| CORE-05-4 | Phase 5 | Pending |
+| CORE-05-5 | Phase 5 | Pending |
+| CORE-06 | All phases | Pending |
+| CORE-06-2 | Phase 2 | Pending |
+| CORE-06-3 | Phase 3 | Pending |
+| CORE-06-4 | Phase 4 | Pending |
+| CORE-06-5 | Phase 5 | Pending |
+
+**Coverage:**
+- v1 requirements: 30 total
+- Mapped to phases: 30
+- Unmapped: 0 ✓
+
+---
+*Requirements defined: 2026-02-20 after Milestone v1.0 started*
+*Last updated: 2026-02-20 after initial definition*
