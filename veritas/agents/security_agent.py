@@ -151,6 +151,57 @@ class SecurityAgent:
         pass
 
     # ================================================================
+    # Mode Selection (Plan 02-03)
+    # ================================================================
+
+    @classmethod
+    def is_enabled(cls, url: str = "") -> bool:
+        """Check if SecurityAgent should be used for this URL.
+
+        Wraps settings.should_use_security_agent() with convenient
+        class method access.
+
+        Args:
+            url: Target URL (if empty, simple random selection)
+
+        Returns:
+            bool: True if SecurityAgent should be used, False for function mode
+        """
+        from config.settings import should_use_security_agent
+        return should_use_security_agent(url)
+
+    @staticmethod
+    def get_env_mode() -> str:
+        """Return the configured mode: 'agent', 'function', or 'auto'.
+
+        Reads USE_SECURITY_AGENT environment variable and returns:
+        - "true" → "agent"
+        - "false" → "function"
+        - "auto" or unknown → "auto"
+
+        Returns:
+            str: Mode identifier
+        """
+        import os
+        mode = os.getenv("USE_SECURITY_AGENT", "true").lower()
+        if mode == "false":
+            return "function"
+        if mode == "true":
+            return "agent"
+        return "auto"  # use rollout percentage
+
+    async def initialize(self) -> None:
+        """Initialize the agent (discover modules, set up resources).
+
+        Can be called explicitly before analyze() or will be
+        called automatically by analyze() if not already done.
+        """
+        logger.info("Initializing SecurityAgent...")
+        self._discover_modules()
+        self._create_dynamic_methods() if hasattr(self, '_create_dynamic_methods') else None
+        logger.info(f"SecurityAgent initialized with {len(self._discovered_modules)} modules")
+
+    # ================================================================
     # Module Discovery
     # ================================================================
 
