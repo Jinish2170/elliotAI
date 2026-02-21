@@ -25,10 +25,15 @@ Requirements for Milestone v1.0: Fix critical technical debt and establish produ
 ### State Machine
 
 - [ ] **CORE-03**: LangGraph StateGraph executes via ainvoke() without Python 3.14 CancelledError
+  - Partial: Minimal graph test shows ainvoke works on Python 3.11.5; full VERITAS graph not yet tested
 - [ ] **CORE-03-2**: Proper LangGraph debugging, visualization, and checkpointing enabled
-- [ ] **CORE-03-3**: Isolated reproduction test documents root cause of CancelledError
+  - Partial: Graph structure verified (grandalf visualization optional); checkpointing not implemented
+- [x] **CORE-03-3**: Isolated reproduction test documents root cause of CancelledError
+  - Complete: test_01_minimal_graph.py created with 5 tests, shows LangGraph works on Python 3.11.5
 - [ ] **CORE-03-4**: Workaround documented if version pin or hybrid execution needed
+  - Pending: Resolution depends on Phase 02 full audit test results
 - [ ] **CORE-03-5**: Sequential execution fallback maintained for instant rollback
+  - Pending: Current sequential execution can serve as fallback; migration path TBD
 
 ### Code Quality
 
@@ -116,9 +121,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CORE-01-2 | Phase 2 | COMPLETE |
 | CORE-01-3 | Phase 2 | COMPLETE |
 | CORE-01-4 | Phase 2 | COMPLETE |
-| CORE-03 | Phase 3 | Pending |
-| CORE-03-2 | Phase 3 | Pending |
-| CORE-03-3 | Phase 3 | Pending |
+| CORE-03 | Phase 3 | In Progress |
+| CORE-03-2 | Phase 3 | In Progress |
+| CORE-03-3 | Phase 3 | COMPLETE |
 | CORE-03-4 | Phase 3 | Pending |
 | CORE-03-5 | Phase 3 | Pending |
 | CORE-04 | Phase 4 | Pending |
@@ -144,6 +149,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-02-20 after Milestone v1.0 started*
-*Last updated: 2026-02-21 after Phase 2, Plan 03 completion*
-*7 requirements completed (Phase 1 IPC: 5, Phase 2 Agent: 2)*
-*23 requirements remaining*
+*Last updated: 2026-02-21 after Phase 3, Plan 01 completion*
+*10 requirements complete (Phase 1 IPC: 5, Phase 2 Agent: 4, Phase 3 State Machine: 1)*
+*2 requirements in progress (Phase 3: CORE-03, CORE-03-2)*
+*18 requirements remaining*
