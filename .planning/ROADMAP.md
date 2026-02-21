@@ -7,7 +7,7 @@
 ## Phases
 
 - [x] **Phase 1: IPC Communication Stabilization** - Replace fragile stdout parsing with multiprocessing.Queue (COMPLETE)
-- [ ] **Phase 2: Agent Architecture Refactor** - Create proper SecurityAgent class matching agent patterns
+- [x] **Phase 2: Agent Architecture Refactor** - Create proper SecurityAgent class matching agent patterns (COMPLETE)
 - [ ] **Phase 3: LangGraph State Machine Investigation** - Investigate and enable proper LangGraph execution
 - [ ] **Phase 4: Stub Cleanup & Code Quality** - Replace empty return stubs with NotImplementedError
 - [ ] **Phase 5: Persistent Audit Storage** - Implement SQLite database for audit persistence
@@ -61,8 +61,8 @@ Plans:
 - [x] 02-01-PLAN.md — Create SecurityAgent core data structures and class skeleton (COMPLETE)
 - [x] 02-02-PLAN.md — Implement module auto-discovery and SecurityResult aggregation (COMPLETE)
 - [x] 02-03-PLAN.md — Add feature flag infrastructure and migration path (COMPLETE)
-- [ ] 02-04-PLAN.md — Add unit tests for SecurityAgent and dataclasses (planned)
-- [ ] 02-05-PLAN.md — Add integration tests and verify migration works (planned)
+- [x] 02-04-PLAN.md — Add unit tests for SecurityAgent and dataclasses (COMPLETE)
+- [x] 02-05-PLAN.md — Add integration tests and verify migration works (COMPLETE)
 
 ---
 
