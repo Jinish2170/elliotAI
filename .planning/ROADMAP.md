@@ -82,7 +82,12 @@ Plans:
 5. Sequential execution fallback maintained for instant rollback
 6. LangGraph reproduction test covers Python 3.14 async behavior
 
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 03-01-PLAN.md — Create minimal reproduction test for isolated LangGraph ainvoke() behavior
+- [ ] 03-02-PLAN.md — Create full audit test with mocked NIMClient and agents
+- [ ] 03-03-PLAN.md — Create behavioral differences test and document resolution
 
 ---
 
@@ -131,11 +136,11 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. IPC Communication Stabilization | 5/5 | COMPLETE | 2026-02-20 |
-| 2. Agent Architecture Refactor | 3/5 | Complete    | 2026-02-21 |
-| 3. LangGraph State Machine Investigation | 0/5 | Not started | - |
+| 2. Agent Architecture Refactor | 5/5 | COMPLETE   | 2026-02-21 |
+| 3. LangGraph State Machine Investigation | 0/3 | Planned    | - |
 | 4. Stub Cleanup & Code Quality | 0/5 | Not started | - |
 | 5. Persistent Audit Storage | 0/6 | Not started | - |
-| Overall | 8/21 (38%) | Phase 2 in progress | - |
+| Overall | 10/24 (42%) | Phase 3 ready | - |
 
 ---
 
@@ -167,7 +172,6 @@ Plans:
 ---
 
 *Last updated: 2026-02-21*
-*Phase 1 completed with 5/5 plans executed (2026-02-20)*
-*Phase 2 in progress: 3/5 plans complete (2026-02-21)*
-*Total tests added: 40 (16 unit + 24 integration from Phase 1)*
-*All tests passing: 42/42*
+*Phase 1 completed: 5/5 plans executed (2026-02-20)*
+*Phase 2 completed: 5/5 plans executed (2026-02-21)*
+*Phase 3 planned: 3 plans ready for execution*
