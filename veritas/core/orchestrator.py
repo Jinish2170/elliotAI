@@ -21,6 +21,7 @@ LangGraph Integration:
 import asyncio
 import json as _json
 import logging
+import multiprocessing
 import sys
 import time
 from dataclasses import asdict
@@ -37,6 +38,7 @@ from agents.scout import ScoutResult, StealthScout
 from agents.vision import VisionAgent, VisionResult
 from config import settings
 from config.trust_weights import TrustScoreResult
+from core.ipc import ProgressEvent, SecurityModeCompleted, SecurityModeStarted, safe_put
 from core.nim_client import NIMClient
 
 logger = logging.getLogger("veritas.orchestrator")
@@ -89,6 +91,7 @@ class AuditState(TypedDict):
     site_type_confidence: float
     verdict_mode: str                    # "simple" | "expert"
     security_results: dict               # Results from security modules
+    security_mode: str                   # "agent", "function", or "function_fallback"
     enabled_security_modules: list[str]  # Which security modules to run
 
 
@@ -633,6 +636,103 @@ async def judge_node(state: AuditState) -> dict:
 # Security Node
 # ============================================================
 
+async def security_node_with_agent(state: AuditState) -> dict:
+    """
+    SECURITY node with feature-flagged agent routing (Plan 02-03).
+
+    Routes to SecurityAgent class or security_node function based on:
+    1. USE_SECURITY_AGENT environment variable
+    2. SECURITY_AGENT_ROLLOUT percentage (0.0-1.0)
+    3. Consistent hash-based rollout for same URLs
+
+    Implements auto-fallback: if SecurityAgent raises exception,
+    falls back to security_node function.
+
+    Modes:
+        - "agent": Use SecurityAgent class
+        - "function": Use security_node function directly
+        - "function_fallback": SecurityAgent failed, fell back to function
+
+    Returns:
+        dict: {"security_results": {...}, "security_mode": str}
+    """
+    url = state.get("url", "")
+    enabled = state.get("enabled_security_modules", [])
+    errors = state.get("errors", [])
+    results = {}
+    security_mode = "agent"  # Default
+
+    if not enabled:
+        enabled = getattr(settings, 'ENABLED_SECURITY_MODULES', ["security_headers", "phishing_db"])
+
+    # Feature flag check: determine which implementation to use
+    use_agent = settings.should_use_security_agent(url)
+    rollout_pct = settings.get_security_agent_rollout()
+
+    # Emit security mode start event
+    SecurityModeStarted_event = None
+    if hasattr(state, '_progress_queue') or 'progress_queue' in state.get('_internal', {}):
+        # Access progress queue if available (via internal state or orchestrator)
+        pass
+
+    if use_agent:
+        security_mode = "agent"
+        logger.info(f"Security node: USING AGENT MODE for {url} | rollout={rollout_pct:.0%}")
+        try:
+            # Try SecurityAgent implementation
+            from agents.security_agent import SecurityAgent
+
+            # Initialize SecurityAgent with module discovery
+            agent = SecurityAgent()
+            await agent.initialize()
+
+            # Run analysis
+            result = await agent.analyze(url)
+
+            # Convert SecurityResult to dict format compatible with function mode
+            results = {
+                "security_mode": "agent",
+                "composite_score": result.composite_score,
+                "findings": [f.to_dict() for f in result.findings],
+                "total_findings": result.total_findings,
+                "modules_run": result.modules_run,
+                "modules_failed": result.modules_failed,
+                "analysis_time_ms": result.analysis_time_ms,
+                "modules_results": result.modules_results,
+                "errors": result.errors,
+            }
+
+            logger.info(
+                f"SecurityAgent complete | score={result.composite_score:.2f} | "
+                f"findings={result.total_findings} | modules={len(result.modules_run)}"
+            )
+
+        except Exception as e:
+            # Auto-fallback: SecurityAgent failed
+            logger.error(f"SecurityAgent failed, falling back to security_node: {e}", exc_info=True)
+            security_mode = "function_fallback"
+
+            # Call original security_node function
+            update = await security_node(state)
+            results = update.get("security_results", {})
+            results["security_mode"] = security_mode
+            results["fallback_reason"] = str(e)
+
+            return {"security_results": results, "security_mode": security_mode}
+    else:
+        security_mode = "function"
+        logger.info(f"Security node: USING FUNCTION MODE for {url} | rollout={rollout_pct:.0%}")
+
+    # Use function mode (either by choice or fallback already handled)
+    if security_mode == "function":
+        update = await security_node(state)
+        results = update.get("security_results", {})
+        results["security_mode"] = security_mode
+
+    logger.info(f"Security node complete: mode={security_mode} | url={url}")
+    return {"security_results": results, "security_mode": security_mode}
+
+
 async def security_node(state: AuditState) -> dict:
     """
     SECURITY node: Run enabled security analysis modules.
@@ -871,7 +971,7 @@ def build_audit_graph() -> StateGraph:
 
     # Add nodes
     graph.add_node("scout", scout_node)
-    graph.add_node("security", security_node)
+    graph.add_node("security", security_node_with_agent)
     graph.add_node("vision", vision_node)
     graph.add_node("graph", graph_node)
     graph.add_node("judge", judge_node)
@@ -922,9 +1022,42 @@ class VeritasOrchestrator:
         print(f"Risk: {result['judge_decision']['trust_score']['risk_level']}")
     """
 
-    def __init__(self):
+    def __init__(self, progress_queue: Optional[multiprocessing.Queue] = None):
         self._graph = build_audit_graph()
         self._compiled = self._graph.compile()
+        self.progress_queue = progress_queue
+
+    def _emit(self, phase: str, step: str, pct: int, detail: str = "", **extra):
+        """Emit progress via Queue or fallback to stdout.
+
+        Args:
+            phase: Audit phase name (e.g., "Scout", "Vision", "Graph", "Judge")
+            step: Step within phase (e.g., "navigating", "scanning", "done", "error")
+            pct: Progress percentage (0-100)
+            detail: Human-readable detail message
+            **extra: Additional fields to include in event
+        """
+        if self.progress_queue is not None:
+            # Queue mode: Use ProgressEvent dataclass
+            event = ProgressEvent(
+                type="progress",
+                phase=phase,
+                step=step,
+                pct=pct,
+                detail=detail,
+                summary=extra.get("summary") or {},
+                timestamp=time.time(),
+            )
+            # Add extra fields to event
+            for k, v in extra.items():
+                if k not in ("summary",):
+                    setattr(event, k, v)
+            safe_put(self.progress_queue, event, logger, timeout=1.0)
+        else:
+            # Legacy stdout fallback (existing behavior)
+            msg = {"phase": phase, "step": step, "pct": pct, "detail": detail}
+            msg.update(extra)
+            print(f"##PROGRESS:{_json.dumps(msg)}", flush=True)
 
     async def audit(
         self,
@@ -971,6 +1104,7 @@ class VeritasOrchestrator:
             "site_type_confidence": 0.0,
             "verdict_mode": verdict_mode,
             "security_results": {},
+            "security_mode": "",  # Will be set by security_node_with_agent
             "enabled_security_modules": enabled_security_modules or getattr(
                 settings, 'ENABLED_SECURITY_MODULES', ["security_headers", "phishing_db"]
             ),
@@ -978,32 +1112,26 @@ class VeritasOrchestrator:
 
         logger.info(f"Starting Veritas audit: {url} | tier={tier} | max_pages={tier_config['pages']}")
 
-        def _emit(phase: str, step: str, pct: int, detail: str = "", **extra):
-            """Emit a structured progress marker for UI streaming."""
-            msg = {"phase": phase, "step": step, "pct": pct, "detail": detail}
-            msg.update(extra)
-            print(f"##PROGRESS:{_json.dumps(msg)}", flush=True)
-
-        _emit("init", "starting", 0, f"Initializing {tier} audit for {url}")
+        self._emit("init", "starting", 0, f"Initializing {tier} audit for {url}")
 
         try:
             for iteration in range(settings.MAX_ITERATIONS):
                 state["iteration"] = iteration + 1
                 logger.info(f"--- Iteration {state['iteration']} ---")
-                _emit("iteration", "start", 5, f"Iteration {state['iteration']}", iteration=state["iteration"])
+                self._emit("iteration", "start", 5, f"Iteration {state['iteration']}", iteration=state["iteration"])
 
                 # 1. Scout
-                _emit("scout", "navigating", 10, f"Scout agent navigating to target...", iteration=state["iteration"])
+                self._emit("scout", "navigating", 10, f"Scout agent navigating to target...", iteration=state["iteration"])
                 try:
                     scout_update = await scout_node(state)
                     state.update(scout_update)
                     n_shots = sum(len(sr.get("screenshots", [])) for sr in state.get("scout_results", []))
-                    _emit("scout", "done", 25, f"Captured {n_shots} screenshots", screenshots=n_shots, iteration=state["iteration"])
+                    self._emit("scout", "done", 25, f"Captured {n_shots} screenshots", screenshots=n_shots, iteration=state["iteration"])
                 except Exception as e:
                     logger.error(f"Scout failed: {e}")
                     state["errors"].append(f"Scout: {e}")
                     state["scout_failures"] = state.get("scout_failures", 0) + 1
-                    _emit("scout", "error", 25, str(e))
+                    self._emit("scout", "error", 25, str(e))
 
                 # Route after scout
                 route = route_after_scout(state)
@@ -1013,47 +1141,48 @@ class VeritasOrchestrator:
                     break
 
                 # 1b. Security modules
-                _emit("security", "scanning", 27, "Running security analysis modules...", iteration=state["iteration"])
+                self._emit("security", "scanning", 27, "Running security analysis modules...", iteration=state["iteration"])
                 try:
-                    sec_update = await security_node(state)
+                    sec_update = await security_node_with_agent(state)
                     state.update(sec_update)
                     sec_modules = list((state.get("security_results") or {}).keys())
-                    _emit("security", "done", 30, f"Security modules: {', '.join(sec_modules)}", modules=sec_modules)
+                    security_mode = sec_update.get("security_mode", "unknown")
+                    self._emit("security", "done", 30, f"Security modules: {', '.join(sec_modules)} (mode={security_mode})", modules=sec_modules, security_mode=security_mode)
                 except Exception as e:
                     logger.error(f"Security node failed: {e}")
                     state["errors"].append(f"Security: {e}")
-                    _emit("security", "error", 30, str(e))
+                    self._emit("security", "error", 30, str(e))
 
                 # 2. Vision
-                _emit("vision", "analyzing", 30, "Vision agent analyzing screenshots with NIM VLM...", iteration=state["iteration"])
+                self._emit("vision", "analyzing", 30, "Vision agent analyzing screenshots with NIM VLM...", iteration=state["iteration"])
                 try:
                     vision_update = await vision_node(state)
                     state.update(vision_update)
                     vr = state.get("vision_result") or {}
                     n_findings = len(vr.get("findings", []))
                     n_calls = vr.get("nim_calls_made", 0)
-                    _emit("vision", "done", 55, f"{n_findings} dark patterns detected, {n_calls} NIM calls", findings=n_findings, nim_calls=n_calls)
+                    self._emit("vision", "done", 55, f"{n_findings} dark patterns detected, {n_calls} NIM calls", findings=n_findings, nim_calls=n_calls)
                 except Exception as e:
                     logger.error(f"Vision failed: {e}")
                     state["errors"].append(f"Vision: {e}")
-                    _emit("vision", "error", 55, str(e))
+                    self._emit("vision", "error", 55, str(e))
 
                 # 3. Graph
-                _emit("graph", "investigating", 60, "Graph agent running WHOIS, DNS & web verification...", iteration=state["iteration"])
+                self._emit("graph", "investigating", 60, "Graph agent running WHOIS, DNS & web verification...", iteration=state["iteration"])
                 try:
                     graph_update = await graph_node(state)
                     state.update(graph_update)
                     gr = state.get("graph_result") or {}
                     age = gr.get("domain_age_days", "?")
                     n_nodes = gr.get("graph_node_count", 0)
-                    _emit("graph", "done", 75, f"Domain age: {age}d, {n_nodes} graph nodes", domain_age=age, nodes=n_nodes)
+                    self._emit("graph", "done", 75, f"Domain age: {age}d, {n_nodes} graph nodes", domain_age=age, nodes=n_nodes)
                 except Exception as e:
                     logger.error(f"Graph failed: {e}")
                     state["errors"].append(f"Graph: {e}")
-                    _emit("graph", "error", 75, str(e))
+                    self._emit("graph", "error", 75, str(e))
 
                 # 4. Judge
-                _emit("judge", "deliberating", 80, "Judge agent synthesizing evidence & computing trust score...", iteration=state["iteration"])
+                self._emit("judge", "deliberating", 80, "Judge agent synthesizing evidence & computing trust score...", iteration=state["iteration"])
                 try:
                     judge_update = await judge_node(state)
                     state.update(judge_update)
@@ -1061,11 +1190,11 @@ class VeritasOrchestrator:
                     tr = jd.get("trust_score_result") or {}
                     score = tr.get("final_score", "?")
                     risk = tr.get("risk_level", "?")
-                    _emit("judge", "done", 90, f"Trust Score: {score}/100 ({risk})", trust_score=score, risk_level=risk)
+                    self._emit("judge", "done", 90, f"Trust Score: {score}/100 ({risk})", trust_score=score, risk_level=risk)
                 except Exception as e:
                     logger.error(f"Judge failed: {e}")
                     state["errors"].append(f"Judge: {e}")
-                    _emit("judge", "error", 90, str(e))
+                    self._emit("judge", "error", 90, str(e))
 
                 # Route after judge
                 route = route_after_judge(state)
@@ -1092,7 +1221,7 @@ class VeritasOrchestrator:
                 state["status"] = "completed"
             state["elapsed_seconds"] = time.time() - state["start_time"]
 
-            _emit("complete", "done", 100, f"Audit complete in {state['elapsed_seconds']:.0f}s",
+            self._emit("complete", "done", 100, f"Audit complete in {state['elapsed_seconds']:.0f}s",
                   elapsed=round(state["elapsed_seconds"], 1))
 
             logger.info(
