@@ -9,10 +9,14 @@ All values are overridable via environment variables (.env file).
 Directories are auto-created on import.
 """
 
+import hashlib
+import logging
 import os
 from pathlib import Path
 
 from dotenv import load_dotenv
+
+logger = logging.getLogger("veritas.settings")
 
 # Load .env from veritas root
 _veritas_root = Path(__file__).resolve().parent.parent
@@ -202,3 +206,74 @@ STATE_TRANSITIONS: dict = {
     "ABORT": ["PARTIAL_REPORT"],
     "PARTIAL_REPORT": ["END"],
 }
+
+
+# ============================================================
+# SecurityAgent Rollout Helpers (Plan 02-03)
+# ============================================================
+
+
+def get_security_agent_rollout() -> float:
+    """Get SecurityAgent rollout percentage from environment.
+
+    Reads SECURITY_AGENT_ROLLOUT env var (float 0.0-1.0), defaults to 1.0 (100%).
+    Clamps to valid range.
+
+    Returns:
+        float: Rollout percentage between 0.0 and 1.0
+    """
+    rollout = os.getenv("SECURITY_AGENT_ROLLOUT", "1.0")
+    try:
+        percentage = float(rollout)
+    except ValueError:
+        percentage = 1.0
+
+    # Clamp to 0.0-1.0 range
+    return max(0.0, min(1.0, percentage))
+
+
+def should_use_security_agent(url: str = "") -> bool:
+    """Determine if SecurityAgent should be used for this URL.
+
+    Implements consistent hash-based rollout:
+    - If USE_SECURITY_AGENT=true → always use agent
+    - If USE_SECURITY_AGENT=false → always use function
+    - If USE_SECURITY_AGENT=auto → use rollout percentage with hash consistency
+
+    Consistent hash routing ensures same URL always gets same mode (important for debugging).
+
+    Args:
+        url: Target URL (if empty, simple random selection)
+
+    Returns:
+        bool: True if SecurityAgent should be used, False for function mode
+    """
+    # Override: force agent mode
+    if USE_SECURITY_AGENT:
+        return True
+
+    # Override: force function mode
+    mode = os.getenv("USE_SECURITY_AGENT", "true").lower()
+    if mode == "false":
+        return False
+
+    # Auto mode: use rollout percentage with consistent hash
+    rollout = get_security_agent_rollout()
+
+    if url:
+        # Consistent hash: same URL always gets same decision
+        hash_value = int(hashlib.md5(url.lower().encode()).hexdigest()[:8], 16)
+        normalized = hash_value / (2**32 - 1)
+        return normalized < rollout
+    else:
+        # No URL provided: simple random selection
+        import random
+        return random.random() < rollout
+
+
+# Log rollout configuration on startup
+_rollout_pct = get_security_agent_rollout()
+logger.info(
+    f"SecurityAgent: USE_SECURITY_AGENT={USE_SECURITY_AGENT}, "
+    f"ROLLOUT={_rollout_pct:.0%}"
+)
