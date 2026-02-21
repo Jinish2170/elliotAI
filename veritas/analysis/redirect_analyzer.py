@@ -19,6 +19,8 @@ import urllib.parse
 import urllib.request
 from dataclasses import dataclass, field
 
+from veritas.analysis import SecurityModuleBase
+
 logger = logging.getLogger("veritas.analysis.redirect_analyzer")
 
 
@@ -82,13 +84,18 @@ _TRACKING_DOMAINS = {
 }
 
 
-class RedirectAnalyzer:
+class RedirectAnalyzer(SecurityModuleBase):
     """Analyze the HTTP redirect chain of a URL."""
+
+    # Module metadata for auto-discovery
+    module_name = "redirect_chain"
+    category = "redirects"
+    requires_page = False
 
     def __init__(self, max_hops: int = 10):
         self.max_hops = max_hops
 
-    async def analyze(self, url: str, timeout: int = 10) -> RedirectResult:
+    async def analyze(self, url: str, timeout: int = 10, page=None) -> RedirectResult:
         """Follow redirects manually and analyze the chain."""
         result = RedirectResult(original_url=url)
         current_url = url

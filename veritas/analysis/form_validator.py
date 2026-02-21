@@ -15,6 +15,8 @@ import logging
 import urllib.parse
 from dataclasses import dataclass, field
 
+from veritas.analysis import SecurityModuleBase
+
 logger = logging.getLogger("veritas.analysis.form_validator")
 
 
@@ -109,8 +111,13 @@ _FORM_EXTRACTION_JS = """
 """
 
 
-class FormActionValidator:
+class FormActionValidator(SecurityModuleBase):
     """Validate form security within a Playwright page."""
+
+    # Module metadata for auto-discovery
+    module_name = "form_validation"
+    category = "forms"
+    requires_page = True  # Needs Playwright Page object
 
     async def validate(self, page, page_url: str) -> FormValidationResult:
         """
@@ -247,3 +254,22 @@ class FormActionValidator:
             return ".".join(parts[-2:]) if len(parts) >= 2 else domain
         except Exception:
             return ""
+
+    async def analyze(self, url: str, page=None) -> FormValidationResult:
+        """
+        Analyze forms on a page for security issues (alias for validate).
+
+        Args:
+            url: URL of the page
+            page: Playwright Page object (navigated) - required for this module
+
+        Returns:
+            FormValidationResult with form security analysis
+        """
+        if page is None:
+            result = FormValidationResult(url=url)
+            result.errors.append("Form validation requires Playwright Page object")
+            result.score = 0.0
+            return result
+
+        return await self.validate(page, url)

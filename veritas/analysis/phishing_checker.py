@@ -21,6 +21,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
 
+from veritas.analysis import SecurityModuleBase
+
 logger = logging.getLogger("veritas.analysis.phishing_checker")
 
 
@@ -80,8 +82,13 @@ _URL_RED_FLAGS = [
 ]
 
 
-class PhishingChecker:
+class PhishingChecker(SecurityModuleBase):
     """Check URLs against phishing databases and heuristics."""
+
+    # Module metadata for auto-discovery
+    module_name = "phishing_db"
+    category = "phishing"
+    requires_page = False
 
     def __init__(
         self,
@@ -237,3 +244,16 @@ class PhishingChecker:
                 })
         except Exception as e:
             logger.debug("PhishTank check failed (non-critical): %s", e)
+
+    async def analyze(self, url: str, page=None) -> PhishingResult:
+        """
+        Analyze a URL for phishing indicators (alias for check).
+
+        Args:
+            url: URL to check
+            page: Optional page parameter (ignored, for compatibility)
+
+        Returns:
+            PhishingResult with phishing verdict and sources
+        """
+        return await self.check(url)

@@ -18,6 +18,8 @@ import re
 from collections import Counter
 from dataclasses import dataclass, field
 
+from veritas.analysis import SecurityModuleBase
+
 logger = logging.getLogger("veritas.analysis.js_analyzer")
 
 
@@ -117,18 +119,28 @@ _WEBSOCKET_DETECTION_JS = """
 """
 
 
-class JSObfuscationDetector:
+class JSObfuscationDetector(SecurityModuleBase):
     """Detect obfuscated JavaScript and malware in a page."""
 
-    async def analyze(self, page, page_url: str) -> JSAnalysisResult:
+    # Module metadata for auto-discovery
+    module_name = "js_analysis"
+    category = "js"
+    requires_page = True  # Needs Playwright Page object
+
+    async def analyze(self, url: str, page=None) -> JSAnalysisResult:
         """
         Analyze all scripts on the page for suspicious patterns.
 
         Args:
-            page: Playwright Page object (navigated)
-            page_url: URL of the page
+            url: URL of the page
+            page: Playwright Page object (navigated) - required for this module
         """
-        result = JSAnalysisResult(url=page_url)
+        result = JSAnalysisResult(url=url)
+
+        if page is None:
+            result.errors.append("JS analysis requires Playwright Page object")
+            result.score = 0.0
+            return result
 
         try:
             scripts = await page.evaluate(_SCRIPT_EXTRACTION_JS)
