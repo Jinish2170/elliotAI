@@ -126,6 +126,25 @@ SAFE_BROWSING_API_KEY: str = os.getenv("GOOGLE_SAFE_BROWSING_KEY", "")
 
 
 # ============================================================
+# SecurityAgent Configuration (Agent-based refactoring)
+# ============================================================
+# Feature flag: Use agent-based implementation vs function-based
+USE_SECURITY_AGENT: bool = os.getenv("USE_SECURITY_AGENT", "true").lower() == "true"
+
+# Gradual rollout: 0.0 to 1.0 (100%), random users below this threshold use agent
+SECURITY_AGENT_ROLLOUT: float = float(os.getenv("SECURITY_AGENT_ROLLOUT", "1.0"))
+
+# Timeout per security module (seconds)
+SECURITY_AGENT_TIMEOUT: int = int(os.getenv("SECURITY_AGENT_TIMEOUT", "15"))
+
+# Retry attempts for failed modules
+SECURITY_AGENT_RETRY_COUNT: int = int(os.getenv("SECURITY_AGENT_RETRY_COUNT", "2"))
+
+# Fail fast mode: stop on first module failure if True
+SECURITY_AGENT_FAIL_FAST: bool = os.getenv("SECURITY_AGENT_FAIL_FAST", "false").lower() == "true"
+
+
+# ============================================================
 # Verdict Mode — user experience level
 # ============================================================
 DEFAULT_VERDICT_MODE: str = os.getenv("DEFAULT_VERDICT_MODE", "expert")  # "simple" or "expert"
