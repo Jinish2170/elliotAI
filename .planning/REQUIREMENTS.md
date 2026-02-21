@@ -20,7 +20,7 @@ Requirements for Milestone v1.0: Fix critical technical debt and establish produ
 - [x] **CORE-01**: SecurityAgent class matches VisionAgent and JudgeAgent patterns
 - [x] **CORE-01-2**: SecurityAgent has async analyze() method returning SecurityResult dataclass
 - [x] **CORE-01-3**: SecurityAgent includes all security modules (headers, phishing, redirects, JS analysis, form validation)
-- [ ] **CORE-01-4**: feature flag enables gradual migration from function to class-based agent
+- [x] **CORE-01-4**: feature flag enables gradual migration from function to class-based agent
 
 ### State Machine
 
@@ -115,7 +115,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CORE-01 | Phase 2 | COMPLETE |
 | CORE-01-2 | Phase 2 | COMPLETE |
 | CORE-01-3 | Phase 2 | COMPLETE |
-| CORE-01-4 | Phase 2 | Pending |
+| CORE-01-4 | Phase 2 | COMPLETE |
 | CORE-03 | Phase 3 | Pending |
 | CORE-03-2 | Phase 3 | Pending |
 | CORE-03-3 | Phase 3 | Pending |
@@ -144,6 +144,6 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-02-20 after Milestone v1.0 started*
-*Last updated: 2026-02-21 after Phase 2, Plan 02 completion*
-*6 requirements completed (Phase 1 IPC: 5, Phase 2 Agent: 1)*
-*24 requirements remaining*
+*Last updated: 2026-02-21 after Phase 2, Plan 03 completion*
+*7 requirements completed (Phase 1 IPC: 5, Phase 2 Agent: 2)*
+*23 requirements remaining*

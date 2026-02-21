@@ -2,7 +2,7 @@
 
 **Milestone:** v1.0 - Core Stabilization
 **Created:** 2026-02-20
-**Last Updated:** 2026-02-21 (Phase 2, Plan 02 complete)
+**Last Updated:** 2026-02-21 (Phase 2, Plan 03 complete)
 **Mode:** yolo (GO) | Model Profile: sonnet
 **Execution:** Phase 2 plans executing with autonomous mode
 
@@ -22,16 +22,16 @@
 
 ## Current Position
 
-**Phase**: 2 - Agent Architecture Refactor (2/5 plans complete)
-**Plan**: Module Auto-Discovery and SecurityResult Aggregation (02-02)
-**Status**: Phase 2 in progress, plan 02-02 completed
-**Progress Bar**: ▓▓▓▓▓▓░░░░░░░░░░░░░░ 33% complete (5/15 plans)
+**Phase**: 2 - Agent Architecture Refactor (3/5 plans complete)
+**Plan**: Feature Flag Infrastructure and Migration Path (02-03)
+**Status**: Phase 2 in progress, plan 02-03 completed
+**Progress Bar**: ▓▓▓▓▓▓▓▓░░░░░░░░░░░░ 40% complete (6/15 plans)
 
 **Completed Plans:**
 - Phase 1: IPC Communication Stabilization (5/5 plans)
-- Phase 2: Agent Architecture Refactor (2/5 plans)
+- Phase 2: Agent Architecture Refactor (3/5 plans)
 
-**Next Action**: Execute Phase 2, Plan 03 - Feature-flagged migration
+**Next Action**: Execute Phase 2, Plan 04 - Unit tests for SecurityAgent
 
 ---
 
@@ -45,7 +45,7 @@
 
 **Remaining Known Issues**:
 - ~~SecurityAgent class missing~~ → **SecurityAgent class with auto-discovery implemented**
-- SecurityAgent not yet integrated into orchestrator (needs feature-flagged migration)
+- ~~SecurityAgent not integrated into orchestrator~~ → **Feature-flagged migration complete with auto-fallback**
 - LangGraph ainvoke bypassed due to Python 3.14 CancelledError
 - Empty return stubs masking bugs
 - In-memory audit storage lost on restart
@@ -55,13 +55,15 @@
 - SecurityAgent implemented with module auto-discovery
 - 5 security modules inherit from SecurityModuleBase
 - Weighted composite score calculation working
-- Dual-mode support enables gradual production rollout
+- Feature-flagged routing with consistent hash-based rollout (0.0-1.0)
+- Auto-fallback from SecurityAgent to security_node function
+- SecurityMode events for monitoring mode selection
 - Windows multiprocessing spawn context properly configured
 - 5-agent pipeline working with improved progress streaming
 
 **Requirements Coverage**: 30/30 requirements mapped to 5 phases (100%)
 **Phase 1 Coverage**: 6/6 requirements (CORE-02 series + CORE-06) = 100%
-**Phase 2 Coverage**: 1/3 requirements (CORE-01-3 completed) = 33%
+**Phase 2 Coverage**: 2/3 requirements (CORE-01-3, CORE-01-4 completed) = 67%
 
 ---
 
@@ -151,7 +153,7 @@
 
 ## Session Continuity
 
-**Active Tasks**: None (Phase 2, Plan 02 completed)
+**Active Tasks**: None (Phase 2, Plan 03 completed)
 
 **Completed Sessions**:
 - Phase 1: IPC Communication Stabilization (2026-02-20)
@@ -176,9 +178,20 @@
   - All verification criteria passed
   - Duration: 11 minutes
 
+- Phase 2, Plan 03: Feature Flag Infrastructure and Migration Path (2026-02-21)
+  - Feature flag routing: security_node_with_agent() wrapper
+  - Consistent hash-based rollout (MD5 from URL, 0.0-1.0)
+  - Auto-fallback from SecurityAgent to security_node function
+  - SecurityModeStarted and SecurityModeCompleted progress events
+  - Rollout helpers in settings.py (get_security_agent_rollout, should_use_security_agent)
+  - SecurityAgent mode selection methods (is_enabled, get_env_mode, initialize)
+  - security_mode field added to AuditState
+  - All verification criteria passed
+  - Duration: 11 minutes
+
 **Rollback Plan**: Each phase maintains feature flags with fallback paths for instant rollback:
 - Phase 1: `--use-queue-ipc` flag defaults to old stdout parsing
-- Phase 2: Feature flag defaults to function-based security analysis
+- Phase 2: `USE_SECURITY_AGENT=false` reverts to function mode; auto-fallback already implemented
 - Phase 3: Sequential execution maintained as documented fallback
 - Phase 4: NotImplementedError can be conditionally enabled
 - Phase 5: Dual-write migration allows rollback to in-memory storage
@@ -202,18 +215,26 @@
   - Implemented _discover_modules() and full analyze() logic
   - Findings aggregation and composite score calculation working
   - All 5 modules auto-discovered, all verification passed
+- 2026-02-21: Phase 2, Plan 03 completed - Feature-flagged migration (4 commits)
+  - Feature flag routing: security_node_with_agent() wrapper
+  - Consistent hash-based rollout (MD5 from URL, 0.0-1.0)
+  - Auto-fallback from SecurityAgent to security_node function
+  - SecurityModeStarted and SecurityModeCompleted progress events
+  - Rollout helpers in settings.py (get_security_agent_rollout, should_use_security_agent)
+  - SecurityAgent mode selection methods (is_enabled, get_env_mode, initialize)
+  - security_mode field added to AuditState
 
 ---
 
 ## Next Steps
 
-1. **Next Plan**: Phase 2, Plan 03 - Feature-flagged migration from security_node() to SecurityAgent
-   - Integrate SecurityAgent into core/orchestrator.py
-   - USE_SECURITY_AGENT flag controls implementation (agent vs function)
-   - SECURITY_AGENT_ROLLOUT 0.0-1.0 for gradual rollout
+1. **Next Plan**: Phase 2, Plan 04 - Unit tests for SecurityAgent
+   - Unit tests for feature flag routing logic
+   - Unit tests for consistent hash rollout
+   - Unit tests for auto-fallback mechanism
+   - Unit tests for SecurityMode events
 
 2. **Remaining Phase 2 Plans**:
-   - Plan 03: Feature-flagged migration
    - Plan 04: Unit tests for SecurityAgent
    - Plan 05: Integration tests
 
@@ -223,9 +244,8 @@
 
 ---
 
-*STATE last updated: 2026-02-21 after Phase 2, Plan 02 completion*
-*Phase 2 in progress: 2/5 plans complete*
-*SecurityAgent implemented with auto-discovery and full analyze() logic*
-*All 5 security modules discovered and working*
-*Composite score calculation: 0.842 on httpbin.org test*
-*Findings aggregation working: 7 findings from httpbin.org*
+*STATE last updated: 2026-02-21 after Phase 2, Plan 03 completion*
+*Phase 2 in progress: 3/5 plans complete*
+*Feature-flagged migration complete with auto-fallback*
+*Consistent hash-based rollout enables gradual production deployment*
+*All 4 commits executed and verified*
