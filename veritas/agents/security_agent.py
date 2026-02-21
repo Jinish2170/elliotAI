@@ -142,7 +142,7 @@ class SecurityAgent:
 
     async def __aenter__(self) -> "SecurityAgent":
         """Enter async context manager."""
-        await self._discover_modules()
+        self._discover_modules()  # Not async, doesn't need await
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
