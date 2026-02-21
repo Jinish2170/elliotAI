@@ -9,17 +9,17 @@ Requirements for Milestone v1.0: Fix critical technical debt and establish produ
 
 ### IPC Communication
 
-- [ ] **CORE-02**: Backend can receive structured progress events from Veritas subprocess without parsing stdout
-- [ ] **CORE-02-2**: Implement multiprocessing.Queue for Windows + Python 3.14 subprocess communication
-- [ ] **CORE-02-3**: Replace `##PROGRESS:` marker parsing with Queue-based event streaming
-- [ ] **CORE-02-4**: Implement fallback to stdout mode for instant rollback capability
-- [ ] **CORE-02-5**: Dual-mode support with `--use-queue-ipc` CLI flag for gradual migration
+- [x] **CORE-02**: Backend can receive structured progress events from Veritas subprocess without parsing stdout
+- [x] **CORE-02-2**: Implement multiprocessing.Queue for Windows + Python 3.14 subprocess communication
+- [x] **CORE-02-3**: Replace `##PROGRESS:` marker parsing with Queue-based event streaming
+- [x] **CORE-02-4**: Implement fallback to stdout mode for instant rollback capability
+- [x] **CORE-02-5**: Dual-mode support with `--use-queue-ipc` CLI flag for gradual migration
 
 ### Agent Architecture
 
-- [ ] **CORE-01**: SecurityAgent class matches VisionAgent and JudgeAgent patterns
-- [ ] **CORE-01-2**: SecurityAgent has async analyze() method returning SecurityResult dataclass
-- [ ] **CORE-01-3**: SecurityAgent includes all security modules (headers, phishing, redirects, JS analysis, form validation)
+- [x] **CORE-01**: SecurityAgent class matches VisionAgent and JudgeAgent patterns
+- [x] **CORE-01-2**: SecurityAgent has async analyze() method returning SecurityResult dataclass
+- [x] **CORE-01-3**: SecurityAgent includes all security modules (headers, phishing, redirects, JS analysis, form validation)
 - [ ] **CORE-01-4**: feature flag enables gradual migration from function to class-based agent
 
 ### State Machine
@@ -48,7 +48,7 @@ Requirements for Milestone v1.0: Fix critical technical debt and establish produ
 
 ### Testing
 
-- [ ] **CORE-06**: IPC Queue communication has unit and integration tests
+- [x] **CORE-06**: IPC Queue communication has unit and integration tests
 - [ ] **CORE-06-2**: SecurityAgent class follows same test pattern as VisionAgent/JudgeAgent
 - [ ] **CORE-06-3**: LangGraph reproduction test covers Python 3.14 async behavior
 - [ ] **CORE-06-4**: Stub cleanup verified by tests that raise NotImplementedError
@@ -107,14 +107,14 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CORE-02 | Phase 1 | Pending |
-| CORE-02-2 | Phase 1 | Pending |
-| CORE-02-3 | Phase 1 | Pending |
-| CORE-02-4 | Phase 1 | Pending |
-| CORE-02-5 | Phase 1 | Pending |
-| CORE-01 | Phase 2 | Pending |
-| CORE-01-2 | Phase 2 | Pending |
-| CORE-01-3 | Phase 2 | Pending |
+| CORE-02 | Phase 1 | COMPLETE |
+| CORE-02-2 | Phase 1 | COMPLETE |
+| CORE-02-3 | Phase 1 | COMPLETE |
+| CORE-02-4 | Phase 1 | COMPLETE |
+| CORE-02-5 | Phase 1 | COMPLETE |
+| CORE-01 | Phase 2 | COMPLETE |
+| CORE-01-2 | Phase 2 | COMPLETE |
+| CORE-01-3 | Phase 2 | COMPLETE |
 | CORE-01-4 | Phase 2 | Pending |
 | CORE-03 | Phase 3 | Pending |
 | CORE-03-2 | Phase 3 | Pending |
@@ -131,7 +131,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CORE-05-3 | Phase 5 | Pending |
 | CORE-05-4 | Phase 5 | Pending |
 | CORE-05-5 | Phase 5 | Pending |
-| CORE-06 | All phases | Pending |
+| CORE-06 | All phases | COMPLETE |
 | CORE-06-2 | Phase 2 | Pending |
 | CORE-06-3 | Phase 3 | Pending |
 | CORE-06-4 | Phase 4 | Pending |
@@ -144,4 +144,6 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-02-20 after Milestone v1.0 started*
-*Last updated: 2026-02-20 after initial definition*
+*Last updated: 2026-02-21 after Phase 2, Plan 02 completion*
+*6 requirements completed (Phase 1 IPC: 5, Phase 2 Agent: 1)*
+*24 requirements remaining*

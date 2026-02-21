@@ -6,7 +6,7 @@
 
 ## Phases
 
-- [ ] **Phase 1: IPC Communication Stabilization** - Replace fragile stdout parsing with multiprocessing.Queue
+- [x] **Phase 1: IPC Communication Stabilization** - Replace fragile stdout parsing with multiprocessing.Queue (COMPLETE)
 - [ ] **Phase 2: Agent Architecture Refactor** - Create proper SecurityAgent class matching agent patterns
 - [ ] **Phase 3: LangGraph State Machine Investigation** - Investigate and enable proper LangGraph execution
 - [ ] **Phase 4: Stub Cleanup & Code Quality** - Replace empty return stubs with NotImplementedError
@@ -32,11 +32,11 @@
 **Plans**: 5 plans
 
 Plans:
-- [ ] 01-01-PLAN.md — Create core IPC infrastructure with ProgressEvent dataclass and Queue utilities
-- [ ] 01-02-PLAN.md — Add CLI flags and mode selection logic for dual-mode IPC
-- [ ] 01-03-PLAN.md — Modify VeritasOrchestrator to support dual-mode emission
-- [ ] 01-04-PLAN.md — Modify AuditRunner to create Queue and implement auto-fallback
-- [ ] 01-05-PLAN.md — Add integration tests for Queue IPC and fallback behavior
+- [x] 01-01-PLAN.md — Create core IPC infrastructure with ProgressEvent dataclass and Queue utilities (COMPLETE)
+- [x] 01-02-PLAN.md — Add CLI flags and mode selection logic for dual-mode IPC (COMPLETE)
+- [x] 01-03-PLAN.md — Modify VeritasOrchestrator to support dual-mode emission (COMPLETE)
+- [x] 01-04-PLAN.md — Modify AuditRunner to create Queue and implement auto-fallback (COMPLETE)
+- [x] 01-05-PLAN.md — Add integration tests for Queue IPC and fallback behavior (COMPLETE)
 
 ---
 
@@ -55,7 +55,14 @@ Plans:
 4. Feature flag enables gradual migration from function to class-based agent
 5. SecurityAgent class follows same test pattern as VisionAgent/JudgeAgent
 
-**Plans**: TBD
+**Plans**: 5 plans
+
+Plans:
+- [x] 02-01-PLAN.md — Create SecurityAgent core data structures and class skeleton (COMPLETE)
+- [x] 02-02-PLAN.md — Implement module auto-discovery and SecurityResult aggregation (COMPLETE)
+- [ ] 02-03-PLAN.md — Add feature flag infrastructure and migration path (planned)
+- [ ] 02-04-PLAN.md — Add unit tests for SecurityAgent and dataclasses (planned)
+- [ ] 02-05-PLAN.md — Add integration tests and verify migration works (planned)
 
 ---
 
@@ -123,11 +130,12 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. IPC Communication Stabilization | 0/5 | Planning complete | - |
-| 2. Agent Architecture Refactor | 0/2 | Not started | - |
-| 3. LangGraph State Machine Investigation | 0/2 | Not started | - |
-| 4. Stub Cleanup & Code Quality | 0/2 | Not started | - |
-| 5. Persistent Audit Storage | 0/3 | Not started | - |
+| 1. IPC Communication Stabilization | 5/5 | COMPLETE | 2026-02-20 |
+| 2. Agent Architecture Refactor | 2/5 | In Progress | - |
+| 3. LangGraph State Machine Investigation | 0/5 | Not started | - |
+| 4. Stub Cleanup & Code Quality | 0/5 | Not started | - |
+| 5. Persistent Audit Storage | 0/6 | Not started | - |
+| Overall | 7/21 (33%) | Phase 2 in progress | - |
 
 ---
 
@@ -158,4 +166,8 @@ Plans:
 
 ---
 
-*Last updated: 2026-02-20*
+*Last updated: 2026-02-21*
+*Phase 1 completed with 5/5 plans executed (2026-02-20)*
+*Phase 2 in progress: 2/5 plans complete (2026-02-21)*
+*Total tests added: 40 (16 unit + 24 integration from Phase 1)*
+*All tests passing: 40/40*
