@@ -157,8 +157,8 @@ Plans:
 | 2. Agent Architecture Refactor | 5/5 | COMPLETE   | 2026-02-21 |
 | 3. LangGraph State Machine Investigation | 3/3 | COMPLETE   | 2026-02-22 |
 | 4. Stub Cleanup & Code Quality | 1/3 | In progress | 2026-02-22 |
-| 5. Persistent Audit Storage | 0/6 | Not started | - |
-| Overall | 14/18 (78%) | Phase 4 in progress | 2026-02-22 |
+| 5. Persistent Audit Storage | 0/6 | Planned | - |
+| Overall | 14/24 (58%) | Phase 4 in progress | 2026-02-22 |
 
 ---
 
