@@ -78,8 +78,8 @@ class EvidenceStore:
 
             self._embedder = SentenceTransformer(settings.EMBEDDING_MODEL)
             logger.info(f"Embedding model loaded: {settings.EMBEDDING_MODEL}")
-        except ImportError:
-            logger.warning("sentence-transformers not installed — embeddings disabled")
+        except (ImportError, Exception) as e:
+            logger.warning(f"sentence-transformers failed to load ({e}) — embeddings disabled")
             self._embedder = None
 
         self._initialized = True
@@ -204,7 +204,10 @@ class EvidenceStore:
         if self._db and self._embedder:
             try:
                 if table_name not in self._db.table_names():
-                    return []
+                    raise ValueError(
+                        f"search_similar(): Table '{table_name}' does not exist. "
+                        f"Available tables: {self._db.table_names()}"
+                    )
 
                 query_embedding = self._embedder.encode(query).tolist()
                 table = self._db.open_table(table_name)
@@ -247,7 +250,10 @@ class EvidenceStore:
         if self._db:
             try:
                 if "audits" not in self._db.table_names():
-                    return []
+                    raise ValueError(
+                        f"get_all_audits(): 'audits' table does not exist. "
+                        f"Available tables: {self._db.table_names()}"
+                    )
 
                 table = self._db.open_table("audits")
                 results = table.to_pandas().sort_values("timestamp", ascending=False).head(limit)
@@ -306,7 +312,9 @@ class EvidenceStore:
         """Simple keyword search in JSONL (fallback)."""
         filepath = self._db_path / f"{table_name}.jsonl"
         if not filepath.exists():
-            return []
+            raise FileNotFoundError(
+                f"_json_search(): JSONL file not found: {filepath}"
+            )
 
         results = []
         query_lower = query.lower()
@@ -323,8 +331,10 @@ class EvidenceStore:
 
             results.sort(key=lambda x: x[0], reverse=True)
             return [r[1] for r in results[:k]]
-        except Exception:
-            return []
+        except Exception as e:
+            raise RuntimeError(
+                f"_json_search(): Failed to read JSONL file {filepath}: {e}"
+            )
 
     def _json_lookup(self, url: str) -> Optional[dict]:
         """Find a record by URL in JSONL (fallback)."""
@@ -348,7 +358,9 @@ class EvidenceStore:
         """List all records from JSONL, sorted by timestamp descending."""
         filepath = self._db_path / "audits.jsonl"
         if not filepath.exists():
-            return []
+            raise FileNotFoundError(
+                f"_json_list_all(): JSONL file not found: {filepath}"
+            )
 
         records = []
         try:
@@ -358,5 +370,7 @@ class EvidenceStore:
                         records.append(json.loads(line))
             records.sort(key=lambda r: r.get("timestamp", 0), reverse=True)
             return records[:limit]
-        except Exception:
-            return []
+        except Exception as e:
+            raise RuntimeError(
+                f"_json_list_all(): Failed to read JSONL file {filepath}: {e}"
+            )
