@@ -115,7 +115,7 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 04-01-PLAN.md — Search for existing callers and replace evidence_store.py stubs with context-specific exceptions (lines 207, 250, 309, 327, 351, 362)
+- [x] 04-01-PLAN.md — Search for existing callers and replace evidence_store.py stubs with context-specific exceptions (lines 207, 250, 309, 327, 351, 362) (COMPLETE 2026-02-22)
 - [ ] 04-02-PLAN.md — Search for existing callers and replace judge.py, dom_analyzer.py, dark_patterns.py stubs with proper exceptions (lines 943, 960, 345, 407)
 - [ ] 04-03-PLAN.md — Create test_stub_cleanup.py with comprehensive exception tests
 
@@ -148,9 +148,9 @@ Plans:
 | 1. IPC Communication Stabilization | 5/5 | COMPLETE | 2026-02-20 |
 | 2. Agent Architecture Refactor | 5/5 | COMPLETE   | 2026-02-21 |
 | 3. LangGraph State Machine Investigation | 3/3 | COMPLETE   | 2026-02-22 |
-| 4. Stub Cleanup & Code Quality | 0/3 | Planned    | - |
+| 4. Stub Cleanup & Code Quality | 1/3 | In progress | 2026-02-22 |
 | 5. Persistent Audit Storage | 0/6 | Not started | - |
-| Overall | 13/18 (72%) | Phase 4 ready | - |
+| Overall | 14/18 (78%) | Phase 4 in progress | 2026-02-22 |
 
 ---
 

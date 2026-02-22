@@ -37,8 +37,10 @@ Requirements for Milestone v1.0: Fix critical technical debt and establish produ
 
 ### Code Quality
 
-- [ ] **CORE-04**: Empty return stubs replaced with NotImplementedError or proper implementations
-- [ ] **CORE-04-2**: evidence_store.py stubs (lines 207, 250, 309, 327, 351, 362) raise NotImplementedError
+- [x] **CORE-04**: Empty return stubs replaced with NotImplementedError or proper implementations
+  - Complete: evidence_store.py stubs replaced with context-specific exceptions (ValueError, FileNotFoundError, RuntimeError)
+- [x] **CORE-04-2**: evidence_store.py stubs (lines 207, 250, 309, 327, 351, 362) raise context-specific exceptions
+  - Complete: 6 stubs replaced, all tests pass
 - [ ] **CORE-04-3**: judge.py empty returns (lines 943, 960) raise NotImplementedError
 - [ ] **CORE-04-4**: dom_analyzer.py empty return (line 345 only - _check_dark_patterns_css placeholder) raises NotImplementedError. Line 318 returns [] for acceptable tracking levels (intentional business logic, not a stub)
 - [ ] **CORE-04-5**: dark_patterns.py empty return (line 407) raise NotImplementedError
@@ -56,7 +58,8 @@ Requirements for Milestone v1.0: Fix critical technical debt and establish produ
 - [x] **CORE-06**: IPC Queue communication has unit and integration tests
 - [ ] **CORE-06-2**: SecurityAgent class follows same test pattern as VisionAgent/JudgeAgent
 - [ ] **CORE-06-3**: LangGraph reproduction test covers Python 3.14 async behavior
-- [ ] **CORE-06-4**: Stub cleanup verified by tests that raise NotImplementedError
+- [x] **CORE-06-4**: Stub cleanup verified by tests that raise context-specific exceptions
+  - Complete: evidence_store.py tests pass with new exceptions (TestEvidenceStore suite)
 - [ ] **CORE-06-5**: SQLite persistence tested with concurrent audit simulation
 
 ## v2 Requirements (Masterpiece Features)
@@ -126,8 +129,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CORE-03-3 | Phase 3 | COMPLETE |
 | CORE-03-4 | Phase 3 | Pending |
 | CORE-03-5 | Phase 3 | Pending |
-| CORE-04 | Phase 4 | Pending |
-| CORE-04-2 | Phase 4 | Pending |
+| CORE-04 | Phase 4 | In Progress |
+| CORE-04-2 | Phase 4 | COMPLETE |
 | CORE-04-3 | Phase 4 | Pending |
 | CORE-04-4 | Phase 4 | Pending |
 | CORE-04-5 | Phase 4 | Pending |
@@ -139,7 +142,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CORE-06 | All phases | COMPLETE |
 | CORE-06-2 | Phase 2 | Pending |
 | CORE-06-3 | Phase 3 | Pending |
-| CORE-06-4 | Phase 4 | Pending |
+| CORE-06-4 | Phase 4 | COMPLETE |
 | CORE-06-5 | Phase 5 | Pending |
 
 **Coverage:**
@@ -149,7 +152,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-02-20 after Milestone v1.0 started*
-*Last updated: 2026-02-21 after Phase 3, Plan 01 completion*
-*10 requirements complete (Phase 1 IPC: 5, Phase 2 Agent: 4, Phase 3 State Machine: 1)*
-*2 requirements in progress (Phase 3: CORE-03, CORE-03-2)*
+*Last updated: 2026-02-22 after Phase 4, Plan 01 completion*
+*12 requirements complete (Phase 1 IPC: 5, Phase 2 Agent: 4, Phase 3 State Machine: 1, Phase 4 Stub Cleanup: 2)*
+*2 requirements in progress (Phase 4: CORE-04 - partial, Phase 3: CORE-03, CORE-03-2)*
 *18 requirements remaining*

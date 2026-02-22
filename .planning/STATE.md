@@ -2,9 +2,9 @@
 
 **Milestone:** v1.0 - Core Stabilization
 **Created:** 2026-02-20
-**Last Updated:** 2026-02-21 (Phase 3, Plan 01 complete)
+**Last Updated:** 2026-02-22 (Phase 4, Plan 01 complete)
 **Mode:** yolo (GO) | Model Profile: sonnet
-**Execution:** Phase 3 plans executing (LangGraph investigation)
+**Execution:** Phase 4 plans executing (Stub Cleanup & Code Quality)
 
 ---
 
@@ -22,17 +22,18 @@
 
 ## Current Position
 
-**Phase**: 3 - LangGraph State Machine Investigation
-**Plan**: 01 completed (minimal reproduction test), ready for Plan 02
-**Status**: Minimal LangGraph test complete - ainvoke works on Python 3.11.5 without CancelledError
-**Progress Bar**: ▓▓▓▓▓▓▓▓▓▓▓▓▓░░░░░ 60% complete (10/15 plans)
+**Phase**: 4 - Stub Cleanup & Code Quality
+**Plan**: 01 completed (evidence_store.py stub replacement), ready for Plan 02
+**Status**: evidence_store.py stubs replaced with context-specific exceptions - all tests pass
+**Progress Bar**: ▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░░░ 78% complete (14/18 plans)
 
 **Completed:**
 - Phase 1: IPC Communication Stabilization (5/5 plans) ✓
 - Phase 2: Agent Architecture Refactor (5/5 plans) ✓
-- Phase 3: Plan 01 - Minimal reproduction test ✓
+- Phase 3: LangGraph State Machine Investigation (3/3 plans) ✓
+- Phase 4: Plan 01 - evidence_store.py stub cleanup ✓
 
-**Next Action**: Plan 03-02 - Full audit test with mocked NIMClient
+**Next Action**: Plan 04-02 - Replace judge.py, dom_analyzer.py, dark_patterns.py stubs with proper exceptions
 
 ---
 
@@ -52,8 +53,9 @@
 **Remaining Known Issues**:
 - ~~SecurityAgent class missing~~ → **SecurityAgent class with auto-discovery implemented**
 - ~~SecurityAgent not integrated into orchestrator~~ → **Feature-flagged migration complete with auto-fallback**
-- LangGraph ainvoke bypassed due to Python 3.14 CancelledError
-- Empty return stubs masking bugs
+- ~~LangGraph ainvoke bypassed due to Python 3.14 CancelledError~~ → **Resolution: Sequential with Enhanced Tracking**
+- ~~Empty return stubs masking bugs~~ → **evidence_store.py stubs replaced with context-specific exceptions (Plan 04-01 complete)**
+- Empty return stubs in judge.py, dom_analyzer.py, dark_patterns.py (remaining in Plans 04-02, 04-03)
 - In-memory audit storage lost on restart
 
 **Codebase Health**:
@@ -69,8 +71,10 @@
 
 **Requirements Coverage**: 30/30 requirements mapped to 5 phases (100%)
 **Phase 1 Coverage**: 6/6 requirements (CORE-02 series + CORE-06) = 100%
-**Phase 2 Coverage**: 2/3 requirements (CORE-01-3, CORE-01-4 completed) = 67%
-**Phase 3 Coverage**: 3/3 requirements (CORE-03, CORE-03-2, CORE-03-3) = 0% (Plan 01 in progress)
+**Phase 2 Coverage**: 4/4 requirements (CORE-01 series + CORE-06-2) = 100%
+**Phase 3 Coverage**: 2/5 requirements (CORE-03-3, CORE-06-3 complete) = 40%
+**Phase 4 Coverage**: 2/5 requirements (CORE-04-2, CORE-06-4 complete) = 40%
+**Phase 5 Coverage**: 0/6 requirements (CORE-05 series + CORE-06-5) = 0%
 
 ---
 
@@ -85,6 +89,7 @@
 | Test-driven approach | Every new feature requires tests; empty implementations must raise NotImplementedError | Approved - CORE-06 test requirements included |
 | Phase ordering from research | IPC first (most fragile) -> Architecture -> State Machine -> Stubs -> Persistence | Approved - Research-backed sequence documented in ROADMAP.md |
 | LangGraph ainvoke viable on Python 3.11.5 | Minimal reproduction test shows LangGraph internals work correctly without CancelledError | Confirmed - Phase 3 Plan 01 results |
+| Context-specific error types for stubs | Use ValueError/FileNotFoundError/RuntimeError instead of generic NotImplementedError for better error semantics | Approved - evidence_store.py uses 6 context-specific exceptions (Plan 04-01) |
 
 ### Research Complete ✓
 
@@ -276,30 +281,39 @@
   - Investigation README created with findings and next steps
   - Fixed grandalf import error by using pytest.skip for optional dependency
   - Overall: 137 tests passing (60 baseline + 40 IPC + 52 unit + 49 integration + 5 LangGraph)
+- 2026-02-22: Phase 4, Plan 01 completed - evidence_store.py stub cleanup (1 commit)
+  - Caller analysis: No production callers found, only tests and internal calls
+  - Replaced 6 empty return stubs with context-specific exceptions:
+    - search_similar(): raises ValueError for missing tables
+    - get_all_audits(): raises ValueError for missing audits table
+    - _json_search(): raises FileNotFoundError/RuntimeError for JSONL issues
+    - _json_list_all(): raises FileNotFoundError/RuntimeError for JSONL issues
+  - Error messages include method name and context for debugging
+  - Tests pass: TestEvidenceStore::test_json_fallback, test_search_fallback
+  - Overall: 137 tests passing (same as Phase 3 completion)
 
 ---
 
 ## Next Steps
 
-1. **Current Plan**: Phase 3, Plan 02 - Full audit test with mocked NIMClient
-   - Create test_02_full_audit_mocked.py with complete VERITAS AuditState
-   - Mock all external dependencies (NIMClient, Scout, Vision, Graph, Judge agents)
-   - Observe real execution flow without external API calls
-   - Compare LangGraph ainvoke vs sequential execution results
+1. **Current Plan**: Phase 4, Plan 02 - Replace stubs in judge.py, dom_analyzer.py, dark_patterns.py
+   - Search for existing callers of affected methods
+   - Replace empty returns at lines 943, 960 (judge.py), 345 (dom_analyzer.py), 407 (dark_patterns.py)
+   - Use context-specific exceptions per 04-CONTEXT.md decisions
+   - Verify tests pass
 
 2. **Phases Remaining**:
-   - Phase 3: LangGraph Investigation (plans 02-03 remaining)
-   - Phase 4: Stub Cleanup (plans 01-03)
-   - Phase 5: Persistent Storage (plans 01-03)
+   - Phase 4: Stub Cleanup & Code Quality (plans 02-03 remaining)
+   - Phase 5: Persistent Audit Storage (plans TBD)
 
-3. **Sequence**: Complete phases 3-5 sequentially (LangGraph → Stubs → Persistence)
+3. **Sequence**: Complete phases 4-5 sequentially (Stubs → Persistence)
 
 4. **Verification**: Each phase must complete and be verified before starting the next
 
 ---
 
-*STATE last updated: 2026-02-21 after Phase 3, Plan 01 completion*
-*Phase 3, Plan 01 complete: Minimal reproduction test confirms ainvoke works*
-*Python version clarification: 3.11.5 actual vs 3.14 documented*
+*STATE last updated: 2026-02-22 after Phase 4, Plan 01 completion*
+*Phase 4, Plan 01 complete: evidence_store.py stubs replaced with context-specific exceptions*
+*Caller analysis confirmed safe - no production callers expecting empty returns*
 *137 tests passing: 60 baseline + 40 IPC + 52 unit + 49 integration + 5 LangGraph*
-*Next: Plan 02 - Full audit test with mocked NIMClient*
+*Next: Plan 04-02 - Replace stubs in judge.py, dom_analyzer.py, dark_patterns.py*
