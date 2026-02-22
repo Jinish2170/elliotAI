@@ -137,7 +137,15 @@ Plans:
 5. Audit history API supports historical audit retrieval and comparison
 6. SQLite persistence tested with concurrent audit simulation
 
-**Plans**: TBD
+**Plans**: 6 plans
+
+Plans:
+- [ ] 05-01-PLAN.md — Create SQLAlchemy models and initialize SQLite database with WAL mode (Wave 1)
+- [ ] 05-02-PLAN.md — Create AuditRepository and integrate FastAPI DbSession dependency injection (Wave 2)
+- [ ] 05-03-PLAN.md — Create ScreenshotStorage filesystem service (Wave 1)
+- [ ] 05-04-PLAN.md — Implement dual-write migration with USE_DB_PERSISTENCE feature flag (Wave 3)
+- [ ] 05-05-PLAN.md — Create audit history API endpoints (history + compare) (Wave 3)
+- [ ] 05-06-PLAN.md — Create concurrent write simulation tests (Wave 4)
 
 ---
 
