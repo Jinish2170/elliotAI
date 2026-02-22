@@ -32,6 +32,7 @@ if sys.platform == "win32":
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from config import settings
+from core.ipc import determine_ipc_mode, IPC_MODE_QUEUE, IPC_MODE_STDOUT, IPC_MODE_VALIDATE
 from core.orchestrator import VeritasOrchestrator
 from reporting.report_generator import ReportGenerator
 
@@ -69,6 +70,23 @@ Examples:
         """,
     )
 
+    # IPC mode flags (highest priority for mode selection)
+    parser.add_argument(
+        "--use-queue-ipc",
+        action="store_true",
+        help="Use multiprocessing.Queue for IPC instead of stdout parsing"
+    )
+    parser.add_argument(
+        "--use-stdout",
+        action="store_true",
+        help="Force stdout mode (disable Queue IPC)"
+    )
+    parser.add_argument(
+        "--validate-ipc",
+        action="store_true",
+        help="Run both Queue and stdout modes and compare results"
+    )
+
     parser.add_argument("url", help="Target URL to audit")
     parser.add_argument(
         "--tier", "-t",
@@ -99,6 +117,22 @@ Examples:
 
     args = parser.parse_args()
     setup_logging(args.verbose)
+
+    # Determine IPC mode based on CLI, environment, and rollout
+    # Priority: CLI flags > Environment variables > Default (10% rollout)
+    ipc_mode = determine_ipc_mode(
+        cli_use_queue_ipc=args.use_queue_ipc,
+        cli_use_stdout=args.use_stdout,
+        cli_validate_ipc=args.validate_ipc,
+    )
+
+    logger = logging.getLogger("veritas.cli")
+    if ipc_mode == IPC_MODE_VALIDATE:
+        logger.info("IPC mode: VALIDATE (running both Queue and stdout)")
+    elif ipc_mode == IPC_MODE_QUEUE:
+        logger.info("IPC mode: Queue")
+    else:
+        logger.info("IPC mode: Stdout")
 
     # Validate API key
     if not settings.NIM_API_KEY:

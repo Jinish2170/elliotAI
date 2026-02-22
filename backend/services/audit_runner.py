@@ -14,13 +14,28 @@ import base64
 import functools
 import json
 import logging
+import multiprocessing as mp
 import os
+import queue
 import subprocess
 import sys
 import time
 import uuid
 from pathlib import Path
 from typing import Any, Callable, Optional
+
+# Add veritas to path for IPC imports
+project_root = Path(__file__).resolve().parent.parent.parent
+sys.path.insert(0, str(project_root))
+
+from veritas.core.ipc import (
+    determine_ipc_mode,
+    IPC_MODE_QUEUE,
+    IPC_MODE_STDOUT,
+    create_queue,
+    serialize_queue,
+    ProgressEvent,
+)
 
 logger = logging.getLogger("veritas.audit_runner")
 
@@ -58,6 +73,103 @@ class AuditRunner:
         self._findings_sent: set[str] = set()
         self._result_sent = False
 
+        # Determine IPC mode
+        self.ipc_mode = self._determine_ipc_mode()
+        self.progress_queue: Optional[mp.Queue] = None
+        self._mgr = None
+
+    def _determine_ipc_mode(self) -> str:
+        """Determine IPC mode from environment or use percentage-based default."""
+        # Use environment variables only (CLI flags would come from API request context)
+        ipc_mode = determine_ipc_mode(cli_use_queue_ipc=False, cli_use_stdout=False)
+        return ipc_mode
+
+    async def _read_queue_and_stream(self, send: Callable):
+        """Read events from Queue and send to WebSocket."""
+        loop = asyncio.get_running_loop()
+        if self.progress_queue is None:
+            return
+
+        while True:
+            try:
+                # Non-blocking get with 1 second timeout
+                event = await asyncio.to_thread(self.progress_queue.get, timeout=1.0)
+
+                # Convert ProgressEvent dataclass to dict if needed
+                if hasattr(event, '__dict__'):
+                    event_dict = {
+                        "type": getattr(event, 'type', 'progress'),
+                        "phase": getattr(event, 'phase', ''),
+                        "step": getattr(event, 'step', ''),
+                        "pct": getattr(event, 'pct', 0),
+                        "detail": getattr(event, 'detail', ''),
+                    }
+                    summary = getattr(event, 'summary', {})
+                    # Map progress events to WebSocket event types
+                    if event_dict["step"] in ("navigating", "scanning", "analyzing", "investigating", "deliberating"):
+                        await send({
+                            "type": "phase_start",
+                            "phase": event_dict["phase"],
+                            "message": event_dict["detail"],
+                            "pct": event_dict["pct"],
+                        })
+                        await send({
+                            "type": "log_entry",
+                            "timestamp": time.strftime("%H:%M:%S"),
+                            "agent": event_dict["phase"].title(),
+                            "message": event_dict["detail"],
+                            "level": "info",
+                        })
+                    elif event_dict["step"] == "done":
+                        await send({
+                            "type": "phase_complete",
+                            "phase": event_dict["phase"],
+                            "message": event_dict["detail"],
+                            "pct": event_dict["pct"],
+                            "summary": summary or {},
+                        })
+                        await send({
+                            "type": "log_entry",
+                            "timestamp": time.strftime("%H:%M:%S"),
+                            "agent": event_dict["phase"].title(),
+                            "message": f"Complete — {event_dict['detail']}",
+                            "level": "info",
+                        })
+                    elif event_dict["step"] == "error":
+                        await send({
+                            "type": "phase_error",
+                            "phase": event_dict["phase"],
+                            "message": event_dict["detail"],
+                            "pct": event_dict["pct"],
+                            "error": event_dict["detail"],
+                        })
+                        await send({
+                            "type": "log_entry",
+                            "timestamp": time.strftime("%H:%M:%S"),
+                            "agent": event_dict["phase"].title(),
+                            "message": f"Error — {event_dict['detail']}",
+                            "level": "error",
+                        })
+                    elif event_dict["step"] == "starting":
+                        await send({
+                            "type": "phase_start",
+                            "phase": event_dict["phase"],
+                            "message": event_dict["detail"],
+                            "pct": 0,
+                        })
+                else:
+                    # Already a dict
+                    await send(event)
+
+            except queue.Empty:
+                continue  # No events yet, poll again
+            except asyncio.CancelledError:
+                logger.info(f"[{self.audit_id}] Queue reader cancelled")
+                break
+            except Exception as e:
+                logger.error(f"[{self.audit_id}] Queue read error: {e}")
+                continue
+
     async def run(self, send: Callable):
         """
         Run the audit as a subprocess and stream typed events via `send`.
@@ -80,7 +192,30 @@ class AuditRunner:
         if self.security_modules:
             cmd.extend(["--security-modules", ",".join(self.security_modules)])
 
-        env = {**os.environ}
+        # Setup Queue if Queue mode selected
+        self.progress_queue = None
+        self._mgr = None
+        queue_env_vars = {}
+
+        if self.ipc_mode == IPC_MODE_QUEUE:
+            try:
+                mp.set_start_method('spawn', force=True)
+                self._mgr = mp.Manager()
+                self.progress_queue = self._mgr.Queue(maxsize=1000)
+                fd, serialized = serialize_queue(self.progress_queue)
+                queue_env_vars = {
+                    "AUDIT_QUEUE_FD": str(fd),
+                    "AUDIT_QUEUE_KEY": serialized,
+                }
+                cmd.append("--use-queue-ipc")  # Pass flag to subprocess
+                logger.info(f"[{self.audit_id}] Using Queue IPC mode")
+            except Exception as e:
+                logger.warning(f"[{self.audit_id}] Queue creation failed: {e}, falling back to stdout mode")
+                self.ipc_mode = IPC_MODE_STDOUT
+        else:
+            logger.info(f"[{self.audit_id}] Using stdout IPC mode")
+
+        env = {**os.environ, **queue_env_vars}
         env["PYTHONIOENCODING"] = "utf-8"
 
         cwd = str(veritas_dir.parent)
@@ -118,6 +253,11 @@ class AuditRunner:
 
         try:
             stderr_task = asyncio.create_task(_drain_stderr())
+            queue_reader_task = None
+
+            # Start queue reader if Queue mode
+            if self.ipc_mode == IPC_MODE_QUEUE:
+                queue_reader_task = asyncio.create_task(self._read_queue_and_stream(send))
 
             while True:
                 # Read one line in a thread so we don't block the event loop
@@ -159,6 +299,14 @@ class AuditRunner:
             except Exception:
                 stderr_task.cancel()
 
+            # Cancel queue reader task if running
+            if queue_reader_task is not None and not queue_reader_task.done():
+                queue_reader_task.cancel()
+                try:
+                    await asyncio.wait_for(queue_reader_task, timeout=2)
+                except Exception:
+                    pass
+
             # Log stderr if any
             if stderr_lines:
                 for stderr_line in stderr_lines[-20:]:
@@ -196,6 +344,11 @@ class AuditRunner:
             # Clean up if process is still running
             if process.poll() is None:
                 process.terminate()
+
+            # Cleanup Manager (closes Queue)
+            if self._mgr is not None:
+                self._mgr.shutdown()
+                self._mgr = None
 
     async def _handle_progress(self, data: dict, send: Callable):
         """Convert a ##PROGRESS message into typed WebSocket events."""

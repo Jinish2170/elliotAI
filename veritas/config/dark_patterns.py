@@ -404,7 +404,10 @@ def get_prompts_for_category(category_id: str) -> list[str]:
     category = DARK_PATTERN_TAXONOMY.get(category_id)
     if category:
         return category.vlm_prompts
-    return []
+    raise ValueError(
+        f"get_prompts_for_category(): Invalid category_id '{category_id}'. "
+        f"Valid categories: {list(DARK_PATTERN_TAXONOMY.keys())}"
+    )
 
 
 def get_temporal_categories() -> list[str]:

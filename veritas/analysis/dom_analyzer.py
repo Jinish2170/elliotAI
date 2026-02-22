@@ -342,7 +342,10 @@ class DOMAnalyzer:
         """Additional CSS-based dark pattern checks."""
         # This is a placeholder for additional structural checks
         # that can be expanded as more patterns are identified
-        return []
+        raise NotImplementedError(
+            "_check_dark_patterns_css(): Additional CSS-based dark pattern checks not yet implemented. "
+            "This method is a placeholder for future structural checks."
+        )
 
     def _compute_score(self, findings: list[DOMFinding]) -> float:
         """Compute structural score from DOM findings."""

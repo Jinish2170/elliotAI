@@ -940,7 +940,10 @@ class JudgeAgent:
     def _summarize_dark_patterns(self, evidence: AuditEvidence) -> list[dict]:
         """Build a report-ready summary of dark pattern findings."""
         if not evidence.vision_result:
-            return []
+            raise RuntimeError(
+                "_summarize_dark_patterns(): Cannot summarize dark patterns without vision_result. "
+                "Ensure visual analysis completed before summarization."
+            )
 
         summary = []
         for p in evidence.vision_result.dark_patterns:
@@ -957,7 +960,10 @@ class JudgeAgent:
     def _summarize_entity_verification(self, evidence: AuditEvidence) -> list[dict]:
         """Build a report-ready summary of entity verification results."""
         if not evidence.graph_result:
-            return []
+            raise RuntimeError(
+                "_summarize_entity_verification(): Cannot summarize entity verification without graph_result. "
+                "Ensure graph investigation completed before summarization."
+            )
 
         summary = []
         for v in evidence.graph_result.verifications:
