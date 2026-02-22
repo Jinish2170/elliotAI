@@ -40,7 +40,7 @@ Requirements for Milestone v1.0: Fix critical technical debt and establish produ
 - [ ] **CORE-04**: Empty return stubs replaced with NotImplementedError or proper implementations
 - [ ] **CORE-04-2**: evidence_store.py stubs (lines 207, 250, 309, 327, 351, 362) raise NotImplementedError
 - [ ] **CORE-04-3**: judge.py empty returns (lines 943, 960) raise NotImplementedError
-- [ ] **CORE-04-4**: dom_analyzer.py empty returns (lines 318, 345) raise NotImplementedError
+- [ ] **CORE-04-4**: dom_analyzer.py empty return (line 345 only - _check_dark_patterns_css placeholder) raises NotImplementedError. Line 318 returns [] for acceptable tracking levels (intentional business logic, not a stub)
 - [ ] **CORE-04-5**: dark_patterns.py empty return (line 407) raise NotImplementedError
 
 ### Data Persistence

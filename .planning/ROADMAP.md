@@ -105,18 +105,18 @@ Plans:
 **Requirements**: CORE-04, CORE-04-2, CORE-04-3, CORE-04-4, CORE-04-5, CORE-06-4
 
 **Success Criteria** (what must be TRUE):
-1. evidence_store.py stubs (lines 207, 250, 309, 327, 351, 362) raise NotImplementedError
-2. judge.py empty returns (lines 943, 960) raise NotImplementedError
-3. dom_analyzer.py empty returns (lines 318, 345) raise NotImplementedError
-4. dark_patterns.py empty return (line 407) raise NotImplementedError
-5. Tests verify NotImplementedError is raised for incomplete features
-6. No silent failures from empty return stubs
+1. evidence_store.py stubs (lines 207, 250, 309, 327, 351, 362) raise context-specific exceptions (ValueError, FileNotFoundError, RuntimeError)
+2. judge.py empty returns (lines 943, 960) raise RuntimeError for missing state
+3. dom_analyzer.py empty return (line 345 only - _check_dark_patterns_css placeholder) raises NotImplementedError. Line 318 returns [] for acceptable tracking levels (intentional business logic)
+4. dark_patterns.py empty return (line 407) raises ValueError for invalid category_id
+5. Tests verify correct exceptions are raised (RuntimeError, ValueError, NotImplementedError, FileNotFoundError)
+6. No silent failures from empty return stubs (line 318 in dom_analyzer.py is intentional behavior, not a stub)
 
 **Plans**: 3 plans
 
 Plans:
-- [ ] 04-01-PLAN.md — Replace evidence_store.py stubs with context-specific exceptions (lines 207, 250, 309, 327, 351, 362)
-- [ ] 04-02-PLAN.md — Replace judge.py, dom_analyzer.py, dark_patterns.py stubs with proper exceptions (lines 943, 960, 345, 407)
+- [ ] 04-01-PLAN.md — Search for existing callers and replace evidence_store.py stubs with context-specific exceptions (lines 207, 250, 309, 327, 351, 362)
+- [ ] 04-02-PLAN.md — Search for existing callers and replace judge.py, dom_analyzer.py, dark_patterns.py stubs with proper exceptions (lines 943, 960, 345, 407)
 - [ ] 04-03-PLAN.md — Create test_stub_cleanup.py with comprehensive exception tests
 
 ---
