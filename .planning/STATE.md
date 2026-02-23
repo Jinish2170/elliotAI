@@ -2,9 +2,9 @@
 
 **Milestone:** v1.0 - Core Stabilization
 **Created:** 2026-02-20
-**Last Updated:** 2026-02-22 (Phase 4, Plan 01 complete)
+**Last Updated:** 2026-02-23 (Phase 5, Plan 03 complete)
 **Mode:** yolo (GO) | Model Profile: sonnet
-**Execution:** Phase 4 plans executing (Stub Cleanup & Code Quality)
+**Execution:** Phase 5 plans executing (Persistent Audit Storage)
 
 ---
 
@@ -22,18 +22,19 @@
 
 ## Current Position
 
-**Phase**: 4 - Stub Cleanup & Code Quality
-**Plan**: 01 completed (evidence_store.py stub replacement), ready for Plan 02
-**Status**: evidence_store.py stubs replaced with context-specific exceptions - all tests pass
-**Progress Bar**: ▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░░░ 78% complete (14/18 plans)
+**Phase**: 5 - Persistent Audit Storage
+**Plan**: 03 completed (ScreenshotStorage filesystem service), ready for Plan 04
+**Status**: ScreenshotStorage implemented with path traversal protection, save/delete/get_all/get_file methods working
+**Progress Bar**: ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░ 82% complete (18/22 plans)
 
 **Completed:**
 - Phase 1: IPC Communication Stabilization (5/5 plans) ✓
 - Phase 2: Agent Architecture Refactor (5/5 plans) ✓
 - Phase 3: LangGraph State Machine Investigation (3/3 plans) ✓
-- Phase 4: Plan 01 - evidence_store.py stub cleanup ✓
+- Phase 4: Stub Cleanup & Code Quality (3/3 plans) ✓
+- Phase 5: Plans 01-03 completed (SQLite models, DbSession + Repo, ScreenshotStorage) ✓
 
-**Next Action**: Plan 04-02 - Replace judge.py, dom_analyzer.py, dark_patterns.py stubs with proper exceptions
+**Next Action**: Plan 05-04 - Integrate AuditRepository with orchestrator and routes
 
 ---
 
@@ -291,29 +292,42 @@
   - Error messages include method name and context for debugging
   - Tests pass: TestEvidenceStore::test_json_fallback, test_search_fallback
   - Overall: 137 tests passing (same as Phase 3 completion)
+- 2026-02-23: Phase 5, Plan 03 completed - ScreenshotStorage filesystem service (1 commit)
+  - Created veritas/screenshots/storage.py with ScreenshotStorage class
+  - Implemented save() method with directory creation and async support
+  - Implemented delete() method for clean audit removal
+  - Implemented get_all() method for screenshot metadata retrieval
+  - Implemented get_file() method for reading screenshot bytes
+  - Implemented _validate_path() for path traversal protection
+  - Created veritas/screenshots/__init__.py module marker
+  - All verification tests passed:
+    * Import works correctly
+    * Save creates directories and files
+    * Get_all returns screenshot metadata
+    * Delete removes files and directories
+    * Path traversal is blocked
+  - Duration: ~5 minutes
 
 ---
 
 ## Next Steps
 
-1. **Current Plan**: Phase 4, Plan 02 - Replace stubs in judge.py, dom_analyzer.py, dark_patterns.py
-   - Search for existing callers of affected methods
-   - Replace empty returns at lines 943, 960 (judge.py), 345 (dom_analyzer.py), 407 (dark_patterns.py)
-   - Use context-specific exceptions per 04-CONTEXT.md decisions
-   - Verify tests pass
+1. **Current Plan**: Phase 5, Plan 04 - Integrate AuditRepository with orchestrator and routes
+   - Replace in-memory evidence_store.call with AuditRepository in orchestrator
+   - Add audit routes with AuditRepository for query/update
+   - Add screenshot routes with ScreenshotStorage for file operations
+   - Verify end-to-end audit flow persists to SQLite
 
 2. **Phases Remaining**:
-   - Phase 4: Stub Cleanup & Code Quality (plans 02-03 remaining)
-   - Phase 5: Persistent Audit Storage (plans TBD)
+   - Phase 5: Persistent Audit Storage (plans 04-06 remaining)
 
-3. **Sequence**: Complete phases 4-5 sequentially (Stubs → Persistence)
+3. **Sequence**: Complete Phase 5 plans (Persistence full implementation)
 
-4. **Verification**: Each phase must complete and be verified before starting the next
+4. **Verification**: Each plan must complete and be verified before proceeding to next
 
 ---
 
-*STATE last updated: 2026-02-22 after Phase 4, Plan 01 completion*
-*Phase 4, Plan 01 complete: evidence_store.py stubs replaced with context-specific exceptions*
-*Caller analysis confirmed safe - no production callers expecting empty returns*
-*137 tests passing: 60 baseline + 40 IPC + 52 unit + 49 integration + 5 LangGraph*
-*Next: Plan 04-02 - Replace stubs in judge.py, dom_analyzer.py, dark_patterns.py*
+*STATE last updated: 2026-02-23 after Phase 5, Plan 03 completion*
+*Phase 5, Plan 03 complete: ScreenshotStorage filesystem service with path traversal protection*
+*Screenshot save/delete/get_all/get_file methods working and verified*
+*Next: Plan 05-04 - Integrate AuditRepository with orchestrator and routes*
