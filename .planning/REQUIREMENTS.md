@@ -1,105 +1,206 @@
 # Requirements: VERITAS Masterpiece Upgrade
 
-**Defined:** 2026-02-20
-**Core Value:** Every implementation works at commit time. Build incrementally with explicit tests, verify each phase before proceeding.
-
-## v1 Requirements (Core Stabilization)
-
-Requirements for Milestone v1.0: Fix critical technical debt and establish production-grade foundation.
-
-### IPC Communication
-
-- [x] **CORE-02**: Backend can receive structured progress events from Veritas subprocess without parsing stdout
-- [x] **CORE-02-2**: Implement multiprocessing.Queue for Windows + Python 3.14 subprocess communication
-- [x] **CORE-02-3**: Replace `##PROGRESS:` marker parsing with Queue-based event streaming
-- [x] **CORE-02-4**: Implement fallback to stdout mode for instant rollback capability
-- [x] **CORE-02-5**: Dual-mode support with `--use-queue-ipc` CLI flag for gradual migration
-
-### Agent Architecture
-
-- [x] **CORE-01**: SecurityAgent class matches VisionAgent and JudgeAgent patterns
-- [x] **CORE-01-2**: SecurityAgent has async analyze() method returning SecurityResult dataclass
-- [x] **CORE-01-3**: SecurityAgent includes all security modules (headers, phishing, redirects, JS analysis, form validation)
-- [x] **CORE-01-4**: feature flag enables gradual migration from function to class-based agent
-
-### State Machine
-
-- [ ] **CORE-03**: LangGraph StateGraph executes via ainvoke() without Python 3.14 CancelledError
-  - Partial: Minimal graph test shows ainvoke works on Python 3.11.5; full VERITAS graph not yet tested
-- [ ] **CORE-03-2**: Proper LangGraph debugging, visualization, and checkpointing enabled
-  - Partial: Graph structure verified (grandalf visualization optional); checkpointing not implemented
-- [x] **CORE-03-3**: Isolated reproduction test documents root cause of CancelledError
-  - Complete: test_01_minimal_graph.py created with 5 tests, shows LangGraph works on Python 3.11.5
-- [ ] **CORE-03-4**: Workaround documented if version pin or hybrid execution needed
-  - Pending: Resolution depends on Phase 02 full audit test results
-- [ ] **CORE-03-5**: Sequential execution fallback maintained for instant rollback
-  - Pending: Current sequential execution can serve as fallback; migration path TBD
-
-### Code Quality
-
-- [x] **CORE-04**: Empty return stubs replaced with NotImplementedError or proper implementations
-  - Complete: evidence_store.py stubs replaced with context-specific exceptions (ValueError, FileNotFoundError, RuntimeError)
-- [x] **CORE-04-2**: evidence_store.py stubs (lines 207, 250, 309, 327, 351, 362) raise context-specific exceptions
-  - Complete: 6 stubs replaced, all tests pass
-- [ ] **CORE-04-3**: judge.py empty returns (lines 943, 960) raise NotImplementedError
-- [ ] **CORE-04-4**: dom_analyzer.py empty return (line 345 only - _check_dark_patterns_css placeholder) raises NotImplementedError. Line 318 returns [] for acceptable tracking levels (intentional business logic, not a stub)
-- [ ] **CORE-04-5**: dark_patterns.py empty return (line 407) raise NotImplementedError
-
-### Data Persistence
-
-- [x] **CORE-05**: Audit results persist across backend restart in SQLite database
-- [x] **CORE-05-2**: SQLite uses WAL mode for concurrent write support
-- [x] **CORE-05-3**: Dual-write migration (memory + SQLite) enables gradual data migration
-- [x] **CORE-05-4**: Screenshots stored in filesystem, references stored in database
-- [x] **CORE-05-5**: Audit history API supports historical audit retrieval and comparison
-
-### Testing
-
-- [x] **CORE-06**: IPC Queue communication has unit and integration tests
-- [ ] **CORE-06-2**: SecurityAgent class follows same test pattern as VisionAgent/JudgeAgent
-- [ ] **CORE-06-3**: LangGraph reproduction test covers Python 3.14 async behavior
-- [x] **CORE-06-4**: Stub cleanup verified by tests that raise context-specific exceptions
-  - Complete: evidence_store.py tests pass with new exceptions (TestEvidenceStore suite)
-- [x] **CORE-06-5**: SQLite persistence tested with concurrent audit simulation
+**Defined:** 2026-02-23
+**Core Value:** Every implementation works at commit time. Build incrementally with explicit tests, verify each phase before proceeding, and deliver a production-ready system suitable for portfolio/job demonstration. Quality over speed - broken code is unacceptable.
 
 ## v2 Requirements (Masterpiece Features)
 
-Deferred to Milestone v2.0. Implement features incrementally after stabilization complete.
+Requirements for Milestone v2.0: Masterpiece-quality features implemented on top of stabilized v1.0 foundation. 40 requirements across 8 categories.
 
 ### Vision Agent Enhancement
 
-- **VISION-01**: Implement 5-pass Vision Agent with multi-pass pipeline
-- **VISION-02**: Design sophisticated VLM prompts for each pass
-- **VISION-03**: Implement computer vision temporal analysis
-- **VISION-04**: Build progress showcase emitter for frontend
+- [ ] **VISION-01**: Implement 5-pass Vision Agent with multi-pass pipeline
+  - Pass 1: Initial visual scan - quick threat detection
+  - Pass 2: Dark pattern detection - sophisticated UI manipulation
+  - Pass 3: Temporal dynamics - detect dynamic scams
+  - Pass 4: Cross-reference with graph - entity verification
+  - Pass 5: Final synthesis - multi-pass confidence scoring
+- [ ] **VISION-02**: Design sophisticated VLM prompts for each pass
+  - Pass-specific prompts optimized for each analysis target
+  - Iterative prompt engineering with test dataset validation
+  - Confidence normalization across passes
+- [ ] **VISION-03**: Implement computer vision temporal analysis
+  - SSIM (Structural Similarity) for screenshot comparison
+  - Optical flow for detecting dynamic content changes
+  - Screenshot diff with fixed viewport alignment
+  - Memory monitoring for screenshot resource cleanup
+- [ ] **VISION-04**: Build progress showcase emitter for frontend
+  - WebSocket event streaming for vision pass progress
+  - Event throttling (max 5/sec) to prevent flooding
+  - Batch findings for efficient transmission
+- [ ] **SMART-VIS-01**: Visual intelligent agent with real-time knowledge verification
+  - Cross-reference visual findings with external threat intel
+  - Verify suspicious elements against known threat patterns
+  - Real-time fact-checking of observed elements
+- [ ] **SMART-VIS-02**: Expert-level screenshot auditing capabilities
+  - Specialize in detecting sophisticated scams/dark patterns
+  - Multi-layer analysis: UI elements + behavioral patterns + context
+  - Confidence weighted by external intelligence sources
+
+### Scout/Vision Agent Navigation
+
+- [ ] **SCROLL-01**: Scout/Vision Agent can scroll pages and capture full screenshot series
+  - Scroll trigger for lazy loading components
+  - Capture screenshots at scroll intervals
+  - Handle infinite scroll patterns
+- [ ] **SCROLL-02**: Scout can navigate to multiple pages beyond initial landing page
+  - Detect and follow navigation links
+  - Explore site structure (About, Contact, Privacy, etc.)
+  - Limit exploration depth to prevent runaway navigation
+- [ ] **SCROLL-03**: Lazy loading detection and handling for complete capture
+  - Wait for lazy-loaded content before screenshot
+  - Detect dynamic content loading completion
+  - Handle AJAX/React/Vue page transitions
 
 ### OSINT & Graph Power-Up
 
-- **OSINT-01**: Implement 15+ OSINT intelligence sources
-- **OSINT-02**: Build Darknet analyzer (6 marketplaces)
-- **OSINT-03**: Enhance Graph Investigator with OSINT integration
+- [ ] **OSINT-01**: Implement 15+ OSINT intelligence sources
+  - Domain verification (whois, DNS records)
+  - SSL certificate validation
+  - Malicious URL checking (VirusTotal, PhishTank)
+  - Social media presence verification
+  - Company database lookups
+  - Threat intelligence feeds
+- [ ] **OSINT-02**: Build Darknet analyzer (6 marketplaces)
+  - Dark marketplace monitoring or threat feed integration
+  - Threat attribution suggestions
+  - Darknet exposure indicators
+- [ ] **OSINT-03**: Enhance Graph Investigator with OSINT integration
+  - Multi-source entity profile building
+  - Cross-reference findings across sources
+  - Confidence scoring for OSINT data
+- [ ] **CTI-01**: Social engineering intelligence gathering pattern
+  - Mimic OSINT researcher investigation methodology
+  - Follow trails across platforms (social media, company databases, threat feeds)
+  - Build comprehensive entity profiles
+- [ ] **CTI-02**: Multi-source verification and cross-referencing
+  - Verify information from 15+ OSINT sources with confidence scoring
+  - Cross-reference findings across sources
+  - Flag conflicting information for human review
+- [ ] **CTI-03**: Cyber Threat Intelligence mini-version (CTI-lite)
+  - Indicators of Compromise (IOCs) detection
+  - Threat attribution suggestions
+  - Attack pattern recognition frameworks (MITRE ATT&CK)
+- [ ] **CTI-04**: Smart intelligence network with advanced reasoning
+  - Contextual reasoning about collected intelligence
+  - Pattern recognition across datasets
+  - Generate actionable intelligence reports
 
 ### Judge System Dual-Tier
 
-- **JUDGE-01**: Design dual-tier verdict data classes
-- **JUDGE-02**: Implement site-type-specific scoring strategies
-- **JUDGE-03**: Build Judge Agent with dual-tier generation
+- [ ] **JUDGE-01**: Design dual-tier verdict data classes
+  - Technical tier: CWE, CVSS, IOCs for security pros
+  - Non-technical tier: plain English, actionable advice for general users
+  - DualVerdict dataclass containing both VerdictTechnical and VerdictNonTechnical
+- [ ] **JUDGE-02**: Implement site-type-specific scoring strategies
+  - 11 site-type strategies (e-commerce, social media, news, etc.)
+  - Context-aware scoring based on detected site type
+  - Base strategy class with shared configuration
+- [ ] **JUDGE-03**: Build Judge Agent with dual-tier generation
+  - Single trust score calculation shared between tiers
+  - Versioned verdict data classes (V1/V2 transition path)
+  - Strategy pattern for site-type-specific logic
 
 ### Cybersecurity Deep Dive
 
-- **SEC-01**: Implement 25+ enterprise security modules
-- **SEC-02**: Build darknet-level threat detection
+- [ ] **SEC-01**: Implement 25+ enterprise security modules
+  - OWASP Top 10 compliance checks
+  - PCI DSS compliance checks
+  - GDPR compliance checks
+  - Advanced threat detection patterns
+  - Group parallel execution (fast/medium/deep tiers)
+- [ ] **SEC-02**: Build darknet-level threat detection
+  - Darknet threat feed integration
+  - Enterprise-grade security detection
+  - CVSS scoring for findings
+  - Calibration baseline from known-safe sites
+
+### Smart Orchestrator Framework
+
+- [ ] **ORCH-01**: Advanced time management orchestration
+  - Dynamic priority adjustment based on complexity
+  - Adaptive timeout strategies (adjust based on page size, complexity)
+  - Parallel execution optimization of independent tasks
+  - Estimated completion time with countdown for frontend
+- [ ] **ORCH-02**: Comprehensive error handling and backup plans
+  - Detect agent failures immediately
+  - Automatic fallback to alternative analysis methods
+  - Graceful degradation - partial results if agent crashes
+  - "Show must go on" policy - always return something usable
+- [ ] **ORCH-03**: Complexity-aware orchestration
+  - Detect when processing time is exceeding thresholds
+  - Simplify analysis if time constraints hit (skip optional passes)
+  - Prioritize high-value findings over comprehensive coverage
+  - Progressive refinement - return initial results, improve over time
+
+### Real-time Progress Updates
+
+- [ ] **PROG-01**: Progressive screenshot streaming to frontend
+  - Send screenshots as soon as captured (don't wait for full audit)
+  - Thumbnail size for quick delivery, full res on demand
+  - Live scroll visualization while Scout explores pages
+  - Maintain connection health during long audits
+- [ ] **PROG-02**: Real-time pattern/discovery notifications
+  - Send findings as soon as detected (don't batch until end)
+  - "Live feed" of discovered threats/patterns
+  - Color-coded alerts based on severity (red for critical, yellow for warnings)
+  - Incremental confidence updates as more analysis completes
+- [ ] **PROG-03**: User engagement pacing during long audits
+  - Maintain "something happening" signal every 5-10 seconds
+  - Agent activity indicators ("👁️ Vision analyzing...", "🔍 OSINT checking...")
+  - Progress bars with countdown timers
+  - Interesting highlights during waiting periods
+
+### Quality & False Positive Management
+
+- [ ] **QUAL-01**: False positive detection criteria
+  - Multi-factor validation (2+ sources must agree before flagging as threat)
+  - Historical baseline comparison (is this finding typical for this site type?)
+  - Confidence thresholds with explainable reasoning
+  - "Review required" category for ambiguous findings
+- [ ] **QUAL-02**: Deep statistics and confidence scoring
+  - Per-finding confidence score (0-100% with justification)
+  - Aggregated trust score with component breakdown
+  - Risk level assignment with supporting evidence count
+  - Statistical comparison against historical audits
+- [ ] **QUAL-03**: Incremental verification and refinement
+  - Initial alerts can be downgraded after cross-verification
+  - "Likely" → "Confirmed" → "Verified" progression
+  - Allow user to mark findings as false positives (learning system)
 
 ### Content Showcase & UX
 
-- **SHOWCASE-01**: Design psychology-driven content flow
-- **SHOWCASE-02**: Implement real-time Agent Theater components
-- **SHOWCASE-03**: Build Screenshot Carousel with gradual reveal
-- **SHOWCASE-04**: Build Running Log with task flexing
+- [ ] **SHOWCASE-01**: Design psychology-driven content flow
+  - Gradual reveal patterns for maintaining engagement
+  - Agent personality and finding "flexing"
+  - Green flag celebration for good results
+- [ ] **SHOWCASE-02**: Implement real-time Agent Theater components
+  - Event sequencing (sequence numbers) for WebSocket events
+  - Frontend reordering buffers for out-of-order events
+  - Message acknowledgment and retransmission queue
+- [ ] **SHOWCASE-03**: Build Screenshot Carousel with gradual reveal
+  - Highlight overlays for detected dark patterns
+  - Carousel navigation through screenshot series
+  - Comparison views (before/after, with/without findings)
+- [ ] **SHOWCASE-04**: Build Running Log with task flexing
+  - Log windowing (max 100 entries) with memory monitoring
+  - Agent activity streaming with timestamps
+  - Task completion celebration and flexing
+
+## v3 Requirements
+
+Deferred to future release. Tracked but not in current roadmap.
+
+### Future Enhancements
+
+- [ ] **PERF-01**: Automated VLM prompt optimization through A/B testing
+- [ ] **PERF-02**: Distributed execution for parallel audits
+- [ ] **PERF-03**: Machine learning false positive classifier
+- [ ] **PERF-04**: Real-time threat feed integration (paid APIs)
 
 ## Out of Scope
 
-Explicitly excluded from both v1 and v2. Documented to prevent scope creep.
+Explicitly excluded from v2.0. Documented to prevent scope creep.
 
 | Feature | Reason |
 |---------|--------|
@@ -108,6 +209,12 @@ Explicitly excluded from both v1 and v2. Documented to prevent scope creep.
 | Production hosting infrastructure | Local/dev deployment only |
 | Real-time alerting/analytics | Focus on audit execution, not monitoring |
 | Alternative AI providers | Sticking with NVIDIA NIM (already working) |
+| Port scanning (NMAP) | Requires sudo, not web-app applicable |
+| Paid API integrations (Shodan, Censys) | Budget constraints |
+| Full automated exploitation | Ethical/legal concerns |
+| Tor/onion service scraping | Legal risk |
+| Social media login automation | Privacy concerns |
+| 3D visualization | Unnecessary for 2D screenshots |
 
 ## Traceability
 
@@ -115,44 +222,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CORE-02 | Phase 1 | COMPLETE |
-| CORE-02-2 | Phase 1 | COMPLETE |
-| CORE-02-3 | Phase 1 | COMPLETE |
-| CORE-02-4 | Phase 1 | COMPLETE |
-| CORE-02-5 | Phase 1 | COMPLETE |
-| CORE-01 | Phase 2 | COMPLETE |
-| CORE-01-2 | Phase 2 | COMPLETE |
-| CORE-01-3 | Phase 2 | COMPLETE |
-| CORE-01-4 | Phase 2 | COMPLETE |
-| CORE-03 | Phase 3 | In Progress |
-| CORE-03-2 | Phase 3 | In Progress |
-| CORE-03-3 | Phase 3 | COMPLETE |
-| CORE-03-4 | Phase 3 | Pending |
-| CORE-03-5 | Phase 3 | Pending |
-| CORE-04 | Phase 4 | In Progress |
-| CORE-04-2 | Phase 4 | COMPLETE |
-| CORE-04-3 | Phase 4 | Pending |
-| CORE-04-4 | Phase 4 | Pending |
-| CORE-04-5 | Phase 4 | Pending |
-| CORE-05 | Phase 5 | Complete |
-| CORE-05-2 | Phase 5 | Complete |
-| CORE-05-3 | Phase 5 | Complete |
-| CORE-05-4 | Phase 5 | Complete |
-| CORE-05-5 | Phase 5 | COMPLETE |
-| CORE-06 | All phases | COMPLETE |
-| CORE-06-2 | Phase 2 | Pending |
-| CORE-06-3 | Phase 3 | Pending |
-| CORE-06-4 | Phase 4 | COMPLETE |
-| CORE-06-5 | Phase 5 | Complete |
 
 **Coverage:**
-- v1 requirements: 30 total
-- Mapped to phases: 30
-- Unmapped: 0 ✓
+- v2 requirements: 40 total
+- Mapped to phases: 0 (roadmap not yet created)
+- Unmapped: 40 ⚠️
 
 ---
-*Requirements defined: 2026-02-20 after Milestone v1.0 started*
-*Last updated: 2026-02-23 after Phase 5 completion*
-*18 requirements complete (Phase 1 IPC: 5, Phase 2 Agent: 4, Phase 3 State Machine: 1, Phase 4 Stub Cleanup: 2, Phase 5 Persistence: 6)*
-*2 requirements in progress (Phase 4: CORE-04 - partial, Phase 3: CORE-03, CORE-03-2)*
-*12 requirements remaining*
+*Requirements defined: 2026-02-23*
+*Last updated: 2026-02-23 after v2.0 milestone started*
