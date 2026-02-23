@@ -5,15 +5,21 @@ Audit routes — Start + WebSocket stream.
 import asyncio
 import json
 import logging
-from typing import Optional
+from typing import Annotated, Optional
 
-from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel
 from services.audit_runner import AuditRunner, generate_audit_id
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from veritas.db import get_db
 
 logger = logging.getLogger("veritas.routes.audit")
 
 router = APIRouter(tags=["audit"])
+
+# Dependency injection type for database sessions
+DbSession = Annotated[AsyncSession, Depends(get_db)]
 
 # In-memory store of running / completed audits
 _audits: dict[str, dict] = {}
@@ -33,7 +39,7 @@ class AuditStartResponse(BaseModel):
 
 
 @router.post("/audit/start", response_model=AuditStartResponse)
-async def start_audit(req: AuditStartRequest):
+async def start_audit(req: AuditStartRequest, db: DbSession):
     """Create an audit and return the ID + WebSocket URL."""
     audit_id = generate_audit_id()
 
@@ -55,7 +61,7 @@ async def start_audit(req: AuditStartRequest):
 
 
 @router.websocket("/audit/stream/{audit_id}")
-async def stream_audit(ws: WebSocket, audit_id: str):
+async def stream_audit(ws: WebSocket, audit_id: str, db: DbSession):
     """
     WebSocket endpoint that runs the audit and streams events.
     The audit starts when the client connects.
@@ -69,6 +75,8 @@ async def stream_audit(ws: WebSocket, audit_id: str):
         return
 
     audit_info["status"] = "running"
+    # Save to database when audit starts (implementation in Plan 05-04)
+    await on_audit_started(audit_id, audit_info, db)
 
     runner = AuditRunner(
         audit_id=audit_id,
@@ -94,12 +102,17 @@ async def stream_audit(ws: WebSocket, audit_id: str):
     try:
         await runner.run(send_event)
         audit_info["status"] = "completed" if audit_info.get("result") else "error"
+        if audit_info["status"] == "completed":
+            # Save result to database when audit completes (implementation in Plan 05-04)
+            await on_audit_completed(audit_id, audit_info.get("result"), db)
     except WebSocketDisconnect:
         logger.info(f"[{audit_id}] Client disconnected")
         audit_info["status"] = "disconnected"
     except Exception as e:
         logger.error(f"[{audit_id}] Audit failed: {e}", exc_info=True)
         audit_info["status"] = "error"
+        # Save error to database when audit fails (implementation in Plan 05-04)
+        await on_audit_error(audit_id, str(e), db)
         try:
             await ws.send_json({"type": "audit_error", "error": str(e)})
         except Exception:
@@ -112,7 +125,7 @@ async def stream_audit(ws: WebSocket, audit_id: str):
 
 
 @router.get("/audit/{audit_id}/status")
-async def audit_status(audit_id: str):
+async def audit_status(audit_id: str, db: DbSession):
     """Check audit status."""
     info = _audits.get(audit_id)
     if not info:
@@ -124,3 +137,22 @@ async def audit_status(audit_id: str):
         "result": info.get("result"),
         "error": info.get("error"),
     }
+
+
+# Database event handlers (to be implemented in Plan 05-04)
+async def on_audit_started(audit_id: str, data: dict, db: AsyncSession) -> None:
+    """Handle audit started event - save to database."""
+    # TODO: Save to database in Plan 04
+    pass
+
+
+async def on_audit_completed(audit_id: str, result: dict, db: AsyncSession) -> None:
+    """Handle audit completed event - save result to database."""
+    # TODO: Save to database in Plan 04
+    pass
+
+
+async def on_audit_error(audit_id: str, error: str, db: AsyncSession) -> None:
+    """Handle audit error event - save error to database."""
+    # TODO: Save to database in Plan 04
+    pass
