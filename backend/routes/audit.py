@@ -14,11 +14,19 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
 
 from services.audit_runner import AuditRunner, generate_audit_id
+from veritas.config.settings import should_use_db_persistence
 from veritas.db import get_db
-from veritas.db.models import Audit, AuditStatus
+from veritas.db.models import Audit, AuditFinding, AuditScreenshot, AuditStatus
 from veritas.db.repositories import AuditRepository
+from veritas.screenshots.storage import ScreenshotStorage
 
 logger = logging.getLogger("veritas.routes.audit")
+
+# Screenshot storage instance
+screenshot_storage = ScreenshotStorage()
+
+# Lazy-initialized repository (per-request via DbSession)
+_repo_cache: dict[str, AuditRepository] = {}
 
 router = APIRouter(tags=["audit"])
 
@@ -97,6 +105,9 @@ async def stream_audit(ws: WebSocket, audit_id: str, db: DbSession):
             audit_info["result"] = data.get("result")
         elif event_type == "audit_error":
             audit_info["error"] = data.get("error")
+        elif event_type == "screenshot":
+            # Handle screenshot persistence (Plan 05-04)
+            await _handle_screenshot_event(audit_id, data, db)
 
         try:
             await ws.send_json(data)
@@ -130,7 +141,49 @@ async def stream_audit(ws: WebSocket, audit_id: str, db: DbSession):
 
 @router.get("/audit/{audit_id}/status")
 async def audit_status(audit_id: str, db: DbSession):
-    """Check audit status."""
+    """Check audit status. Reads from database first if persistence enabled."""
+    # Try database first if persistence is enabled
+    if should_use_db_persistence():
+        repo = AuditRepository(db)
+        audit = await repo.get_by_id(audit_id)
+        if audit:
+            return {
+                "audit_id": audit.id,
+                "status": audit.status.value,
+                "url": audit.url,
+                "result": {
+                    "trust_score": audit.trust_score,
+                    "risk_level": audit.risk_level,
+                    "signal_scores": audit.signal_scores,
+                    "narrative": audit.narrative,
+                    "site_type": audit.site_type,
+                    "site_type_confidence": audit.site_type_confidence,
+                    "security_results": audit.security_results,
+                    "pages_scanned": audit.pages_scanned,
+                    "elapsed_seconds": audit.elapsed_seconds,
+                    "dark_pattern_summary": {
+                        "findings": [
+                            {
+                                "id": f.id,
+                                "pattern_type": f.pattern_type,
+                                "category": f.category,
+                                "severity": f.severity,
+                                "confidence": f.confidence,
+                                "description": f.description,
+                                "plain_english": f.plain_english,
+                                "screenshot_index": f.screenshot_index,
+                            }
+                            for f in audit.findings
+                        ]
+                    }
+                } if audit.status == AuditStatus.COMPLETED else None,
+                "error": audit.error_message,
+                "created_at": audit.created_at.isoformat() if audit.created_at else None,
+                "started_at": audit.started_at.isoformat() if audit.started_at else None,
+                "completed_at": audit.completed_at.isoformat() if audit.completed_at else None,
+            }
+
+    # Fallback to in-memory store
     info = _audits.get(audit_id)
     if not info:
         raise HTTPException(status_code=404, detail="Audit not found")
@@ -302,20 +355,168 @@ async def compare_audits(
     }
 
 
-# Database event handlers (to be implemented in Plan 05-04)
+# Database event handlers (Plan 05-04 implementation)
+
+
 async def on_audit_started(audit_id: str, data: dict, db: AsyncSession) -> None:
-    """Handle audit started event - save to database."""
-    # TODO: Save to database in Plan 04
-    pass
+    """Handle audit started event - save to database.
+
+    Creates a new Audit record with QUEUED status when audit is started.
+    Writes to database only if USE_DB_PERSISTENCE flag is enabled.
+
+    Args:
+        audit_id: Unique audit identifier
+        data: Audit metadata (url, tier, verdict_mode, security_modules)
+        db: Database session
+    """
+    if not should_use_db_persistence():
+        return
+
+    repo = AuditRepository(db)
+
+    # Create audit record
+    audit = Audit(
+        id=audit_id,
+        url=data.get("url", ""),
+        status=AuditStatus.RUNNING,  # Already running by the time this is called
+        audit_tier=data.get("tier", "standard_audit"),
+        verdict_mode=data.get("verdict_mode", "expert"),
+    )
+
+    await repo.create(audit)
+    logger.info(f"[{audit_id}] Audit persisted to database")
 
 
 async def on_audit_completed(audit_id: str, result: dict, db: AsyncSession) -> None:
-    """Handle audit completed event - save result to database."""
-    # TODO: Save to database in Plan 04
-    pass
+    """Handle audit completed event - save result to database.
+
+    Updates audit record with final results including trust score,
+    findings, screenshots, and other metadata.
+
+    Args:
+        audit_id: Unique audit identifier
+        result: Final audit result from runner
+        db: Database session
+    """
+    if not should_use_db_persistence():
+        return
+
+    repo = AuditRepository(db)
+
+    # Fetch existing audit
+    audit = await repo.get_by_id(audit_id)
+    if not audit:
+        logger.warning(f"[{audit_id}] Audit not found in database for completion")
+        return
+
+    # Update audit fields from result
+    if result:
+        audit.trust_score = result.get("trust_score")
+        audit.risk_level = result.get("risk_level")
+        audit.narrative = result.get("narrative")
+        audit.signal_scores = result.get("signal_scores", {})
+        audit.site_type = result.get("site_type")
+        audit.site_type_confidence = result.get("site_type_confidence")
+        audit.security_results = result.get("security_results", {})
+        audit.pages_scanned = result.get("pages_scanned", 0)
+        audit.elapsed_seconds = result.get("elapsed_seconds", 0)
+        audit.status = AuditStatus.COMPLETED
+        audit.completed_at = result.get("completed_at")  # Will be set by default if None
+
+        # Add findings from result
+        findings_data = result.get("dark_pattern_summary", {}).get("findings", [])
+        for finding_data in findings_data:
+            finding = AuditFinding(
+                audit_id=audit_id,
+                pattern_type=finding_data.get("pattern_type", "unknown"),
+                category=finding_data.get("category", "unknown"),
+                severity=finding_data.get("severity", "medium"),
+                confidence=finding_data.get("confidence", 0.5),
+                description=finding_data.get("description", ""),
+                plain_english=finding_data.get("plain_english", ""),
+                screenshot_index=finding_data.get("screenshot_index", -1),
+            )
+            audit.findings.append(finding)
+
+    await repo.update(audit)
+    logger.info(f"[{audit_id}] Audit result persisted to database")
 
 
 async def on_audit_error(audit_id: str, error: str, db: AsyncSession) -> None:
-    """Handle audit error event - save error to database."""
-    # TODO: Save to database in Plan 04
-    pass
+    """Handle audit error event - save error to database.
+
+    Updates audit status to ERROR and stores error message.
+
+    Args:
+        audit_id: Unique audit identifier
+        error: Error message or exception string
+        db: Database session
+    """
+    if not should_use_db_persistence():
+        return
+
+    repo = AuditRepository(db)
+
+    # Try to fetch existing audit - create if not found
+    audit = await repo.get_by_id(audit_id)
+    if audit:
+        audit.status = AuditStatus.ERROR
+        audit.error_message = error
+        await repo.update(audit)
+    else:
+        # Create audit record if it doesn't exist (e.g., error during start)
+        audit = Audit(
+            id=audit_id,
+            url="",
+            status=AuditStatus.ERROR,
+            error_message=error,
+        )
+        await repo.create(audit)
+
+    logger.info(f"[{audit_id}] Audit error persisted to database")
+
+
+async def _handle_screenshot_event(audit_id: str, event: dict, db: AsyncSession) -> None:
+    """Handle screenshot event - save to filesystem and database.
+
+    Args:
+        audit_id: Unique audit identifier
+        event: Screenshot event dict with data, index, label
+        db: Database session
+    """
+    if not should_use_db_persistence():
+        return
+
+    # Extract screenshot data
+    base64_data = event.get("data")
+    index = event.get("index", 0)
+    label = event.get("label", f"screenshot_{index}")
+
+    if not base64_data:
+        return
+
+    try:
+        # Save to filesystem
+        file_path, file_size = await screenshot_storage.save(
+            audit_id=audit_id,
+            index=index,
+            label=label,
+            base64_data=base64_data,
+        )
+
+        # Create database record
+        repo = AuditRepository(db)
+        audit = await repo.get_by_id(audit_id)
+        if audit:
+            screenshot = AuditScreenshot(
+                audit_id=audit_id,
+                file_path=file_path,
+                label=label,
+                index_num=index,
+                file_size_bytes=file_size,
+            )
+            audit.screenshots.append(screenshot)
+            await repo.update(audit)
+            logger.debug(f"[{audit_id}] Screenshot {index} saved to {file_path}")
+    except Exception as e:
+        logger.error(f"[{audit_id}] Failed to save screenshot: {e}", exc_info=True)
