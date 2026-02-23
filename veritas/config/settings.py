@@ -149,6 +149,13 @@ SECURITY_AGENT_FAIL_FAST: bool = os.getenv("SECURITY_AGENT_FAIL_FAST", "false").
 
 
 # ============================================================
+# Database Persistence (Plan 04-04 - Dual-write migration)
+# ============================================================
+# Feature flag: Enable persistent database storage for audits
+USE_DB_PERSISTENCE: bool = os.getenv("USE_DB_PERSISTENCE", "true").lower() == "true"
+
+
+# ============================================================
 # Verdict Mode — user experience level
 # ============================================================
 DEFAULT_VERDICT_MODE: str = os.getenv("DEFAULT_VERDICT_MODE", "expert")  # "simple" or "expert"
@@ -276,4 +283,28 @@ _rollout_pct = get_security_agent_rollout()
 logger.info(
     f"SecurityAgent: USE_SECURITY_AGENT={USE_SECURITY_AGENT}, "
     f"ROLLOUT={_rollout_pct:.0%}"
+)
+
+
+# ============================================================
+# Database Persistence Helpers (Plan 05-04)
+# ============================================================
+
+
+def should_use_db_persistence() -> bool:
+    """Determine if database persistence should be used.
+
+    Simply returns the USE_DB_PERSISTENCE flag value.
+    This function provides a consistent API similar to should_use_security_agent()
+    for future rollout capabilities.
+
+    Returns:
+        bool: True if database persistence enabled, False for in-memory only
+    """
+    return USE_DB_PERSISTENCE
+
+
+# Log database persistence configuration on startup
+logger.info(
+    f"Database Persistence: USE_DB_PERSISTENCE={USE_DB_PERSISTENCE}"
 )
