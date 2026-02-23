@@ -24,7 +24,10 @@ if env_path.exists():
 else:
     load_dotenv()
 
-# Ensure veritas is importable
+# Add parent directories to sys.path for imports
+# Project root (for backend module imports)
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+# Veritas module root (for veritas package imports)
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "veritas"))
 
 from veritas.db import init_database
