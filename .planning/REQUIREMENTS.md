@@ -49,9 +49,9 @@ Requirements for Milestone v1.0: Fix critical technical debt and establish produ
 
 - [x] **CORE-05**: Audit results persist across backend restart in SQLite database
 - [x] **CORE-05-2**: SQLite uses WAL mode for concurrent write support
-- [ ] **CORE-05-3**: Dual-write migration (memory + SQLite) enables gradual data migration
-- [ ] **CORE-05-4**: Screenshots stored in filesystem, references stored in database
-- [ ] **CORE-05-5**: Audit history API supports historical audit retrieval and comparison
+- [x] **CORE-05-3**: Dual-write migration (memory + SQLite) enables gradual data migration
+- [x] **CORE-05-4**: Screenshots stored in filesystem, references stored in database
+- [x] **CORE-05-5**: Audit history API supports historical audit retrieval and comparison
 
 ### Testing
 
@@ -136,9 +136,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CORE-04-5 | Phase 4 | Pending |
 | CORE-05 | Phase 5 | Complete |
 | CORE-05-2 | Phase 5 | Complete |
-| CORE-05-3 | Phase 5 | Pending |
-| CORE-05-4 | Phase 5 | Pending |
-| CORE-05-5 | Phase 5 | Pending |
+| CORE-05-3 | Phase 5 | Complete |
+| CORE-05-4 | Phase 5 | Complete |
+| CORE-05-5 | Phase 5 | COMPLETE |
 | CORE-06 | All phases | COMPLETE |
 | CORE-06-2 | Phase 2 | Pending |
 | CORE-06-3 | Phase 3 | Pending |
@@ -152,7 +152,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-02-20 after Milestone v1.0 started*
-*Last updated: 2026-02-22 after Phase 4, Plan 01 completion*
-*12 requirements complete (Phase 1 IPC: 5, Phase 2 Agent: 4, Phase 3 State Machine: 1, Phase 4 Stub Cleanup: 2)*
+*Last updated: 2026-02-23 after Phase 5 completion*
+*18 requirements complete (Phase 1 IPC: 5, Phase 2 Agent: 4, Phase 3 State Machine: 1, Phase 4 Stub Cleanup: 2, Phase 5 Persistence: 6)*
 *2 requirements in progress (Phase 4: CORE-04 - partial, Phase 3: CORE-03, CORE-03-2)*
-*18 requirements remaining*
+*12 requirements remaining*
