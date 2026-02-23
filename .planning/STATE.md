@@ -1,10 +1,10 @@
 # Project State: VERITAS Masterpiece Upgrade
 
-**Milestone:** v1.0 - Core Stabilization
+**Milestone:** v2.0 - Masterpiece Features
 **Created:** 2026-02-20
-**Last Updated:** 2026-02-23 (Phase 5, Plan 06 complete)
+**Last Updated:** 2026-02-23 (v1.0 complete, starting v2.0)
 **Mode:** yolo (GO) | Model Profile: sonnet
-**Execution:** Phase 5 plans executing (Persistent Audit Storage)
+**Execution:** Starting milestone v2.0 - Defining requirements
 
 ---
 
@@ -14,27 +14,34 @@
 
 **What This Is**: VERITAS is an autonomous multi-modal forensic web auditing platform that analyzes websites for trust, safety, dark patterns, and security vulnerabilities. It combines 5 specialized AI agents (Scout, Security, Vision, Graph, Judge) with visual analysis, graph investigation, and multi-signal scoring to produce comprehensive trust reports. This project is a college master's final year thesis being upgraded to "masterpiece" quality with advanced features and production-grade stability.
 
-**Current Milestone**: v1.0 Core Stabilization - Fix all critical technical debt and establish production-grade foundation before implementing masterpiece features.
+**Current Milestone**: v2.0 Masterpiece Features - Implement advanced features on stabilized foundation (Vision Agent, OSINT, Judge, Cybersecurity, Showcase).
 
-**Tech Stack**: Python 3.14, FastAPI, LangGraph, NVIDIA NIM, Playwright, Next.js 16, React 19, TypeScript, Tailwind CSS 4
+**Tech Stack**: Python 3.14, FastAPI, LangGraph, NVIDIA NIM, Playwright, Next.js 16, React 19, TypeScript, Tailwind CSS 4, SQLAlchemy with SQLite
 
 ---
 
 ## Current Position
 
-**Phase**: 5 - Persistent Audit Storage
-**Plan**: 06 completed (Concurrent audit persistence tests), Phase 5 complete
-**Status:** Milestone complete
-**Progress Bar**: ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓ 100% complete (6/6 phase 5 plans)
+**Phase**: Not started (defining requirements)
+**Plan**: —
+**Status:** Milestone transition - v1.0 complete, starting v2.0
+**Progress Bar**: ░░░░░░░░░░░░░░░░░░░ 0% complete
 
-**Completed:**
+**Previous Milestone (v1.0):**
 - Phase 1: IPC Communication Stabilization (5/5 plans) ✓
 - Phase 2: Agent Architecture Refactor (5/5 plans) ✓
 - Phase 3: LangGraph State Machine Investigation (3/3 plans) ✓
-- Phase 4: Stub Cleanup & Code Quality (1/3 plans) ▶
+- Phase 4: Stub Cleanup & Code Quality (3/3 plans) ✓
 - Phase 5: Persistent Audit Storage (6/6 plans) ✓
 
-**Next Action**: Continue with Phase 4 (Stub Cleanup) or Phase 3 (LangGraph Investigation) based on roadmap priority
+**v2.0 Scope:**
+- Vision Agent Enhancement (5-pass pipeline, VLM prompts, CV temporal analysis)
+- OSINT & Graph Power-Up (15+ OSINT sources, darknet analyzer)
+- Judge System Dual-Tier (Dual-tier verdicts, 11 site-type strategies)
+- Cybersecurity Deep Dive (25+ security modules, darknet threat detection)
+- Content Showcase & UX (Agent theater, screenshot carousel, running log)
+
+**Next Action**: Define requirements for v2.0 milestone
 
 ---
 
