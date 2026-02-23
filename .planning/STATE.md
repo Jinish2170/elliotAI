@@ -2,7 +2,7 @@
 
 **Milestone:** v1.0 - Core Stabilization
 **Created:** 2026-02-20
-**Last Updated:** 2026-02-23 (Phase 5, Plan 01 complete)
+**Last Updated:** 2026-02-23 (Phase 5, Plan 02 complete)
 **Mode:** yolo (GO) | Model Profile: sonnet
 **Execution:** Phase 5 plans executing (Persistent Audit Storage)
 
@@ -23,8 +23,8 @@
 ## Current Position
 
 **Phase**: 5 - Persistent Audit Storage
-**Plan**: 01 completed (SQLAlchemy models and database initialization), ready for Plan 02
-**Status**: Database infrastructure created with WAL mode enabled, all 4 ORM models defined with relationships and indexes
+**Plan**: 02 completed (Database session and audit repository), ready for Plan 03
+**Status**: AuditRepository with 6 CRUD methods created, FastAPI dependency injection integrated with DbSession
 **Progress Bar**: ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░ 82% complete (18/22 plans)
 
 **Completed:**
@@ -32,9 +32,9 @@
 - Phase 2: Agent Architecture Refactor (5/5 plans) ✓
 - Phase 3: LangGraph State Machine Investigation (3/3 plans) ✓
 - Phase 4: Stub Cleanup & Code Quality (3/3 plans) ✓
-- Phase 5: Plan 01 completed (SQLite models) ✓
+- Phase 5: Plans 01-02 completed (SQLite models + Repository layer) ✓
 
-**Next Action**: Plan 05-02 - Database session and audit repository
+**Next Action**: Plan 05-03 - ScreenshotStorage filesystem service
 
 ---
 
@@ -70,6 +70,9 @@
 - Windows multiprocessing spawn context properly configured
 - 5-agent pipeline working with improved progress streaming
 - SQLite database with WAL mode initialized, 4 ORM models defined (Audit, AuditFinding, AuditScreenshot, AuditEvent)
+- AuditRepository with 6 CRUD methods (get_by_id, create, update, update_status, list_recent, get_by_url)
+- FastAPI dependency injection integrated with DbSession type alias for all audit routes
+- Database event handler skeletons added (on_audit_started, on_audit_completed, on_audit_error)
 
 **Requirements Coverage**: 30/30 requirements mapped to 5 phases (100%)
 **Phase 1 Coverage**: 6/6 requirements (CORE-02 series + CORE-06) = 100%
@@ -312,6 +315,27 @@
     * Delete removes files and directories
     * Path traversal is blocked
   - Duration: ~5 minutes
+- 2026-02-23: Phase 5, Plan 02 completed - Database session and audit repository (2 commits)
+  - Created veritas/db/repositories.py with AuditRepository class
+  - Implemented get_by_id() with selectinload for eager relationship loading
+  - Implemented create() to save audit with cascade for related objects
+  - Implemented update() for efficient audit updates
+  - Implemented update_status() for status-only updates without full object load
+  - Implemented list_recent() with pagination and optional status filtering
+  - Implemented get_by_url() for historical audit comparisons
+  - Added DbSession type alias for FastAPI dependency injection
+  - Updated all three audit routes with db: DbSession parameter:
+    * start_audit()
+    * stream_audit() (WebSocket)
+    * audit_status()
+  - Added database event handler skeletons (implementation deferred to Plan 05-04):
+    * on_audit_started() - called when audit transitions to running
+    * on_audit_completed() - called when audit completes successfully
+    * on_audit_error() - called when audit fails
+  - All 6 repository methods verified: get_by_id, create, update, update_status, list_recent, get_by_url
+  - All route signatures verified with db: DbSession parameter
+  - Duration: ~6 minutes
+  - Commits: a2c51ac (feat: create AuditRepository with CRUD operations), ca24053 (feat: update audit routes with DbSession dependency injection)
 - 2026-02-23: Phase 5, Plan 01 completed - SQLAlchemy models and database initialization (1 commit)
   - Created veritas/db package with 3 files: config.py, models.py, __init__.py
   - Four ORM models defined: Audit, AuditFinding, AuditScreenshot, AuditEvent
@@ -329,14 +353,14 @@
 
 ## Next Steps
 
-1. **Current Plan**: Phase 5, Plan 02 - Database session and audit repository (next plan in sequence)
-   - Create DbSession class for async database operations
-   - Create AuditRepository for audit CRUD operations
-   - Query by ID, list all, update status, save result
-   - Add unit tests for repository methods
+1. **Current Plan**: Phase 5, Plan 03 - ScreenshotStorage filesystem service (next plan in sequence)
+   - Create ScreenshotStorage class for managing screenshot files on filesystem
+   - Implement save() for storing screenshots with metadata
+   - Implement delete() for clean removal of screenshots
+   - Implement path traversal protection
 
 2. **Phases Remaining**:
-   - Phase 5: Persistent Audit Storage (plans 02-06 remaining)
+   - Phase 5: Persistent Audit Storage (plans 03-06 remaining)
 
 3. **Sequence**: Complete Phase 5 plans (Persistence full implementation)
 
@@ -344,7 +368,7 @@
 
 ---
 
-*STATE last updated: 2026-02-23 after Phase 5, Plan 01 completion*
-*Phase 5, Plan 01 complete: SQLAlchemy models and database initialization with WAL mode*
-*Database at data/veritas_audits.db created with 4 tables and all indexes*
-*Next: Plan 05-02 - Database session and audit repository*
+*STATE last updated: 2026-02-23 after Phase 5, Plan 02 completion*
+*Phase 5, Plan 02 complete: Database session and audit repository with dependency injection*
+*AuditRepository with 6 CRUD methods created, DbSession integrated into all audit routes*
+*Next: Plan 05-03 - ScreenshotStorage filesystem service*
