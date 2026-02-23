@@ -27,11 +27,15 @@ else:
 # Ensure veritas is importable
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "veritas"))
 
+from veritas.db import init_database
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Startup / shutdown lifecycle."""
     print("✦ Veritas API — Online")
+    # Initialize SQLite database with WAL mode and create tables
+    await init_database()
     yield
     print("✦ Veritas API — Shutting down")
 
