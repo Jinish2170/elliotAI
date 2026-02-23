@@ -8,8 +8,9 @@ function for the VERITAS audit persistence layer.
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from veritas.db import models
-from veritas.db.config import DATABASE_URL, Base
+# Use relative imports for package-scoped imports
+from . import models
+from .config import DATABASE_URL, Base
 
 # Create async engine with SQLite and aiosqlite driver
 # check_same_thread=False required for SQLite to allow cross-thread access
