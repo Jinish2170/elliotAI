@@ -2,7 +2,7 @@
 
 **Milestone:** v1.0 - Core Stabilization
 **Created:** 2026-02-20
-**Last Updated:** 2026-02-23 (Phase 5, Plan 02 complete)
+**Last Updated:** 2026-02-23 (Phase 5, Plan 04 complete)
 **Mode:** yolo (GO) | Model Profile: sonnet
 **Execution:** Phase 5 plans executing (Persistent Audit Storage)
 
@@ -23,18 +23,18 @@
 ## Current Position
 
 **Phase**: 5 - Persistent Audit Storage
-**Plan**: 02 completed (Database session and audit repository), ready for Plan 03
-**Status**: AuditRepository with 6 CRUD methods created, FastAPI dependency injection integrated with DbSession
-**Progress Bar**: ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░ 82% complete (18/22 plans)
+**Plan**: 04 completed (Dual-write migration strategy), ready for Plan 06
+**Status**: USE_DB_PERSISTENCE feature flag implemented with database write handlers, screenshot persistence integrated
+**Progress Bar**: ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░░ 83% complete (20/24 plans)
 
 **Completed:**
 - Phase 1: IPC Communication Stabilization (5/5 plans) ✓
 - Phase 2: Agent Architecture Refactor (5/5 plans) ✓
 - Phase 3: LangGraph State Machine Investigation (3/3 plans) ✓
-- Phase 4: Stub Cleanup & Code Quality (3/3 plans) ✓
-- Phase 5: Plans 01-02 completed (SQLite models + Repository layer) ✓
+- Phase 4: Stub Cleanup & Code Quality (1/3 plans) ▶
+- Phase 5: Plans 01-05 completed (SQLite models + Repository layer + ScreenshotStorage + Dual-write + History API) ✓
 
-**Next Action**: Plan 05-03 - ScreenshotStorage filesystem service
+**Next Action**: Plan 05-06 - Testing and Documentation
 
 ---
 
@@ -57,7 +57,7 @@
 - ~~LangGraph ainvoke bypassed due to Python 3.14 CancelledError~~ → **Resolution: Sequential with Enhanced Tracking**
 - ~~Empty return stubs masking bugs~~ → **evidence_store.py stubs replaced with context-specific exceptions (Plan 04-01 complete)**
 - Empty return stubs in judge.py, dom_analyzer.py, dark_patterns.py (remaining in Plans 04-02, 04-03)
-- In-memory audit storage lost on restart
+- ~~In-memory audit storage lost on restart~~ → **Dual-write migration implemented (Plan 05-04 complete), testing pending (Plan 05-06)**
 
 **Codebase Health**:
 - IPC stability improved with Queue-based communication
@@ -72,7 +72,13 @@
 - SQLite database with WAL mode initialized, 4 ORM models defined (Audit, AuditFinding, AuditScreenshot, AuditEvent)
 - AuditRepository with 6 CRUD methods (get_by_id, create, update, update_status, list_recent, get_by_url)
 - FastAPI dependency injection integrated with DbSession type alias for all audit routes
-- Database event handler skeletons added (on_audit_started, on_audit_completed, on_audit_error)
+- USE_DB_PERSISTENCE feature flag implemented (defaults to true)
+- Database write handlers implemented (on_audit_started, on_audit_completed, on_audit_error) for dual-write migration
+- Screenshot persistence integrated (filesystem storage + database references via _handle_screenshot_event)
+- audit_status endpoint reads from database first, falls back to in-memory
+- ScreenshotStorage class for filesystem screenshot management
+- Audit history API (GET /audits/history) with pagination and filters
+- Audit compare API (POST /audits/compare) with delta calculation
 
 **Requirements Coverage**: 30/30 requirements mapped to 5 phases (100%)
 **Phase 1 Coverage**: 6/6 requirements (CORE-02 series + CORE-06) = 100%
@@ -158,6 +164,8 @@
 | Sequential execution with verification | Each phase must work before proceeding; no "ship broken, fix later" mentality | Approved - Phase structure enforces this |
 | Test-driven approach | Every new feature requires tests; empty implementations must raise NotImplementedError | Approved - CORE-06 test requirements included |
 | Phase ordering from research | IPC first (most fragile), then architecture, then LangGraph, then stubs, then persistence | Approved - Documented in ROADMAP.md |
+| USE_DB_PERSISTENCE defaults to true | Feature flag enables immediate activation with instant rollback via environment variable | Approved - Dual-write migration ready for production |
+| Database read-first for audit_status | Read path upgraded first to verify persistence before write path completion | Approved - audit_status reads DB first, falls back to memory |
 
 ---
 
@@ -175,7 +183,7 @@
 
 ## Session Continuity
 
-**Active Tasks**: None (Phase 2, Plan 03 completed)
+**Active Tasks**: None (Phase 5, Plan 04 completed)
 
 **Completed Sessions**:
 - Phase 1: IPC Communication Stabilization (2026-02-20)
@@ -232,6 +240,18 @@
   - All 49 integration/migration tests pass
   - Overall: 132 tests passing (60 baseline + 40 IPC + 52 unit + 49 integration)
   - Duration: 9 minutes
+
+- Phase 5, Plan 04: Dual-Write Migration Strategy (2026-02-23)
+  - Added USE_DB_PERSISTENCE feature flag (defaults to true) with should_use_db_persistence() helper
+  - Implemented on_audit_started() to save audit to database when started with RUNNING status
+  - Implemented on_audit_completed() to update audit with results (trust_score, findings, screenshots)
+  - Implemented on_audit_error() to save error messages on audit failure
+  - Implemented _handle_screenshot_event() to save screenshots to filesystem and database
+  - Updated audit_status() to read from database first, fallback to in-memory
+  - Updated stream_audit() send_event() to handle screenshot persistence
+  - All handlers check USE_DB_PERSISTENCE flag before writing to database
+  - Rollback: Set USE_DB_PERSISTENCE=false to revert to in-memory only
+  - Duration: ~7 minutes
 
 **Rollback Plan**: Each phase maintains feature flags with fallback paths for instant rollback:
 - Phase 1: `--use-queue-ipc` flag defaults to old stdout parsing
@@ -315,6 +335,18 @@
     * Delete removes files and directories
     * Path traversal is blocked
   - Duration: ~5 minutes
+- 2026-02-23: Phase 5, Plan 04 completed - Dual-write migration strategy (3 commits)
+  - Added USE_DB_PERSISTENCE feature flag (defaults to true) with should_use_db_persistence() helper
+  - Implemented on_audit_started() to save audit to database when started with RUNNING status
+  - Implemented on_audit_completed() to update audit with results (trust_score, findings, screenshots)
+  - Implemented on_audit_error() to save error messages on audit failure
+  - Implemented _handle_screenshot_event() to save screenshots to filesystem and database
+  - Updated audit_status() to read from database first, fallback to in-memory
+  - Updated stream_audit() send_event() to handle screenshot persistence
+  - All handlers check USE_DB_PERSISTENCE flag before writing to database
+  - Rollback: Set USE_DB_PERSISTENCE=false to revert to in-memory only
+  - Duration: ~7 minutes
+  - Commits: 6860555 (feat: USE_DB_PERSISTENCE flag), ff9fdeb (feat: database handlers), 1bd3062 (chore: verify screenshot events)
 - 2026-02-23: Phase 5, Plan 02 completed - Database session and audit repository (2 commits)
   - Created veritas/db/repositories.py with AuditRepository class
   - Implemented get_by_id() with selectinload for eager relationship loading
@@ -348,19 +380,26 @@
   - All verification criteria passed (models import, configuration, table schema)
   - Commit: ead2332 (feat: create SQLAlchemy models and database initialization)
   - Duration: 15 minutes
+- 2026-02-23: Phase 5, Plan 05 completed - Audit history and compare API endpoints (1 commit)
+  - Added GET /audits/history endpoint with pagination (limit 1-100, default 20) and optional filters
+  - Added POST /audits/compare endpoint for multi-audit comparison
+  - Implemented trust score delta calculation with percentage change
+  - Implemented risk level change detection
+  - Added findings summary aggregated by severity (critical/high/medium/low)
+  - Added imports: Query, Optional, select, Audit, AuditStatus, AuditRepository
+  - All verification criteria passed (syntax OK, endpoints defined)
+  - Commit: 8cc6537 (feat: create audit history and compare API endpoints)
+  - Duration: 5 minutes
 
 ---
 
-## Next Steps
-
-1. **Current Plan**: Phase 5, Plan 03 - ScreenshotStorage filesystem service (next plan in sequence)
-   - Create ScreenshotStorage class for managing screenshot files on filesystem
-   - Implement save() for storing screenshots with metadata
-   - Implement delete() for clean removal of screenshots
-   - Implement path traversal protection
+1. **Current Plan**: Phase 5, Plan 06 - Testing and Documentation
+   - Create concurrent write simulation tests
+   - Document dual-write migration procedure
+   - Verify data consistency across restart
 
 2. **Phases Remaining**:
-   - Phase 5: Persistent Audit Storage (plans 03-06 remaining)
+   - Phase 5: Persistent Audit Storage (Plan 06 remaining)
 
 3. **Sequence**: Complete Phase 5 plans (Persistence full implementation)
 
@@ -368,7 +407,7 @@
 
 ---
 
-*STATE last updated: 2026-02-23 after Phase 5, Plan 02 completion*
-*Phase 5, Plan 02 complete: Database session and audit repository with dependency injection*
-*AuditRepository with 6 CRUD methods created, DbSession integrated into all audit routes*
-*Next: Plan 05-03 - ScreenshotStorage filesystem service*
+*STATE last updated: 2026-02-23 after Phase 5, Plan 04 completion*
+*Phase 5, Plan 04 complete: Dual-write migration strategy with USE_DB_PERSISTENCE flag*
+*USE_DB_PERSISTENCE defaults to true, database write handlers implemented, screenshot persistence integrated*
+*Next: Plan 05-06 - Testing and Documentation*
