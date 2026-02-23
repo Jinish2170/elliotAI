@@ -30,17 +30,20 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 # Veritas module root (for veritas package imports)
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "veritas"))
 
-from veritas.db import init_database
-
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Startup / shutdown lifecycle."""
-    print("✦ Veritas API — Online")
+    print("Veritas API - Online")
+
+    # Lazy import of veritas.db to ensure sys.path modifications take effect
+    from veritas.db import init_database
+
     # Initialize SQLite database with WAL mode and create tables
     await init_database()
+
     yield
-    print("✦ Veritas API — Shutting down")
+    print("Veritas API - Shutting down")
 
 
 app = FastAPI(
