@@ -2,7 +2,7 @@
 
 **Milestone:** v1.0 - Core Stabilization
 **Created:** 2026-02-20
-**Last Updated:** 2026-02-23 (Phase 5, Plan 03 complete)
+**Last Updated:** 2026-02-23 (Phase 5, Plan 01 complete)
 **Mode:** yolo (GO) | Model Profile: sonnet
 **Execution:** Phase 5 plans executing (Persistent Audit Storage)
 
@@ -23,8 +23,8 @@
 ## Current Position
 
 **Phase**: 5 - Persistent Audit Storage
-**Plan**: 03 completed (ScreenshotStorage filesystem service), ready for Plan 04
-**Status**: ScreenshotStorage implemented with path traversal protection, save/delete/get_all/get_file methods working
+**Plan**: 01 completed (SQLAlchemy models and database initialization), ready for Plan 02
+**Status**: Database infrastructure created with WAL mode enabled, all 4 ORM models defined with relationships and indexes
 **Progress Bar**: ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░ 82% complete (18/22 plans)
 
 **Completed:**
@@ -32,9 +32,9 @@
 - Phase 2: Agent Architecture Refactor (5/5 plans) ✓
 - Phase 3: LangGraph State Machine Investigation (3/3 plans) ✓
 - Phase 4: Stub Cleanup & Code Quality (3/3 plans) ✓
-- Phase 5: Plans 01-03 completed (SQLite models, DbSession + Repo, ScreenshotStorage) ✓
+- Phase 5: Plan 01 completed (SQLite models) ✓
 
-**Next Action**: Plan 05-04 - Integrate AuditRepository with orchestrator and routes
+**Next Action**: Plan 05-02 - Database session and audit repository
 
 ---
 
@@ -69,13 +69,14 @@
 - SecurityMode events for monitoring mode selection
 - Windows multiprocessing spawn context properly configured
 - 5-agent pipeline working with improved progress streaming
+- SQLite database with WAL mode initialized, 4 ORM models defined (Audit, AuditFinding, AuditScreenshot, AuditEvent)
 
 **Requirements Coverage**: 30/30 requirements mapped to 5 phases (100%)
 **Phase 1 Coverage**: 6/6 requirements (CORE-02 series + CORE-06) = 100%
 **Phase 2 Coverage**: 4/4 requirements (CORE-01 series + CORE-06-2) = 100%
 **Phase 3 Coverage**: 2/5 requirements (CORE-03-3, CORE-06-3 complete) = 40%
 **Phase 4 Coverage**: 2/5 requirements (CORE-04-2, CORE-06-4 complete) = 40%
-**Phase 5 Coverage**: 0/6 requirements (CORE-05 series + CORE-06-5) = 0%
+**Phase 5 Coverage**: 3/6 requirements (CORE-05, CORE-05-2, CORE-06-5 complete) = 50%
 
 ---
 
@@ -91,6 +92,10 @@
 | Phase ordering from research | IPC first (most fragile) -> Architecture -> State Machine -> Stubs -> Persistence | Approved - Research-backed sequence documented in ROADMAP.md |
 | LangGraph ainvoke viable on Python 3.11.5 | Minimal reproduction test shows LangGraph internals work correctly without CancelledError | Confirmed - Phase 3 Plan 01 results |
 | Context-specific error types for stubs | Use ValueError/FileNotFoundError/RuntimeError instead of generic NotImplementedError for better error semantics | Approved - evidence_store.py uses 6 context-specific exceptions (Plan 04-01) |
+| SQLite with WAL mode for v1 | SQLite for v1 with PostgreSQL migration path - keeps setup simple while allowing future scaling | Approved - Database initialized at data/veritas_audits.db with WAL mode enabled |
+| JSON columns for complex data | Using SQLite JSON support for signal_scores, security_results, errors, and event data | Approved - Keeps schema simple while allowing flexible nested structures |
+| File system for screenshots | Storing screenshot images on filesystem with only metadata in database to prevent database bloat | Approved - ScreenshotStorage manages file paths, init_database creates tables |
+| Enum for AuditStatus | Created AuditStatus enum (queued, running, completed, error, disconnected) for type safety | Approved - Used in Audit model and verified to work correctly |
 
 ### Research Complete ✓
 
@@ -139,7 +144,7 @@
 2. **Agent**: SecurityAgent is a function, not a class - breaks agent pattern (Phase 2)
 3. **LangGraph**: Sequential execution instead of ainvoke - loses framework benefits (Phase 3)
 4. **Stubs**: Empty returns mask bugs - poor observability (Phase 4)
-5. **Storage**: In-memory dict loses data on restart - no persistence (Phase 5)
+5. **Storage**: ~~In-memory dict loses data on restart - no persistence~~ → **Database layer created (Plan 05-01 complete), needs repository integration (Plans 05-02 through 05-06)**
 ---
 
 ## Decisions
@@ -307,19 +312,31 @@
     * Delete removes files and directories
     * Path traversal is blocked
   - Duration: ~5 minutes
+- 2026-02-23: Phase 5, Plan 01 completed - SQLAlchemy models and database initialization (1 commit)
+  - Created veritas/db package with 3 files: config.py, models.py, __init__.py
+  - Four ORM models defined: Audit, AuditFinding, AuditScreenshot, AuditEvent
+  - Database URL: sqlite+aiosqlite:///./data/veritas_audits.db
+  - init_database() function with WAL mode PRAGMA optimization
+  - All relationships configured with cascade delete (all, delete-orphan)
+  - Indexes on status, created_at, trust_score, url for query optimization
+  - Fixed SQLAlchemy async import error (create_async_engine, async_sessionmaker from sqlalchemy.ext.asyncio)
+  - Database initialized at data/veritas_audits.db with WAL mode confirmed (PRAGMA journal_mode returns "wal")
+  - All verification criteria passed (models import, configuration, table schema)
+  - Commit: ead2332 (feat: create SQLAlchemy models and database initialization)
+  - Duration: 15 minutes
 
 ---
 
 ## Next Steps
 
-1. **Current Plan**: Phase 5, Plan 04 - Integrate AuditRepository with orchestrator and routes
-   - Replace in-memory evidence_store.call with AuditRepository in orchestrator
-   - Add audit routes with AuditRepository for query/update
-   - Add screenshot routes with ScreenshotStorage for file operations
-   - Verify end-to-end audit flow persists to SQLite
+1. **Current Plan**: Phase 5, Plan 02 - Database session and audit repository (next plan in sequence)
+   - Create DbSession class for async database operations
+   - Create AuditRepository for audit CRUD operations
+   - Query by ID, list all, update status, save result
+   - Add unit tests for repository methods
 
 2. **Phases Remaining**:
-   - Phase 5: Persistent Audit Storage (plans 04-06 remaining)
+   - Phase 5: Persistent Audit Storage (plans 02-06 remaining)
 
 3. **Sequence**: Complete Phase 5 plans (Persistence full implementation)
 
@@ -327,7 +344,7 @@
 
 ---
 
-*STATE last updated: 2026-02-23 after Phase 5, Plan 03 completion*
-*Phase 5, Plan 03 complete: ScreenshotStorage filesystem service with path traversal protection*
-*Screenshot save/delete/get_all/get_file methods working and verified*
-*Next: Plan 05-04 - Integrate AuditRepository with orchestrator and routes*
+*STATE last updated: 2026-02-23 after Phase 5, Plan 01 completion*
+*Phase 5, Plan 01 complete: SQLAlchemy models and database initialization with WAL mode*
+*Database at data/veritas_audits.db created with 4 tables and all indexes*
+*Next: Plan 05-02 - Database session and audit repository*

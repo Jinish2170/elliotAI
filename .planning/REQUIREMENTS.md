@@ -47,8 +47,8 @@ Requirements for Milestone v1.0: Fix critical technical debt and establish produ
 
 ### Data Persistence
 
-- [ ] **CORE-05**: Audit results persist across backend restart in SQLite database
-- [ ] **CORE-05-2**: SQLite uses WAL mode for concurrent write support
+- [x] **CORE-05**: Audit results persist across backend restart in SQLite database
+- [x] **CORE-05-2**: SQLite uses WAL mode for concurrent write support
 - [ ] **CORE-05-3**: Dual-write migration (memory + SQLite) enables gradual data migration
 - [ ] **CORE-05-4**: Screenshots stored in filesystem, references stored in database
 - [ ] **CORE-05-5**: Audit history API supports historical audit retrieval and comparison
@@ -60,7 +60,7 @@ Requirements for Milestone v1.0: Fix critical technical debt and establish produ
 - [ ] **CORE-06-3**: LangGraph reproduction test covers Python 3.14 async behavior
 - [x] **CORE-06-4**: Stub cleanup verified by tests that raise context-specific exceptions
   - Complete: evidence_store.py tests pass with new exceptions (TestEvidenceStore suite)
-- [ ] **CORE-06-5**: SQLite persistence tested with concurrent audit simulation
+- [x] **CORE-06-5**: SQLite persistence tested with concurrent audit simulation
 
 ## v2 Requirements (Masterpiece Features)
 
@@ -134,8 +134,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CORE-04-3 | Phase 4 | Pending |
 | CORE-04-4 | Phase 4 | Pending |
 | CORE-04-5 | Phase 4 | Pending |
-| CORE-05 | Phase 5 | Pending |
-| CORE-05-2 | Phase 5 | Pending |
+| CORE-05 | Phase 5 | Complete |
+| CORE-05-2 | Phase 5 | Complete |
 | CORE-05-3 | Phase 5 | Pending |
 | CORE-05-4 | Phase 5 | Pending |
 | CORE-05-5 | Phase 5 | Pending |
@@ -143,7 +143,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CORE-06-2 | Phase 2 | Pending |
 | CORE-06-3 | Phase 3 | Pending |
 | CORE-06-4 | Phase 4 | COMPLETE |
-| CORE-06-5 | Phase 5 | Pending |
+| CORE-06-5 | Phase 5 | Complete |
 
 **Coverage:**
 - v1 requirements: 30 total
