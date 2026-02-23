@@ -5,7 +5,7 @@
 
 ## v2 Requirements (Masterpiece Features)
 
-Requirements for Milestone v2.0: Masterpiece-quality features implemented on top of stabilized v1.0 foundation. 40 requirements across 8 categories.
+Requirements for Milestone v2.0: Masterpiece-quality features implemented on top of stabilized v1.0 foundation. 36 requirements across 9 categories.
 
 ### Vision Agent Enhancement
 
@@ -222,12 +222,46 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
+| VISION-01 | Phase 6 | Pending |
+| VISION-02 | Phase 6 | Pending |
+| VISION-03 | Phase 6 | Pending |
+| VISION-04 | Phase 6 | Pending |
+| SMART-VIS-01 | Phase 6 | Pending |
+| SMART-VIS-02 | Phase 6 | Pending |
+| SCROLL-01 | Phase 7 | Pending |
+| SCROLL-02 | Phase 7 | Pending |
+| SCROLL-03 | Phase 7 | Pending |
+| QUAL-01 | Phase 7 | Pending |
+| QUAL-02 | Phase 7 | Pending |
+| QUAL-03 | Phase 7 | Pending |
+| OSINT-01 | Phase 8 | Pending |
+| OSINT-02 | Phase 8 | Pending |
+| OSINT-03 | Phase 8 | Pending |
+| CTI-01 | Phase 8 | Pending |
+| CTI-02 | Phase 8 | Pending |
+| CTI-03 | Phase 8 | Pending |
+| CTI-04 | Phase 8 | Pending |
+| JUDGE-01 | Phase 9 | Pending |
+| JUDGE-02 | Phase 9 | Pending |
+| JUDGE-03 | Phase 9 | Pending |
+| ORCH-01 | Phase 9 | Pending |
+| ORCH-02 | Phase 9 | Pending |
+| ORCH-03 | Phase 9 | Pending |
+| PROG-01 | Phase 9 | Pending |
+| PROG-02 | Phase 9 | Pending |
+| PROG-03 | Phase 9 | Pending |
+| SEC-01 | Phase 10 | Pending |
+| SEC-02 | Phase 10 | Pending |
+| SHOWCASE-01 | Phase 11 | Pending |
+| SHOWCASE-02 | Phase 11 | Pending |
+| SHOWCASE-03 | Phase 11 | Pending |
+| SHOWCASE-04 | Phase 11 | Pending |
 
 **Coverage:**
-- v2 requirements: 40 total
-- Mapped to phases: 0 (roadmap not yet created)
-- Unmapped: 40 ⚠️
+- v2 requirements: 36 total
+- Mapped to phases: 36 (roadmap created)
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-02-23*
-*Last updated: 2026-02-23 after v2.0 milestone started*
+*Last updated: 2026-02-23 - detailed phase plans created (6 phases with implementation strategies)*
