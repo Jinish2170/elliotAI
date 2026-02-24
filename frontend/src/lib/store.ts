@@ -244,6 +244,46 @@ export const useAuditStore = create<AuditStore>((set, get) => ({
         });
         break;
       }
+
+      // Vision pass events
+      case "vision_pass_start": {
+        const passNum = event.pass as number;
+        set({
+          phases: {
+            ...state.phases,
+            vision: {
+              ...state.phases.vision,
+              status: "active",
+              activePass: passNum,
+              message: (event.description as string) || `Starting Pass ${passNum}`,
+            },
+          },
+        });
+        break;
+      }
+
+      case "vision_pass_findings": {
+        const findings = event.findings as Finding[];
+        set({ findings: [...state.findings, ...findings] });
+        break;
+      }
+
+      case "vision_pass_complete": {
+        const passNum = event.pass as number;
+        const currentCompletedPasses = (state.phases.vision?.completedPasses || []) as number[];
+        set({
+          phases: {
+            ...state.phases,
+            vision: {
+              ...state.phases.vision,
+              completedPasses: [...currentCompletedPasses, passNum],
+              activePass: undefined,
+              message: `Pass ${passNum} complete: ${event.findings_count} findings`,
+            },
+          },
+        });
+        break;
+      }
     }
   },
 }));
