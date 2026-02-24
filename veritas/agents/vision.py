@@ -424,6 +424,7 @@ class VisionAgent:
         url: str = "",
         categories: Optional[list[str]] = None,
         site_type: str = "",
+        use_5_pass_pipeline: bool = False,
     ) -> VisionResult:
         """
         Full visual forensics analysis on a set of screenshots.
@@ -433,10 +434,20 @@ class VisionAgent:
             screenshot_labels: Labels matching screenshots (e.g., ["t0", "t10", "fullpage"])
             url: The target URL (for logging / context)
             categories: Specific dark pattern categories to check. None = check all.
+            site_type: Site type for priority pattern ordering.
+            use_5_pass_pipeline: If True, use the new 5-pass pipeline with
+                intelligent pass skipping, temporal analysis, and event streaming.
+                Default: False for backward compatibility.
 
         Returns:
             VisionResult with all findings and scores
         """
+        # Use new 5-pass pipeline if requested
+        if use_5_pass_pipeline:
+            logger.info("Using 5-pass enhanced vision pipeline")
+            return await self.analyze_5_pass(screenshots, url)
+
+        # Original analysis path (backward compatible)
         result = VisionResult()
 
         if not screenshots:
