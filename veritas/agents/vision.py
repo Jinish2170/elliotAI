@@ -87,6 +87,31 @@ def should_run_pass(
     return True
 
 
+def get_confidence_tier(confidence_score: float) -> str:
+    """Map confidence score to 5-tier alert level.
+
+    Args:
+        confidence_score: Confidence value (0-100)
+
+    Returns:
+        String tier: 'low', 'moderate', 'suspicious', 'likely', 'critical'
+    """
+    CONFIDENCE_TIERS = {
+        (0, 20): 'low',          # Warning only
+        (20, 40): 'moderate',    # Suspicious
+        (40, 60): 'suspicious',  # Likely problematic
+        (60, 80): 'likely',      # Confirmed
+        (80, 100): 'critical'    # Definite dark pattern
+    }
+
+    for (min_val, max_val), tier in CONFIDENCE_TIERS.items():
+        if min_val <= confidence_score < max_val:
+            return tier
+    if confidence_score >= 100:
+        return 'critical'
+    return 'low'
+
+
 # ============================================================
 # Data Structures
 # ============================================================
