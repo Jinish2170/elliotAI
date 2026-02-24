@@ -112,6 +112,33 @@ def get_confidence_tier(confidence_score: float) -> str:
     return 'low'
 
 
+def get_pass_prompt(pass_num: int, temporal_result: Optional[dict] = None) -> str:
+    """Get appropriate prompt for pass number, injecting temporal context.
+
+    Args:
+        pass_num: Pass identifier (1-5 for Vision Agent passes)
+        temporal_result: Optional temporal analysis result for Pass 3 context injection
+
+    Returns:
+        The full prompt string for this pass, with temporal context if applicable
+    """
+    from config.dark_patterns import VISION_PASS_PROMPTS
+
+    base_prompt = VISION_PASS_PROMPTS.get(pass_num, "")
+
+    # Inject temporal context into Pass 3
+    if pass_num == 3 and temporal_result:
+        temporal_context = f"""
+        TEMPORAL CONTEXT:
+        - SSIM score: {temporal_result.get('ssim_score', 0):.3f}
+        - Has temporal changes: {temporal_result.get('has_changes', False)}
+        - Changed regions: {len(temporal_result.get('changed_regions', []))}
+        """
+        return base_prompt + temporal_context
+
+    return base_prompt
+
+
 # ============================================================
 # Data Structures
 # ============================================================
