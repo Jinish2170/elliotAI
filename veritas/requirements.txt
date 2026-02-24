@@ -37,6 +37,11 @@ dnspython>=2.4.0
 Pillow>=10.0.0
 pytesseract>=0.3.10
 
+# --- Computer Vision (Temporal Analysis) ---
+scikit-image>=0.21.0
+opencv-python>=4.8.0
+psutil>=5.9.0
+
 # --- Reporting ---
 WeasyPrint>=60.0
 Jinja2>=3.1.0
