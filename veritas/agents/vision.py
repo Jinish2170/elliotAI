@@ -217,6 +217,14 @@ class VisionEventEmitter:
             "confidence": confidence
         })
 
+    async def emit_vision_complete(self, total_findings: int, passes_completed: int) -> None:
+        """Emit event when vision phase completes."""
+        await self._emit({
+            "type": "vision_complete",
+            "findings": total_findings,
+            "passes_completed": passes_completed
+        })
+
     async def _emit(self, event: dict) -> None:
         """
         Emit event with rate limiting.
@@ -398,6 +406,12 @@ class VisionAgent:
             self._pattern_matcher = PatternMatcher()
         except Exception:
             logger.debug("PatternMatcher not available — using individual prompts")
+
+        # Vision event emitter for real-time progress streaming
+        self.event_emitter = VisionEventEmitter()
+
+        # Temporal analyzer (initialized with content type during analysis)
+        self.temporal_analyzer = None
 
     # ================================================================
     # Public: Full Analysis Pipeline
@@ -609,6 +623,182 @@ class VisionAgent:
         self._nim._write_cache(cache_key, cache_data)
 
         return findings
+
+    async def analyze_5_pass(
+        self,
+        screenshots: list[str],
+        url: str = "",
+        scout_result: Optional["ScoutResult"] = None
+    ) -> VisionResult:
+        """
+        Perform 5-pass vision analysis on screenshots using the enhanced pipeline.
+
+        This is the new Phase 6 analysis method with:
+        - Content type detection for adaptive SSIM thresholds
+        - Temporal analysis with CV-based change detection
+        - 5-pass VLM pipeline with intelligent pass skipping
+        - Real-time progress event streaming
+
+        Args:
+            screenshots: List of file paths to screenshot images
+            url: The target URL (for content type detection)
+            scout_result: Optional ScoutResult for enhanced context
+
+        Returns:
+            VisionResult with all findings and scores
+        """
+        # Emit vision start event
+        await self.event_emitter.emit_vision_start(len(screenshots))
+
+        all_findings = []
+
+        # Detect content type for adaptive SSIM thresholds
+        content_type = self._detect_content_type(url, scout_result)
+        logger.info(f"Detected content type: {content_type}")
+
+        # Initialize TemporalAnalyzer with content-type-specific thresholds
+        try:
+            from agents.vision.temporal_analysis import TemporalAnalyzer
+            self.temporal_analyzer = TemporalAnalyzer(content_type=content_type)
+        except (ImportError, Exception) as e:
+            logger.warning(f"Temporal analyzer not available: {e}")
+            self.temporal_analyzer = None
+
+        # Temporal analysis (CV-based)
+        temporal_result = None
+        has_temporal_changes = False
+
+        if len(screenshots) >= 2 and self.temporal_analyzer:
+            try:
+                temporal_result = self.temporal_analyzer.analyze_temporal_changes(
+                    screenshots[0], screenshots[1]
+                )
+                has_temporal_changes = temporal_result['has_changes']
+                logger.info(
+                    f"Temporal analysis: SSIM={temporal_result['ssim_score']:.3f}, "
+                    f"has_changes={has_temporal_changes}"
+                )
+            except Exception as e:
+                logger.warning(f"Temporal analysis failed: {e}")
+
+        # Determine screenshots to analyze based on temporal result
+        if temporal_result and temporal_result.get('recommendation') == 'fullpage_only':
+            # No temporal changes - analyze only fullpage if available
+            screenshots_to_analyze = [screenshots[-1]] if screenshots else []
+        else:
+            screenshots_to_analyze = screenshots
+
+        # Run 5-pass analysis
+        passes_completed = 0
+        for pass_num in range(1, 6):
+            # Check if this pass should run based on priority logic
+            if not should_run_pass(pass_num, all_findings, has_temporal_changes):
+                logger.debug(f"Skipping Pass {pass_num} (priority rule)")
+                continue
+
+            # Get pass description and emit start event
+            description = self._get_pass_description(pass_num)
+            await self.event_emitter.emit_pass_start(
+                pass_num, description, len(screenshots_to_analyze)
+            )
+
+            # Get prompt for this pass (with temporal context injection for Pass 3)
+            prompt = get_pass_prompt(pass_num, temporal_result)
+
+            # Process each screenshot in this pass
+            pass_findings = []
+            for screenshot in screenshots_to_analyze:
+                # Check cache first
+                cache_key = self._nim.get_cache_key(screenshot, prompt, pass_num)
+                cached = self._nim._read_cache(cache_key)
+
+                if cached:
+                    # Use cached results
+                    logger.debug(f"Cache hit for Pass {pass_num}, screenshot={screenshot}")
+                    cached_findings = cached.get("findings", [])
+                    for f_data in cached_findings:
+                        try:
+                            pass_findings.append(DarkPatternFinding(**f_data))
+                        except (TypeError, KeyError):
+                            logger.warning(f"Failed to restore cached finding: {f_data}")
+                else:
+                    # Execute VLM analysis
+                    vlm_response = await self._nim.analyze_image(
+                        image_path=screenshot,
+                        prompt=prompt,
+                        category_hint=""
+                    )
+
+                    # Parse response into findings
+                    findings_from_pass = self._parse_vlm_response(
+                        vlm_response, f"pass_{pass_num}", None, screenshot
+                    )
+                    pass_findings.extend(findings_from_pass)
+
+                    # Cache results
+                    cache_data = {
+                        "findings": [f.__dict__ for f in findings_from_pass],
+                        "prompt": prompt,
+                        "pass_num": pass_num,
+                        "model": vlm_response.get("model", "unknown"),
+                        "fallback_mode": vlm_response.get("fallback_mode", False),
+                    }
+                    self._nim._write_cache(cache_key, cache_data)
+
+            # Deduplicate findings within this pass
+            pass_findings = self._deduplicate_findings(pass_findings)
+            all_findings.extend(pass_findings)
+
+            # Emit findings event
+            await self.event_emitter.emit_pass_findings(pass_num, pass_findings)
+
+            # Compute confidence and emit complete event
+            confidence = self._compute_confidence(pass_findings) if pass_findings else 0.0
+            await self.event_emitter.emit_pass_complete(
+                pass_num, len(pass_findings), confidence
+            )
+
+            passes_completed += 1
+            logger.info(
+                f"Pass {pass_num} complete: {len(pass_findings)} findings, "
+                f"confidence={confidence:.1f}"
+            )
+
+        # Cross-reference findings (Phase 8 placeholder)
+        all_findings = self._cross_reference_findings(all_findings)
+
+        # Flush any queued events
+        await self.event_emitter.flush_queue()
+
+        # Emit vision complete event
+        await self.event_emitter.emit_vision_complete(len(all_findings), passes_completed)
+
+        # Build VisionResult
+        result = VisionResult()
+        result.dark_patterns = all_findings
+        result.screenshots_analyzed = len(screenshots)
+        result.prompts_sent = passes_completed * len(screenshots_to_analyze)
+
+        # Capture NIM stats
+        nim_stats = self._nim.get_stats()
+        result.nim_calls_made = nim_stats["api_calls"]
+        result.cache_hits = nim_stats["cache_hits"]
+        result.fallback_used = nim_stats["fallback_count"] > 0
+
+        # Compute scores
+        result.visual_score = self._compute_visual_score(all_findings)
+        result.temporal_score = (
+            1.0 if temporal_result and not temporal_result['has_changes']
+            else 0.5 if temporal_result and temporal_result['has_changes']
+            else 0.5  # No temporal data
+        )
+
+        logger.info(
+            f"5-pass analysis complete: {len(all_findings)} total findings, "
+            f"{passes_completed} passes completed, visual_score={result.visual_score:.2f}"
+        )
+
+        return result
 
     # ================================================================
     # Private: Static Pattern Analysis
@@ -1087,3 +1277,129 @@ class VisionAgent:
                 if sub.id == pattern_type:
                     return sub.severity
         return "medium"  # Default
+
+    # ================================================================
+    # New Phase 6: 5-Pass Pipeline Methods
+    # ================================================================
+
+    def _detect_content_type(self, url: str, scout_result=None) -> str:
+        """
+        Detect content type from URL and Scout metadata for adaptive SSIM thresholds.
+
+        Returns:
+            Content type string: 'e_commerce', 'subscription', 'phishing/scan',
+            'news/blog', or 'default'
+        """
+        url_lower = url.lower()
+
+        # E-commerce
+        e_commerce_patterns = ['shop', 'store', 'buy', 'cart', 'checkout', 'order',
+                              'amazon', 'ebay', 'etsy', 'shopify', 'walmart']
+        if any(p in url_lower for p in e_commerce_patterns):
+            return 'e_commerce'
+
+        # Subscription
+        subscription_patterns = ['subscrib', 'plan', 'pricing', 'trial', 'signup',
+                               'notion', 'slack', 'zoom', 'github', 'figma',
+                               'netflix', 'spotify', 'adobe']
+        if any(p in url_lower for p in subscription_patterns):
+            return 'subscription'
+
+        # Phishing/scan - check scout result if available
+        if scout_result:
+            # Check for trust_score or risk attribute
+            if hasattr(scout_result, 'trust_score') and scout_result.trust_score < 0.3:
+                return 'phishing/scan'
+            if hasattr(scout_result, 'risk') and scout_result.risk >= 0.7:
+                return 'phishing/scan'
+            if hasattr(scout_result, 'url') and scout_result.url:
+                # Check URL patterns again with scout result URL
+                scout_url_lower = scout_result.url.lower()
+                phishing_patterns = ['phishing', 'scam', 'fake', 'fraud', 'suspicious',
+                                    'verify', 'account', 'security', 'alert']
+                if any(p in scout_url_lower for p in phishing_patterns):
+                    return 'phishing/scan'
+
+        # News/blog
+        news_patterns = ['news', 'blog', 'article', 'post', 'medium', 'substack',
+                        'nytimes', 'wired', 'techcrunch']
+        if any(p in url_lower for p in news_patterns):
+            return 'news/blog'
+
+        return 'default'
+
+    def _get_pass_description(self, pass_num: int) -> str:
+        """Get description for a pass number."""
+        descriptions = {
+            1: "Quick visual scan for obvious threats",
+            2: "Sophisticated dark pattern detection",
+            3: "Temporal dynamics and dynamic content",
+            4: "Cross-reference with external intelligence",
+            5: "Final synthesis and confidence scoring"
+        }
+        return descriptions[pass_num]
+
+    def _deduplicate_findings(self, findings: list[DarkPatternFinding]) -> list[DarkPatternFinding]:
+        """
+        Deduplicate findings by bbox + category.
+
+        Args:
+            findings: List of DarkPatternFinding objects
+
+        Returns:
+            List of unique findings
+        """
+        seen = {}
+        unique = []
+        for finding in findings:
+            # Use category_id and pattern_type as key since bbox might vary
+            # For a more sophisticated deduplication, you could use approximate bbox matching
+            key = (finding.category_id, finding.pattern_type, finding.screenshot_path)
+            if key not in seen:
+                seen[key] = finding
+                unique.append(finding)
+            else:
+                # Keep the finding with higher confidence
+                existing = seen[key]
+                if finding.confidence > existing.confidence:
+                    unique.remove(existing)
+                    unique.append(finding)
+                    seen[key] = finding
+        return unique
+
+    def _compute_confidence(self, findings: list[DarkPatternFinding]) -> float:
+        """
+        Compute confidence score (0-100) for a set of findings.
+
+        Args:
+            findings: List of DarkPatternFinding objects
+
+        Returns:
+            Confidence score (0-100)
+        """
+        if not findings:
+            return 0.0
+        # Use the normalized confidence from findings (DarkPatternFinding uses 0-1, convert to 0-100)
+        return sum(f.confidence for f in findings) / len(findings) * 100
+
+    def _cross_reference_findings(
+        self, findings: list[DarkPatternFinding]
+    ) -> list[DarkPatternFinding]:
+        """
+        Cross-reference findings with external intelligence (placeholder for Phase 8).
+
+        Args:
+            findings: List of DarkPatternFinding objects
+
+        Returns:
+            List of findings with cross-reference placeholders applied
+        """
+        # Phase 8 will implement actual OSINT cross-reference
+        # For now, just mark all findings as not yet cross-referenced
+        for finding in findings:
+            if not hasattr(finding, 'verified_externally'):
+                # Add attribute dynamically to avoid breaking existing code
+                finding.verified_externally = False
+            if not hasattr(finding, 'external_sources'):
+                finding.external_sources = []
+        return findings
