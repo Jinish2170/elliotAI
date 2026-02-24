@@ -291,6 +291,73 @@ class VisionAgent:
 
         return result
 
+    async def run_pass_with_cache(
+        self,
+        pass_num: int,
+        screenshot: str,
+        prompt: str,
+        category_id: str = "",
+    ) -> list[DarkPatternFinding]:
+        """
+        Execute vision pass with pass-specific caching.
+
+        This method implements pass-level caching for the Vision Agent's
+        5-pass pipeline, enabling smart pass skipping when results are
+        already cached.
+
+        Args:
+            pass_num: Pass identifier (1-5 for Vision Agent passes)
+            screenshot: Path to screenshot image
+            prompt: The VLM forensic prompt
+            category_id: Optional category ID for result parsing
+
+        Returns:
+            List of DarkPatternFinding objects for this pass
+
+        Raises:
+            Exception: If VLM analysis fails (with full error logging)
+        """
+        cache_key = self._nim.get_cache_key(screenshot, prompt, pass_num)
+        cached = self._nim._read_cache(cache_key)
+
+        if cached:
+            logger.info(f"Cache hit for Pass {pass_num}")
+            # Convert cached dict back to DarkPatternFinding objects
+            cached_findings = cached.get("findings", [])
+            findings = []
+            for f_data in cached_findings:
+                try:
+                    findings.append(DarkPatternFinding(**f_data))
+                except (TypeError, KeyError):
+                    logger.warning(f"Failed to restore cached finding: {f_data}")
+            return findings
+
+        # Execute VLM call with pass_type for proper cache key
+        vlm_response = await self._nim.analyze_image(
+            image_path=screenshot,
+            prompt=prompt,
+            category_hint=category_id
+        )
+
+        # Parse response into DarkPatternFinding objects
+        findings = self._parse_vlm_response(
+            vlm_response, category_id,
+            DARK_PATTERN_TAXONOMY.get(category_id) if category_id else None,
+            screenshot
+        )
+
+        # Cache result as dict (24h TTL is default in _write_cache)
+        cache_data = {
+            "findings": [f.__dict__ for f in findings],
+            "prompt": prompt,
+            "pass_num": pass_num,
+            "model": vlm_response.get("model", "unknown"),
+            "fallback_mode": vlm_response.get("fallback_mode", False),
+        }
+        self._nim._write_cache(cache_key, cache_data)
+
+        return findings
+
     # ================================================================
     # Private: Static Pattern Analysis
     # ================================================================
