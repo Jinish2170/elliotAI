@@ -10,32 +10,32 @@ See: .planning/PROJECT.md (updated 2026-02-23)
 ## Current Position
 
 Phase: 6 of 11 (Vision Agent Enhancement)
-Plan: 5 of 6 in current phase
-Status: In progress - Plan 06-03 complete
-Last activity: 2026-02-24 — 5 pass-specific VLM prompts with 5-tier confidence mapping and temporal context injection
+Plan: 6 of 6 in current phase
+Status: In progress - Plan 06-05 complete
+Last activity: 2026-02-24 — VisionEventEmitter with 5 sec throttle, 5 findings batch, flush queue
 
-Progress: [██████████████░░░░░░░] 83% (5/6 plans)
+Progress: [███████████████░░░░░░] 100% (6/6 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 27 (22 v1.0 + 5 v2.0)
-- Average duration: ~5 min (v2.0 only)
-- Total execution time: ~20 min (v2.0 only)
+- Total plans completed: 28 (22 v1.0 + 6 v2.0)
+- Average duration: ~4.3 min (v2.0 only)
+- Total execution time: ~26 min (v2.0 only)
 
 **By Phase:**
 
 | Phase | Plans | Total | Duration | Avg/Plan |
 |-------|-------|-------|----------|----------|
 | 1     | 22    | TBD   | TBD      | TBD      |
-| 6     | 5     | 6     | ~20 min  | ~4 min |
+| 6     | 6     | 6     | ~26 min  | ~4.3 min |
 
 **Recent Trend:**
-- Last plan: 06-03 (5 min)
+- Last plan: 06-05 (6 min)
 - Trend: Steady v2.0 execution with modular feature implementation
 
 *Updated after each plan completion*
-| Phase 06-Vision Agent Enhancement P06-03 | 5min | 3 tasks | 3 files | 5 pass-specific VLM prompts with 5-tier confidence mapping
+| Phase 06-Vision Agent Enhancement P06-05 | 6min | 5 tasks | 3 files | VisionEventEmitter with websocket throttling/batching
 
 ## Accumulated Context
 
@@ -55,6 +55,7 @@ Recent decisions affecting current work:
 - **06-03 5-Tier Confidence Mapping (2026-02-24)**: Numerical scores (0-100) mapped to alert levels (low/moderate/suspicious/likely/critical) for granular classification
 - **06-03 Temporal Context Injection (2026-02-24)**: SSIM score, has_changes flag, and region count injected into Pass 3 prompt for enhanced temporal analysis
 - **06-04 CV Temporal Analysis (2026-02-24)**: Used 640x480 resize for memory efficiency (0.3MP per image), adaptive SSIM thresholds per content type (e_commerce: 0.15, subscription: 0.20, news/blog: 0.35, phishing/scan: 0.10)
+- **06-05 Event Emitter Design (2026-02-24)**: Used queue-based rate limiting (max 5 events/sec) with batching (5 findings per event) to prevent WebSocket flooding during 5-pass analysis; integrated via ##PROGRESS: stdout markers
 
 ### Pending Todos
 
@@ -71,5 +72,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-24
-Stopped at: Completed Phase 6 Plan 03 (Vision Prompts)
-Resume file: .planning/phase-6/06-03-vision-prompts-SUMMARY.md
+Stopped at: Completed Phase 6 Plan 05 (Vision Event Emitter)
+Resume file: .planning/phase-6/06-05-event-emitter-SUMMARY.md
