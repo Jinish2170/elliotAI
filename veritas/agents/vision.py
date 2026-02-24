@@ -24,9 +24,10 @@ import enum
 import json
 import logging
 import sys
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
@@ -137,6 +138,158 @@ def get_pass_prompt(pass_num: int, temporal_result: Optional[dict] = None) -> st
         return base_prompt + temporal_context
 
     return base_prompt
+
+
+# ============================================================
+# Vision Event Emitter
+# ============================================================
+
+class VisionEventEmitter:
+    """Manages vision WebSocket events with throttling and batching.
+
+    Prevents WebSocket flooding during 5-pass analysis by:
+    - Throttling: Max 5 events/sec
+    - Batching: Up to 5 findings per event
+    - Event queuing: Accumulates events when throttled
+    """
+
+    def __init__(self, max_events_per_sec: int = 5, batch_size: int = 5):
+        """
+        Initialize the event emitter with rate limiting.
+
+        Args:
+            max_events_per_sec: Maximum number of events to emit per second
+            batch_size: Maximum number of findings to batch in a single event
+        """
+        self.max_events_per_sec = max_events_per_sec
+        self.batch_size = batch_size
+        self.event_queue: List[dict] = []
+        self.last_emit_time = 0.0
+        self.logger = logging.getLogger("veritas.vision_emitter")
+
+    async def emit_vision_start(self, total_screenshots: int) -> None:
+        """Emit event when vision phase starts."""
+        await self._emit({
+            "type": "vision_start",
+            "screenshots": total_screenshots,
+            "passes": 5
+        })
+
+    async def emit_pass_start(self, pass_num: int, description: str, screenshots_in_pass: int) -> None:
+        """Emit event when a specific pass starts."""
+        await self._emit({
+            "type": "vision_pass_start",
+            "pass": pass_num,
+            "description": description,
+            "screenshots": screenshots_in_pass
+        })
+
+    async def emit_pass_findings(self, pass_num: int, findings: List["DarkPatternFinding"]) -> None:
+        """
+        Emit findings for a pass, with batching.
+
+        Args:
+            pass_num: Pass identifier (1-5)
+            findings: List of DarkPatternFinding objects
+        """
+        if not findings:
+            return
+
+        # Batch findings (up to batch_size per event)
+        batches = [findings[i:i+self.batch_size] for i in range(0, len(findings), self.batch_size)]
+
+        for batch in batches:
+            event = {
+                "type": "vision_pass_findings",
+                "pass": pass_num,
+                "findings": [self._finding_to_dict(f) for f in batch],
+                "count": len(batch),
+                "batch": True
+            }
+            await self._emit(event)
+
+    async def emit_pass_complete(self, pass_num: int, findings_count: int, confidence: float) -> None:
+        """Emit event when a pass completes."""
+        await self._emit({
+            "type": "vision_pass_complete",
+            "pass": pass_num,
+            "findings_count": findings_count,
+            "confidence": confidence
+        })
+
+    async def _emit(self, event: dict) -> None:
+        """
+        Emit event with rate limiting.
+
+        If the rate limit is exceeded, events are queued and will be
+        flushed when the rate limit allows.
+
+        Args:
+            event: Event dictionary to emit
+        """
+        now = time.time()
+        time_since_last = now - self.last_emit_time
+        min_interval = 1.0 / self.max_events_per_sec
+
+        if time_since_last >= min_interval:
+            await self._do_emit(event)
+            self.last_emit_time = now
+        else:
+            # Event rate limited - queue it
+            self.event_queue.append(event)
+            self.logger.debug(
+                f"Event queued (rate limited): {event.get('type')} "
+                f"(time since last: {time_since_last:.3f}s, "
+                f"min interval: {min_interval:.3f}s)"
+            )
+
+    async def _do_emit(self, event: dict) -> None:
+        """
+        Actually emit event via progress emitter.
+
+        Uses the standard ##PROGRESS: stdout marker format that
+        AuditRunner catches and converts to WebSocket events.
+
+        Args:
+            event: Event dictionary to emit
+        """
+        print(f"##PROGRESS:{json.dumps(event)}", flush=True)
+
+    async def flush_queue(self) -> None:
+        """Flush all accumulated queued events.
+
+        This method should be called after passes are complete
+        to ensure all pending events are transmitted.
+        """
+        while self.event_queue:
+            event = self.event_queue.pop(0)
+            await self._do_emit(event)
+            self.last_emit_time = time.time()
+
+    def _finding_to_dict(self, finding: "DarkPatternFinding") -> dict:
+        """
+        Convert a DarkPatternFinding to a dictionary for JSON serialization.
+
+        Args:
+            finding: DarkPatternFinding object
+
+        Returns:
+            Dictionary representation of the finding
+        """
+        return {
+            "id": f"{finding.category_id}_{finding.pattern_type}_{finding.confidence:.2f}",
+            "category": finding.category_id,
+            "pattern_type": finding.pattern_type,
+            "confidence": finding.confidence,
+            "severity": finding.severity,
+            "description": finding.evidence,
+            "plain_english": finding.evidence,
+            "screenshot_index": 0,  # Will be filled by frontend if needed
+        }
+
+    def get_queue_size(self) -> int:
+        """Get the number of events currently in the queue."""
+        return len(self.event_queue)
 
 
 # ============================================================
