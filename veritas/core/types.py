@@ -340,6 +340,61 @@ class ScrollResult:
 
 
 # ============================================================
+# Quality Foundation Types
+# ============================================================
+
+class FindingStatus(str, Enum):
+    """Status of a finding in the consensus verification process."""
+    UNCONFIRMED = "UNCONFIRMED"  # Single source, <50% confidence
+    CONFIRMED = "CONFIRMED"      # 2+ sources, >=50% confidence
+    CONFLICTED = "CONFLICTED"    # Sources disagree (threat vs safe)
+    PENDING = "PENDING"          # Insufficient data
+
+
+@dataclass
+class FindingSource:
+    """
+    Source of a finding from a specific agent.
+
+    Attributes:
+        agent_type: Type of agent (vision, osint, security)
+        finding_id: Identifier for the finding within the agent
+        severity: Severity level of the finding
+        confidence: Original confidence from the source agent (0.0-1.0)
+        timestamp: ISO format timestamp when finding was added
+    """
+    agent_type: str  # "vision", "osint", "security"
+    finding_id: str
+    severity: str  # CRITICAL, HIGH, MEDIUM, LOW, INFO
+    confidence: float  # 0.0-1.0 from source agent
+    timestamp: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+
+@dataclass
+class ConsensusResult:
+    """
+    Result of consensus verification for a finding.
+
+    Tracks multiple sources contributing to a finding and computes
+    aggregated confidence and status.
+
+    Attributes:
+        finding_key: Normalized finding signature for grouping
+        sources: List of sources that contributed to this finding
+        status: Current verification status
+        aggregated_confidence: Computed confidence score (0-100)
+        conflict_notes: Notes about conflicts between sources
+        confidence_breakdown: Breakdown of factors contributing to confidence
+    """
+    finding_key: str  # Normalized finding signature
+    sources: list[FindingSource] = field(default_factory=list)
+    status: FindingStatus = FindingStatus.PENDING
+    aggregated_confidence: float = 0.0
+    conflict_notes: list[str] = field(default_factory=list)
+    confidence_breakdown: dict = field(default_factory=dict)
+
+
+# ============================================================
 # Multi-Page Exploration Types
 # ============================================================
 
