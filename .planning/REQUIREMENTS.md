@@ -44,10 +44,11 @@ Requirements for Milestone v2.0: Masterpiece-quality features implemented on top
   - Capture screenshots at scroll intervals
   - Handle infinite scroll patterns
   - *Completed: 2026-02-26 (Plan 07-01)*
-- [ ] **SCROLL-02**: Scout can navigate to multiple pages beyond initial landing page
+- [x] **SCROLL-02**: Scout can navigate to multiple pages beyond initial landing page
   - Detect and follow navigation links
   - Explore site structure (About, Contact, Privacy, etc.)
   - Limit exploration depth to prevent runaway navigation
+  - *Completed: 2026-02-26 (Plan 07-02)*
 - [x] **SCROLL-03**: Lazy loading detection and handling for complete capture
   - Wait for lazy-loaded content before screenshot
   - Detect dynamic content loading completion
@@ -230,9 +231,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | VISION-04 | Phase 6 | Pending |
 | SMART-VIS-01 | Phase 6 | Pending |
 | SMART-VIS-02 | Phase 6 | Pending |
-| SCROLL-01 | Phase 7 | Pending |
-| SCROLL-02 | Phase 7 | Pending |
-| SCROLL-03 | Phase 7 | Pending |
+| SCROLL-01 | Phase 7 | Complete 2026-02-26 |
+| SCROLL-02 | Phase 7 | Complete 2026-02-26 |
+| SCROLL-03 | Phase 7 | Complete 2026-02-26 |
 | QUAL-01 | Phase 7 | Pending |
 | QUAL-02 | Phase 7 | Pending |
 | QUAL-03 | Phase 7 | Pending |
