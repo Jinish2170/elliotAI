@@ -268,3 +268,72 @@ class SecurityResult:
     def total_findings(self) -> int:
         """Get total count of all findings."""
         return len(self.findings)
+
+
+# ============================================================
+# Scroll Orchestration Types
+# ============================================================
+
+@dataclass
+class ScrollState:
+    """
+    Snapshot of scroll state at a specific cycle.
+
+    Tracks scroll position, page height, and content changes for
+    lazy-load detection during intelligent scrolling.
+
+    Attributes:
+        cycle: Current scroll cycle number (0-indexed)
+        has_lazy_load: Whether new content was detected this cycle
+        last_scroll_y: Vertical scroll position after scroll
+        last_scroll_height: Total document height after scroll
+        cycles_without_content: Counter for stabilization detection
+        stabilized: Whether page has stabilized (no new content)
+    """
+    cycle: int
+    has_lazy_load: bool
+    last_scroll_y: int
+    last_scroll_height: int
+    cycles_without_content: int
+    stabilized: bool
+
+
+@dataclass
+class ScrollResult:
+    """
+    Complete result from intelligent page scrolling.
+
+    Contains scroll statistics and state history for analysis.
+
+    Attributes:
+        total_cycles: Number of scroll cycles completed
+        stabilized: Whether scrolling terminated due to stabilization
+        lazy_load_detected: Whether lazy-loaded content was detected
+        screenshots_captured: Number of screenshots captured during scroll
+        scroll_states: List of ScrollState objects for each cycle
+    """
+    total_cycles: int
+    stabilized: bool
+    lazy_load_detected: bool
+    screenshots_captured: int
+    scroll_states: list[ScrollState] = field(default_factory=list)
+
+    def to_dict(self) -> dict:
+        """Convert to JSON-serializable dictionary."""
+        return {
+            "total_cycles": self.total_cycles,
+            "stabilized": self.stabilized,
+            "lazy_load_detected": self.lazy_load_detected,
+            "screenshots_captured": self.screenshots_captured,
+            "scroll_states": [
+                {
+                    "cycle": s.cycle,
+                    "has_lazy_load": s.has_lazy_load,
+                    "last_scroll_y": s.last_scroll_y,
+                    "last_scroll_height": s.last_scroll_height,
+                    "cycles_without_content": s.cycles_without_content,
+                    "stabilized": s.stabilized,
+                }
+                for s in self.scroll_states
+            ],
+        }
