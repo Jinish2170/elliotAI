@@ -156,17 +156,17 @@ Requirements for Milestone v2.0: Masterpiece-quality features implemented on top
 
 ### Quality & False Positive Management
 
-- [ ] **QUAL-01**: False positive detection criteria
+- [x] **QUAL-01**: False positive detection criteria
   - Multi-factor validation (2+ sources must agree before flagging as threat)
   - Historical baseline comparison (is this finding typical for this site type?)
   - Confidence thresholds with explainable reasoning
   - "Review required" category for ambiguous findings
-- [ ] **QUAL-02**: Deep statistics and confidence scoring
+- [x] **QUAL-02**: Deep statistics and confidence scoring
   - Per-finding confidence score (0-100% with justification)
   - Aggregated trust score with component breakdown
   - Risk level assignment with supporting evidence count
   - Statistical comparison against historical audits
-- [ ] **QUAL-03**: Incremental verification and refinement
+- [x] **QUAL-03**: Incremental verification and refinement
   - Initial alerts can be downgraded after cross-verification
   - "Likely" → "Confirmed" → "Verified" progression
   - Allow user to mark findings as false positives (learning system)
@@ -234,9 +234,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SCROLL-01 | Phase 7 | Complete 2026-02-26 |
 | SCROLL-02 | Phase 7 | Complete 2026-02-26 |
 | SCROLL-03 | Phase 7 | Complete 2026-02-26 |
-| QUAL-01 | Phase 7 | Pending |
-| QUAL-02 | Phase 7 | Pending |
-| QUAL-03 | Phase 7 | Pending |
+| QUAL-01 | Phase 7 | Complete |
+| QUAL-02 | Phase 7 | Complete |
+| QUAL-03 | Phase 7 | Complete |
 | OSINT-01 | Phase 8 | Pending |
 | OSINT-02 | Phase 8 | Pending |
 | OSINT-03 | Phase 8 | Pending |
