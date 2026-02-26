@@ -125,8 +125,5 @@ VERITAS's journey from initial concept to production masterpiece: v1.0 establish
 
 Coverage:
 - v1 phases: 5 phases, 22 plans
-- v2 phases: 6 phases, 17 total plans (8 complete, 9 in progress/planned)
-- Total: 11 phases, 39 plans | Phase | Plans | Complete | Status |
-|-------|-------|---------|--------|
-| 6 | 6 | 6 | ✅ |
-| 7 | 4 | 2 | 🔄 |
+- v2 phases: 6 phases, 18 total plans (8 complete, 10 in progress/planned)
+- Total: 11 phases, 40 plans
