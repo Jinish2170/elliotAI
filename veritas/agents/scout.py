@@ -27,7 +27,10 @@ import time
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
+
+if TYPE_CHECKING:
+    from veritas.core.types import ScrollResult
 
 from playwright.async_api import (Browser, BrowserContext, Page, Playwright,
                                   async_playwright)
@@ -209,6 +212,9 @@ class ScoutResult:
     # Form validation results (from FormActionValidator)
     form_validation: dict = field(default_factory=dict)
 
+    # Scroll orchestration results (from ScrollOrchestrator)
+    scroll_result: Optional["ScrollResult"] = None
+
 
 # ============================================================
 # The Stealth Scout Agent
@@ -264,6 +270,7 @@ class StealthScout:
         url: str,
         temporal_delay: Optional[int] = None,
         viewport: str = "desktop",
+        enable_scrolling: bool = True,
     ) -> ScoutResult:
         """
         Full forensic investigation of a URL:
@@ -275,11 +282,13 @@ class StealthScout:
             6. Take Screenshot_B (t+delay) — viewport shot (for timer comparison)
             7. Take full-page screenshot
             8. Extract comprehensive page metadata
+            9. Intelligent scrolling (optional) for lazy-loaded content
 
         Args:
             url: Target URL to investigate
             temporal_delay: Seconds between Screenshot_A and B (default: from settings)
             viewport: "desktop" or "mobile"
+            enable_scrolling: Enable intelligent scroll orchestration (default: True)
 
         Returns:
             ScoutResult with all screenshots, metadata, and status
@@ -287,6 +296,7 @@ class StealthScout:
         delay = temporal_delay if temporal_delay is not None else settings.TEMPORAL_DELAY
         audit_id = uuid.uuid4().hex[:8]
         user_agent = ""
+        scroll_result = None
 
         context = await self._create_stealth_context(viewport)
         page = await context.new_page()
@@ -403,6 +413,30 @@ class StealthScout:
             except Exception as e:
                 logger.warning(f"Form validation failed (non-critical): {e}")
 
+            # --- Intelligent Scrolling (Optional) ---
+            if enable_scrolling:
+                try:
+                    from veritas.agents.scout_nav.scroll_orchestrator import ScrollOrchestrator
+                    from veritas.agents.scout_nav.lazy_load_detector import LazyLoadDetector
+
+                    detector = LazyLoadDetector()
+                    orchestrator = ScrollOrchestrator(self._evidence_dir, detector)
+
+                    scroll_start_time = time.time()
+                    scroll_result = await orchestrator.scroll_page(page, audit_id)
+                    scroll_time = (time.time() - scroll_start_time) * 1000
+
+                    logger.info(
+                        f"Scroll complete: {scroll_result.total_cycles} cycles, "
+                        f"stabilized={scroll_result.stabilized}, "
+                        f"lazy_load={scroll_result.lazy_load_detected}, "
+                        f"screenshots={scroll_result.screenshots_captured}, "
+                        f"time={scroll_time:.0f}ms"
+                    )
+                except Exception as e:
+                    logger.warning(f"Scroll orchestration failed (non-critical): {e}")
+                    scroll_result = None
+
             # --- Assemble Result ---
             screenshots = [p for p in [ss_a, ss_b, ss_full] if p]
             timestamps = []
@@ -473,6 +507,7 @@ class StealthScout:
                 site_type_confidence=site_type_conf,
                 dom_analysis=dom_result,
                 form_validation=form_val_result,
+                scroll_result=scroll_result,
             )
 
         except Exception as e:
