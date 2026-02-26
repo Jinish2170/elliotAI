@@ -30,7 +30,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
-    from veritas.core.types import ScrollResult
+    from veritas.core.types import ExplorationResult, PageVisit, ScrollResult
 
 from playwright.async_api import (Browser, BrowserContext, Page, Playwright,
                                   async_playwright)
@@ -585,6 +585,155 @@ class StealthScout:
             await context.close()
 
     # ================================================================
+    # Public: Multi-Page Exploration
+    # ================================================================
+
+    async def explore_multi_page(
+        self,
+        url: str,
+        max_pages: int = 8,
+        timeout_per_page_ms: int = 15000,
+        enable_scrolling: bool = False,
+    ) -> "ExplorationResult":
+        """
+        Explore multiple pages beyond the initial landing page.
+
+        Discovers navigation links (nav, footer, content) and visits
+        priority-sorted pages up to max_pages limit.
+
+        Args:
+            url: Base URL to start exploration from
+            max_pages: Maximum number of additional pages to visit (default 8)
+            timeout_per_page_ms: Timeout per navigation in milliseconds (default 15000)
+            enable_scrolling: Whether to apply intelligent scrolling (default False)
+
+        Returns:
+            ExplorationResult with visited pages, times, and discovered links
+        """
+        from veritas.core.types import ExplorationResult, PageVisit
+        from veritas.agents.scout_nav.link_explorer import LinkExplorer
+
+        context = None
+        page = None
+
+        try:
+            # Initialize result
+            result = ExplorationResult(
+                base_url=url,
+                pages_visited=[],
+                total_pages=0,
+                total_time_ms=0,
+                breadcrumbs=[],
+                links_discovered=[],
+            )
+
+            # Create browser context
+            context = await self._create_stealth_context(viewport="desktop")
+            page = await context.new_page()
+            await self._apply_stealth(page)
+
+            # Generate audit_id for screenshot naming
+            audit_id = uuid.uuid4().hex[:8]
+
+            # Navigate to base URL first to discover links
+            logger.info(f"Navigating to base URL: {url}")
+            nav_success = await self._navigate_with_timeout(page, url, settings.SCREENSHOT_TIMEOUT * 1000)
+
+            if not nav_success:
+                logger.warning(f"Failed to navigate to base URL: {url}")
+                return result
+
+            # Initialize LinkExplorer and discover links
+            explorer = LinkExplorer(url)
+            discovered_links = await explorer.discover_links(page)
+
+            # Store discovered links in result
+            result.links_discovered = discovered_links
+            logger.info(f"Discovered {len(discovered_links)} links to explore")
+
+            # Visit up to max_pages links
+            links_to_visit = discovered_links[:max_pages]
+
+            for i, link_info in enumerate(links_to_visit):
+                page_start_time = time.time()
+
+                # Navigate to subpage
+                nav_success = await self._navigate_with_timeout(page, link_info.url, timeout_per_page_ms)
+                navigation_time_ms = int((time.time() - page_start_time) * 1000)
+
+                if not nav_success:
+                    # Create TIMEOUT PageVisit
+                    page_visit = PageVisit(
+                        url=link_info.url,
+                        status="TIMEOUT",
+                        navigation_time_ms=navigation_time_ms,
+                    )
+                    result.pages_visited.append(page_visit)
+                    result.breadcrumbs.append(link_info.url)
+                    logger.warning(f"Navigation timeout for: {link_info.url}")
+                    continue
+
+                # Capture screenshot
+                screenshot_path = await self._take_screenshot(page, audit_id, f"page_{i}")
+
+                # Get page title
+                page_title = await self._safe_title(page)
+
+                # Optional: Apply intelligent scrolling
+                scroll_result = None
+                if enable_scrolling:
+                    try:
+                        from veritas.agents.scout_nav.scroll_orchestrator import ScrollOrchestrator
+                        from veritas.agents.scout_nav.lazy_load_detector import LazyLoadDetector
+
+                        detector = LazyLoadDetector()
+                        orchestrator = ScrollOrchestrator(self._evidence_dir, detector)
+                        scroll_result = await orchestrator.scroll_page(page, audit_id)
+                        logger.debug(f"Scroll results for {link_info.url}: {scroll_result.screenshots_captured} screenshots")
+                    except Exception as e:
+                        logger.debug(f"Scroll orchestration failed (non-critical) for {link_info.url}: {e}")
+                        scroll_result = None
+
+                # Create SUCCESS PageVisit
+                page_visit = PageVisit(
+                    url=link_info.url,
+                    status="SUCCESS",
+                    screenshot_path=screenshot_path,
+                    page_title=page_title,
+                    navigation_time_ms=navigation_time_ms,
+                    scroll_result=scroll_result,
+                )
+
+                result.pages_visited.append(page_visit)
+                result.breadcrumbs.append(link_info.url)
+
+                logger.info(
+                    f"Visited page {i + 1}/{max_pages}: {link_info.url} "
+                    f"(title={page_title}, time={navigation_time_ms}ms)"
+                )
+
+            # Calculate totals
+            result.total_pages = len(result.pages_visited)
+            result.total_time_ms = sum(pv.navigation_time_ms for pv in result.pages_visited)
+
+            logger.info(
+                f"Multi-page exploration complete: {result.total_pages} pages visited, "
+                f"{result.total_time_ms}ms total, {len(result.links_discovered)} links discovered"
+            )
+
+            return result
+
+        except Exception as e:
+            logger.error(f"Multi-page exploration error for {url}: {e}", exc_info=True)
+            # Return partial result if available
+            return result
+        finally:
+            if page:
+                await page.close()
+            if context:
+                await context.close()
+
+    # ================================================================
     # Private: Browser Context Setup
     # ================================================================
 
@@ -643,7 +792,23 @@ class StealthScout:
         Tries: networkidle → domcontentloaded → load → commit
         """
         timeout_ms = settings.SCREENSHOT_TIMEOUT * 1000
+        return await self._navigate_with_timeout(page, url, timeout_ms)
 
+    async def _navigate_with_timeout(self, page: Page, url: str, timeout_ms: int) -> bool:
+        """
+        Navigate with fallback wait strategies using specific timeout.
+
+        Tries strategies in order: networkidle → domcontentloaded → load → commit.
+        Returns True on first successful navigation, False if all fail.
+
+        Args:
+            page: Playwright Page object
+            url: URL to navigate to
+            timeout_ms: Timeout in milliseconds
+
+        Returns:
+            True if navigation succeeded, False otherwise
+        """
         for wait_strategy in ["networkidle", "domcontentloaded", "load", "commit"]:
             try:
                 await page.goto(url, wait_until=wait_strategy, timeout=timeout_ms)
@@ -653,6 +818,7 @@ class StealthScout:
                 logger.debug(f"Navigation with {wait_strategy} failed: {e}")
                 continue
 
+        logger.warning(f"Navigation failed for all strategies: {url}")
         return False
 
     async def _safe_title(self, page: Page) -> str:
