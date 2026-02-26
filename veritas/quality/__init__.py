@@ -9,10 +9,14 @@ from veritas.core.types import (
     FindingSource,
     FindingStatus,
 )
+from veritas.quality.confidence_scorer import ConfidenceScorer
 from veritas.quality.consensus_engine import ConsensusEngine
+from veritas.quality.validation_state import ValidationStateMachine
 
 __all__ = [
     "ConsensusEngine",
+    "ConfidenceScorer",
+    "ValidationStateMachine",
     "ConsensusResult",
     "FindingSource",
     "FindingStatus",
