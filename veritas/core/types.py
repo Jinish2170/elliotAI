@@ -337,3 +337,98 @@ class ScrollResult:
                 for s in self.scroll_states
             ],
         }
+
+
+# ============================================================
+# Multi-Page Exploration Types
+# ============================================================
+
+@dataclass
+class LinkInfo:
+    """
+    Information about a discovered link with priority ranking.
+
+    Attributes:
+        url: Absolute URL of the link
+        text: Anchor text content
+        location: One of "nav", "footer", "content" - where link was found
+        priority: Lower values = higher visitation priority (nav=1, footer=2, content=3)
+        depth: Link depth level (default 0, can be increased for hierarchical tracking)
+    """
+    url: str
+    text: str
+    location: str  # "nav", "footer", "content"
+    priority: int  # Lower = higher priority
+    depth: int = 0
+
+
+@dataclass
+class PageVisit:
+    """
+    Result of visiting a single page during multi-page exploration.
+
+    Attributes:
+        url: URL that was visited
+        status: One of "SUCCESS", "TIMEOUT", "ERROR"
+        screenshot_path: Optional path to screenshot capture
+        page_title: Title of the page
+        navigation_time_ms: Time taken to navigate to and load page
+        scroll_result: Optional ScrollResult if intelligent scrolling was performed
+    """
+    url: str
+    status: str  # "SUCCESS", "TIMEOUT", "ERROR"
+    screenshot_path: Optional[str] = None
+    page_title: str = ""
+    navigation_time_ms: int = 0
+    scroll_result: Optional["ScrollResult"] = None
+
+
+@dataclass
+class ExplorationResult:
+    """
+    Complete result of multi-page exploration.
+
+    Attributes:
+        base_url: Starting URL for exploration
+        pages_visited: List of PageVisit objects for each visited page
+        total_pages: Total number of pages visited
+        total_time_ms: Total time spent on all navigations
+        breadcrumbs: List of URLs visited in order
+        links_discovered: List of LinkInfo objects discovered during exploration
+    """
+    base_url: str
+    pages_visited: list[PageVisit] = field(default_factory=list)
+    total_pages: int = 0
+    total_time_ms: int = 0
+    breadcrumbs: list[str] = field(default_factory=list)
+    links_discovered: list[LinkInfo] = field(default_factory=list)
+
+    def to_dict(self) -> dict:
+        """Convert to JSON-serializable dictionary."""
+        return {
+            "base_url": self.base_url,
+            "total_pages": self.total_pages,
+            "total_time_ms": self.total_time_ms,
+            "breadcrumbs": self.breadcrumbs,
+            "pages_visited": [
+                {
+                    "url": pv.url,
+                    "status": pv.status,
+                    "screenshot_path": pv.screenshot_path,
+                    "page_title": pv.page_title,
+                    "navigation_time_ms": pv.navigation_time_ms,
+                    "scroll_result": pv.scroll_result.to_dict() if pv.scroll_result else None,
+                }
+                for pv in self.pages_visited
+            ],
+            "links_discovered": [
+                {
+                    "url": li.url,
+                    "text": li.text,
+                    "location": li.location,
+                    "priority": li.priority,
+                    "depth": li.depth,
+                }
+                for li in self.links_discovered
+            ],
+        }
