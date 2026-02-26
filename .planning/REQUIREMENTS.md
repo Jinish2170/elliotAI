@@ -39,18 +39,20 @@ Requirements for Milestone v2.0: Masterpiece-quality features implemented on top
 
 ### Scout/Vision Agent Navigation
 
-- [ ] **SCROLL-01**: Scout/Vision Agent can scroll pages and capture full screenshot series
+- [x] **SCROLL-01**: Scout/Vision Agent can scroll pages and capture full screenshot series
   - Scroll trigger for lazy loading components
   - Capture screenshots at scroll intervals
   - Handle infinite scroll patterns
+  - *Completed: 2026-02-26 (Plan 07-01)*
 - [ ] **SCROLL-02**: Scout can navigate to multiple pages beyond initial landing page
   - Detect and follow navigation links
   - Explore site structure (About, Contact, Privacy, etc.)
   - Limit exploration depth to prevent runaway navigation
-- [ ] **SCROLL-03**: Lazy loading detection and handling for complete capture
+- [x] **SCROLL-03**: Lazy loading detection and handling for complete capture
   - Wait for lazy-loaded content before screenshot
   - Detect dynamic content loading completion
   - Handle AJAX/React/Vue page transitions
+  - *Completed: 2026-02-26 (Plan 07-01)*
 
 ### OSINT & Graph Power-Up
 
