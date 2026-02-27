@@ -101,3 +101,120 @@ class ConfidenceScorer:
             return "unconfirmed_medium"
         else:
             return "low_confidence"
+
+    def calculate_osint_confidence(
+        self,
+        consensus_result: dict,
+        reputation_manager=None,
+    ) -> tuple[float, str]:
+        """
+        Calculate OSINT-specific confidence score from consensus result.
+
+        Confidence breakdown:
+            - Base score: 50
+            - Source agreement factor (60%): (agreement_ratio - 0.5) * 60
+            - Status boost: confirmed=+20, likely=+10, possible=0, insufficient=-20, conflicted=0
+            - Conflict penalty: -10 if has_conflict
+
+        Args:
+            consensus_result: Dict from compute_osint_consensus()
+            reputation_manager: Optional ReputationManager for source weights (future)
+
+        Returns:
+            Tuple of (score, explanation) where score is 0-100 and explanation is formatted
+        """
+        # Extract values from consensus result
+        status = consensus_result.get("consensus_status", "insufficient")
+        agreement_count = consensus_result.get("agreement_count", 0)
+        total_sources = consensus_result.get("total_sources", 0)
+        has_conflict = consensus_result.get("has_conflict", False)
+
+        # Start with base score
+        score = 50.0
+
+        # Source agreement factor (60% weight)
+        if total_sources > 0:
+            agreement_ratio = agreement_count / total_sources
+            agreement_factor = (agreement_ratio - 0.5) * 60.0
+            score += agreement_factor
+
+        # Status boost
+        status_boosts = {
+            "confirmed": 20.0,
+            "likely": 10.0,
+            "possible": 0.0,
+            "insufficient": -20.0,
+            "conflicted": 0.0,
+        }
+        score += status_boosts.get(status, 0.0)
+
+        # Conflict penalty
+        if has_conflict:
+            score -= 10.0
+
+        # Clamp to valid range
+        score = max(0.0, min(100.0, score))
+        score = round(score, 1)
+
+        # Generate explanation
+        explanation = self._generate_osint_explanation(
+            score=score,
+            status=status,
+            agreement=agreement_count,
+            total=total_sources,
+            has_conflict=has_conflict,
+        )
+
+        return (score, explanation)
+
+    def _generate_osint_explanation(
+        self,
+        score: float,
+        status: str,
+        agreement: int,
+        total: int,
+        has_conflict: bool,
+    ) -> str:
+        """
+        Generate human-readable explanation for OSINT confidence.
+
+        Args:
+            score: Confidence score (0-100)
+            status: Consensus status (confirmed, conflicted, etc.)
+            agreement: Number of sources agreeing
+            total: Total number of sources
+            has_conflict: True if conflict detected
+
+        Returns:
+            Formatted string like "87%: high - 3/4 sources agree, multi-source consensus"
+        """
+        # Calculate source agreement percentage
+        agreement_pct = (agreement / total * 100) if total > 0 else 0
+
+        # Build context parts
+        parts = []
+
+        # Source agreement percentage
+        parts.append(f"{agreement}/{total} sources agree ({agreement_pct:.0f}%)")
+
+        # Status context
+        if status == "confirmed":
+            parts.append("multi-source consensus")
+        elif status == "conflicted":
+            parts.append("conflicting evidence")
+        elif status == "insufficient":
+            parts.append("insufficient sources")
+
+        # Determine confidence tier
+        if score >= 80.0:
+            tier = "high"
+        elif score >= 60.0:
+            tier = "moderate"
+        elif score >= 40.0:
+            tier = "low"
+        else:
+            tier = "very low"
+
+        # Format: "{score}%: {tier} - {parts}"
+        parts_str = ", ".join(parts)
+        return f"{int(score)}%: {tier} - {parts_str}"
