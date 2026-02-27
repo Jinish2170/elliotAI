@@ -520,6 +520,71 @@ class OSINTOrchestrator:
         )
         return None
 
+    async def query_all(
+        self,
+        category: OSINTCategory,
+        query_type: str,
+        query_value: str,
+        max_parallel: int = 3
+    ) -> Dict[str, OSINTResult]:
+        """Query all enabled sources in a category with concurrency limiting.
+
+        Filters sources by category and enabled status, then queries all
+        in parallel using asyncio.gather() with semaphore for concurrent
+        request limiting.
+
+        Args:
+            category: OSINT category to query
+            query_type: Type of query (passed to source query method)
+            query_value: Value to query (passed to source query method)
+            max_parallel: Maximum number of concurrent queries (default 3)
+
+        Returns:
+            Dictionary mapping source names to OSINTResult (only non-None results)
+        """
+        # Filter sources to only enabled ones in category
+        sources_to_query = {
+            name: source
+            for name, source in self._sources.items()
+            if self._source_configs[name].enabled
+            and await self.get_source_category(name) == category
+        }
+
+        if not sources_to_query:
+            logger.warning(f"query_all: No enabled sources found for category {category}")
+            return {}
+
+        # Create semaphore for concurrency limiting
+        semaphore = asyncio.Semaphore(max_parallel)
+
+        # Results dictionary to store successful queries
+        results: Dict[str, OSINTResult] = {}
+
+        async def query_source(name: str) -> None:
+            """Query a single source with semaphore limiting."""
+            async with semaphore:
+                result = await self.query_with_retry(
+                    name,
+                    "query",
+                    query_value
+                )
+                if result is not None:
+                    results[name] = result
+
+        # Run all queries in parallel
+        logger.info(
+            f"query_all: Querying {len(sources_to_query)} sources "
+            f"with max_parallel={max_parallel}"
+        )
+        await asyncio.gather(
+            *[query_source(name) for name in sources_to_query.keys()]
+        )
+
+        logger.info(
+            f"query_all: Completed with {len(results)}/{len(sources_to_query)} successful"
+        )
+        return results
+
     async def close(self) -> None:
         """Close all source sessions if they have close() method."""
         for name, source in self._sources.items():
