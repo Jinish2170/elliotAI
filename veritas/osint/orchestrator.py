@@ -367,6 +367,159 @@ class OSINTOrchestrator:
 
         return category_mapping.get(source_name)
 
+    async def query_with_retry(
+        self,
+        source_name: str,
+        method: str,
+        *args,
+        max_retries: int = 2,
+        **kwargs
+    ) -> Optional[OSINTResult]:
+        """Query a source with retry logic and circuit breaking.
+
+        Checks circuit breaker and rate limits before attempting queries.
+        Retries on TimeoutError and other exceptions up to max_retries times.
+        Calls _try_alternatives if all retries fail.
+
+        Args:
+            source_name: Name of the OSINT source
+            method: Method name to call on the source (e.g., "query")
+            *args: Positional arguments to pass to the method
+            max_retries: Maximum number of retry attempts (default 2)
+            **kwargs: Keyword arguments to pass to the method
+
+        Returns:
+            OSINTResult or None if source not found, disabled, or all retries fail
+        """
+        # Get source and config
+        source = self.get_source(source_name)
+        config = self.get_config(source_name)
+
+        if source is None:
+            logger.warning(f"query_with_retry: Source '{source_name}' not found")
+            return None
+
+        if config is None or not config.enabled:
+            logger.warning(f"query_with_retry: Source '{source_name}' not enabled")
+            return None
+
+        # Check circuit breaker - skip if open
+        if self._circuit_breaker.is_open(source_name):
+            logger.warning(
+                f"query_with_retry: Circuit breaker open for '{source_name}', skipping"
+            )
+            return None
+
+        # Check rate limits - skip if limited
+        can_request, limit_reason = self._rate_limiter.can_request(
+            source_name,
+            config.rate_limit_rpm,
+            config.rate_limit_rph
+        )
+        if not can_request:
+            logger.warning(
+                f"query_with_retry: Rate limit reached for '{source_name}': {limit_reason}"
+            )
+            return None
+
+        # Try query with retries
+        for attempt in range(max_retries + 1):
+            try:
+                # Get the method dynamically
+                method_func = getattr(source, method)
+                result = await method_func(*args, **kwargs)
+
+                # Success - record request and return result
+                if result is not None:
+                    self._rate_limiter.record_request(source_name)
+                    logger.info(
+                        f"query_with_retry: '{source_name}' query succeeded "
+                        f"(attempt {attempt + 1})"
+                    )
+                    return result
+                else:
+                    logger.warning(
+                        f"query_with_retry: '{source_name}' returned None "
+                        f"(attempt {attempt + 1})"
+                    )
+
+            except TimeoutError as e:
+                logger.warning(
+                    f"query_with_retry: Timeout on '{source_name}' "
+                    f"(attempt {attempt + 1}): { str(e)}"
+                )
+                if attempt == max_retries:
+                    self._circuit_breaker.record_failure(source_name)
+
+            except Exception as e:
+                logger.warning(
+                    f"query_with_retry: Error on '{source_name}' "
+                    f"(attempt {attempt + 1}): {str(e)}"
+                )
+                if attempt == max_retries:
+                    self._circuit_breaker.record_failure(source_name)
+
+        # All retries failed - try alternatives
+        logger.warning(
+            f"All retries failed for '{source_name}', trying alternatives"
+        )
+        return await self._try_alternatives(source_name, method, *args, **kwargs)
+
+    async def _try_alternatives(
+        self,
+        failed_source: str,
+        method: str,
+        *args,
+        **kwargs
+    ) -> Optional[OSINTResult]:
+        """Try alternative sources when primary source fails.
+
+        Queries up to 2 alternative sources and returns first successful result.
+
+        Args:
+            failed_source: Name of the source that failed
+            method: Method name to call on alternatives
+            *args: Positional arguments to pass to the method
+            **kwargs: Keyword arguments to pass to the method
+
+        Returns:
+            OSINTResult from first successful alternative, or None
+        """
+        # Use THREAT_INTEL as default category for alternatives
+        category = OSINTCategory.THREAT_INTEL
+
+        # Get alternative sources
+        alternatives = self.get_alternative_sources(
+            category,
+            exclude_source=failed_source,
+            max_alternatives=2
+        )
+
+        if not alternatives:
+            logger.info("_try_alternatives: No alternative sources available")
+            return None
+
+        # Try each alternative
+        for alt_source in alternatives:
+            logger.info(f"_try_alternatives: Trying alternative '{alt_source}'")
+            result = await self.query_with_retry(
+                alt_source,
+                method,
+                *args,
+                max_retries=1,  # Reduce retries for alternatives
+                **kwargs
+            )
+            if result is not None:
+                logger.info(
+                    f"_try_alternatives: Alternative '{alt_source}' succeeded"
+                )
+                return result
+
+        logger.warning(
+            f"_try_alternatives: All alternatives failed [{', '.join(alternatives)}]"
+        )
+        return None
+
     async def close(self) -> None:
         """Close all source sessions if they have close() method."""
         for name, source in self._sources.items():
