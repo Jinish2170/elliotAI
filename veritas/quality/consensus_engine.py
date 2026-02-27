@@ -15,6 +15,7 @@ from veritas.core.types import (
     FindingSource,
     FindingStatus,
 )
+from veritas.osint.types import OSINTResult, SourceStatus
 
 logger = logging.getLogger("veritas.quality.consensus_engine")
 
@@ -259,3 +260,276 @@ class ConsensusEngine:
             List of ConsensusResult objects with CONFLICTED status
         """
         return [r for r in self.findings.values() if r.status == FindingStatus.CONFLICTED]
+
+    def compute_osint_consensus(
+        self,
+        results: dict[str, OSINTResult],
+        min_sources: int = 3,
+        exception_high_trust: bool = True,
+    ) -> dict:
+        """
+        Compute multi-source consensus from OSINT results.
+
+        Aggregates findings from OSINT sources and determines threat status
+        through consensus. Preserves conflicts with detailed reasoning.
+
+        Args:
+            results: Dict mapping source names to OSINTResult instances
+            min_sources: Minimum sources for confirmed status (default: 3)
+            exception_high_trust: Allow 2-source confirmation for high-trust sources
+
+        Returns:
+            Dict with:
+                - consensus_status: Status (confirmed, conflicted, likely, possible, insufficient)
+                - verdict: Dominant verdict (malicious, safe, suspicious, unknown)
+                - agreement_count: Number of sources agreeing with verdict
+                - total_sources: Total number of sources with SUCCESS status
+                - conflicting_sources: List of sources with conflicting verdicts
+                - has_conflict: True if conflict detected
+                - reasoning: Human-readable explanation
+        """
+        # Filter to only successful results
+        valid_results = {
+            source: result
+            for source, result in results.items()
+            if result.status == SourceStatus.SUCCESS
+        }
+
+        if not valid_results:
+            return {
+                "consensus_status": "insufficient",
+                "verdict": "unknown",
+                "agreement_count": 0,
+                "total_sources": 0,
+                "conflicting_sources": [],
+                "has_conflict": False,
+                "reasoning": "No successful OSINT results",
+            }
+
+        # Convert each result to verdict
+        verdicts: dict[str, str] = {}
+        for source, result in valid_results.items():
+            verdicts[source] = self._osint_result_to_verdict(result)
+
+        # Count agreement for each verdict
+        verdict_counts: dict[str, list[str]] = {}
+        for source, verdict in verdicts.items():
+            if verdict not in verdict_counts:
+                verdict_counts[verdict] = []
+            verdict_counts[verdict].append(source)
+
+        # Find dominant verdict (most sources)
+        dominant_verdict = max(verdict_counts.keys(), key=lambda k: len(verdict_counts[k]))
+        agreement_count = len(verdict_counts[dominant_verdict])
+        total_sources = len(valid_results)
+
+        # Check for conflict: both malicious and safe sources present
+        has_conflict = ("malicious" in verdict_counts) and ("safe" in verdict_counts)
+
+        conflicting_sources = []
+        if has_conflict:
+            # List sources that conflict with dominant verdict
+            conflicting_sources = verdict_counts.get("safe" if dominant_verdict == "malicious" else "malicious", [])
+
+        # Determine consensus status
+        consensus_status = self._determine_osint_status(
+            agreement_count=agreement_count,
+            total_sources=total_sources,
+            has_conflict=has_conflict,
+            min_sources=min_sources,
+            exception_high_trust=exception_high_trust,
+        )
+
+        # Generate human-readable reasoning
+        malicious_size = len(verdict_counts.get("malicious", []))
+        safe_size = len(verdict_counts.get("safe", []))
+        suspicious_size = len(verdict_counts.get("suspicious", []))
+        unknown_size = len(verdict_counts.get("unknown", []))
+
+        reasoning = self._generate_osint_reasoning(
+            status=consensus_status,
+            verdict=dominant_verdict,
+            agreement=agreement_count,
+            total=total_sources,
+            has_conflict=has_conflict,
+            malicious_size=malicious_size,
+            safe_size=safe_size,
+            malicious_sources=verdict_counts.get("malicious", []),
+            safe_sources=verdict_counts.get("safe", []),
+        )
+
+        return {
+            "consensus_status": consensus_status,
+            "verdict": dominant_verdict,
+            "agreement_count": agreement_count,
+            "total_sources": total_sources,
+            "conflicting_sources": conflicting_sources,
+            "has_conflict": has_conflict,
+            "reasoning": reasoning,
+        }
+
+    def _osint_result_to_verdict(self, result: OSINTResult) -> str:
+        """
+        Convert OSINT result to verdict string.
+
+        Args:
+            result: OSINTResult with threat intelligence data
+
+        Returns:
+            Verdict string: "malicious", "safe", "suspicious", or "unknown"
+        """
+        data = result.data or {}
+
+        # Handle THREAT_INTEL sources (abuseipdb, urlvoid)
+        if result.category.value == "threat_intel":
+            abuse_confidence = data.get("abuse_confidence", 0)
+            reports_count = data.get("reports", 0)
+
+            if abuse_confidence > 50 or reports_count > 5:
+                return "malicious"
+            elif abuse_confidence > 20 or reports_count > 2:
+                return "suspicious"
+            else:
+                return "safe"
+
+        # Handle REPUTATION sources
+        elif result.category.value == "reputation":
+            detections = data.get("detections", 0)
+            risk_level = data.get("risk", "").lower()
+
+            if detections > 3 or risk_level == "high":
+                return "malicious"
+            elif detections > 0 or risk_level in ("low", "medium"):
+                return "suspicious"
+            else:
+                return "safe"
+
+        # Handle WHOIS and SSL sources
+        elif result.category.value in ("whois", "ssl"):
+            age_days = data.get("age_days", 999)
+            is_valid = data.get("is_valid", True)
+
+            if age_days < 30 or not is_valid:
+                return "suspicious"
+            else:
+                return "safe"
+
+        # DNS and other sources default to unknown
+        return "unknown"
+
+    def _determine_osint_status(
+        self,
+        agreement_count: int,
+        total_sources: int,
+        has_conflict: bool,
+        min_sources: int = 3,
+        exception_high_trust: bool = True,
+    ) -> str:
+        """
+        Determine consensus status from OSINT results.
+
+        Args:
+            agreement_count: Number of sources agreeing with dominant verdict
+            total_sources: Total number of successful sources
+            has_conflict: True if conflict detected
+            min_sources: Minimum sources for confirmed status
+            exception_high_trust: Allow 2-source confirmation exception
+
+        Returns:
+            Status string: "confirmed", "conflicted", "likely", "possible", "insufficient"
+        """
+        # Conflict takes precedence - preserve it
+        if has_conflict:
+            return "conflicted"
+
+        # Check for confirmation
+        if agreement_count >= min_sources:
+            return "confirmed"
+
+        # High-trust 2-source exception
+        if exception_high_trust and agreement_count >= 2:
+            return "confirmed"
+
+        # Determine tier based on ratios
+        agreement_ratio = agreement_count / total_sources
+
+        if agreement_ratio >= 0.5 and total_sources >= 2:
+            return "likely"
+        elif agreement_ratio >= 0.33 and total_sources >= 2:
+            return "possible"
+        else:
+            return "insufficient"
+
+    def _generate_osint_reasoning(
+        self,
+        status: str,
+        verdict: str,
+        agreement: int,
+        total: int,
+        has_conflict: bool,
+        malicious_size: int,
+        safe_size: int,
+        malicious_sources: list[str],
+        safe_sources: list[str],
+    ) -> str:
+        """
+        Generate human-readable explanation for OSINT consensus.
+
+        Args:
+            status: Consensus status
+            verdict: Dominant verdict
+            agreement: Number of sources agreeing
+            total: Total number of sources
+            has_conflict: True if conflict detected
+            malicious_size: Count of malicious verdicts
+            safe_size: Count of safe verdicts
+            malicious_sources: List of sources with malicious verdicts
+            safe_sources: List of sources with safe verdicts
+
+        Returns:
+            Human-readable explanation string
+        """
+        if has_conflict:
+            # Detailed conflict reporting - list conflicting sources explicitly
+            malicious_names = ", ".join(malicious_sources[:3])
+            safe_names = ", ".join(safe_sources[:3])
+
+            conflicts = []
+            for m in malicious_sources:
+                conflicts.append(f"{m}: malicious")
+            for s in safe_sources:
+                conflicts.append(f"{s}: safe")
+
+            conflict_list = ", ".join(conflicts[:5])
+            if len(conflicts) > 5:
+                conflict_list += f", +{len(conflicts) - 5} more"
+
+            return (
+                f"CONFLICTED: {malicious_size} malicious vs {safe_size} safe sources. "
+                f"Conflicting evidence from: {conflict_list}. "
+                f"Manual review required. "
+            )
+
+        # Non-conflicting statuses
+        agreement_pct = (agreement / total) * 100 if total > 0 else 0
+
+        if status == "confirmed":
+            return (
+                f"CONFIRMED {verdict}: {agreement}/{total} sources agree ({agreement_pct:.0f}%) "
+                f"- meets {agreement}+ source consensus threshold. "
+            )
+        elif status == "likely":
+            return (
+                f"LIKELY {verdict}: {agreement}/{total} sources agree ({agreement_pct:.0f}%) "
+                f"- majority but below confirmation threshold. "
+            )
+        elif status == "possible":
+            return (
+                f"POSSIBLE {verdict}: {agreement}/{total} sources suggest threat ({agreement_pct:.0f}%) "
+                f"- needs additional verification. "
+            )
+        else:  # insufficient
+            return (
+                f"INSUFFICIENT: Only {agreement}/{total} sources ({agreement_pct:.0f}%) "
+                f"- cannot establish reliable consensus. "
+            )
