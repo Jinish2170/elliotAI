@@ -65,6 +65,18 @@ TAVILY_REQUESTS_PER_MINUTE: int = int(os.getenv("TAVILY_REQUESTS_PER_MINUTE", "5
 
 
 # ============================================================
+# OSINT / CTI APIs — Threat Intelligence Sources
+# ============================================================
+# URLVoid API key (free tier: 500 requests/day)
+URLVOID_API_KEY: str = os.getenv("URLVOID_API_KEY", "")
+URLVOID_REQUESTS_PER_MINUTE: int = int(os.getenv("URLVOID_REQUESTS_PER_MINUTE", "20"))
+
+# AbuseIPDB API key (free tier: 1000 requests/day)
+ABUSEIPDB_API_KEY: str = os.getenv("ABUSEIPDB_API_KEY", "")
+ABUSEIPDB_REQUESTS_PER_MINUTE: int = int(os.getenv("ABUSEIPDB_REQUESTS_PER_MINUTE", "15"))
+
+
+# ============================================================
 # Graph Intelligence Timeouts / Concurrency
 # ============================================================
 GRAPH_PHASE_TIMEOUT_S: int = int(os.getenv("GRAPH_PHASE_TIMEOUT_S", "90"))
