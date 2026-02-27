@@ -31,16 +31,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-02-23)
 
 **Core value:** Every implementation works at commit time. Build incrementally with explicit tests, verify each phase before proceeding, and deliver a production-ready system suitable for portfolio/job demonstration. Quality over speed - broken code is unacceptable.
-**Current focus:** Phase 7: Quality Foundation
+**Current focus:** Phase 8: OSINT & CTI Integration
 
 ## Current Position
 
-Phase: 7 of 11 (Quality Foundation)
-Plan: 4 of 4 in current phase
-Status: In progress - plans 07-03 and 07-04 complete (quality foundation done)
-Last activity: 2026-02-26 — Plan 07-04: Quality Foundation - Confidence Scoring & Validation completed
+Phase: 8 of 11 (OSINT & CTI Integration)
+Plan: Context gathered, planning pending
+Status: Context ready - ready for research phase
+Last activity: 2026-02-27 — Phase 08-CONTEXT.md captured: API tiering, cross-referencing, caching (darknet deferred as premium)
 
-Progress: [████████░░░░░░░░░░░] 19% (33/177 plans)
+Progress: [████████░░░░░░░░░░░] 22% (37/177 plans)
 
 ## Performance Metrics
 
@@ -104,6 +104,16 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-02-26
-Stopped at: Completed 07-04-PLAN.md - Quality Foundation Confidence Scoring & Validation
-Resume file: None - quality foundation complete, remaining plans: 07-01 (Intelligent Scrolling), 07-02 (Multi-Page Exploration)
+Last session: 2026-02-27
+Stopped at: Phase 08-CONTEXT.md captured - OSINT & CTI Integration context gathered
+Resume file: .planning/phases/08-osint-cti-integration/08-CONTEXT.md - ready for research phase
+
+**Key Decisions Captured:**
+- 08-01 API hybrid access (core free, threat intel needs keys)
+- 08-02 Intelligent CTI/OSINT orchestrator with smart fallback
+- 08-03 Dynamic reputation for source reliability
+- 08-04 Conflict preservation with reasoning
+- 08-05 3+ source agreement threshold
+- 08-06 All OSINT results persist in SQLite
+- 08-07 Source-specific TTLs (WHOIS 7d, SSL 30d, threat intel 4-24h)
+- Deferred: Darknet integration as premium feature
