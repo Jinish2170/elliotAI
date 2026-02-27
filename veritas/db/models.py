@@ -197,3 +197,39 @@ class AuditEvent(Base):
     __table_args__ = (
         Index("idx_events_audit_id", "audit_id"),
     )
+
+
+class OSINTCache(Base):
+    """Cached OSINT query results with source-specific TTLs.
+
+    Stores OSINT intelligence source results to reduce redundant queries
+    and respect API rate limits. Each source type has a configured TTL
+    (DNS: 24h, WHOIS: 7d, SSL: 30d, threat intel: 4-24h).
+    """
+    __tablename__ = "osint_cache"
+
+    # Primary key
+    id = Column(Integer, primary_key=True, autoincrement=True)
+
+    # Cache key (MD5 hash of query parameters)
+    query_key = Column(String(255), nullable=False, unique=True)
+
+    # Source metadata
+    source = Column(String(50), nullable=False)
+    category = Column(String(50), nullable=False)
+
+    # Cached result and metadata
+    result = Column(JSON, nullable=False)
+    confidence_score = Column(Float, nullable=True)
+
+    # Timestamps for TTL management
+    cached_at = Column(DateTime, default=lambda: datetime.utcnow())
+    expires_at = Column(DateTime, nullable=False)
+
+    # Indexes for efficient queries
+    __table_args__ = (
+        Index("idx_osint_query_key", "query_key"),
+        Index("idx_osint_source", "source"),
+        Index("idx_osint_expires_at", "expires_at"),
+        Index("idx_osint_category", "category"),
+    )
