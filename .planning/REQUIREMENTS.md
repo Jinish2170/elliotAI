@@ -57,7 +57,7 @@ Requirements for Milestone v2.0: Masterpiece-quality features implemented on top
 
 ### OSINT & Graph Power-Up
 
-- [ ] **OSINT-01**: Implement 15+ OSINT intelligence sources
+- [x] **OSINT-01**: Implement 15+ OSINT intelligence sources
   - Domain verification (whois, DNS records)
   - SSL certificate validation
   - Malicious URL checking (VirusTotal, PhishTank)
@@ -237,7 +237,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | QUAL-01 | Phase 7 | Complete |
 | QUAL-02 | Phase 7 | Complete |
 | QUAL-03 | Phase 7 | Complete |
-| OSINT-01 | Phase 8 | Pending |
+| OSINT-01 | Phase 8 | Complete |
 | OSINT-02 | Phase 8 | Pending |
 | OSINT-03 | Phase 8 | Pending |
 | CTI-01 | Phase 8 | Pending |
