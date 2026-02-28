@@ -641,7 +641,7 @@ async def judge_node(state: AuditState) -> dict:
 
 async def security_node_with_agent(state: AuditState) -> dict:
     """
-    SECURITY node with feature-flagged agent routing (Plan 02-03).
+    SECURITY node with feature-flagged agent routing (Plan 02-03, 10-04).
 
     Routes to SecurityAgent class or security_node function based on:
     1. USE_SECURITY_AGENT environment variable
@@ -651,8 +651,14 @@ async def security_node_with_agent(state: AuditState) -> dict:
     Implements auto-fallback: if SecurityAgent raises exception,
     falls back to security_node function.
 
+    Phase 10-04 enhancements:
+    - Supports tier-based execution with SECURITY_USE_TIER_EXECUTION flag
+    - Passes page_content, headers, dom_meta from Scout results to SecurityAgent
+    - Returns tier execution metrics (modules_executed, darknet_correlation)
+
     Modes:
-        - "agent": Use SecurityAgent class
+        - "agent_tier": Use SecurityAgent with tier-based execution
+        - "agent_legacy": Use SecurityAgent with legacy function-based execution
         - "function": Use security_node function directly
         - "function_fallback": SecurityAgent failed, fell back to function
 
@@ -672,6 +678,49 @@ async def security_node_with_agent(state: AuditState) -> dict:
     use_agent = settings.should_use_security_agent(url)
     rollout_pct = settings.get_security_agent_rollout()
 
+    # Phase 10-04: Feature flag for tier execution
+    use_tier_execution = os.getenv("SECURITY_USE_TIER_EXECUTION", "false").lower() == "true"
+
+    # Extract Scout data for tier-based analysis
+    scout_results = state.get("scout_results", [])
+    page_content = None
+    headers = None
+    dom_meta = None
+
+    if scout_results:
+        first_result = scout_results[0]
+        # Extract page metadata (HTML content, forms, scripts, etc.)
+        page_metadata = first_result.get("page_metadata", {})
+        if page_metadata:
+            # Build simplified page_content from metadata
+            page_content = f"""<html>
+<head><title>{page_metadata.get('title', '')}</title></head>
+<body>
+<div class="meta">
+  <p>description: {page_metadata.get('description', '')}</p>
+  <p>keywords: {', '.join(page_metadata.get('keywords', []))}</p>
+</div>
+</body>
+</html>"""
+
+        # Extract response headers (simulated from scout metadata)
+        # In practice, Scout could capture actual HTTP response headers
+        headers = {
+            "content-type": "text/html",
+            "server": "unknown",  # Scout doesn't currently capture this
+        }
+
+        # Extract DOM analysis from Scout
+        dom_analysis = first_result.get("dom_analysis", {})
+        if dom_analysis:
+            dom_meta = {
+                "depth": dom_analysis.get("depth", 0),
+                "node_count": dom_analysis.get("node_count", 0),
+                "forms_count": dom_analysis.get("forms_count", 0),
+                "scripts_count": dom_analysis.get("scripts_count", 0),
+                "links_count": dom_analysis.get("links_count", 0),
+            }
+
     # Emit security mode start event
     SecurityModeStarted_event = None
     if hasattr(state, '_progress_queue') or 'progress_queue' in state.get('_internal', {}):
@@ -679,35 +728,49 @@ async def security_node_with_agent(state: AuditState) -> dict:
         pass
 
     if use_agent:
-        security_mode = "agent"
-        logger.info(f"Security node: USING AGENT MODE for {url} | rollout={rollout_pct:.0%}")
+        security_mode = "agent_tier" if use_tier_execution else "agent_legacy"
+        logger.info(
+            f"Security node: USING AGENT MODE ({security_mode}) for {url} | "
+            f"rollout={rollout_pct:.0%} | tier_execution={use_tier_execution}"
+        )
         try:
             # Try SecurityAgent implementation
-            from agents.security_agent import SecurityAgent
+            from veritas.agents.security_agent import SecurityAgent
 
             # Initialize SecurityAgent with module discovery
             agent = SecurityAgent()
             await agent.initialize()
 
-            # Run analysis
-            result = await agent.analyze(url)
+            # Run analysis with new signature for tier execution
+            result = await agent.analyze(
+                url=url,
+                page_content=page_content,
+                headers=headers,
+                dom_meta=dom_meta,
+                use_tier_execution=use_tier_execution
+            )
 
             # Convert SecurityResult to dict format compatible with function mode
             results = {
-                "security_mode": "agent",
+                "security_mode": security_mode,
                 "composite_score": result.composite_score,
-                "findings": [f.to_dict() for f in result.findings],
+                "findings": [f.to_dict() if hasattr(f, 'to_dict') else f for f in result.findings],
                 "total_findings": result.total_findings,
                 "modules_run": result.modules_run,
                 "modules_failed": result.modules_failed,
+                "modules_executed": getattr(result, 'modules_executed', len(result.modules_run)),
                 "analysis_time_ms": result.analysis_time_ms,
                 "modules_results": result.modules_results,
                 "errors": result.errors,
+                # Phase 10-04 tier execution fields
+                "tier_execution": use_tier_execution,
+                "darknet_correlation": result.darknet_correlation,
             }
 
             logger.info(
-                f"SecurityAgent complete | score={result.composite_score:.2f} | "
-                f"findings={result.total_findings} | modules={len(result.modules_run)}"
+                f"SecurityAgent complete | mode={security_mode} | score={result.composite_score:.2f} | "
+                f"findings={result.total_findings} | modules_executed={getattr(result, 'modules_executed', len(result.modules_run))} | "
+                f"time={result.analysis_time_ms}ms"
             )
 
         except Exception as e:
