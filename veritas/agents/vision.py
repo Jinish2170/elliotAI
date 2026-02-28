@@ -396,7 +396,7 @@ class VisionAgent:
         print(f"Fake timers: {result.has_fake_timers}")
     """
 
-    def __init__(self, nim_client: Optional[NIMClient] = None):
+    def __init__(self, nim_client: Optional[NIMClient] = None, progress_emitter: Optional["ProgressEmitter"] = None):
         self._nim = nim_client or NIMClient()
         self._temporal_categories = set(get_temporal_categories())
         # Optional pattern matcher for batched prompt efficiency
@@ -409,6 +409,9 @@ class VisionAgent:
 
         # Vision event emitter for real-time progress streaming
         self.event_emitter = VisionEventEmitter()
+
+        # Progress emitter for WebSocket streaming (token-bucket rate limited)
+        self.progress_emitter = progress_emitter
 
         # Temporal analyzer (initialized with content type during analysis)
         self.temporal_analyzer = None
@@ -639,7 +642,8 @@ class VisionAgent:
         self,
         screenshots: list[str],
         url: str = "",
-        scout_result: Optional["ScoutResult"] = None
+        scout_result: Optional["ScoutResult"] = None,
+        progress_emitter: Optional["ProgressEmitter"] = None
     ) -> VisionResult:
         """
         Perform 5-pass vision analysis on screenshots using the enhanced pipeline.
@@ -658,10 +662,16 @@ class VisionAgent:
         Returns:
             VisionResult with all findings and scores
         """
-        # Emit vision start event
-        await self.event_emitter.emit_vision_start(len(screenshots))
+        # Use provided emitter or fall back to instance emitter
+        emitter = progress_emitter or self.progress_emitter
 
-        all_findings = []
+        # Emit vision start event (both emitters for compatibility)
+        await self.event_emitter.emit_vision_start(len(screenshots))
+        if emitter:
+            await emitter.emit_agent_status("Vision", "running", f"Analyzing {len(screenshots)} screenshots...")
+
+        try:
+            all_findings = []
 
         # Detect content type for adaptive SSIM thresholds
         content_type = self._detect_content_type(url, scout_result)
@@ -691,6 +701,8 @@ class VisionAgent:
                 )
             except Exception as e:
                 logger.warning(f"Temporal analysis failed: {e}")
+                if emitter:
+                    await emitter.emit_error("temporal_analysis", f"Temporal analysis failed: {e}", "Vision", recoverable=True)
 
         # Determine screenshots to analyze based on temporal result
         if temporal_result and temporal_result.get('recommendation') == 'fullpage_only':
@@ -705,6 +717,15 @@ class VisionAgent:
             # Check if this pass should run based on priority logic
             if not should_run_pass(pass_num, all_findings, has_temporal_changes):
                 logger.debug(f"Skipping Pass {pass_num} (priority rule)")
+                # Emit skip progress via ProgressEmitter
+                if emitter:
+                    pass_pct = {1: 10, 2: 30, 3: 50, 4: 70, 5: 90}
+                    await emitter.emit_progress(
+                        "Vision",
+                        f"pass_{pass_num}",
+                        pass_pct[pass_num],
+                        f"Pass {pass_num} skipped via priority rule"
+                    )
                 continue
 
             # Get pass description and emit start event
@@ -712,6 +733,29 @@ class VisionAgent:
             await self.event_emitter.emit_pass_start(
                 pass_num, description, len(screenshots_to_analyze)
             )
+
+            # Emit progress for this pass via ProgressEmitter
+            if emitter:
+                pass_messages = {
+                    1: "Scanning for threats...",
+                    2: "Detecting dark patterns...",
+                    3: "Analyzing temporal changes...",
+                    4: "Cross-referencing with graph...",
+                    5: "Synthesizing verdict..."
+                }
+                pass_pct = {1: 10, 2: 30, 3: 50, 4: 70, 5: 90}
+
+                await emitter.emit_agent_status(
+                    "Vision",
+                    "running",
+                    f"Pass {pass_num}: {description}"
+                )
+                await emitter.emit_progress(
+                    "Vision",
+                    f"pass_{pass_num}",
+                    pass_pct[pass_num],
+                    pass_messages.get(pass_num, "Processing...")
+                )
 
             # Get prompt for this pass (with temporal context injection for Pass 3)
             prompt = get_pass_prompt(pass_num, temporal_result)
@@ -734,17 +778,42 @@ class VisionAgent:
                             logger.warning(f"Failed to restore cached finding: {f_data}")
                 else:
                     # Execute VLM analysis
-                    vlm_response = await self._nim.analyze_image(
-                        image_path=screenshot,
-                        prompt=prompt,
-                        category_hint=""
-                    )
+                    try:
+                        vlm_response = await self._nim.analyze_image(
+                            image_path=screenshot,
+                            prompt=prompt,
+                            category_hint=""
+                        )
+                    except Exception as e:
+                        logger.error(f"VLM error in Pass {pass_num}: {e}")
+                        if emitter:
+                            await emitter.emit_error("vlm_error", f"Vision model error: {e}", "Vision", recoverable=True)
+                        # Continue to next screenshot
+                        continue
 
                     # Parse response into findings
                     findings_from_pass = self._parse_vlm_response(
                         vlm_response, f"pass_{pass_num}", None, screenshot
                     )
                     pass_findings.extend(findings_from_pass)
+
+                    # Stream findings via ProgressEmitter (especially for Pass 2 dark patterns)
+                    if emitter and pass_num == 2:  # Pass 2 is dark pattern detection
+                        for finding in findings_from_pass:
+                            severity_map = {
+                                "CRITICAL": "CRITICAL",
+                                "HIGH": "HIGH",
+                                "MEDIUM": "MEDIUM",
+                                "LOW": "LOW"
+                            }
+                            severity = severity_map.get(finding.severity, "MEDIUM")
+                            await emitter.emit_finding(
+                                category="dark_pattern",
+                                severity=severity,
+                                message=finding.description or finding.category,
+                                phase="Vision",
+                                confidence=int(finding.confidence) if finding.confidence else None
+                            )
 
                     # Cache results
                     cache_data = {
@@ -778,11 +847,23 @@ class VisionAgent:
         # Cross-reference findings (Phase 8 placeholder)
         all_findings = self._cross_reference_findings(all_findings)
 
-        # Flush any queued events
+        # Emit interesting highlight during vision analysis
+        if emitter and len(all_findings) > 0:
+            await emitter.emit_interesting_highlight(
+                f"Vision Agent found {len(all_findings)} potential dark patterns",
+                phase="Vision"
+            )
+
+        # Flush any queued events (both emitters)
         await self.event_emitter.flush_queue()
+        if emitter:
+            await emitter.flush()
 
         # Emit vision complete event
         await self.event_emitter.emit_vision_complete(len(all_findings), passes_completed)
+        if emitter:
+            await emitter.emit_agent_status("Vision", "completed")
+            await emitter.emit_progress("Vision", "complete", 100, f"Analysis complete: {len(all_findings)} findings")
 
         # Build VisionResult
         result = VisionResult()
@@ -810,6 +891,15 @@ class VisionAgent:
         )
 
         return result
+        except Exception as e:
+            logger.error(f"Vision analysis error: {e}", exc_info=True)
+            if emitter:
+                await emitter.emit_error("vision_analysis", str(e), "Vision", recoverable=True)
+                await emitter.emit_agent_status("Vision", "failed", str(e))
+            # Return minimal result
+            result = VisionResult()
+            result.screenshots_analyzed = len(screenshots)
+            return result
 
     # ================================================================
     # Private: Static Pattern Analysis
