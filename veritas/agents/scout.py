@@ -36,6 +36,8 @@ from playwright.async_api import (Browser, BrowserContext, Page, Playwright,
                                   async_playwright)
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from config import settings
 from config.site_types import SiteType, classify_site_type
 
@@ -230,11 +232,12 @@ class StealthScout:
             print(result.status, result.screenshots)
     """
 
-    def __init__(self, evidence_dir: Optional[Path] = None):
+    def __init__(self, evidence_dir: Optional[Path] = None, progress_emitter: Optional["ProgressEmitter"] = None):
         self._playwright: Optional[Playwright] = None
         self._browser: Optional[Browser] = None
         self._evidence_dir = evidence_dir or settings.EVIDENCE_DIR
         self._evidence_dir.mkdir(parents=True, exist_ok=True)
+        self.progress_emitter = progress_emitter
 
     async def __aenter__(self):
         self._playwright = await async_playwright().start()
@@ -271,6 +274,7 @@ class StealthScout:
         temporal_delay: Optional[int] = None,
         viewport: str = "desktop",
         enable_scrolling: bool = True,
+        progress_emitter: Optional["ProgressEmitter"] = None,
     ) -> ScoutResult:
         """
         Full forensic investigation of a URL:
@@ -297,6 +301,11 @@ class StealthScout:
         audit_id = uuid.uuid4().hex[:8]
         user_agent = ""
         scroll_result = None
+        emitter = progress_emitter or self.progress_emitter
+
+        # Emit agent start status
+        if emitter:
+            await emitter.emit_agent_status("Scout", "running", f"Capturing {url}...")
 
         context = await self._create_stealth_context(viewport)
         page = await context.new_page()
@@ -311,6 +320,9 @@ class StealthScout:
             nav_time = (time.time() - start_time) * 1000
 
             if not nav_success:
+                if emitter:
+                    await emitter.emit_error("nav_error", "Navigation failed after all retry strategies", "Scout", recoverable=True)
+                    await emitter.emit_agent_status("Scout", "failed", "Navigation failed")
                 return ScoutResult(
                     url=url,
                     status="TIMEOUT",
@@ -325,6 +337,15 @@ class StealthScout:
                 ss_path = await self._take_screenshot(page, audit_id, "captcha")
                 title = await self._safe_title(page)
                 logger.info(f"CAPTCHA detected on {url}")
+                if emitter:
+                    await emitter.emit_error("captcha_blocked", "Site blocked by CAPTCHA", "Scout", recoverable=False)
+                    await emitter.emit_agent_status("Scout", "failed", "CAPTCHA blocked")
+                    if ss_path:
+                        # Emit CAPTCHA screenshot
+                        import os
+                        if os.path.exists(ss_path):
+                            with open(ss_path, "rb") as f:
+                                await emitter.emit_screenshot(f.read(), "captcha", "Scout")
                 return ScoutResult(
                     url=url,
                     status="CAPTCHA_BLOCKED",
@@ -344,8 +365,16 @@ class StealthScout:
             ss_a = await self._take_screenshot(page, audit_id, "t0")
             ts_a = time.time()
             logger.debug(f"Screenshot A captured for {url}")
+            if emitter and ss_a:
+                import os
+                if os.path.exists(ss_a):
+                    with open(ss_a, "rb") as f:
+                        await emitter.emit_screenshot(f.read(), "t0", "Scout")
+                        await emitter.emit_progress("Scout", "screenshot_a", 15, "Initial capture complete")
 
             # --- Human Simulation ---
+            if emitter:
+                await emitter.emit_progress("Scout", "human_sim", 20, "Simulating human behavior...")
             await self._simulate_human(page)
 
             # --- Temporal Wait ---
@@ -359,10 +388,24 @@ class StealthScout:
             ss_b = await self._take_screenshot(page, audit_id, f"t{delay}")
             ts_b = time.time()
             logger.debug(f"Screenshot B captured for {url}")
+            if emitter and ss_b:
+                import os
+                if os.path.exists(ss_b):
+                    with open(ss_b, "rb") as f:
+                        await emitter.emit_screenshot(f.read(), f"t{delay}", "Scout")
+                        await emitter.emit_progress("Scout", "screenshot_b", 30, "Temporal capture complete")
 
             # --- Full-page Screenshot ---
+            if emitter:
+                await emitter.emit_progress("Scout", "screenshot_full", 40, "Capturing full page...")
             ss_full = await self._take_full_screenshot(page, audit_id)
             ts_full = time.time()
+            if emitter and ss_full:
+                import os
+                if os.path.exists(ss_full):
+                    with open(ss_full, "rb") as f:
+                        await emitter.emit_screenshot(f.read(), "fullpage", "Scout")
+                        await emitter.emit_progress("Scout", "screenshot_full_complete", 50, "Full page capture complete")
 
             # --- Metadata Extraction ---
             metadata = await self._extract_metadata(page)
@@ -416,6 +459,8 @@ class StealthScout:
             # --- Intelligent Scrolling (Optional) ---
             if enable_scrolling:
                 try:
+                    if emitter:
+                        await emitter.emit_progress("Scout", "scrolling", 60, "Intelligent scrolling...")
                     from veritas.agents.scout_nav.scroll_orchestrator import ScrollOrchestrator
                     from veritas.agents.scout_nav.lazy_load_detector import LazyLoadDetector
 
@@ -433,6 +478,14 @@ class StealthScout:
                         f"screenshots={scroll_result.screenshots_captured}, "
                         f"time={scroll_time:.0f}ms"
                     )
+                    if emitter and scroll_result and scroll_result.screenshots_captured > 0:
+                        # Emit progress for scrolling cycles
+                        await emitter.emit_progress(
+                            "Scout",
+                            "scroll_complete",
+                            75,
+                            f"Scrolled {scroll_result.total_cycles} cycles, {scroll_result.screenshots_captured} screenshots"
+                        )
                 except Exception as e:
                     logger.warning(f"Scroll orchestration failed (non-critical): {e}")
                     scroll_result = None
@@ -471,6 +524,11 @@ class StealthScout:
                 f"forms={len(metadata.forms)} | "
                 f"nav_time={nav_time:.0f}ms"
             )
+
+            # Emit completion status
+            if emitter:
+                await emitter.emit_progress("Scout", "complete", 100, f"Investigation complete: {len(screenshots)} screenshots")
+                await emitter.emit_agent_status("Scout", "completed")
 
             return ScoutResult(
                 url=url,
@@ -512,6 +570,9 @@ class StealthScout:
 
         except Exception as e:
             logger.error(f"Investigation error for {url}: {e}", exc_info=True)
+            if emitter:
+                await emitter.emit_error("scout_error", str(e), "Scout", recoverable=True)
+                await emitter.emit_agent_status("Scout", "failed", str(e))
             return ScoutResult(
                 url=url,
                 status="ERROR",
@@ -531,6 +592,7 @@ class StealthScout:
         self,
         url: str,
         viewport: str = "desktop",
+        progress_emitter: Optional["ProgressEmitter"] = None,
     ) -> ScoutResult:
         """
         Lightweight navigation for sub-pages (no temporal screenshots).
@@ -538,6 +600,12 @@ class StealthScout:
         (e.g., /about, /contact, /terms, /cancel).
         """
         audit_id = uuid.uuid4().hex[:8]
+        emitter = progress_emitter or self.progress_emitter
+
+        # Emit agent start status
+        if emitter:
+            await emitter.emit_agent_status("Scout", "running", f"Capturing subpage: {url}")
+
         context = await self._create_stealth_context(viewport)
         page = await context.new_page()
 
@@ -548,9 +616,15 @@ class StealthScout:
             nav_time = (time.time() - start_time) * 1000
 
             if not nav_success:
+                if emitter:
+                    await emitter.emit_error("nav_error", "Navigation failed", "Scout", recoverable=True)
+                    await emitter.emit_agent_status("Scout", "failed", "Navigation failed")
                 return ScoutResult(url=url, status="TIMEOUT", navigation_time_ms=nav_time)
 
             if await self._detect_captcha(page):
+                if emitter:
+                    await emitter.emit_error("captcha_blocked", "Site blocked by CAPTCHA", "Scout", recoverable=False)
+                    await emitter.emit_agent_status("Scout", "failed", "CAPTCHA blocked")
                 return ScoutResult(
                     url=url, status="CAPTCHA_BLOCKED", captcha_detected=True
                 )
@@ -560,6 +634,18 @@ class StealthScout:
             metadata = await self._extract_metadata(page)
 
             screenshots = [p for p in [ss, ss_full] if p]
+
+            # Emit screenshots
+            if emitter:
+                import os
+                if ss and os.path.exists(ss):
+                    with open(ss, "rb") as f:
+                        await emitter.emit_screenshot(f.read(), "subpage", "Scout")
+                if ss_full and os.path.exists(ss_full):
+                    with open(ss_full, "rb") as f2:
+                        await emitter.emit_screenshot(f2.read(), "subpage_full", "Scout")
+                await emitter.emit_agent_status("Scout", "completed")
+                await emitter.emit_progress("Scout", "subpage_complete", 100, f"Subpage captured: {len(screenshots)} screenshots")
 
             return ScoutResult(
                 url=url,
@@ -579,6 +665,9 @@ class StealthScout:
                 navigation_time_ms=nav_time,
             )
         except Exception as e:
+            if emitter:
+                await emitter.emit_error("scout_error", str(e), "Scout", recoverable=True)
+                await emitter.emit_agent_status("Scout", "failed", str(e))
             return ScoutResult(url=url, status="ERROR", error_message=str(e))
         finally:
             await page.close()
