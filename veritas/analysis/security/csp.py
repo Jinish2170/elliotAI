@@ -51,7 +51,7 @@ class ContentSecurityPolicyAnalyzer(SecurityModule):
         Args:
             url: Target URL
             page_content: Optional HTML content (not used in this module)
-            headers: HTTP response headers dict
+            headers: HTTP response headers dict (keys will be lowercased)
             dom_meta: Optional DOM metadata (not used in this module)
 
         Returns:
@@ -62,8 +62,11 @@ class ContentSecurityPolicyAnalyzer(SecurityModule):
         if not headers:
             return findings
 
+        # Normalize headers to lowercase (HTTP headers are case-insensitive)
+        normalized_headers = {k.lower(): v for k, v in headers.items()}
+
         # Get CSP header
-        csp_header = headers.get("content-security-policy", "")
+        csp_header = normalized_headers.get("content-security-policy", "")
         if not csp_header:
             # Missing CSP is reported by security_headers module
             return findings
@@ -210,7 +213,7 @@ class ContentSecurityPolicyAnalyzer(SecurityModule):
         """
         # Check for wildcard in default-src
         default_sources = directives.get("default-src", [])
-        if "*'" in default_sources or "*" in default_sources or "'*'" in default_sources:
+        if "*" in default_sources or "*'" in default_sources or "*\"" in default_sources or "'*'" in default_sources:
             pattern_type = "overly_permissive"
             severity = get_severity_for_finding(self.category_id, pattern_type, "medium")
             cwe_id = get_cwe_for_finding(self.category_id, "csp_wildcard") or "CWE-693"

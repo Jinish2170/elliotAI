@@ -194,6 +194,23 @@ def get_severity_for_finding(
     return fallback
 
 
+# Direct CWE mappings for security headers patterns
+# Keys match how modules call get_cwe_for_finding(category_id, pattern_type)
+_HEADER_CWE_MAPPING = {
+    "security_headerssecurity_headers_hsts": "CWE-523",
+    "security_headerssecurity_headers_csp": "CWE-693",
+    "security_headerssecurity_headers_xfo": "CWE-1021",
+    "security_headerssecurity_headers_xcto": "CWE-693",
+    "cookiescookies_secure": "CWE-614",
+    "cookiescookies_httponly": "CWE-1004",
+    "cookiescookies_samesite": "CWE-942",
+    "cookiescookies_samesite_none": "CWE-942",
+    "cspcsp_inline": "CWE-829",
+    "cspcsp_eval": "CWE-95",
+    "cspcsp_wildcard": "CWE-693",
+}
+
+
 def get_cwe_for_finding(
     category_id: str,
     pattern_type: str,
@@ -208,6 +225,12 @@ def get_cwe_for_finding(
     Returns:
         CWE ID string (e.g., "CWE-523") or None if no match
     """
+    # First check direct mapping (category_id + pattern_type combination)
+    key = f"{category_id}{pattern_type}"
+    if key in _HEADER_CWE_MAPPING:
+        return _HEADER_CWE_MAPPING[key]
+
+    # Fallback to registry mapping
     cwe_entry = map_finding_to_cwe(f"{category_id}_{pattern_type}", "high")
     if cwe_entry:
         return cwe_entry.cwe_id

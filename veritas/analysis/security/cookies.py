@@ -63,13 +63,16 @@ class CookieSecurityAnalyzer(SecurityModule):
         if not headers:
             return findings
 
+        # Normalize headers to lowercase (HTTP headers are case-insensitive)
+        normalized_headers = {k.lower(): v for k, v in headers.items()}
+
         # Check if URL is HTTPS
         is_https = url.lower().startswith("https://")
 
         # Find all Set-Cookie headers
         set_cookie_headers = []
-        for key, value in headers.items():
-            if key.lower() == "set-cookie":
+        for key, value in normalized_headers.items():
+            if key == "set-cookie":
                 if isinstance(value, list):
                     set_cookie_headers.extend(value)
                 else:
