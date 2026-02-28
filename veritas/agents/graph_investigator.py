@@ -126,6 +126,15 @@ class GraphResult:
     tavily_searches: int = 0
     errors: list[str] = field(default_factory=list)
 
+    # OSINT/CTI fields
+    osint_sources: dict = field(default_factory=dict)
+    osint_consensus: dict = field(default_factory=dict)
+    osint_indicators: list = field(default_factory=list)
+    cti_techniques: list = field(default_factory=list)
+    threat_attribution: dict = field(default_factory=dict)
+    threat_level: str = "none"
+    osint_confidence: float = 0.0
+
     @property
     def domain_age_days(self) -> int:
         return self.domain_intel.age_days if self.domain_intel else -1
@@ -135,6 +144,27 @@ class GraphResult:
         if self.domain_intel:
             return bool(self.domain_intel.ssl_issuer)
         return False
+
+    @property
+    def osint_score(self) -> float:
+        """Calculate OSINT-based trust score (0-1, higher = more trustworthy)."""
+        if self.osint_consensus:
+            status = self.osint_consensus.get("consensus_status", "")
+            verdict = self.osint_consensus.get("verdict", "")
+
+            if status == "confirmed":
+                return 0.9 if verdict == "safe" else 0.3
+            elif status == "conflicted":
+                return 0.5  # Neutral on conflicts
+            elif status == "likely":
+                return 0.8 if verdict == "safe" else 0.4
+
+        return 0.5  # Neutral if no OSINT data
+
+    @property
+    def has_threat_indicators(self) -> bool:
+        """Check if there are threat indicators."""
+        return self.threat_level in ["critical", "high", "medium"]
 
 
 # ============================================================
