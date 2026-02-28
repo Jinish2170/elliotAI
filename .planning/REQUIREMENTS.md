@@ -138,17 +138,17 @@ Requirements for Milestone v2.0: Masterpiece-quality features implemented on top
 
 ### Real-time Progress Updates
 
-- [ ] **PROG-01**: Progressive screenshot streaming to frontend
+- [x] **PROG-01**: Progressive screenshot streaming to frontend
   - Send screenshots as soon as captured (don't wait for full audit)
   - Thumbnail size for quick delivery, full res on demand
   - Live scroll visualization while Scout explores pages
   - Maintain connection health during long audits
-- [ ] **PROG-02**: Real-time pattern/discovery notifications
+- [x] **PROG-02**: Real-time pattern/discovery notifications
   - Send findings as soon as detected (don't batch until end)
   - "Live feed" of discovered threats/patterns
   - Color-coded alerts based on severity (red for critical, yellow for warnings)
   - Incremental confidence updates as more analysis completes
-- [ ] **PROG-03**: User engagement pacing during long audits
+- [x] **PROG-03**: User engagement pacing during long audits
   - Maintain "something happening" signal every 5-10 seconds
   - Agent activity indicators ("👁️ Vision analyzing...", "🔍 OSINT checking...")
   - Progress bars with countdown timers
@@ -250,9 +250,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ORCH-01 | Phase 9 | Complete |
 | ORCH-02 | Phase 9 | Complete |
 | ORCH-03 | Phase 9 | Complete |
-| PROG-01 | Phase 9 | Pending |
-| PROG-02 | Phase 9 | Pending |
-| PROG-03 | Phase 9 | Pending |
+| PROG-01 | Phase 9 | Complete |
+| PROG-02 | Phase 9 | Complete |
+| PROG-03 | Phase 9 | Complete |
 | SEC-01 | Phase 10 | Pending |
 | SEC-02 | Phase 10 | Pending |
 | SHOWCASE-01 | Phase 11 | Pending |
