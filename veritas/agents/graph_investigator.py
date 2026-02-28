@@ -1107,6 +1107,116 @@ class GraphInvestigator:
         return inconsistencies
 
     # ================================================================
+    # Private: OSINT Graph Nodes
+    # ================================================================
+
+    def _add_osint_nodes_to_graph(
+        self, graph: nx.DiGraph, domain: str, osint_results: dict, result: GraphResult
+    ) -> None:
+        """Add OSINT findings as nodes in the knowledge graph."""
+        # Create Website node reference
+        website_id = f"Website_{domain}"
+
+        # Ensure Website node has OSINT sources attribute
+        if website_id in graph:
+            graph.nodes[website_id]["osint_sources"] = list(osint_results.keys())
+        else:
+            # Create Website node if not exists
+            graph.add_node(
+                website_id,
+                node_type="WebsiteNode",
+                domain=domain,
+                osint_sources=list(osint_results.keys()),
+            )
+
+        # Add OSINT source nodes
+        for source_name in osint_results.keys():
+            if source_name == "_consensus":
+                continue
+
+            source_data = osint_results[source_name]
+
+            # Create OSINTSource node
+            source_id = f"OSINTSource_{source_name}"
+            graph.add_node(
+                source_id,
+                node_type="OSINTSourceNode",
+                source=source_name,
+                category=source_data.get("category", "unknown"),
+                confidence=source_data.get("confidence_score", 0.0),
+                status=source_data.get("status", "unknown"),
+            )
+
+            # Add VERIFIED_BY edge from Website to OSINTSource
+            graph.add_edge(website_id, source_id, edge_type="VERIFIED_BY")
+
+        # Add Consensus node if available
+        if "_consensus" in osint_results:
+            consensus = osint_results["_consensus"]
+            consensus_id = f"OSINTConsensus_{domain}"
+
+            graph.add_node(
+                consensus_id,
+                node_type="ConsensusNode",
+                status=consensus.get("consensus_status", ""),
+                verdict=consensus.get("verdict", ""),
+                agreement_count=consensus.get("agreement_count", 0),
+                has_conflict=consensus.get("has_conflict", False),
+            )
+
+            # Add CONTRIBUTES_TO edges from OSINTSources to Consensus
+            for source_name in osint_results.keys():
+                if source_name == "_consensus":
+                    continue
+                source_id = f"OSINTSource_{source_name}"
+                graph.add_edge(source_id, consensus_id, edge_type="CONTRIBUTES_TO")
+
+        # Add IOC nodes
+        for indicator in result.osint_indicators:
+            if not isinstance(indicator, dict):
+                continue
+
+            ioc_type = indicator.get("ioc_type", "unknown")
+            ioc_value = indicator.get("value", "")
+            if not ioc_value:
+                continue
+
+            # Create unique IOC node ID
+            ioc_id = f"IOC_{ioc_type}_{ioc_value[:20]}"
+            graph.add_node(
+                ioc_id,
+                node_type="IOCNode",
+                ioc_type=ioc_type,
+                value=ioc_value,
+                threat_level=indicator.get("threat_level", "unknown"),
+            )
+
+            # Add CONTAINS_IOC edge from Website to IOC
+            graph.add_edge(website_id, ioc_id, edge_type="CONTAINS_IOC")
+
+        # Add MITRE ATT&CK technique nodes
+        for technique in result.cti_techniques:
+            if not isinstance(technique, dict):
+                continue
+
+            technique_id = technique.get("technique_id", "")
+            if not technique_id:
+                continue
+
+            mitre_id = f"MITRE_{technique_id}"
+            graph.add_node(
+                mitre_id,
+                node_type="MITRETacticNode",
+                technique_id=technique_id,
+                technique_name=technique.get("technique_name", ""),
+                tactic=technique.get("tactic", ""),
+                confidence=technique.get("confidence", 0.0),
+            )
+
+            # Add EXHIBITS_PATTERN edge from Website to MITRE technique
+            graph.add_edge(website_id, mitre_id, edge_type="EXHIBITS_PATTERN")
+
+    # ================================================================
     # Private: Scoring
     # ================================================================
 
