@@ -26,7 +26,7 @@ import sys
 import time
 from dataclasses import asdict
 from pathlib import Path
-from typing import Annotated, Any, Optional, TypedDict
+from typing import Annotated, Any, Callable, Optional, TypedDict
 
 from langgraph.graph import END, StateGraph
 
@@ -38,8 +38,11 @@ from agents.scout import ScoutResult, StealthScout
 from agents.vision import VisionAgent, VisionResult
 from config import settings
 from config.trust_weights import TrustScoreResult
+from core.complexity_analyzer import ComplexityAnalyzer
+from core.degradation import DegradedResult, FallbackManager, FallbackMode
 from core.ipc import ProgressEvent, SecurityModeCompleted, SecurityModeStarted, safe_put
 from core.nim_client import NIMClient
+from core.timeout_manager import ComplexityMetrics, TimeoutManager, TimeoutStrategy
 
 logger = logging.getLogger("veritas.orchestrator")
 
@@ -1022,10 +1025,44 @@ class VeritasOrchestrator:
         print(f"Risk: {result['judge_decision']['trust_score']['risk_level']}")
     """
 
-    def __init__(self, progress_queue: Optional[multiprocessing.Queue] = None):
+    def __init__(
+        self,
+        progress_queue: Optional[multiprocessing.Queue] = None,
+        use_adaptive_timeout: bool = False,
+        use_circuit_breaker: bool = False
+    ):
+        """
+        Initialize VeritasOrchestrator.
+
+        Args:
+            progress_queue: Optional multiprocessing queue for progress events
+            use_adaptive_timeout: Enable adaptive timeout management (requires complexity analysis)
+            use_circuit_breaker: Enable circuit breaker with graceful degradation
+        """
         self._graph = build_audit_graph()
         self._compiled = self._graph.compile()
         self.progress_queue = progress_queue
+        self.use_adaptive_timeout = use_adaptive_timeout
+        self.use_circuit_breaker = use_circuit_breaker
+
+        # Initialize smart orchestrator components
+        self._timeout_manager: Optional[TimeoutManager] = None
+        self._fallback_manager: Optional[FallbackManager] = None
+        self._complexity_analyzer = ComplexityAnalyzer()
+
+        if use_adaptive_timeout:
+            self._timeout_manager = TimeoutManager(
+                strategy=TimeoutStrategy.ADAPTIVE
+            )
+            logger.info("TimeoutManager enabled with ADAPTIVE strategy")
+
+        if use_circuit_breaker:
+            self._fallback_manager = FallbackManager()
+            self._register_fallback_functions()
+            logger.info("FallbackManager enabled with circuit breakers")
+
+        # Track quality penalties from degraded agents
+        self._accumulated_quality_penalty: float = 0.0
 
     def _emit(self, phase: str, step: str, pct: int, detail: str = "", **extra):
         """Emit progress via Queue or fallback to stdout.
@@ -1059,6 +1096,198 @@ class VeritasOrchestrator:
             msg.update(extra)
             print(f"##PROGRESS:{_json.dumps(msg)}", flush=True)
 
+    def _register_fallback_functions(self):
+        """Register fallback functions for each agent type with FallbackManager."""
+        if self._fallback_manager is None:
+            return
+
+        # Vision fallback: simplified analysis
+        async def vision_fallback(**kwargs) -> dict:
+            return {
+                "visual_score": 0.5,
+                "temporal_score": 0.5,
+                "findings": [],
+                "temporal_findings": [],
+                "screenshots_analyzed": 0,
+                "fallback_used": True,
+                "errors": ["Vision agent unavailable"],
+            }
+
+        self._fallback_manager.register_fallback("vision", vision_fallback, FallbackMode.SIMPLIFIED)
+
+        # Graph fallback: basic metadata only
+        async def graph_fallback(**kwargs) -> dict:
+            return {
+                "graph_score": 0.5,
+                "meta_score": 0.5,
+                "meta_analysis": {},
+                "ip_geolocation": {},
+                "domain_age_days": -1,
+                "has_ssl": False,
+                "graph_node_count": 0,
+                "entities": [],
+                "fallback_used": True,
+                "errors": ["Graph agent unavailable"],
+            }
+
+        self._fallback_manager.register_fallback("graph", graph_fallback, FallbackMode.SIMPLIFIED)
+
+        # Security fallback: empty results
+        async def security_fallback(**kwargs) -> dict:
+            return {
+                "overall_score": 0.5,
+                "findings": [],
+                "modules_run": [],
+                "errors": ["Security modules unavailable"],
+            }
+
+        self._fallback_manager.register_fallback("security", security_fallback, FallbackMode.SIMPLIFIED)
+
+        # Judge fallback: placeholder verdict
+        async def judge_fallback(**kwargs) -> dict:
+            # Force verdict from partial evidence
+            from config.trust_weights import SubSignal, compute_trust_score
+
+            vr = kwargs.get("vision_result", {})
+            gr = kwargs.get("graph_result", {})
+
+            visual_score = vr.get("visual_score", 0.5) if isinstance(vr, dict) else 0.5
+            temporal_score = vr.get("temporal_score", 0.5) if isinstance(vr, dict) else 0.5
+            graph_score = gr.get("graph_score", 0.5) if isinstance(gr, dict) else 0.5
+            meta_score = gr.get("meta_score", 0.5) if isinstance(gr, dict) else 0.5
+
+            signals = {
+                "visual": SubSignal(name="visual", raw_score=visual_score, confidence=0.7),
+                "structural": SubSignal(name="structural", raw_score=0.5, confidence=0.3),
+                "temporal": SubSignal(name="temporal", raw_score=temporal_score, confidence=0.6),
+                "graph": SubSignal(name="graph", raw_score=graph_score, confidence=0.7),
+                "meta": SubSignal(name="meta", raw_score=meta_score, confidence=0.8),
+                "security": SubSignal(name="security", raw_score=0.5, confidence=0.3),
+            }
+
+            tsr = compute_trust_score(signals)
+
+            return {
+                "action": "RENDER_VERDICT",
+                "reason": "Fallback verdict due to agent unavailability",
+                "narrative": f"Trust score: {tsr.final_score}/100 ({tsr.risk_level.value}) based on partial evidence.",
+                "recommendations": ["Run a deeper audit tier for more thorough investigation."],
+                "dark_pattern_summary": [],
+                "entity_verification_summary": [],
+                "evidence_timeline": [],
+                "trust_score_result": {
+                    "final_score": tsr.final_score,
+                    "risk_level": tsr.risk_level.value,
+                    "pre_override_score": tsr.pre_override_score,
+                    "weighted_breakdown": tsr.weighted_breakdown,
+                    "overrides_applied": [r.name for r in tsr.overrides_applied],
+                    "explanation": tsr.explanation,
+                },
+                "fallback_used": True,
+            }
+
+        self._fallback_manager.register_fallback("judge", judge_fallback, FallbackMode.ALTERNATIVE)
+
+        # OSINT fallback: empty results
+        async def osint_fallback(**kwargs) -> dict:
+            return {
+                "osint_sources": [],
+                "osint_findings": [],
+                "cti_findings": [],
+                "errors": ["OSINT unavailable"],
+            }
+
+        self._fallback_manager.register_fallback("osint", osint_fallback, FallbackMode.NONE)
+
+    async def _execute_agent_smart(
+        self,
+        agent_name: str,
+        primary_fn: Callable,
+        state: AuditState,
+        timeout: Optional[int] = None
+    ) -> tuple[dict, float]:
+        """
+        Execute agent with timeout and circuit breaker support.
+
+        Args:
+            agent_name: Name of agent (vision, graph, security, judge)
+            primary_fn: Async function to execute
+            state: Current audit state
+            timeout: Optional timeout override in seconds
+
+        Returns:
+            Tuple of (result_dict, quality_penalty)
+        """
+        start_time = time.time()
+        quality_penalty = 0.0
+
+        # Build context dict for function execution
+        context = {
+            "state": state,
+            **state
+        }
+
+        if self.use_circuit_breaker and self._fallback_manager is not None:
+            # Execute with circuit breaker
+            degraded_result = await self._fallback_manager.execute_with_fallback(
+                agent_name, primary_fn, context, timeout=timeout
+            )
+
+            result = degraded_result.result_data
+
+            # Track degradation
+            if degraded_result.is_degraded():
+                quality_penalty = degraded_result.quality_penalty
+                self._accumulated_quality_penalty += quality_penalty
+
+                # Track degraded agents
+                if agent_name not in state.get("_degraded_agents", []):
+                    existing = state.get("_degraded_agents", [])
+                    if isinstance(state, dict):
+                        state["_degraded_agents"] = existing + [agent_name]
+
+                logger.warning(
+                    f"Agent '{agent_name}' degraded: "
+                    f"mode={degraded_result.fallback_mode.value}, "
+                    f"penalty={quality_penalty:.2f}, "
+                    f"missing={degraded_result.missing_data}"
+                )
+
+                if degraded_result.error_message:
+                    state["errors"].append(f"{agent_name} degraded: {degraded_result.error_message}")
+        else:
+            # Direct execution with timeout
+            try:
+                if timeout:
+                    result = await asyncio.wait_for(primary_fn(state), timeout=timeout)
+                else:
+                    result = await primary_fn(state)
+            except asyncio.TimeoutError:
+                logger.error(f"Agent '{agent_name}' timeout after {timeout}s")
+                quality_penalty = 0.5
+                self._accumulated_quality_penalty += quality_penalty
+                state["errors"].append(f"{agent_name}: timeout after {timeout}s")
+                result = {}
+            except Exception as e:
+                logger.error(f"Agent '{agent_name}' error: {e}")
+                quality_penalty = 0.7
+                self._accumulated_quality_penalty += quality_penalty
+                state["errors"].append(f"{agent_name}: {str(e)}")
+
+        # Record execution time for learning
+        elapsed_ms = int((time.time() - start_time) * 1000)
+        if self._timeout_manager is not None:
+            site_type = state.get("site_type", "unknown")
+            self._timeout_manager.record_execution(
+                site_type, agent_name, elapsed_ms, success=(quality_penalty == 0.0)
+            )
+
+        # Update quality penalty in state
+        if isinstance(state, dict):
+            state["_quality_penalty"] = self._accumulated_quality_penalty
+
+        return result, quality_penalty
+
     async def audit(
         self,
         url: str,
@@ -1081,7 +1310,11 @@ class VeritasOrchestrator:
         """
         tier_config = settings.AUDIT_TIERS.get(tier, settings.AUDIT_TIERS["standard_audit"])
 
-        state: AuditState = {
+        # Reset quality penalty for each audit
+        self._accumulated_quality_penalty = 0.0
+
+        # Add complexity tracking fields to state
+        state_with_complexity = {
             "url": url,
             "audit_tier": tier,
             "iteration": 0,
@@ -1108,7 +1341,15 @@ class VeritasOrchestrator:
             "enabled_security_modules": enabled_security_modules or getattr(
                 settings, 'ENABLED_SECURITY_MODULES', ["security_headers", "phishing_db"]
             ),
+            # Smart orchestrator fields (added via dict after to maintain TypedDict compatibility)
+            "_timeout_config": None,  # TimeoutConfig computed from complexity
+            "_complexity_score": 0.0,  # Complexity score from analysis
+            "_estimated_remaining_time": 0,  # Estimated time for remaining agents
+            "_quality_penalty": 0.0,  # Accumulated quality penalty
+            "_degraded_agents": [],  # List of degraded agent names
         }
+
+        state: AuditState = state_with_complexity  # type: ignore
 
         logger.info(f"Starting Veritas audit: {url} | tier={tier} | max_pages={tier_config['pages']}")
 
@@ -1140,14 +1381,78 @@ class VeritasOrchestrator:
                     state["errors"].append("Scout failed too many times — aborted")
                     break
 
+                # Collect complexity metrics after Scout completes (only once per audit)
+                if self.use_adaptive_timeout and iteration == 0 and state.get("scout_results"):
+                    try:
+                        # Create mock result objects from state data
+                        primary_scout = state.get("scout_results", [{}])[0]
+                        state["url"] = state.get("url", primary_scout.get("url", url))
+
+                        # Analyze complexity from scout results
+                        complexity_metrics = self._complexity_analyzer.analyze_page(
+                            scout_result=primary_scout,
+                            vision_result=None,  # Vision not run yet
+                            security_result=None
+                        )
+
+                        complexity_score = complexity_metrics.calculate_complexity_score()
+
+                        if isinstance(state, dict):
+                            state["_complexity_score"] = complexity_score
+                            state["site_type"] = complexity_metrics.site_type
+
+                        # Calculate timeout config
+                        if self._timeout_manager is not None:
+                            timeout_config = self._timeout_manager.calculate_timeout_config(
+                                complexity_metrics
+                            )
+
+                            if isinstance(state, dict):
+                                state["_timeout_config"] = timeout_config.to_dict()
+
+                            logger.info(
+                                f"Complexity analysis: score={complexity_score:.3f}, "
+                                f"site_type={complexity_metrics.site_type}"
+                            )
+
+                        # Calculate estimated remaining time
+                        if self._timeout_manager is not None:
+                            remaining_agents = ["vision", "graph", "judge"]
+                            estimated_sec = self._timeout_manager.get_estimated_remaining_time(
+                                complexity_metrics.site_type, remaining_agents
+                            )
+
+                            if isinstance(state, dict):
+                                state["_estimated_remaining_time"] = estimated_sec
+
+                            self._emit(
+                                "estimate",
+                                "calculated",
+                                27,
+                                f"Estimated {estimated_sec}s remaining for {len(remaining_agents)} agents",
+                                estimated_remaining=estimated_sec
+                            )
+                    except Exception as e:
+                        logger.warning(f"Complexity analysis failed: {e}")
+
                 # 1b. Security modules
                 self._emit("security", "scanning", 27, "Running security analysis modules...", iteration=state["iteration"])
                 try:
-                    sec_update = await security_node_with_agent(state)
+                    # Get timeout from adaptive config or use default
+                    timeout = None
+                    if self.use_adaptive_timeout and self._timeout_manager is not None:
+                        tc_dict = state.get("_timeout_config", {})
+                        timeout = tc_dict.get("security")
+
+                    # Execute with smart wrapper
+                    sec_update, sec_penalty = await self._execute_agent_smart(
+                        "security", security_node_with_agent, state, timeout
+                    )
                     state.update(sec_update)
                     sec_modules = list((state.get("security_results") or {}).keys())
                     security_mode = sec_update.get("security_mode", "unknown")
-                    self._emit("security", "done", 30, f"Security modules: {', '.join(sec_modules)} (mode={security_mode})", modules=sec_modules, security_mode=security_mode)
+                    degr_str = " (degraded)" if sec_penalty > 0 else ""
+                    self._emit("security", "done", 30, f"Security modules: {', '.join(sec_modules)} (mode={security_mode}){degr_str}", modules=sec_modules, security_mode=security_mode)
                 except Exception as e:
                     logger.error(f"Security node failed: {e}")
                     state["errors"].append(f"Security: {e}")
@@ -1156,12 +1461,22 @@ class VeritasOrchestrator:
                 # 2. Vision
                 self._emit("vision", "analyzing", 30, "Vision agent analyzing screenshots with NIM VLM...", iteration=state["iteration"])
                 try:
-                    vision_update = await vision_node(state)
+                    # Get timeout from adaptive config or use default
+                    timeout = None
+                    if self.use_adaptive_timeout and self._timeout_manager is not None:
+                        tc_dict = state.get("_timeout_config", {})
+                        timeout = tc_dict.get("vision")
+
+                    # Execute with smart wrapper
+                    vision_update, vision_penalty = await self._execute_agent_smart(
+                        "vision", vision_node, state, timeout
+                    )
                     state.update(vision_update)
                     vr = state.get("vision_result") or {}
                     n_findings = len(vr.get("findings", []))
                     n_calls = vr.get("nim_calls_made", 0)
-                    self._emit("vision", "done", 55, f"{n_findings} dark patterns detected, {n_calls} NIM calls", findings=n_findings, nim_calls=n_calls)
+                    degr_str = " (degraded)" if vision_penalty > 0 else ""
+                    self._emit("vision", "done", 55, f"{n_findings} dark patterns detected, {n_calls} NIM calls{degr_str}", findings=n_findings, nim_calls=n_calls)
                 except Exception as e:
                     logger.error(f"Vision failed: {e}")
                     state["errors"].append(f"Vision: {e}")
@@ -1170,12 +1485,22 @@ class VeritasOrchestrator:
                 # 3. Graph
                 self._emit("graph", "investigating", 60, "Graph agent running WHOIS, DNS & web verification...", iteration=state["iteration"])
                 try:
-                    graph_update = await graph_node(state)
+                    # Get timeout from adaptive config or use default
+                    timeout = None
+                    if self.use_adaptive_timeout and self._timeout_manager is not None:
+                        tc_dict = state.get("_timeout_config", {})
+                        timeout = tc_dict.get("graph")
+
+                    # Execute with smart wrapper
+                    graph_update, graph_penalty = await self._execute_agent_smart(
+                        "graph", graph_node, state, timeout
+                    )
                     state.update(graph_update)
                     gr = state.get("graph_result") or {}
                     age = gr.get("domain_age_days", "?")
                     n_nodes = gr.get("graph_node_count", 0)
-                    self._emit("graph", "done", 75, f"Domain age: {age}d, {n_nodes} graph nodes", domain_age=age, nodes=n_nodes)
+                    degr_str = " (degraded)" if graph_penalty > 0 else ""
+                    self._emit("graph", "done", 75, f"Domain age: {age}d, {n_nodes} graph nodes{degr_str}", domain_age=age, nodes=n_nodes)
                 except Exception as e:
                     logger.error(f"Graph failed: {e}")
                     state["errors"].append(f"Graph: {e}")
@@ -1184,13 +1509,23 @@ class VeritasOrchestrator:
                 # 4. Judge
                 self._emit("judge", "deliberating", 80, "Judge agent synthesizing evidence & computing trust score...", iteration=state["iteration"])
                 try:
-                    judge_update = await judge_node(state)
+                    # Get timeout from adaptive config or use default
+                    timeout = None
+                    if self.use_adaptive_timeout and self._timeout_manager is not None:
+                        tc_dict = state.get("_timeout_config", {})
+                        timeout = tc_dict.get("judge")
+
+                    # Execute with smart wrapper
+                    judge_update, judge_penalty = await self._execute_agent_smart(
+                        "judge", judge_node, state, timeout
+                    )
                     state.update(judge_update)
                     jd = state.get("judge_decision") or {}
                     tr = jd.get("trust_score_result") or {}
                     score = tr.get("final_score", "?")
                     risk = tr.get("risk_level", "?")
-                    self._emit("judge", "done", 90, f"Trust Score: {score}/100 ({risk})", trust_score=score, risk_level=risk)
+                    degr_str = " (degraded)" if judge_penalty > 0 else ""
+                    self._emit("judge", "done", 90, f"Trust Score: {score}/100 ({risk}){degr_str}", trust_score=score, risk_level=risk)
                 except Exception as e:
                     logger.error(f"Judge failed: {e}")
                     state["errors"].append(f"Judge: {e}")
@@ -1221,15 +1556,55 @@ class VeritasOrchestrator:
                 state["status"] = "completed"
             state["elapsed_seconds"] = time.time() - state["start_time"]
 
-            self._emit("complete", "done", 100, f"Audit complete in {state['elapsed_seconds']:.0f}s",
-                  elapsed=round(state["elapsed_seconds"], 1))
+            # Apply quality penalty to final trust score
+            quality_penalty = self._accumulated_quality_penalty
+            if quality_penalty > 0:
+                jd = state.get("judge_decision")
+                if isinstance(jd, dict):
+                    tr = jd.get("trust_score_result")
+                    if isinstance(tr, dict):
+                        original_score = tr.get("final_score", 100)
+                        # Subtract penalty percentage (penalty is 0.0-1.0)
+                        adjusted_score = int(original_score * (1.0 - quality_penalty))
+                        adjusted_score = max(0, min(100, adjusted_score))
+
+                        tr["final_score"] = adjusted_score
+                        tr["quality_penalty_applied"] = quality_penalty
+                        tr["original_score"] = original_score
+                        tr["degraded_agents"] = state.get("_degraded_agents", [])
+
+                        # Recalculate risk level if needed
+                        if adjusted_score <= 20:
+                            tr["risk_level"] = "CRITICAL"
+                        elif adjusted_score <= 40:
+                            tr["risk_level"] = "HIGH"
+                        elif adjusted_score <= 50:
+                            tr["risk_level"] = "MODERATE"
+                        elif adjusted_score <= 75:
+                            tr["risk_level"] = "LOW"
+                        else:
+                            tr["risk_level"] = "SAFE"
+
+                        logger.info(
+                            f"Quality penalty applied: {quality_penalty:.2%} "
+                            f"({original_score} -> {adjusted_score}) "
+                            f"degraded agents: {state.get('_degraded_agents', [])}"
+                        )
+
+            # Emit completion message with quality penalty info
+            penalty_msg = f" (degraded: {quality_penalty:.0%})" if quality_penalty > 0 else ""
+            self._emit("complete", "done", 100, f"Audit complete in {state['elapsed_seconds']:.0f}s{penalty_msg}",
+                  elapsed=round(state["elapsed_seconds"], 1),
+                  quality_penalty=quality_penalty,
+                  degraded_agents=state.get("_degraded_agents", []))
 
             logger.info(
                 f"Audit complete: {url} | "
                 f"status={state.get('status')} | "
                 f"elapsed={state['elapsed_seconds']:.1f}s | "
                 f"pages={len(state.get('investigated_urls', []))} | "
-                f"errors={len(state.get('errors', []))}"
+                f"errors={len(state.get('errors', []))} | "
+                f"quality_penalty={quality_penalty:.2%}"
             )
 
             return state
