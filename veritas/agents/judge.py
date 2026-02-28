@@ -35,6 +35,27 @@ from config.trust_weights import (DEFAULT_WEIGHTS, RiskLevel, SignalWeights,
                                   compute_trust_score)
 from core.nim_client import NIMClient
 
+# Dual-verdict imports (V2 feature)
+# These are imported conditionally to avoid dependency issues
+try:
+    from veritas.agents.judge.verdict import (
+        DualVerdict,
+        RiskLevel,
+        SeverityLevel,
+        VerdictNonTechnical,
+        VerdictTechnical,
+        IOC,
+    )
+    from veritas.agents.judge.strategies import (
+        ExtendedSiteType,
+        ScoringContext,
+        get_strategy,
+    )
+    from veritas.cwe import map_finding_to_cwe
+    DUAL_VERDICT_AVAILABLE = True
+except ImportError:
+    DUAL_VERDICT_AVAILABLE = False
+
 logger = logging.getLogger("veritas.judge")
 
 
@@ -63,6 +84,10 @@ class JudgeDecision:
     evidence_timeline: list[dict] = field(default_factory=list)
     site_type: str = ""                # Detected site type
     verdict_mode: str = "expert"       # "simple" | "expert"
+
+    # Dual-tier verdict (V2 feature)
+    use_dual_verdict: bool = False     # Whether dual-tier verdict was requested
+    dual_verdict: Optional[dict] = None   # Serialized DualVerdict object
 
     @property
     def final_score(self) -> int:
@@ -157,6 +182,43 @@ class JudgeAgent:
         # We have enough evidence — render verdict
         # -----------------------------------------------------------
         return await self._render_verdict(evidence)
+
+    async def analyze(self, evidence: AuditEvidence, use_dual_verdict: bool = False) -> JudgeDecision:
+        """
+        Analyze evidence and return a verdict.
+
+        This is the main public API for the Judge Agent, providing optional
+        dual-tier verdict generation for security professionals and end users.
+
+        Args:
+            evidence: AuditEvidence containing all collected findings
+            use_dual_verdict: If True, generates technical (CWE/CVSS) and non-technical (plain English) verdicts
+
+        Returns:
+            JudgeDecision with verdict data and optional dual_verdict dict
+
+        Backward compatible: When use_dual_verdict=False (default), returns existing TrustScoreResult format.
+        """
+        logger.info(
+            f"Judge analyzing {evidence.url} | use_dual_verdict={use_dual_verdict} | "
+            f"site_type={evidence.site_type}"
+        )
+
+        # Use existing deliberation logic
+        decision = await self.deliberate(evidence)
+
+        # If dual verdict requested and verdict was rendered, build dual-tier verdict
+        if use_dual_verdict and decision.action == "RENDER_VERDICT" and DUAL_VERDICT_AVAILABLE:
+            try:
+                dual_verdict = self._build_dual_verdict(evidence, decision)
+                decision.use_dual_verdict = True
+                decision.dual_verdict = dual_verdict.to_dict()
+                logger.info(f"Dual-tier verdict generated for {evidence.url}")
+            except Exception as e:
+                logger.warning(f"Failed to generate dual verdict: {e}", exc_info=True)
+                decision.use_dual_verdict = False
+
+        return decision
 
     # ================================================================
     # Private: Decision Logic
@@ -288,6 +350,230 @@ class JudgeAgent:
     # ================================================================
     # Private: Verdict Rendering
     # ================================================================
+
+    def _build_dual_verdict(self, evidence: AuditEvidence, decision: JudgeDecision) -> DualVerdict:
+        """
+        Build dual-tier verdict combining technical and non-technical explanations.
+
+        Uses site-type-specific scoring strategies from the Strategy Pattern.
+
+        Args:
+            evidence: AuditEvidence with all available data
+            decision: JudgeDecision with trust_score_result already computed
+
+        Returns:
+            DualVerdict with technical (CWE/CVSS/IOCs) and non-technical (plain English) tiers
+        """
+        if not DUAL_VERDICT_AVAILABLE:
+            raise RuntimeError("Dual verdict requires veritas.agents.judge.verdict module")
+
+        trust_result = decision.trust_score_result
+        if not trust_result:
+            raise ValueError("TrustScoreResult is required for dual verdict")
+
+        # -----------------------------------------------------------
+        # Step 1: Build ScoringContext with all evidence
+        # -----------------------------------------------------------
+        # Map site type string to ExtendedSiteType enum
+        try:
+            site_type = ExtendedSiteType(evidence.site_type.replace("-", "_"))
+        except ValueError:
+            site_type = ExtendedSiteType.ECOMMERCE  # Default fallback
+
+        ctx = ScoringContext(
+            url=evidence.url,
+            site_type=site_type,
+            site_type_confidence=evidence.site_type_confidence,
+        )
+
+        # Fill in visual scores
+        if evidence.vision_result:
+            vr = evidence.vision_result
+            ctx.visual_score = vr.visual_score * 100
+            ctx.temporal_score = vr.temporal_score * 100
+            ctx.has_dark_patterns = vr.total_patterns_found > 0
+            if vr.dark_patterns:
+                ctx.dark_pattern_types = tuple(p.pattern_type for p in vr.dark_patterns[:10])
+            ctx.script_count = getattr(vr, 'js_analysis', {}).get('script_count', 0)
+            ctx.dom_depth = getattr(vr, 'dom_analysis', {}).get('depth', 0)
+            ctx.screenshot_count = vr.screenshots_analyzed
+
+        # Fill in structural scores
+        if evidence.graph_result:
+            gr = evidence.graph_result
+            ctx.structural_score = gr.structural_score * 100 if hasattr(gr, 'structural_score') else 65.0
+            ctx.graph_score = gr.graph_score * 100
+            ctx.has_ssl = gr.has_ssl
+            ctx.domain_age_days = gr.domain_age_days if gr.domain_age_days >= 0 else None
+            ctx.has_lazy_load = getattr(gr, 'has_lazy_load', False)
+            ctx.screenshot_count = min(ctx.screenshot_count, getattr(gr, 'screenshot_count', 1))
+
+        # Fill in scores from SubSignals
+        signals = decision.trust_score_result.signals if decision.trust_score_result else {}
+        if "meta" in signals:
+            ctx.meta_score = signals["meta"].raw_score * 100
+        if "security" in signals:
+            ctx.security_score = signals["security"].raw_score * 100
+
+        # Fill in security results
+        sec = evidence.security_results or {}
+        phishing = sec.get("phishing", {})
+        ctx.has_phishing_hits = phishing.get("is_phishing", False)
+        js = sec.get("js_analysis", {})
+        ctx.js_risk_score = js.get("risk_score", 0.0)
+
+        # Check for cross-domain forms
+        for scout in evidence.scout_results:
+            fv = getattr(scout, 'form_validation', {})
+            if fv and fv.get("has_cross_domain", False):
+                ctx.has_cross_domain_forms = True
+                ctx.form_validation_score = fv.get("score", 50.0)
+                break
+
+        # -----------------------------------------------------------
+        # Step 2: Select and apply site-type specific strategy
+        # -----------------------------------------------------------
+        strategy = get_strategy(site_type)
+        if strategy:
+            adjustments = strategy.calculate_adjustments(ctx)
+            logger.info(
+                f"Using strategy={strategy.name} for site_type={site_type.value} | "
+                f"adjustments={len(adjustments.custom_findings)} custom findings"
+            )
+        else:
+            # Fallback: no strategy available
+            adjustments = ScoringAdjustment(
+                weight_adjustments={
+                    "visual": 0.16, "structural": 0.16, "temporal": 0.16,
+                    "graph": 0.16, "meta": 0.16, "security": 0.16,
+                },
+                explanation="No site-type strategy available - using balanced weights"
+            )
+        # -----------------------------------------------------------
+        # Step 3: Build VerdictTechnical tier (CWE/CVSS/IOCs)
+        # -----------------------------------------------------------
+        # Map findings to CWE entries
+        cwe_entries = []
+        if evidence.vision_result:
+            for pattern in evidence.vision_result.dark_patterns[:5]:
+                cwe = map_finding_to_cwe(pattern.pattern_type, pattern.severity)
+                if cwe:
+                    cwe_entries.append({
+                        "cwe_id": cwe.cwe_id,
+                        "name": cwe.name,
+                        "score": cwe.score,
+                    })
+
+        # Build threat indicators from security results
+        threat_indicators = []
+        if ctx.has_phishing_hits:
+            threat_indicators.append({
+                "type": "phishing",
+                "source": "security_results",
+                "severity": "CRITICAL",
+            })
+        if ctx.js_risk_score > 70:
+            threat_indicators.append({
+                "type": "malicious_js",
+                "source": "js_analysis",
+                "severity": "HIGH",
+                "value": ctx.js_risk_score,
+            })
+
+        # Build IOCs from graph result
+        iocs = []
+        if evidence.graph_result and evidence.graph_result.domain_intel:
+            di = evidence.graph_result.domain_intel
+            if di.ip_address:
+                iocs.append(IOC(type="ip", value=di.ip_address, source="graph_intel", severity=SeverityLevel.LOW))
+
+        # Calculate simplified CVSS score based on findings
+        cvss_score = 0.0
+        cvss_metrics = None
+        if trust_result.risk_level in (RiskLevel.LIKELY_FRAUDULENT, RiskLevel.HIGH_RISK):
+            cvss_score = 8.5
+        elif trust_result.risk_level == RiskLevel.SUSPICIOUS:
+            cvss_score = 6.5
+        elif trust_result.risk_level in (RiskLevel.LOW_RISK, RiskLevel.SAFE):
+            cvss_score = 3.5
+
+        if cvss_score > 0:
+            cvss_metrics = {"base_score": cvss_score, "metric_level": "simplified"}
+
+        verdict_technical = VerdictTechnical(
+            cwe_entries=cwe_entries,
+            cvss_metrics=cvss_metrics,
+            cvss_score=cvss_score,
+            iocs=iocs,
+            threat_indicators=threat_indicators,
+        )
+
+        # -----------------------------------------------------------
+        # Step 4: Build VerdictNonTechnical tier (plain English)
+        # -----------------------------------------------------------
+        # Extract high-severity findings
+        key_findings = []
+        if evidence.vision_result:
+            critical_patterns = [p.pattern_type for p in evidence.vision_result.critical_patterns]
+            if critical_patterns:
+                key_findings.extend([f"Critical: {p}" for p in critical_patterns[:3]])
+            high_patterns = [p.pattern_type for p in evidence.vision_result.high_severity_patterns]
+            if high_patterns:
+                key_findings.extend([f"High risk: {p}" for p in high_patterns[:3]])
+
+        # Build recommendations
+        recommendations = decision.simple_recommendations or decision.recommendations
+
+        # Warnings from critical triggers
+        warnings = []
+        if not ctx.has_ssl:
+            warnings.append("This site is not using secure HTTPS connection")
+        if ctx.has_phishing_hits:
+            warnings.append("External security services have flagged this as potentially phishing")
+        if ctx.js_risk_score > 70:
+            warnings.append("Site contains potentially malicious JavaScript")
+
+        # Green flags from positive indicators
+        green_flags = []
+        if ctx.security_score > 80:
+            green_flags.append("Strong security measures detected")
+        if ctx.graph_score > 80:
+            green_flags.append("Entity verification passed")
+        if evidence.graph_result and evidence.graph_result.domain_age_days > 365:
+            green_flags.append("Domain is over 1 year old")
+
+        # Simple explanation based on risk level
+        simple_explanation = {
+            RiskLevel.TRUSTED: "This site appears safe and legitimate. No major concerns detected.",
+            RiskLevel.SAFE: "This site looks reasonably safe. Verify before sharing sensitive info.",
+            RiskLevel.LOW_RISK: "This site has some minor concerns but is probably safe to use.",
+            RiskLevel.SUSPICIOUS: "Be cautious with this site. Check for reviews and verify authenticity.",
+            RiskLevel.HIGH_RISK: "This site has warning signs. Don't enter personal information here.",
+            RiskLevel.LIKELY_FRAUDULENT: "This site is likely a scam. Avoid it completely.",
+        }.get(trust_result.risk_level, "Unable to determine safety.")
+
+        # Use strategy narrative if available
+        summary = adjustments.narrative_template or decision.simple_narrative[:200]
+
+        verdict_non_technical = VerdictNonTechnical(
+            risk_level=RiskLevel(trust_result.risk_level.value.lower()),
+            summary=summary,
+            key_findings=key_findings[:5],
+            recommendations=recommendations[:5],
+            warnings=warnings[:3],
+            green_flags=green_flags[:3],
+            simple_explanation=simple_explanation,
+        )
+
+        # -----------------------------------------------------------
+        # Step 5: Build and return DualVerdict
+        # -----------------------------------------------------------
+        return DualVerdict(
+            trust_score=trust_result.final_score,
+            technical=verdict_technical,
+            non_technical=verdict_non_technical,
+            site_type=evidence.site_type,
+        )
 
     async def _render_verdict(self, evidence: AuditEvidence) -> JudgeDecision:
         """
