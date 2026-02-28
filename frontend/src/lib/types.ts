@@ -26,6 +26,7 @@ export interface Finding {
   description: string;
   plain_english: string;
   screenshot_index?: number;
+  bbox?: [number, number, number, number]; // x, y, width, height percentages (0-100)
 }
 
 export interface Screenshot {
@@ -33,6 +34,10 @@ export interface Screenshot {
   label: string;
   index: number;
   data?: string; // base64
+  width?: number; // actual pixel width
+  height?: number; // actual pixel height
+  findings?: Finding[]; // findings associated with this screenshot
+  overlays?: HighlightOverlay[]; // pre-calculated highlight overlays
 }
 
 export interface AuditStats {
@@ -49,6 +54,8 @@ export interface LogEntry {
   agent: string;
   message: string;
   level: "info" | "warn" | "error";
+  context?: "working" | "complete" | "success" | "error"; // for personality context
+  params?: Record<string, unknown>; // for message substitution
 }
 
 export interface SecurityResultItem {
@@ -87,6 +94,7 @@ export interface AuditResult {
   elapsed_seconds: number;
   errors: string[];
   verdict_mode: string;
+  green_flags?: GreenFlag[]; // list of positive indicators
 }
 
 export interface VisionPassStartEvent {
@@ -166,3 +174,82 @@ export const RISK_LABELS: Record<string, string> = {
   high_risk: "High Risk",
   likely_fraudulent: "Likely Fraudulent",
 };
+
+// ========================================
+// Screenshot Carousel Types (Plan 11-02)
+// ========================================
+
+export interface HighlightOverlay {
+  findingId: string;
+  bbox: [number, number, number, number]; // x, y, width, height percentages
+  severity: Finding["severity"];
+  opacity: number; // 0.0-1.0, based on confidence
+}
+
+// Bounding box to pixel conversion utility
+export function bboxToPixels(
+  bbox: [number, number, number, number],
+  imageWidth: number,
+  imageHeight: number
+): { x: number; y: number; width: number; height: number } {
+  return {
+    x: (bbox[0] / 100) * imageWidth,
+    y: (bbox[1] / 100) * imageHeight,
+    width: (bbox[2] / 100) * imageWidth,
+    height: (bbox[3] / 100) * imageHeight,
+  };
+}
+
+// Severity to overlay color mapping
+export const SEVERITY_OVERLAY_COLOR: Record<Finding["severity"], string> = {
+  critical: "rgba(239, 68, 68, 0.3)", // red-500 with opacity
+  high: "rgba(249, 115, 22, 0.3)", // orange-500
+  medium: "rgba(245, 158, 11, 0.3)", // amber-500
+  low: "rgba(34, 197, 94, 0.3)", // green-500
+};
+
+// Severity to solid color for stroke
+export const SEVERITY_SOLID_COLOR: Record<Finding["severity"], string> = {
+  critical: "rgba(239, 68, 68, 0.8)",
+  high: "rgba(249, 115, 22, 0.8)",
+  medium: "rgba(245, 158, 11, 0.8)",
+  low: "rgba(34, 197, 94, 0.8)",
+};
+
+// ========================================
+// Green Flag Types (Plan 11-03)
+// ========================================
+
+export interface GreenFlag {
+  id: string;
+  category: "security" | "privacy" | "compliance" | "trust";
+  label: string; // human-readable description
+  icon: string; // emoji icon
+}
+
+// Common green flags for positive audits
+export const COMMON_GREEN_FLAGS: GreenFlag[] = [
+  { id: "ssl-valid", category: "security", label: "Valid SSL Certificate", icon: "🔒" },
+  { id: "https-enforced", category: "security", label: "HTTPS Enforced", icon: "🛡️" },
+  { id: "contact-visible", category: "trust", label: "Contact Information Visible", icon: "📞" },
+  { id: "privacy-policy", category: "privacy", label: "Privacy Policy Found", icon: "📄" },
+  { id: "terms-of-service", category: "compliance", label: "Terms of Service Found", icon: "⚖️" },
+  { id: "no-dark-patterns", category: "trust", label: "No Dark Patterns Detected", icon: "✨" },
+  { id: "valid-domain-age", category: "trust", label: "Valid Domain Age", icon: "📅" },
+];
+
+// Relative time formatting utility
+export function formatRelativeTime(timestamp: string): string {
+  const now = Date.now();
+  const then = new Date(timestamp).getTime();
+  const diff = now - then;
+
+  const seconds = Math.floor(diff / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+
+  if (seconds < 60) return `${seconds}s ago`;
+  if (minutes < 60) return `${minutes}m ago`;
+  if (hours < 24) return `${hours}h ago`;
+  return new Date(timestamp).toLocaleDateString();
+}
