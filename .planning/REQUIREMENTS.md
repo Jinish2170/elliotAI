@@ -68,11 +68,11 @@ Requirements for Milestone v2.0: Masterpiece-quality features implemented on top
   - Dark marketplace monitoring or threat feed integration
   - Threat attribution suggestions
   - Darknet exposure indicators
-- [ ] **OSINT-03**: Enhance Graph Investigator with OSINT integration
+- [x] **OSINT-03**: Enhance Graph Investigator with OSINT integration
   - Multi-source entity profile building
   - Cross-reference findings across sources
   - Confidence scoring for OSINT data
-- [ ] **CTI-01**: Social engineering intelligence gathering pattern
+- [x] **CTI-01**: Social engineering intelligence gathering pattern
   - Mimic OSINT researcher investigation methodology
   - Follow trails across platforms (social media, company databases, threat feeds)
   - Build comprehensive entity profiles
@@ -84,7 +84,7 @@ Requirements for Milestone v2.0: Masterpiece-quality features implemented on top
   - Indicators of Compromise (IOCs) detection
   - Threat attribution suggestions
   - Attack pattern recognition frameworks (MITRE ATT&CK)
-- [ ] **CTI-04**: Smart intelligence network with advanced reasoning
+- [x] **CTI-04**: Smart intelligence network with advanced reasoning
   - Contextual reasoning about collected intelligence
   - Pattern recognition across datasets
   - Generate actionable intelligence reports
@@ -239,11 +239,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | QUAL-03 | Phase 7 | Complete |
 | OSINT-01 | Phase 8 | Complete |
 | OSINT-02 | Phase 8 | Pending |
-| OSINT-03 | Phase 8 | Pending |
-| CTI-01 | Phase 8 | Pending |
+| OSINT-03 | Phase 8 | Complete |
+| CTI-01 | Phase 8 | Complete |
 | CTI-02 | Phase 8 | Complete |
 | CTI-03 | Phase 8 | Pending |
-| CTI-04 | Phase 8 | Pending |
+| CTI-04 | Phase 8 | Complete |
 | JUDGE-01 | Phase 9 | Pending |
 | JUDGE-02 | Phase 9 | Pending |
 | JUDGE-03 | Phase 9 | Pending |

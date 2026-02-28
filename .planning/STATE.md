@@ -1,5 +1,18 @@
 ---
 gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: Masterpiece Features
+status: unknown
+last_updated: "2026-02-28T04:43:38.447Z"
+progress:
+  total_phases: 7
+  completed_phases: 6
+  total_plans: 26
+  completed_plans: 30
+---
+
+---
+gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Masterpiece Features
 status: in_progress
@@ -50,6 +63,7 @@ Progress: [████████░░░░░░░░░░░] 92% (35/38
 - Trend: OSINT orchestrator with intelligent fallback complete
 
 *Updated after each plan completion*
+| Phase 8 P05 | 20 | 7 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -77,6 +91,8 @@ Recent decisions affecting current work:
 - **07-04 Confidence Scoring & Validation (2026-02-26)**: ConfidenceScorer with 5-tier classification (>=75, >=50, >=40, >=20, <20), human-readable format like "87%: 3 sources agree, high severity"; ValidationStateMachine with conflict-first transition logic, terminal CONFLICTED state, can_confirm() and requires_review() helper methods
 - **08-01 Core OSINT Intelligence Sources (2026-02-27)**: DNS, WHOIS, SSL sources with async wrapping, normalized data structures, SQLite cache with source-specific TTLs
 - **08-02 OSINT Orchestrator with Smart Fallback (2026-02-27)**: Circuit breaker pattern (5 failures/60s timeout), rate limiter (RPM/RPH), intelligent fallback to 2 alternative sources, auto-discovery of 5+ sources
+- [Phase 8]: 08-05 OSINT-CTI integration: Integrated OSINT/CTI into GraphInvestigator with 40/30/20/10 weighted scoring (meta/entity/osint/cti)
+- [Phase 8]: 08-05 db_session optional: Made db_session optional for OSINT components to maintain backward compatibility
 
 ### Pending Todos
 
