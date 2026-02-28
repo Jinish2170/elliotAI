@@ -35,6 +35,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from config import settings
 from core.nim_client import NIMClient
+from veritas.osint.orchestrator import OSINTOrchestrator
+from veritas.osint.reputation import ReputationManager, VerdictType
+from veritas.osint.cti import CThreatIntelligence
+from veritas.quality.consensus_engine import ConsensusEngine
 
 logger = logging.getLogger("veritas.graph")
 
@@ -154,8 +158,9 @@ class GraphInvestigator:
         print(f"Inconsistencies: {len(result.inconsistencies)}")
     """
 
-    def __init__(self, nim_client: Optional[NIMClient] = None):
+    def __init__(self, nim_client: Optional[NIMClient] = None, db_session=None):
         self._nim = nim_client or NIMClient()
+        self._db_session = db_session
         self._tavily_client = None
         self._search_count = 0
         self._whois_timeout_s = max(1, int(getattr(settings, "GRAPH_WHOIS_TIMEOUT_S", 12)))
@@ -166,6 +171,19 @@ class GraphInvestigator:
         self._search_timeout_s = max(1, int(getattr(settings, "GRAPH_SEARCH_TIMEOUT_S", 15)))
         self._verify_concurrency = max(1, int(getattr(settings, "GRAPH_VERIFY_CONCURRENCY", 3)))
         self._search_follow_links = bool(getattr(settings, "GRAPH_SEARCH_FOLLOW_LINKS", False))
+
+        # Initialize OSINT/CTI components if db session provided
+        if self._db_session:
+            self._osint_orchestrator = OSINTOrchestrator(self._db_session)
+            self._reputation_manager = ReputationManager()
+            self._consensus_engine = ConsensusEngine(min_sources=2)
+        else:
+            self._osint_orchestrator = None
+            self._reputation_manager = None
+            self._consensus_engine = None
+
+        # CThreatIntelligence doesn't require db session
+        self._cti = CThreatIntelligence()
 
     # ================================================================
     # Public: Full Investigation
