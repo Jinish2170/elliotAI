@@ -112,7 +112,9 @@ VERITAS's journey from initial concept to production masterpiece: v1.0 establish
   3. User reads running log showing agent activities with timestamps and task completion celebrations ("Vision found 3 dark patterns!")
   4. Green flag celebrations appear prominently when audits return positive results (no major issues)
   5. Personality elements (agent emojis, finding "flexing", interesting highlights during waiting periods) maintain engagement throughout audit
-**Plans**: [phase-11/PLAN.md](.planning/phase-11/PLAN.md)
+**Plans**: [11-01-PLAN.md](.planning/phases/11-agent-theater-showcase/11-01-PLAN.md) — Agent Personality System & Event Sequencing
+**Plans**: [11-02-PLAN.md](.planning/phases/11-agent-theater-showcase/11-02-PLAN.md) — Screenshot Carousel & Highlight Overlays
+**Plans**: [11-03-PLAN.md](.planning/phases/11-agent-theater-showcase/11-03-PLAN.md) — Running Log & Celebration System
 
 ## Progress
 
@@ -123,13 +125,13 @@ VERITAS's journey from initial concept to production masterpiece: v1.0 establish
 | 7 | v2.0 | 4/4 | ✅ Complete | 2026-02-26 |
 | 8 | v2.0 | 6/6 | ✅ Complete | 2026-02-28 |
 | 9 | v2.0 | 3/3 | ✅ Complete | 2026-02-28 |
-| 10 | 4/4 | ✅ Complete | 2026-02-28 |
-| 11 | v2.0 | 0/2 | 📝 Planned | - |
+| 10 | v2.0 | 4/4 | ✅ Complete | 2026-02-28 |
+| 11 | v2.0 | 0/3 | 📝 Planned | - |
 
 Coverage:
 - v1 phases: 5 phases, 22 plans
-- v2 phases: 6 phases, 25 total plans (23 complete, 2 planned)
-- Total: 11 phases, 47 plans (45 complete, 2 planned)
+- v2 phases: 6 phases, 28 total plans (25 complete, 3 planned)
+- Total: 11 phases, 50 plans (47 complete, 3 planned)
 
 ---
-*Last updated: 2026-02-28 - Phase 10 plan 10-04 complete (4/4) - all phase 10 plans complete*
+*Last updated: 2026-02-28 - Phase 11 plans created (11-01, 11-02, 11-03) - ready for execution*
