@@ -444,7 +444,7 @@ class GraphInvestigator:
         result.graph = graph
         result.graph_node_count = graph.number_of_nodes()
         result.graph_edge_count = graph.number_of_edges()
-        result.graph_score = self._compute_graph_score(verifications, inconsistencies)
+        result.graph_score = self._calculate_enhanced_graph_score(result, graph)
         result.meta_score = self._compute_meta_score(domain_intel)
         result.tavily_searches = self._search_count
 
@@ -1306,6 +1306,75 @@ class GraphInvestigator:
             score -= severity_penalty * inc.confidence
 
         return round(max(0.0, min(1.0, score)), 3)
+
+    def _calculate_enhanced_graph_score(self, result: GraphResult, graph: nx.DiGraph) -> float:
+        """
+        Calculate enhanced graph score incorporating OSINT and CTI signals.
+
+        Weighting:
+        - Existing graph signals (meta_score): 40%
+        - Entity verification signals: 30%
+        - OSINT consensus: 20%
+        - CTI threat indicators: 10%
+
+        Args:
+            result: GraphResult with OSINT/CTI data
+            graph: Knowledge graph (for node/edge counts if needed)
+
+        Returns:
+            Enhanced graph score (0.0 to 1.0)
+        """
+        meta_score = result.meta_score if result.meta_score else 0.5
+
+        # Entity verification score
+        if result.verifications:
+            verified_count = sum(1 for v in result.verifications if v.status == "confirmed")
+            entity_score = verified_count / len(result.verifications)
+        else:
+            entity_score = 0.5
+
+        # OSINT consensus score
+        if result.osint_consensus:
+            status_scores = {
+                "confirmed": 0.9,
+                "likely": 0.8,
+                "possible": 0.6,
+                "insufficient": 0.4,
+                "conflicted": 0.5,
+            }
+            consensus_status = result.osint_consensus.get("consensus_status", "")
+            osint_score = status_scores.get(consensus_status, 0.5)
+
+            # Invert score if verdict is malicious
+            verdict = result.osint_consensus.get("verdict", "")
+            if verdict == "malicious":
+                osint_score = 1.0 - osint_score
+        else:
+            osint_score = 0.5
+
+        # CTI threat score
+        threat_scores = {
+            "critical": 0.0,
+            "high": 0.2,
+            "medium": 0.4,
+            "low": 0.7,
+            "none": 1.0,
+        }
+        cti_score = threat_scores.get(result.threat_level, 1.0)
+
+        # Blend with osint_confidence
+        if result.osint_confidence > 0:
+            cti_score = cti_score * (1 - result.osint_confidence) + 0.5 * result.osint_confidence
+
+        # Weighted combination
+        final_score = (
+            meta_score * 0.40
+            + entity_score * 0.30
+            + osint_score * 0.20
+            + cti_score * 0.10
+        )
+
+        return max(0.0, min(1.0, final_score))
 
     def _compute_meta_score(self, intel: DomainIntel) -> float:
         """
