@@ -227,6 +227,7 @@ class GraphInvestigator:
         external_links: Optional[list[str]] = None,
         site_type: str = "",
         form_validation: Optional[dict] = None,
+        page_html: Optional[str] = None,
     ) -> GraphResult:
         """
         Full graph-based investigation of a URL.
@@ -236,6 +237,9 @@ class GraphInvestigator:
             page_metadata: Metadata dict from Scout
             page_text: Extracted text content from the page
             external_links: External links found on the page
+            site_type: Site type classification
+            form_validation: Form validation results
+            page_html: HTML content of the page for OSINT/CTI analysis
 
         Returns:
             GraphResult with knowledge graph, verifications, and scores
@@ -379,6 +383,47 @@ class GraphInvestigator:
                 graph.nodes[url]["ip_country"] = geo["country"]
 
         # -----------------------------------------------------------
+        # Phase 4d: OSINT Investigation
+        # -----------------------------------------------------------
+        osint_results = {}
+        if self._osint_orchestrator:
+            hostname = self._extract_hostname(url)
+            ip_address = domain_intel.ip_address if domain_intel else ""
+            osint_results = await self._run_osint_investigation(domain, hostname, ip_address)
+
+            if osint_results:
+                result.osint_sources = osint_results
+                result.osint_consensus = osint_results.get("_consensus", {})
+
+                # Enhance DomainIntel with OSINT data
+                if result.domain_intel and "whois" in osint_results:
+                    whois_data = osint_results["whois"].get("data", {})
+                    result.domain_intel.age_days = whois_data.get(
+                        "age_days", result.domain_intel.age_days
+                    )
+                    result.domain_intel.registrar = whois_data.get(
+                        "registrar", result.domain_intel.registrar
+                    )
+
+        # -----------------------------------------------------------
+        # Phase 4e: CTI-Lite Analysis
+        # -----------------------------------------------------------
+        if page_html and self._cti and osint_results:
+            try:
+                cti_result = await self._cti.analyze_threats(
+                    url, page_html, page_text, page_metadata, osint_results
+                )
+
+                result.osint_indicators = cti_result.get("indicators", [])
+                result.cti_techniques = cti_result.get("mitre_techniques", [])
+                result.threat_attribution = cti_result.get("attribution", {})
+                result.threat_level = cti_result.get("threat_level", "none")
+                result.osint_confidence = cti_result.get("confidence", 0.0)
+            except Exception as e:
+                logger.warning(f"CTI analysis failed: {e}")
+                result.errors.append(f"CTI analysis failed: {e}")
+
+        # -----------------------------------------------------------
         # Phase 5: Inconsistency Detection
         # -----------------------------------------------------------
         inconsistencies = self._detect_inconsistencies(
@@ -386,6 +431,12 @@ class GraphInvestigator:
             form_validation=form_validation, ip_geo=result.ip_geolocation,
         )
         result.inconsistencies = inconsistencies
+
+        # -----------------------------------------------------------
+        # Phase 5b: Add OSINT Nodes to Graph
+        # -----------------------------------------------------------
+        if osint_results:
+            self._add_osint_nodes_to_graph(graph, domain, osint_results, result)
 
         # -----------------------------------------------------------
         # Phase 6: Compute Scores
