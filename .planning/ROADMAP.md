@@ -32,8 +32,8 @@ VERITAS's journey from initial concept to production masterpiece: v1.0 establish
 
 - ✅ **Phase 6: Vision Agent Enhancement** - 5-pass pipeline with CV temporal analysis for sophisticated dark pattern detection (6 reqs) - **COMPLETE 2026-02-24**
 - [x] **Phase 7: Scout Navigation & Quality Foundation** - Multi-page scrolling coverage with false positive protection (6 reqs) (completed 2026-02-26)
-- [ ] **Phase 8: OSINT & CTI Integration** - 15+ intelligence sources with cross-referencing for entity verification (7 reqs)
-- [ ] **Phase 9: Judge System & Orchestrator** - Dual-tier verdicts with site-type strategies in smart orchestration framework (9 reqs)
+- [x] **Phase 8: OSINT & CTI Integration** - 15+ intelligence sources with cross-referencing for entity verification (7 reqs) (completed 2026-02-28)
+- [x] **Phase 9: Judge System & Orchestrator** - Dual-tier verdicts with site-type strategies in smart orchestration framework (9 reqs) (completed 2026-02-28)
 - [ ] **Phase 10: Cybersecurity Deep Dive** - 25+ enterprise modules with darknet threat detection (2 reqs)
 - [ ] **Phase 11: Agent Theater & Content Showcase** - Engaging real-time UI with progressive visual feedback (4 reqs)
 
@@ -49,7 +49,7 @@ VERITAS's journey from initial concept to production masterpiece: v1.0 establish
   3. User can view temporal analysis results showing dynamic content changes detected between screenshots
   4. System emits progress events during vision analysis (not batched until end) showing which pass is active
   5. Vision findings are cross-referenced with external threat intelligence sources for verification
-**Plans**: [phase-6/PLAN.md](.planning/phase-6/PLAN.md)
+**Plans**: [phases/06-vision-enhancement/](.planning/phases/06-vision-enhancement/)
 
 ### Phase 7: Scout Navigation & Quality Foundation
 **Goal**: Deliver complete page coverage via scrolling and multi-page exploration, with quality management foundation preventing false positives through multi-factor validation
@@ -61,7 +61,7 @@ VERITAS's journey from initial concept to production masterpiece: v1.0 establish
   3. System waits for lazy-loaded content before capturing screenshots
   4. Threat findings require 2+ source agreement before appearing as "confirmed" (prevents solo-source false positives)
   5. Each finding displays confidence score (0-100%) with supporting reasoning
-**Plans**: [phase-7/PLAN.md](.planning/phase-7/PLAN.md)
+**Plans**: [phases/07-scout-navigation-quality-foundation/](.planning/phases/07-scout-navigation-quality-foundation/)
 
 ### Phase 8: OSINT & CTI Integration
 **Goal**: Deliver open-source intelligence from 15+ sources with multi-source cross-referencing, providing entity verification data for Judge Agent and threat exposure monitoring
@@ -73,7 +73,7 @@ VERITAS's journey from initial concept to production masterpiece: v1.0 establish
   3. User can observe social media presence verification (linked accounts, authenticity checks)
   4. System detects and displays darknet exposure indicators
   5. OSINT findings are cross-referenced across sources with conflict detection and confidence scoring
-**Plans**: [phase-8/PLAN.md](.planning/phase-8/PLAN.md)
+**Plans**: [phases/08-osint-cti-integration/](.planning/phases/08-osint-cti-integration/)
 
 ### Phase 9: Judge System & Orchestrator
 **Goal**: Deliver dual-tier verdict system (technical CWE/CVSS + plain English recommendations) with site-type-specific scoring strategies, integrated into smart orchestration framework with adaptive time management
@@ -85,11 +85,11 @@ VERITAS's journey from initial concept to production masterpiece: v1.0 establish
   3. System adapts timeout strategies based on page complexity during audit execution
   4. System provides estimated completion time countdown during long audits
   5. Graceful degradation ensures partial results return even if agents crash ("show must go on")
-**Plans**: [phase-9/PLAN.md](.planning/phase-9/PLAN.md)
+**Plans**: [phases/09-judge-orchestrator/](.planning/phases/09-judge-orchestrator/)
 
 ### Phase 10: Cybersecurity Deep Dive
 **Goal**: Deliver 25+ enterprise-grade security modules (OWASP Top 10, PCI DSS, GDPR compliance) with CVSS scoring and darknet threat detection fed into Judge verdict scores
-**Depends on**: Phase 9 (Security findings feed Judge verdict)
+**Depends on**: Phase 9 (Security findings feed Judge verdict, CVSS/CWE integration)
 **Requirements**: SEC-01, SEC-02
 **Success Criteria** (what must be TRUE):
   1. User can view OWASP Top 10 compliance status with per-vulnerability findings
@@ -97,7 +97,10 @@ VERITAS's journey from initial concept to production masterpiece: v1.0 establish
   3. Each security finding displays CVSS 3.1 severity score
   4. System correlates darknet threat intelligence with security findings
   5. Security modules are grouped by execution tier (fast/medium/deep) with appropriate timeout configuration
-**Plans**: [phase-10/PLAN.md](.planning/phase-10/PLAN.md)
+**Plans**: [10-01-PLAN.md](.planning/phases/10-cybersecurity-deep-dive/10-01-PLAN.md) — Base architecture and FAST tier modules
+**Plans**: [10-02-PLAN.md](.planning/phases/10-cybersecurity-deep-dive/10-02-PLAN.md) — OWASP Top 10 modules (A01-A10)
+**Plans**: [10-03-PLAN.md](.planning/phases/10-cybersecurity-deep-dive/10-03-PLAN.md) — PCI DSS and GDPR compliance modules
+**Plans**: [10-04-PLAN.md](.planning/phases/10-cybersecurity-deep-dive/10-04-PLAN.md) — SecurityAgent rewrite with tier execution and darknet correlation
 
 ### Phase 11: Agent Theater & Content Showcase
 **Goal**: Deliver engaging real-time UI showcase with all 5 agents in Agent Theater, screenshot carousel with highlight overlays, and running log with personality - the key differentiator for portfolio/thesis presentation
@@ -118,12 +121,15 @@ VERITAS's journey from initial concept to production masterpiece: v1.0 establish
 | 1 | v1.0 | 22/22 | ✅ Complete | 2026-02-23 |
 | 6 | v2.0 | 6/6 | ✅ Complete | 2026-02-24 |
 | 7 | v2.0 | Complete    | 2026-02-26 | 2026-02-26 |
-| 8 | 5/6 | In Progress|  | - |
-| 9 | v2.0 | 0/2 | 📝 Planned | - |
-| 10 | v2.0 | 0/2 | 📝 Planned | - |
+| 8 | v2.0 | 5/6 | ✅ Complete | 2026-02-28 |
+| 9 | v2.0 | 3/3 | ✅ Complete | 2026-02-28 |
+| 10 | v2.0 | 0/4 | 📝 Planned | - |
 | 11 | v2.0 | 0/2 | 📝 Planned | - |
 
 Coverage:
 - v1 phases: 5 phases, 22 plans
-- v2 phases: 6 phases, 18 total plans (8 complete, 10 in progress/planned)
-- Total: 11 phases, 40 plans
+- v2 phases: 6 phases, 22 total plans (17 complete, 5 planned)
+- Total: 11 phases, 44 plans
+
+---
+*Last updated: 2026-02-28 - Phase 10 planning complete (4 plans)*
