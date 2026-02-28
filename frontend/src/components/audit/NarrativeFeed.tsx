@@ -1,10 +1,13 @@
 "use client";
 
 import { SeverityBadge } from "@/components/data-display/SeverityBadge";
+import { GreenFlagCelebration } from "@/components/audit/GreenFlagCelebration";
 import { DARK_PATTERN_FACTS, PHASE_TERMS } from "@/lib/education";
-import type { Finding, LogEntry, Phase, Screenshot } from "@/lib/types";
+import type { Finding, GreenFlag, LogEntry, Phase, Screenshot } from "@/lib/types";
 import { PHASE_META } from "@/lib/types";
+import { getPersonalityMessage } from "@/config/agent_personalities";
 import { AnimatePresence, motion } from "framer-motion";
+import confetti from "canvas-confetti";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 interface NarrativeFeedProps {
@@ -14,6 +17,7 @@ interface NarrativeFeedProps {
   logs: LogEntry[];
   status: string;
   trustScore?: number;
+  greenFlags?: GreenFlag[];
 }
 
 type FeedEntry =
@@ -21,7 +25,8 @@ type FeedEntry =
   | { kind: "finding"; finding: Finding; timestamp: number }
   | { kind: "screenshot"; screenshot: Screenshot; timestamp: number }
   | { kind: "didyouknow"; factIdx: number; timestamp: number }
-  | { kind: "complete"; score: number; timestamp: number };
+  | { kind: "complete"; score: number; timestamp: number }
+  | { kind: "personality"; agent: Phase; context: "working" | "complete" | "success" | "error"; params?: Record<string, unknown>; timestamp: number };
 
 export function NarrativeFeed({
   currentPhase,
@@ -30,12 +35,14 @@ export function NarrativeFeed({
   logs,
   status,
   trustScore,
+  greenFlags = [],
 }: NarrativeFeedProps) {
   const feedRef = useRef<HTMLDivElement>(null);
   const [entries, setEntries] = useState<FeedEntry[]>([]);
   const prevPhaseRef = useRef<Phase | null>(null);
   const prevFindingsCount = useRef(0);
   const prevScreensCount = useRef(0);
+  const prevLogsCount = useRef(0);
   const shownFacts = useRef(new Set<number>());
 
   // Build feed entries reactively
@@ -75,10 +82,36 @@ export function NarrativeFeed({
       prevScreensCount.current = screenshots.length;
     }
 
+    // Personality events from logs
+    if (logs.length > prevLogsCount.current) {
+      for (let i = prevLogsCount.current; i < logs.length; i++) {
+        const log = logs[i];
+        // Check if this is a personality log entry
+        if (log.context && log.agent) {
+          const phase = log.agent as Phase;
+          if (phase && phase !== "init") {
+            // Throttle personality events: only show every 30 seconds or on complete
+            const shouldShow = log.context === "complete" ||
+              (log.context === "working" && Math.random() < 0.3); // Only 30% of working messages
+            if (shouldShow) {
+              newEntries.push({
+                kind: "personality",
+                agent: phase,
+                context: log.context,
+                params: log.params,
+                timestamp: Date.now() + i,
+              });
+            }
+          }
+        }
+      }
+      prevLogsCount.current = logs.length;
+    }
+
     if (newEntries.length > 0) {
       setEntries((prev) => [...prev, ...newEntries]);
     }
-  }, [currentPhase, findings, screenshots]);
+  }, [currentPhase, findings, screenshots, logs]);
 
   // Completion entry
   useEffect(() => {
@@ -126,7 +159,8 @@ export function NarrativeFeed({
               {entry.kind === "finding" && <FindingAlertCard finding={entry.finding} />}
               {entry.kind === "screenshot" && <ScreenshotCard screenshot={entry.screenshot} />}
               {entry.kind === "didyouknow" && <DidYouKnowCard factIdx={entry.factIdx} />}
-              {entry.kind === "complete" && <CompletionCard score={entry.score} />}
+              {entry.kind === "personality" && <PersonalityCard agent={entry.agent} context={entry.context} params={entry.params} />}
+              {entry.kind === "complete" && <CompletionCard score={entry.score} greenFlags={greenFlags} />}
             </motion.div>
           ))}
         </AnimatePresence>
@@ -247,7 +281,7 @@ function DidYouKnowCard({ factIdx }: { factIdx: number }) {
   );
 }
 
-function CompletionCard({ score }: { score: number }) {
+function CompletionCard({ score, greenFlags = [] }: { score: number; greenFlags?: Array<{ id: string; category: string; label: string; icon: string }> }) {
   const color =
     score >= 90
       ? "text-emerald-400 border-emerald-500/50"
@@ -257,17 +291,111 @@ function CompletionCard({ score }: { score: number }) {
       ? "text-amber-400 border-amber-500/50"
       : "text-red-400 border-red-500/50";
 
+  // Trigger confetti for high trust scores
+  useEffect(() => {
+    if (score >= 80) {
+      setTimeout(() => {
+        confetti({
+          particleCount: 80,
+          spread: 60,
+          origin: { y: 0.7 },
+          colors: ["#10B981", "#06B6D4", "#8B5CF6"],
+          disableForReducedMotion: true,
+        });
+      }, 300);
+    }
+  }, [score]);
+
   return (
-    <motion.div
-      initial={{ scale: 0.95, opacity: 0 }}
-      animate={{ scale: 1, opacity: 1 }}
-      transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-      className={`glass-card rounded-xl p-6 text-center border-l-2 ${color.split(" ")[1]}`}
-    >
-      <div className="text-3xl mb-2">🏁</div>
-      <h3 className="text-lg font-bold text-[var(--v-text)] mb-1">Audit Complete</h3>
-      <div className={`text-4xl font-bold font-mono mb-1 ${color.split(" ")[0]}`}>{score}</div>
-      <p className="text-xs text-[var(--v-text-tertiary)]">/100 Trust Score</p>
-    </motion.div>
+    <>
+      <motion.div
+        initial={{ scale: 0.95, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+        className={`glass-card rounded-xl p-6 text-center border-l-2 ${color.split(" ")[1]}`}
+      >
+        <motion.div
+          initial={{ rotate: -10 }}
+          animate={{ rotate: 0 }}
+          transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+          className="text-4xl mb-2"
+        >
+          {score >= 80 ? "🎉" : score >= 70 ? "✅" : score >= 40 ? "⚠️" : "🚨"}
+        </motion.div>
+        <h3 className="text-lg font-bold text-[var(--v-text)] mb-1">
+          {score >= 80 ? "Audit Complete - Excellent Trust!" : score >= 70 ? "Audit Complete" : score >= 40 ? "Audit Complete - Caution Advised" : "Audit Complete - Low Trust Detected"}
+        </h3>
+        <motion.div
+          className={`text-4xl font-bold font-mono mb-1 ${color.split(" ")[0]}`}
+          animate={score >= 80 ? {
+            scale: [1, 1.05, 1],
+            textShadow: ["0 0 0px rgba(16, 185, 129, 0)", "0 0 20px rgba(16, 185, 129, 0.5)", "0 0 0px rgba(16, 185, 129, 0)"]
+          } : {}}
+          transition={{ duration: 2, repeat: score >= 80 ? Infinity : 0 }}
+        >
+          {score}
+        </motion.div>
+        <p className="text-xs text-[var(--v-text-tertiary)]">/100 Trust Score</p>
+        {score >= 70 && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.5 }}
+            className="mt-2 text-xs text-[var(--v-text-secondary)]"
+          >
+            {score >= 90 ? "✨ Outstanding - This site demonstrates excellent trustworthiness!" : "✓ This site shows positive trust indicators"}
+          </motion.div>
+        )}
+        {score >= 80 && greenFlags.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.7 }}
+            className="mt-2 flex items-center justify-center gap-1 text-[10px] text-emerald-400/90"
+          >
+            <span>🏅</span>
+            <span>{greenFlags.length} positive indicators detected</span>
+          </motion.div>
+        )}
+      </motion.div>
+
+      {/* Green Flag Celebration Banner - shown after CompletionCard */}
+      {score >= 80 && greenFlags.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4, duration: 0.6 }}
+          className="mt-3"
+        >
+          <GreenFlagCelebration
+            trustScore={score}
+            greenFlags={greenFlags}
+            onDismiss={() => {/* Can add dismiss handler if needed */}}
+          />
+        </motion.div>
+      )}
+    </>
+  );
+}
+
+/* ── Personality Card Component ── */
+
+function PersonalityCard({ agent, context, params }: { agent: Phase; context: "working" | "complete" | "success" | "error"; params?: Record<string, unknown> }) {
+  const meta = PHASE_META[agent];
+  if (!meta || agent === "init") return null;
+
+  // Cast params to the expected type for getPersonalityMessage
+  const message = getPersonalityMessage(agent, context, params as Record<string, number | string> | undefined);
+
+  return (
+    <div className="glass-card rounded-xl p-3 border-l-2 border-cyan-500/30">
+      <div className="flex items-center gap-3">
+        <span className="text-xl animate-pulse">{meta.icon}</span>
+        <div className="flex-1">
+          <h4 className="text-xs font-semibold text-[var(--v-text)]">{meta.label}</h4>
+          <p className="text-[10px] text-[var(--v-text-secondary)] mt-0.5">{message}</p>
+        </div>
+      </div>
+    </div>
   );
 }
