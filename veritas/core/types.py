@@ -44,6 +44,10 @@ class SecurityFinding:
         source_module: Name of the module that generated this finding
         timestamp: ISO format timestamp when finding was created
         confidence: Confidence score 0.0 to 1.0
+        cwe_id: Optional CWE identifier (e.g., "CWE-79") - for Phase 9 CWE/CVSS integration
+        cvss_score: Optional CVSS base score (0.0-10.0) - for Phase 9 CWE/CVSS integration
+        recommendation: Optional remediation guidance text
+        url_finding: Whether this finding is URL-specific (for darknet correlation)
     """
     category: str
     severity: Severity
@@ -51,11 +55,19 @@ class SecurityFinding:
     source_module: str
     timestamp: str
     confidence: float
+    cwe_id: Optional[str] = None
+    cvss_score: Optional[float] = None
+    recommendation: str = ""
+    url_finding: bool = False
 
     def __post_init__(self):
-        """Validate confidence is in valid range."""
+        """Validate confidence and CVSS score are in valid ranges."""
         if not 0.0 <= self.confidence <= 1.0:
             raise ValueError(f"Confidence must be between 0.0 and 1.0, got {self.confidence}")
+
+        # Validate cvss_score if provided
+        if self.cvss_score is not None and (self.cvss_score < 0.0 or self.cvss_score > 10.0):
+            raise ValueError(f"CVSS score must be between 0.0 and 10.0, got {self.cvss_score}")
 
     @classmethod
     def create(
@@ -65,6 +77,10 @@ class SecurityFinding:
         evidence: str,
         source_module: str,
         confidence: float = 1.0,
+        cwe_id: Optional[str] = None,
+        cvss_score: Optional[float] = None,
+        recommendation: str = "",
+        url_finding: bool = False,
     ) -> "SecurityFinding":
         """
         Factory method for creating SecurityFinding.
@@ -75,6 +91,10 @@ class SecurityFinding:
             evidence: Human-readable description
             source_module: Name of generating module
             confidence: Confidence 0.0-1.0
+            cwe_id: Optional CWE identifier (e.g., "CWE-79")
+            cvss_score: Optional CVSS base score (0.0-10.0)
+            recommendation: Optional remediation guidance
+            url_finding: Whether this finding is URL-specific
 
         Returns:
             SecurityFinding instance
@@ -89,6 +109,10 @@ class SecurityFinding:
             source_module=source_module,
             timestamp=datetime.now(timezone.utc).isoformat(),
             confidence=confidence,
+            cwe_id=cwe_id,
+            cvss_score=cvss_score,
+            recommendation=recommendation,
+            url_finding=url_finding,
         )
 
 
@@ -155,8 +179,10 @@ class SecurityResult:
         modules_results: Nested per-module results (e.g., {"security_headers": {...}})
         modules_run: List of module names that were executed
         modules_failed: List of module names that failed
+        modules_executed: Count of modules executed (from tier execution)
         errors: List of error messages captured during analysis
         analysis_time_ms: Analysis duration in milliseconds
+        darknet_correlation: Optional dict of darknet threat intel for correlation
     """
     url: str
     audit_id: Optional[str] = None
@@ -166,8 +192,10 @@ class SecurityResult:
     modules_results: dict[str, Any] = field(default_factory=dict)
     modules_run: list[str] = field(default_factory=list)
     modules_failed: list[str] = field(default_factory=list)
+    modules_executed: int = 0
     errors: list[str] = field(default_factory=list)
     analysis_time_ms: int = 0
+    darknet_correlation: Optional[dict] = None
 
     def __post_init__(self):
         """Initialize timestamp if not provided."""
@@ -200,8 +228,10 @@ class SecurityResult:
             "modules_results": self.modules_results,
             "modules_run": self.modules_run,
             "modules_failed": self.modules_failed,
+            "modules_executed": self.modules_executed,
             "errors": self.errors,
             "analysis_time_ms": self.analysis_time_ms,
+            "darknet_correlation": self.darknet_correlation,
         }
 
     @classmethod
@@ -226,8 +256,10 @@ class SecurityResult:
             modules_results=data.get("modules_results", {}),
             modules_run=data.get("modules_run", []),
             modules_failed=data.get("modules_failed", []),
+            modules_executed=data.get("modules_executed", 0) or len(data.get("modules_run", [])),
             errors=data.get("errors", []),
             analysis_time_ms=data.get("analysis_time_ms", 0),
+            darknet_correlation=data.get("darknet_correlation"),
         )
 
     @staticmethod
@@ -240,6 +272,10 @@ class SecurityResult:
             "source_module": finding.source_module,
             "timestamp": finding.timestamp,
             "confidence": finding.confidence,
+            "cwe_id": finding.cwe_id,
+            "cvss_score": finding.cvss_score,
+            "recommendation": finding.recommendation,
+            "url_finding": finding.url_finding,
         }
 
     @staticmethod
@@ -252,6 +288,10 @@ class SecurityResult:
             source_module=data["source_module"],
             timestamp=data["timestamp"],
             confidence=data["confidence"],
+            cwe_id=data.get("cwe_id"),
+            cvss_score=data.get("cvss_score"),
+            recommendation=data.get("recommendation", ""),
+            url_finding=data.get("url_finding", False),
         )
 
     @property
