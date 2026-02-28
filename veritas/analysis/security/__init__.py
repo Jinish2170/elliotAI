@@ -8,14 +8,18 @@ Main Exports:
     - SecurityModule: Abstract base class for security modules
     - SecurityFinding: Dataclass with CWE ID and CVSS score
     - SecurityTier: Enum (FAST, MEDIUM, DEEP) with timeout suggestions
-    - register_security_module(): Module registration
-    - get_registered_modules(): Get all registered modules
+    - SecurityHeaderAnalyzerEnhanced: FAST tier TLS/SSL security header analyzer
+    - CookieSecurityAnalyzer: FAST tier cookie security analyzer
+    - ContentSecurityPolicyAnalyzer: FAST tier CSP analyzer
+    - Utility functions: register_security_module(), get_registered_modules()
 
 Usage:
     from veritas.analysis.security import (
         SecurityModule,
         SecurityFinding,
         SecurityTier,
+        get_all_security_modules,
+        execute_tier,
     )
 
     class MyAnalyzer(SecurityModule):
@@ -36,12 +40,22 @@ from .base import (
     get_registered_modules,
     register_security_module,
 )
+from .cookies import CookieSecurityAnalyzer
+from .csp import ContentSecurityPolicyAnalyzer
+from .tls_ssl import SecurityHeaderAnalyzerEnhanced
 
 __all__ = [
+    # Base classes
     "SecurityModule",
     "SecurityFinding",
     "SecurityTier",
+    # Module registry
     "register_security_module",
     "get_registered_modules",
     "clear_module_registry",
+    # FAST tier modules
+    "SecurityHeaderAnalyzerEnhanced",
+    "CookieSecurityAnalyzer",
+    "ContentSecurityPolicyAnalyzer",
 ]
+
