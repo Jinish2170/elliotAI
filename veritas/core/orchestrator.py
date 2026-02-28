@@ -1029,7 +1029,9 @@ class VeritasOrchestrator:
         self,
         progress_queue: Optional[multiprocessing.Queue] = None,
         use_adaptive_timeout: bool = False,
-        use_circuit_breaker: bool = False
+        use_circuit_breaker: bool = False,
+        progress_emitter: Optional["ProgressEmitter"] = None,
+        use_progress_streaming: bool = False
     ):
         """
         Initialize VeritasOrchestrator.
@@ -1038,12 +1040,25 @@ class VeritasOrchestrator:
             progress_queue: Optional multiprocessing queue for progress events
             use_adaptive_timeout: Enable adaptive timeout management (requires complexity analysis)
             use_circuit_breaker: Enable circuit breaker with graceful degradation
+            progress_emitter: ProgressEmitter for WebSocket streaming with token-bucket rate limiting
+            use_progress_streaming: Enable WebSocket-based progress streaming
         """
         self._graph = build_audit_graph()
         self._compiled = self._graph.compile()
         self.progress_queue = progress_queue
         self.use_adaptive_timeout = use_adaptive_timeout
         self.use_circuit_breaker = use_circuit_breaker
+
+        # Initialize progress streaming components
+        self._progress_emitter = progress_emitter
+        self.use_progress_streaming = use_progress_streaming
+        self._time_estimator: Optional["CompletionTimeEstimator"] = None
+
+        if use_progress_streaming:
+            from veritas.core.progress import ProgressEmitter, CompletionTimeEstimator
+            self._progress_emitter = progress_emitter or ProgressEmitter()
+            self._time_estimator = CompletionTimeEstimator()
+            logger.info("ProgressStreaming enabled with WebSocket")
 
         # Initialize smart orchestrator components
         self._timeout_manager: Optional[TimeoutManager] = None
@@ -1253,6 +1268,20 @@ class VeritasOrchestrator:
                     f"missing={degraded_result.missing_data}"
                 )
 
+                # Emit degradation via ProgressEmitter
+                if self.use_progress_streaming and self._progress_emitter:
+                    await self._progress_emitter.emit_agent_status(
+                        agent_name,
+                        "degraded",
+                        f"Fallback mode: {degraded_result.fallback_mode.value}"
+                    )
+                    await self._progress_emitter.emit_error(
+                        "agent_degraded",
+                        f"{agent_name} using fallback: {degraded_result.error_message or 'Unknown reason'}",
+                        agent_name,
+                        recoverable=True
+                    )
+
                 if degraded_result.error_message:
                     state["errors"].append(f"{agent_name} degraded: {degraded_result.error_message}")
         else:
@@ -1281,6 +1310,15 @@ class VeritasOrchestrator:
             self._timeout_manager.record_execution(
                 site_type, agent_name, elapsed_ms, success=(quality_penalty == 0.0)
             )
+
+            # Emit adaptive timeout adjustment via ProgressEmitter
+            if self.use_progress_streaming and self._progress_emitter and timeout:
+                await self._progress_emitter.emit_progress(
+                    agent_name,
+                    "timeout_adjusted",
+                    50,
+                    f"Timeout adjusted to {timeout}s"
+                )
 
         # Update quality penalty in state
         if isinstance(state, dict):
@@ -1355,6 +1393,10 @@ class VeritasOrchestrator:
 
         self._emit("init", "starting", 0, f"Initializing {tier} audit for {url}")
 
+        # Emit orchestrator start via ProgressEmitter
+        if self.use_progress_streaming and self._progress_emitter:
+            await self._progress_emitter.emit_agent_status("Orchestrator", "running", f"Starting audit: {url}")
+
         try:
             for iteration in range(settings.MAX_ITERATIONS):
                 state["iteration"] = iteration + 1
@@ -1368,11 +1410,22 @@ class VeritasOrchestrator:
                     state.update(scout_update)
                     n_shots = sum(len(sr.get("screenshots", [])) for sr in state.get("scout_results", []))
                     self._emit("scout", "done", 25, f"Captured {n_shots} screenshots", screenshots=n_shots, iteration=state["iteration"])
+
+                    # Emit Scout completion via ProgressEmitter
+                    if self.use_progress_streaming and self._progress_emitter:
+                        site_type = state.get("site_type", "unknown")
+                        await self._progress_emitter.emit_agent_status("Scout", "completed")
+                        await self._progress_emitter.emit_progress("Overall", "Scout", 25, f"Scout complete: {n_shots} screenshots")
                 except Exception as e:
                     logger.error(f"Scout failed: {e}")
                     state["errors"].append(f"Scout: {e}")
                     state["scout_failures"] = state.get("scout_failures", 0) + 1
                     self._emit("scout", "error", 25, str(e))
+
+                    # Emit Scout error via ProgressEmitter
+                    if self.use_progress_streaming and self._progress_emitter:
+                        await self._progress_emitter.emit_error("scout_error", str(e), "Scout", recoverable=True)
+                        await self._progress_emitter.emit_agent_status("Scout", "failed", str(e))
 
                 # Route after scout
                 route = route_after_scout(state)
@@ -1432,6 +1485,15 @@ class VeritasOrchestrator:
                                 f"Estimated {estimated_sec}s remaining for {len(remaining_agents)} agents",
                                 estimated_remaining=estimated_sec
                             )
+
+                            # Emit estimated time via ProgressEmitter
+                            if self.use_progress_streaming and self._progress_emitter:
+                                await self._progress_emitter.emit_progress(
+                                    "Overall",
+                                    "estimated_time",
+                                    27,
+                                    f"Estimated {estimated_sec}s remaining"
+                                )
                     except Exception as e:
                         logger.warning(f"Complexity analysis failed: {e}")
 
@@ -1477,10 +1539,20 @@ class VeritasOrchestrator:
                     n_calls = vr.get("nim_calls_made", 0)
                     degr_str = " (degraded)" if vision_penalty > 0 else ""
                     self._emit("vision", "done", 55, f"{n_findings} dark patterns detected, {n_calls} NIM calls{degr_str}", findings=n_findings, nim_calls=n_calls)
+
+                    # Emit Vision completion via ProgressEmitter
+                    if self.use_progress_streaming and self._progress_emitter:
+                        await self._progress_emitter.emit_agent_status("Vision", "completed")
+                        await self._progress_emitter.emit_progress("Overall", "Vision", 50, f"Vision complete: {n_findings} findings")
                 except Exception as e:
                     logger.error(f"Vision failed: {e}")
                     state["errors"].append(f"Vision: {e}")
                     self._emit("vision", "error", 55, str(e))
+
+                    # Emit Vision error via ProgressEmitter
+                    if self.use_progress_streaming and self._progress_emitter:
+                        await self._progress_emitter.emit_error("vision_error", str(e), "Vision", recoverable=True)
+                        await self._progress_emitter.emit_agent_status("Vision", "failed", str(e))
 
                 # 3. Graph
                 self._emit("graph", "investigating", 60, "Graph agent running WHOIS, DNS & web verification...", iteration=state["iteration"])
@@ -1501,10 +1573,20 @@ class VeritasOrchestrator:
                     n_nodes = gr.get("graph_node_count", 0)
                     degr_str = " (degraded)" if graph_penalty > 0 else ""
                     self._emit("graph", "done", 75, f"Domain age: {age}d, {n_nodes} graph nodes{degr_str}", domain_age=age, nodes=n_nodes)
+
+                    # Emit Graph completion via ProgressEmitter
+                    if self.use_progress_streaming and self._progress_emitter:
+                        await self._progress_emitter.emit_agent_status("Graph", "completed")
+                        await self._progress_emitter.emit_progress("Overall", "Graph", 70, f"Graph complete: {n_nodes} entities")
                 except Exception as e:
                     logger.error(f"Graph failed: {e}")
                     state["errors"].append(f"Graph: {e}")
                     self._emit("graph", "error", 75, str(e))
+
+                    # Emit Graph error via ProgressEmitter
+                    if self.use_progress_streaming and self._progress_emitter:
+                        await self._progress_emitter.emit_error("graph_error", str(e), "Graph", recoverable=True)
+                        await self._progress_emitter.emit_agent_status("Graph", "failed", str(e))
 
                 # 4. Judge
                 self._emit("judge", "deliberating", 80, "Judge agent synthesizing evidence & computing trust score...", iteration=state["iteration"])
@@ -1526,10 +1608,28 @@ class VeritasOrchestrator:
                     risk = tr.get("risk_level", "?")
                     degr_str = " (degraded)" if judge_penalty > 0 else ""
                     self._emit("judge", "done", 90, f"Trust Score: {score}/100 ({risk}){degr_str}", trust_score=score, risk_level=risk)
+
+                    # Emit Judge completion via ProgressEmitter
+                    if self.use_progress_streaming and self._progress_emitter:
+                        await self._progress_emitter.emit_agent_status("Judge", "completed")
+                        await self._progress_emitter.emit_progress("Overall", "Judge", 90, f"Judge complete: Score {score}/100 ({risk})")
+
+                        # Interesting highlight for findings
+                        n_findings = len((state.get("vision_result") or {}).get("findings", []))
+                        if n_findings > 0:
+                            await self._progress_emitter.emit_interesting_highlight(
+                                f"Judge reviewed {n_findings} findings, computed final trust score",
+                                phase="Judge"
+                            )
                 except Exception as e:
                     logger.error(f"Judge failed: {e}")
                     state["errors"].append(f"Judge: {e}")
                     self._emit("judge", "error", 90, str(e))
+
+                    # Emit Judge error via ProgressEmitter
+                    if self.use_progress_streaming and self._progress_emitter:
+                        await self._progress_emitter.emit_error("judge_error", str(e), "Judge", recoverable=True)
+                        await self._progress_emitter.emit_agent_status("Judge", "failed", str(e))
 
                 # Route after judge
                 route = route_after_judge(state)
@@ -1598,6 +1698,15 @@ class VeritasOrchestrator:
                   quality_penalty=quality_penalty,
                   degraded_agents=state.get("_degraded_agents", []))
 
+            # Flush and emit completion via ProgressEmitter
+            if self.use_progress_streaming and self._progress_emitter:
+                # Flush any buffered findings
+                await self._progress_emitter.flush()
+
+                # Emit final progress update
+                await self._progress_emitter.emit_progress("Overall", "complete", 100, f"Audit complete in {state['elapsed_seconds']:.0f}s")
+                await self._progress_emitter.emit_agent_status("Orchestrator", "completed")
+
             logger.info(
                 f"Audit complete: {url} | "
                 f"status={state.get('status')} | "
@@ -1614,4 +1723,10 @@ class VeritasOrchestrator:
             state["status"] = "aborted"
             state["errors"].append(f"Orchestrator exception: {str(e)}")
             state["elapsed_seconds"] = time.time() - state["start_time"]
+
+            # Emit error via ProgressEmitter
+            if self.use_progress_streaming and self._progress_emitter:
+                await self._progress_emitter.emit_error("orchestrator_exception", str(e), "Orchestrator", recoverable=True)
+                await self._progress_emitter.emit_agent_status("Orchestrator", "failed", str(e))
+
             return state
