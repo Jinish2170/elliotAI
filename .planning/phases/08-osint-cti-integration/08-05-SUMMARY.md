@@ -118,3 +118,20 @@ Set these in `.env` for full threat intelligence coverage.
 *Phase: 08-osint-cti-integration*
 *Plan: 08-05*
 *Completed: 2026-02-28*
+
+## Self-Check: PASSED
+
+All files exist:
+- FOUND: .planning/phases/08-osint-cti-integration/08-05-SUMMARY.md
+- FOUND: veritas/agents/graph_investigator.py
+- FOUND: veritas/config/settings.py
+
+All commits exist:
+- FOUND: 5674608 (feat: integrate OSINT/CTI components into GraphInvestigator.__init__)
+- FOUND: 003335e (feat: add _run_osint_investigation method)
+- FOUND: 2018fdb (feat: extend GraphResult with OSINT/CTI fields)
+- FOUND: d653beb (feat: add _add_osint_nodes_to_graph method)
+- FOUND: 9cf8c3a (feat: enhance investigate() with OSINT/CTI integration)
+- FOUND: 438517e (feat: add enhanced graph score calculation)
+- FOUND: 8f6eb01 (feat: add OSINT/CTI configuration settings)
+- FOUND: fe7298b (docs: complete plan)
