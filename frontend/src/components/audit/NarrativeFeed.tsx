@@ -281,7 +281,7 @@ function DidYouKnowCard({ factIdx }: { factIdx: number }) {
   );
 }
 
-function CompletionCard({ score, greenFlags = [] }: { score: number; greenFlags?: Array<{ id: string; category: string; label: string; icon: string }> }) {
+function CompletionCard({ score, greenFlags = [] }: { score: number; greenFlags?: GreenFlag[] }) {
   const color =
     score >= 90
       ? "text-emerald-400 border-emerald-500/50"
