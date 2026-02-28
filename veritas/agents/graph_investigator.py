@@ -468,6 +468,106 @@ class GraphInvestigator:
 
         return intel
 
+    async def _run_osint_investigation(
+        self, domain: str, hostname: str, ip_address: str
+    ) -> dict:
+        """
+        Run OSINT investigation using OSINTOrchestrator.
+
+        Coordinated queries to DNS, WHOIS, SSL, threat intel sources.
+        Returns dict with source results and consensus.
+        """
+        if not self._osint_orchestrator:
+            logger.warning("OSINT orchestrator not available (no db session)")
+            return {}
+
+        from veritas.osint.types import OSINTCategory
+
+        results = {}
+
+        # Query DNS if domain provided
+        if domain:
+            try:
+                dns_result = await self._osint_orchestrator.query_with_retry(
+                    "dns", "query", domain
+                )
+                if dns_result.status.value == "success":
+                    results["dns"] = dns_result.to_dict()
+            except Exception as e:
+                logger.warning(f"DNS OSINT query failed: {e}")
+
+        # Query WHOIS if domain provided
+        if domain:
+            try:
+                whois_result = await self._osint_orchestrator.query_with_retry(
+                    "whois", "query", domain
+                )
+                if whois_result.status.value == "success":
+                    results["whois"] = whois_result.to_dict()
+            except Exception as e:
+                logger.warning(f"WHOIS OSINT query failed: {e}")
+
+        # Query SSL if hostname provided
+        if hostname:
+            try:
+                ssl_result = await self._osint_orchestrator.query_with_retry(
+                    "ssl", "query", hostname
+                )
+                if ssl_result.status.value == "success":
+                    results["ssl"] = ssl_result.to_dict()
+            except Exception as e:
+                logger.warning(f"SSL OSINT query failed: {e}")
+
+        # Query threat intel sources if available
+        if domain and results:
+            try:
+                from veritas.osint.types import OSINTResult
+
+                # Get available threat intel sources
+                threat_results = await self._osint_orchestrator.query_all(
+                    OSINTCategory.THREAT_INTEL, "domain", domain, max_parallel=2
+                )
+
+                # Add successful results
+                for source_name, result in threat_results.items():
+                    if isinstance(result, OSINTResult) and result.status.value == "success":
+                        results[source_name] = result.to_dict()
+            except Exception as e:
+                logger.warning(f"Threat intel OSINT query failed: {e}")
+
+        # Compute consensus if results exist
+        if results and self._consensus_engine:
+            try:
+                # Convert results dicts back to OSINTResult objects for consensus
+                from veritas.osint.types import OSINTResult, SourceStatus, OSINTCategory
+
+                osint_objects = {}
+                for source_name, result_dict in results.items():
+                    try:
+                        # Reconstruct OSINTResult from dict
+                        osint_objects[source_name] = OSINTResult(
+                            source=source_name,
+                            category=OSINTCategory(result_dict.get("category", "dns")),
+                            query_type=result_dict.get("query_type", "query"),
+                            query_value=result_dict.get("query_value", domain),
+                            status=SourceStatus(result_dict.get("status", "success")),
+                            data=result_dict.get("data"),
+                            confidence_score=result_dict.get("confidence_score", 0.0),
+                        )
+                    except Exception:
+                        # Skip if reconstruction fails
+                        continue
+
+                if osint_objects:
+                    consensus = self._consensus_engine.compute_osint_consensus(
+                        osint_objects, min_sources=2
+                    )
+                    results["_consensus"] = consensus
+            except Exception as e:
+                logger.warning(f"Consensus computation failed: {e}")
+
+        return results
+
     # ================================================================
     # Private: Entity Extraction
     # ================================================================
