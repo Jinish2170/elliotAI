@@ -91,6 +91,19 @@ GRAPH_SEARCH_FOLLOW_LINKS: bool = os.getenv("GRAPH_SEARCH_FOLLOW_LINKS", "false"
 
 
 # ============================================================
+# Graph OSINT/CTI Configuration
+# ============================================================
+# OSINT integration feature flags
+GRAPH_ENABLE_OSINT: bool = os.getenv("GRAPH_ENABLE_OSINT", "true").lower() == "true"
+GRAPH_OSINT_TIMEOUT_S: int = int(os.getenv("GRAPH_OSINT_TIMEOUT_S", "30"))
+GRAPH_OSINT_MAX_PARALLEL: int = int(os.getenv("GRAPH_OSINT_MAX_PARALLEL", "3"))
+
+# CTI integration feature flags
+GRAPH_ENABLE_CTI: bool = os.getenv("GRAPH_ENABLE_CTI", "true").lower() == "true"
+GRAPH_CTI_MIN_CONFIDENCE: float = float(os.getenv("GRAPH_CTI_MIN_CONFIDENCE", "0.3"))
+
+
+# ============================================================
 # Audit Budget Controls
 # ============================================================
 MAX_ITERATIONS: int = int(os.getenv("MAX_ITERATIONS", "5"))
