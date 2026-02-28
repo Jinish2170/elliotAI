@@ -91,15 +91,15 @@ Requirements for Milestone v2.0: Masterpiece-quality features implemented on top
 
 ### Judge System Dual-Tier
 
-- [ ] **JUDGE-01**: Design dual-tier verdict data classes
+- [x] **JUDGE-01**: Design dual-tier verdict data classes
   - Technical tier: CWE, CVSS, IOCs for security pros
   - Non-technical tier: plain English, actionable advice for general users
   - DualVerdict dataclass containing both VerdictTechnical and VerdictNonTechnical
-- [ ] **JUDGE-02**: Implement site-type-specific scoring strategies
+- [x] **JUDGE-02**: Implement site-type-specific scoring strategies
   - 11 site-type strategies (e-commerce, social media, news, etc.)
   - Context-aware scoring based on detected site type
   - Base strategy class with shared configuration
-- [ ] **JUDGE-03**: Build Judge Agent with dual-tier generation
+- [x] **JUDGE-03**: Build Judge Agent with dual-tier generation
   - Single trust score calculation shared between tiers
   - Versioned verdict data classes (V1/V2 transition path)
   - Strategy pattern for site-type-specific logic
@@ -244,9 +244,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CTI-02 | Phase 8 | Complete |
 | CTI-03 | Phase 8 | Pending |
 | CTI-04 | Phase 8 | Complete |
-| JUDGE-01 | Phase 9 | Pending |
-| JUDGE-02 | Phase 9 | Pending |
-| JUDGE-03 | Phase 9 | Pending |
+| JUDGE-01 | Phase 9 | Complete |
+| JUDGE-02 | Phase 9 | Complete |
+| JUDGE-03 | Phase 9 | Complete |
 | ORCH-01 | Phase 9 | Complete |
 | ORCH-02 | Phase 9 | Complete |
 | ORCH-03 | Phase 9 | Complete |
