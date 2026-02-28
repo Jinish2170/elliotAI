@@ -123,7 +123,7 @@ VERITAS's journey from initial concept to production masterpiece: v1.0 establish
 | 7 | v2.0 | 4/4 | ✅ Complete | 2026-02-26 |
 | 8 | v2.0 | 5/6 | ✅ Complete | 2026-02-28 |
 | 9 | v2.0 | 3/3 | ✅ Complete | 2026-02-28 |
-| 10 | v2.0 | 3/4 | 🔄 In Progress | 2026-02-28 |
+| 10 | 3/4 | In Progress|  | 2026-02-28 |
 | 11 | v2.0 | 0/2 | 📝 Planned | - |
 
 Coverage:
