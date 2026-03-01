@@ -53,6 +53,7 @@ streamlit>=1.30.0
 python-dotenv>=1.0.0
 tenacity>=8.2.0                 # Retry logic with exponential backoff
 aiohttp>=3.9.0
+PySocks>=1.7.1                  # SOCKS5h proxy support for TOR
 
 # --- Testing ---
 pytest>=7.4.0
