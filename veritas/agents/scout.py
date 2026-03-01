@@ -38,6 +38,17 @@ from config.site_types import SiteType, classify_site_type
 
 logger = logging.getLogger("veritas.scout")
 
+# Import IOC detector for threat intelligence
+_IOC_AVAILABLE = False
+try:
+    # Try to import, but do it lazily to avoid circular imports
+    from veritas.osint.ioc_detector import IOCDetector
+    _IOC_AVAILABLE = True
+except ImportError:
+    logger.warning("IOCDetector not available, .onion detection disabled")
+    IOCDetector = None
+    _IOC_AVAILABLE = False
+
 
 # ============================================================
 # User Agent Pool
@@ -189,6 +200,12 @@ class ScoutResult:
     # Detection flags
     captcha_detected: bool = False
 
+    # IOC (Indicators of Compromise) detection
+    ioc_detected: bool = False
+    ioc_indicators: list[dict] = field(default_factory=list)  # List of detected IOCs
+    onion_detected: bool = False  # True if .onion addresses found
+    onion_addresses: list[str] = field(default_factory=list)  # List of .onion addresses
+
     # Diagnostics
     error_message: str = ""
     navigation_time_ms: float = 0
@@ -229,6 +246,8 @@ class StealthScout:
         self._browser: Optional[Browser] = None
         self._evidence_dir = evidence_dir or settings.EVIDENCE_DIR
         self._evidence_dir.mkdir(parents=True, exist_ok=True)
+        # Initialize IOC detector for threat intelligence
+        self._ioc_detector = IOCDetector() if _IOC_AVAILABLE else None
 
     async def __aenter__(self):
         self._playwright = await async_playwright().start()
@@ -403,6 +422,38 @@ class StealthScout:
             except Exception as e:
                 logger.warning(f"Form validation failed (non-critical): {e}")
 
+            # --- IOC Detection (Threat Intelligence) ---
+            ioc_detected = False
+            ioc_indicators = []
+            onion_detected = False
+            onion_addresses = []
+            ioc_content = None
+            try:
+                if self._ioc_detector:
+                    # Get page content for scanning
+                    ioc_content = await page.content()
+
+                    # Run IOC detection
+                    ioc_result = await self._ioc_detector.detect_content(
+                        url=url,
+                        content=ioc_content,
+                        links=metadata.links_external[:100],  # Limit to avoid huge scans
+                    )
+
+                    ioc_detected = ioc_result.found
+                    ioc_indicators = [ind.to_dict() for ind in ioc_result.indicators]
+                    onion_detected = ioc_result.onion_detected
+                    onion_addresses = [ind["value"] for ind in ioc_indicators if ind.get("type") == "ONION_ADDRESS"]
+
+                    # Log findings
+                    if ioc_detected:
+                        logger.info(
+                            f"IOC detection: {len(ioc_indicators)} indicators "
+                            f"({len(onion_addresses)} onions)"
+                        )
+            except Exception as e:
+                logger.warning(f"IOC detection failed (non-critical): {e}")
+
             # --- Assemble Result ---
             screenshots = [p for p in [ss_a, ss_b, ss_full] if p]
             timestamps = []
@@ -429,6 +480,17 @@ class StealthScout:
                     trust_notes.append("Password form detected WITHOUT SSL — critical risk")
                     trust_mod -= 0.2
 
+            # IOC trust modifiers (onion detection = high risk indicator)
+            if onion_detected:
+                trust_notes.append(f"Onion (.onion) addresses detected: {len(onion_addresses)} hidden services found")
+                trust_mod -= 0.3  # Significant trust reduction for .onion links
+                if len(onion_addresses) == 1:
+                    trust_notes.append("Single .onion link detected — may indicate darknet connection")
+                else:
+                    trust_notes.append(f"{len(onion_addresses)} .onion links detected — strong darknet connection signals")
+            if ioc_detected and not onion_detected:
+                trust_notes.append(f"Security indicators detected: {len(ioc_indicators)} IOCs found")
+
             logger.info(
                 f"Investigation complete: {url} | "
                 f"screenshots={len(screenshots)} | "
@@ -436,6 +498,7 @@ class StealthScout:
                 f"links_external={len(metadata.links_external)} | "
                 f"forms={len(metadata.forms)} | "
                 f"nav_time={nav_time:.0f}ms"
+                f"{' | onions=' + str(len(onion_addresses)) if onion_detected else ''}"
             )
 
             return ScoutResult(
@@ -464,6 +527,10 @@ class StealthScout:
                 links=metadata.links_external[:50],
                 forms_detected=len(metadata.forms),
                 captcha_detected=False,
+                ioc_detected=ioc_detected,
+                ioc_indicators=ioc_indicators[:20],  # Limit to prevent huge payloads
+                onion_detected=onion_detected,
+                onion_addresses=onion_addresses,
                 navigation_time_ms=nav_time,
                 viewport_used=viewport,
                 user_agent_used=user_agent,
@@ -524,6 +591,26 @@ class StealthScout:
             ss_full = await self._take_full_screenshot(page, audit_id)
             metadata = await self._extract_metadata(page)
 
+            # IOC Detection for subpages
+            ioc_detected = False
+            ioc_indicators = []
+            onion_detected = False
+            onion_addresses = []
+            try:
+                if self._ioc_detector:
+                    ioc_content = await page.content()
+                    ioc_result = await self._ioc_detector.detect_content(
+                        url=url,
+                        content=ioc_content,
+                        links=metadata.links_external[:50],
+                    )
+                    ioc_detected = ioc_result.found
+                    ioc_indicators = [ind.to_dict() for ind in ioc_result.indicators[:10]]
+                    onion_detected = ioc_result.onion_detected
+                    onion_addresses = [ind["value"] for ind in ioc_indicators if ind.get("type") == "ONION_ADDRESS"]
+            except Exception as e:
+                logger.warning(f"Subpage IOC detection failed (non-critical): {e}")
+
             screenshots = [p for p in [ss, ss_full] if p]
 
             return ScoutResult(
@@ -541,6 +628,12 @@ class StealthScout:
                     "external_links_count": len(metadata.links_external),
                 },
                 forms_detected=len(metadata.forms),
+                ioc_detected=ioc_detected,
+                ioc_indicators=ioc_indicators,
+                onion_detected=onion_detected,
+                onion_addresses=onion_addresses,
+                trust_notes=[f"{len(onion_addresses)} .onion links detected"] if onion_detected else [],
+                trust_modifier=-0.3 if onion_detected else 0.0,
                 navigation_time_ms=nav_time,
             )
         except Exception as e:
