@@ -2,7 +2,7 @@
 
 **Milestone:** v1.0 - Core Stabilization
 **Created:** 2026-02-20
-**Last Updated:** 2026-02-23 (Phase 5, Plan 06 complete)
+**Last Updated:** 2026-03-01 (Phase 12, Plan 02 complete)
 **Mode:** yolo (GO) | Model Profile: sonnet
 **Execution:** Phase 5 plans executing (Persistent Audit Storage)
 
@@ -40,13 +40,14 @@
 
 ## Performance Metrics
 
-**Test Coverage**: 140/140 Python tests passing
+**Test Coverage**: 182/182 Python tests passing
 - 60 baseline tests
 - 40 IPC tests
 - 52 SecurityAgent unit tests (23 agent + 29 dataclasses)
 - 49 integration/migration tests (17 integration + 20 migration)
 - 5 LangGraph investigation tests (minimal graph reproduction)
 - 3 concurrent persistence tests (WAL mode validation)
+- 42 IOC detection tests (32 IOC detector + 10 scout integration)
 
 **Known Issues Fixed in Phase 1**:
 - ~~Fragile stdout parsing~~ → Queue-based IPC with ProgressEvent dataclass
@@ -429,3 +430,16 @@
 *Phase 5 complete: Persistent Audit Storage with SQLite WAL mode validated via concurrent tests*
 *All 6 plans executed: models, repository, ScreenshotStorage, dual-write, history/compare APIs, concurrent persistence tests*
 *Next: Continue with Phase 4 (Stub Cleanup) or Phase 3 (LangGraph Investigation) based on priority*
+
+---
+
+**Additional Phase Completion (2026-03-01): Phase 12 - Darknet Auditor**
+- Phase 12: Darknet Onion Detection (2 plans) - Complete
+  - Plan 12-02: Darknet Onion Detection (COMPLETE 2026-03-01)
+    - Created veritas/osint/ioc_detector.py with IOC detection capabilities
+    - Added ONION_ADDRESS indicator for V2/V3 Tor hidden services
+    - Implemented IP_ADDRESS, HASH (MD5/SHA1/SHA256/SHA512) indicators  
+    - Integrated IOC detection into Scout agent with trust score modifiers (-0.3 for onions)
+    - 42 tests passing (32 IOC detector + 10 scout integration)
+    - Duration: ~64 minutes
+    - Commits: 8f70689, 921b1fc
