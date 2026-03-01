@@ -104,19 +104,33 @@ Requirements for Milestone v2.0: Masterpiece-quality features implemented on top
   - Versioned verdict data classes (V1/V2 transition path)
   - Strategy pattern for site-type-specific logic
 
-### Cybersecurity Deep Dive
+### Darknet & Premium Category
 
-- [x] **SEC-01**: Implement 25+ enterprise security modules
-  - OWASP Top 10 compliance checks
-  - PCI DSS compliance checks
-  - GDPR compliance checks
-  - Advanced threat detection patterns
-  - Group parallel execution (fast/medium/deep tiers)
-- [ ] **SEC-02**: Build darknet-level threat detection
-  - Darknet threat feed integration
-  - Enterprise-grade security detection
-  - CVSS scoring for findings
-  - Calibration baseline from known-safe sites
+- [x] **DARKNET-01**: TOR integration with Stem client
+  - Stem SOCKS5 proxy connection
+  - Hidden service onion URL resolution
+  - Circuit management and connection pooling
+  - Privacy-preserving routing with anti-fingerprinting
+- [ ] **DARKNET-02**: Hidden service detection algorithms
+  - .onion domain recognition and validation
+  - TOR network fingerprinting patterns
+  - Darknet marketplace structure detection
+  - Hidden service health monitoring
+- [ ] **DARKNET-03**: Marketplace analysis database
+  - 6 major darknet marketplace threat feeds
+  - Vendor reputation tracking
+  - Product category analysis
+  - Market intelligence aggregation
+- [ ] **DARKNET-04**: VERITAS darknet agent workflows
+  - TOR-aware security modules
+  - Hidden service specific OSINT patterns
+  - Darknet vulnerability exploitation detection
+  - Privacy/anonymity enforcement recommendations
+- [ ] **DARKNET-05**: Premium category UI integration
+  - Darknet audit toggle/selection
+  - TOR connection status indicator
+  - Hidden service discovery results display
+  - Marketplace threat intelligence dashboard
 
 ### Smart Orchestrator Framework
 
@@ -215,7 +229,6 @@ Explicitly excluded from v2.0. Documented to prevent scope creep.
 | Port scanning (NMAP) | Requires sudo, not web-app applicable |
 | Paid API integrations (Shodan, Censys) | Budget constraints |
 | Full automated exploitation | Ethical/legal concerns |
-| Tor/onion service scraping | Legal risk |
 | Social media login automation | Privacy concerns |
 | 3D visualization | Unnecessary for 2D screenshots |
 
@@ -254,15 +267,22 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PROG-02 | Phase 9 | Complete |
 | PROG-03 | Phase 9 | Complete |
 | SEC-01 | Phase 10 | Complete |
-| SEC-02 | Phase 10 | Pending |
 | SHOWCASE-01 | Phase 11 | Pending |
+| SHOWCASE-02 | Phase 11 | Pending |
+| SHOWCASE-03 | Phase 11 | Pending |
+| SHOWCASE-04 | Phase 11 | Pending |
+| DARKNET-01 | Phase 12 | Complete |
+| DARKNET-02 | Phase 12 | Pending |
+| DARKNET-03 | Phase 12 | Pending |
+| DARKNET-04 | Phase 12 | Pending |
+| DARKNET-05 | Phase 12 | Pending |
 | SHOWCASE-02 | Phase 11 | Pending |
 | SHOWCASE-03 | Phase 11 | Pending |
 | SHOWCASE-04 | Phase 11 | Pending |
 
 **Coverage:**
-- v2 requirements: 36 total
-- Mapped to phases: 36 (roadmap created)
+- v2 requirements: 41 total (36 + 5 darknet)
+- Mapped to phases: 41 (roadmap created)
 - Unmapped: 0 ✓
 
 ---

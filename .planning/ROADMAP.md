@@ -139,11 +139,33 @@ VERITAS's journey from initial concept to production masterpiece: v1.0 establish
 | 9 | v2.0 | 3/3 | ✅ Complete | 2026-02-28 |
 | 10 | 4/4 | Complete    | 2026-02-28 |
 | 11 | v2.0 | 0/2 | 📝 Planned | - |
+| 12 | 1/5 | In Progress|  | - |
 
 Coverage:
 - v1 phases: 5 phases, 22 plans
-- v2 phases: 6 phases, 25 total plans (23 complete, 2 planned)
-- Total: 11 phases, 47 plans (45 complete, 2 planned)
+- v2 phases: 7 phases, 30 total plans (23 complete, 7 planned)
+- Total: 12 phases, 52 plans (45 complete, 7 planned)
+
+### Phase 12: Premium Darknet Auditor
+
+**Goal:** Deliver premium darknet category with TOR integration, hidden service detection, marketplace analysis, and specialized VERITAS agent workflows for darknet threat detection
+**Requirements**: DARKNET-01, DARKNET-02, DARKNET-03, DARKNET-04, DARKNET-05
+**Depends on:** Phase 11
+**Plans:** 1/5 plans executed
+
+**Success Criteria** (what must be TRUE):
+  1. User can route .onion URL requests through TOR SOCKS5h proxy (127.0.0.1:9050)
+  2. User can validate .onion URLs with base32 checksum verification (v2/v3 addresses)
+  3. User can query 6 marketplace threat feeds for vendor reputation and exit scam indicators
+  4. System analyzes darknet vulnerabilities (escrow, crypto-only, Tor2Web exposure)
+  5. Interface shows TOR status, marketplace intelligence, and legal read-only OSINT warnings
+
+**Plans:** [phases/12-darknet-auditor/](.planning/phases/12-darknet-auditor/)
+- [ ] 12-01-PLAN.md: TOR Client and SOCKS5h Integration (DARKNET-01)
+- [ ] 12-02-PLAN.md: .onion Validator and Marketplace Classifier (DARKNET-02)
+- [ ] 12-03-PLAN.md: Marketplace Threat Feed OSINT Sources (DARKNET-03)
+- [ ] 12-04-PLAN.md: VERITAS Darknet Agent Workflows (DARKNET-04)
+- [ ] 12-05-PLAN.md: Premium Category UI Integration (DARKNET-05)
 
 ---
-*Last updated: 2026-02-28 - Phase 10 plan 10-04 complete (4/4) - all phase 10 plans complete*
+*Last updated: 2026-03-01 - Phase 12 plans created (5 plans: 12-01 through 12-05)*
