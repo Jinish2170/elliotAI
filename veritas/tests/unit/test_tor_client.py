@@ -182,7 +182,6 @@ class TestTORClientGetRequest:
         assert "async context manager" in str(exc_info.value)
 
 
-@pytest.mark.asyncio
 class TestTORClientConfiguration:
     """Test TORClient configuration options."""
 
