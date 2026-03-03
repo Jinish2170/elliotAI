@@ -126,6 +126,7 @@ try:
     from .redirect_analyzer import RedirectAnalyzer
     from .js_analyzer import JSObfuscationDetector
     from .form_validator import FormActionValidator
+    from .security.darknet import DarknetAnalyzer
 except ImportError as e:
     # Modules may not be fully available during import
     import logging

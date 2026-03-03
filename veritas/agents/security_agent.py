@@ -62,6 +62,7 @@ from analysis.phishing_checker import PhishingChecker
 from analysis.redirect_analyzer import RedirectAnalyzer
 from analysis.js_analyzer import JSObfuscationDetector
 from analysis.form_validator import FormActionValidator
+from analysis.security.darknet import DarknetAnalyzer
 
 logger = logging.getLogger("veritas.security_agent")
 
@@ -69,6 +70,7 @@ logger = logging.getLogger("veritas.security_agent")
 _MODULE_PRIORITY = [
     "security_headers",
     "phishing_db",
+    "darknet_analysis",
     "redirect_chain",
     "js_analysis",
     "form_validation",
@@ -77,11 +79,12 @@ _MODULE_PRIORITY = [
 # Composite score weights for each module
 # Weights should sum to 1.0 (or be normalized)
 _MODULE_WEIGHTS = {
-    "security_headers": 0.20,
-    "phishing_db": 0.30,  # Heavier penalty for phishing
-    "redirect_chain": 0.15,
-    "js_analysis": 0.20,
-    "form_validation": 0.15,
+    "security_headers": 0.18,
+    "phishing_db": 0.28,
+    "darknet_analysis": 0.12,  # Darknet threat correlation
+    "redirect_chain": 0.14,
+    "js_analysis": 0.18,
+    "form_validation": 0.10,
 }
 
 
@@ -221,6 +224,7 @@ class SecurityAgent:
         module_classes = [
             SecurityHeaderAnalyzer,
             PhishingChecker,
+            DarknetAnalyzer,
             RedirectAnalyzer,
             JSObfuscationDetector,
             FormActionValidator,
