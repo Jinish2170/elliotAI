@@ -44,6 +44,10 @@ class SecurityFinding:
         source_module: Name of the module that generated this finding
         timestamp: ISO format timestamp when finding was created
         confidence: Confidence score 0.0 to 1.0
+        cwe_id: Optional CWE identifier (e.g., "CWE-79") - for Phase 9 CWE/CVSS integration
+        cvss_score: Optional CVSS base score (0.0-10.0) - for Phase 9 CWE/CVSS integration
+        recommendation: Optional remediation guidance text
+        url_finding: Whether this finding is URL-specific (for darknet correlation)
     """
     category: str
     severity: Severity
@@ -51,11 +55,19 @@ class SecurityFinding:
     source_module: str
     timestamp: str
     confidence: float
+    cwe_id: Optional[str] = None
+    cvss_score: Optional[float] = None
+    recommendation: str = ""
+    url_finding: bool = False
 
     def __post_init__(self):
-        """Validate confidence is in valid range."""
+        """Validate confidence and CVSS score are in valid ranges."""
         if not 0.0 <= self.confidence <= 1.0:
             raise ValueError(f"Confidence must be between 0.0 and 1.0, got {self.confidence}")
+
+        # Validate cvss_score if provided
+        if self.cvss_score is not None and (self.cvss_score < 0.0 or self.cvss_score > 10.0):
+            raise ValueError(f"CVSS score must be between 0.0 and 10.0, got {self.cvss_score}")
 
     @classmethod
     def create(
@@ -65,6 +77,10 @@ class SecurityFinding:
         evidence: str,
         source_module: str,
         confidence: float = 1.0,
+        cwe_id: Optional[str] = None,
+        cvss_score: Optional[float] = None,
+        recommendation: str = "",
+        url_finding: bool = False,
     ) -> "SecurityFinding":
         """
         Factory method for creating SecurityFinding.
@@ -75,6 +91,10 @@ class SecurityFinding:
             evidence: Human-readable description
             source_module: Name of generating module
             confidence: Confidence 0.0-1.0
+            cwe_id: Optional CWE identifier (e.g., "CWE-79")
+            cvss_score: Optional CVSS base score (0.0-10.0)
+            recommendation: Optional remediation guidance
+            url_finding: Whether this finding is URL-specific
 
         Returns:
             SecurityFinding instance
@@ -89,6 +109,10 @@ class SecurityFinding:
             source_module=source_module,
             timestamp=datetime.now(timezone.utc).isoformat(),
             confidence=confidence,
+            cwe_id=cwe_id,
+            cvss_score=cvss_score,
+            recommendation=recommendation,
+            url_finding=url_finding,
         )
 
 
@@ -155,8 +179,10 @@ class SecurityResult:
         modules_results: Nested per-module results (e.g., {"security_headers": {...}})
         modules_run: List of module names that were executed
         modules_failed: List of module names that failed
+        modules_executed: Count of modules executed (from tier execution)
         errors: List of error messages captured during analysis
         analysis_time_ms: Analysis duration in milliseconds
+        darknet_correlation: Optional dict of darknet threat intel for correlation
     """
     url: str
     audit_id: Optional[str] = None
@@ -166,8 +192,10 @@ class SecurityResult:
     modules_results: dict[str, Any] = field(default_factory=dict)
     modules_run: list[str] = field(default_factory=list)
     modules_failed: list[str] = field(default_factory=list)
+    modules_executed: int = 0
     errors: list[str] = field(default_factory=list)
     analysis_time_ms: int = 0
+    darknet_correlation: Optional[dict] = None
 
     def __post_init__(self):
         """Initialize timestamp if not provided."""
@@ -200,8 +228,10 @@ class SecurityResult:
             "modules_results": self.modules_results,
             "modules_run": self.modules_run,
             "modules_failed": self.modules_failed,
+            "modules_executed": self.modules_executed,
             "errors": self.errors,
             "analysis_time_ms": self.analysis_time_ms,
+            "darknet_correlation": self.darknet_correlation,
         }
 
     @classmethod
@@ -226,8 +256,10 @@ class SecurityResult:
             modules_results=data.get("modules_results", {}),
             modules_run=data.get("modules_run", []),
             modules_failed=data.get("modules_failed", []),
+            modules_executed=data.get("modules_executed", 0) or len(data.get("modules_run", [])),
             errors=data.get("errors", []),
             analysis_time_ms=data.get("analysis_time_ms", 0),
+            darknet_correlation=data.get("darknet_correlation"),
         )
 
     @staticmethod
@@ -240,6 +272,10 @@ class SecurityResult:
             "source_module": finding.source_module,
             "timestamp": finding.timestamp,
             "confidence": finding.confidence,
+            "cwe_id": finding.cwe_id,
+            "cvss_score": finding.cvss_score,
+            "recommendation": finding.recommendation,
+            "url_finding": finding.url_finding,
         }
 
     @staticmethod
@@ -252,6 +288,10 @@ class SecurityResult:
             source_module=data["source_module"],
             timestamp=data["timestamp"],
             confidence=data["confidence"],
+            cwe_id=data.get("cwe_id"),
+            cvss_score=data.get("cvss_score"),
+            recommendation=data.get("recommendation", ""),
+            url_finding=data.get("url_finding", False),
         )
 
     @property
@@ -268,3 +308,222 @@ class SecurityResult:
     def total_findings(self) -> int:
         """Get total count of all findings."""
         return len(self.findings)
+
+
+# ============================================================
+# Scroll Orchestration Types
+# ============================================================
+
+@dataclass
+class ScrollState:
+    """
+    Snapshot of scroll state at a specific cycle.
+
+    Tracks scroll position, page height, and content changes for
+    lazy-load detection during intelligent scrolling.
+
+    Attributes:
+        cycle: Current scroll cycle number (0-indexed)
+        has_lazy_load: Whether new content was detected this cycle
+        last_scroll_y: Vertical scroll position after scroll
+        last_scroll_height: Total document height after scroll
+        cycles_without_content: Counter for stabilization detection
+        stabilized: Whether page has stabilized (no new content)
+    """
+    cycle: int
+    has_lazy_load: bool
+    last_scroll_y: int
+    last_scroll_height: int
+    cycles_without_content: int
+    stabilized: bool
+
+
+@dataclass
+class ScrollResult:
+    """
+    Complete result from intelligent page scrolling.
+
+    Contains scroll statistics and state history for analysis.
+
+    Attributes:
+        total_cycles: Number of scroll cycles completed
+        stabilized: Whether scrolling terminated due to stabilization
+        lazy_load_detected: Whether lazy-loaded content was detected
+        screenshots_captured: Number of screenshots captured during scroll
+        scroll_states: List of ScrollState objects for each cycle
+    """
+    total_cycles: int
+    stabilized: bool
+    lazy_load_detected: bool
+    screenshots_captured: int
+    scroll_states: list[ScrollState] = field(default_factory=list)
+
+    def to_dict(self) -> dict:
+        """Convert to JSON-serializable dictionary."""
+        return {
+            "total_cycles": self.total_cycles,
+            "stabilized": self.stabilized,
+            "lazy_load_detected": self.lazy_load_detected,
+            "screenshots_captured": self.screenshots_captured,
+            "scroll_states": [
+                {
+                    "cycle": s.cycle,
+                    "has_lazy_load": s.has_lazy_load,
+                    "last_scroll_y": s.last_scroll_y,
+                    "last_scroll_height": s.last_scroll_height,
+                    "cycles_without_content": s.cycles_without_content,
+                    "stabilized": s.stabilized,
+                }
+                for s in self.scroll_states
+            ],
+        }
+
+
+# ============================================================
+# Quality Foundation Types
+# ============================================================
+
+class FindingStatus(str, Enum):
+    """Status of a finding in the consensus verification process."""
+    UNCONFIRMED = "UNCONFIRMED"  # Single source, <50% confidence
+    CONFIRMED = "CONFIRMED"      # 2+ sources, >=50% confidence
+    CONFLICTED = "CONFLICTED"    # Sources disagree (threat vs safe)
+    PENDING = "PENDING"          # Insufficient data
+
+
+@dataclass
+class FindingSource:
+    """
+    Source of a finding from a specific agent.
+
+    Attributes:
+        agent_type: Type of agent (vision, osint, security)
+        finding_id: Identifier for the finding within the agent
+        severity: Severity level of the finding
+        confidence: Original confidence from the source agent (0.0-1.0)
+        timestamp: ISO format timestamp when finding was added
+    """
+    agent_type: str  # "vision", "osint", "security"
+    finding_id: str
+    severity: str  # CRITICAL, HIGH, MEDIUM, LOW, INFO
+    confidence: float  # 0.0-1.0 from source agent
+    timestamp: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+
+@dataclass
+class ConsensusResult:
+    """
+    Result of consensus verification for a finding.
+
+    Tracks multiple sources contributing to a finding and computes
+    aggregated confidence and status.
+
+    Attributes:
+        finding_key: Normalized finding signature for grouping
+        sources: List of sources that contributed to this finding
+        status: Current verification status
+        aggregated_confidence: Computed confidence score (0-100)
+        conflict_notes: Notes about conflicts between sources
+        confidence_breakdown: Breakdown of factors contributing to confidence
+    """
+    finding_key: str  # Normalized finding signature
+    sources: list[FindingSource] = field(default_factory=list)
+    status: FindingStatus = FindingStatus.PENDING
+    aggregated_confidence: float = 0.0
+    conflict_notes: list[str] = field(default_factory=list)
+    confidence_breakdown: dict = field(default_factory=dict)
+
+
+# ============================================================
+# Multi-Page Exploration Types
+# ============================================================
+
+@dataclass
+class LinkInfo:
+    """
+    Information about a discovered link with priority ranking.
+
+    Attributes:
+        url: Absolute URL of the link
+        text: Anchor text content
+        location: One of "nav", "footer", "content" - where link was found
+        priority: Lower values = higher visitation priority (nav=1, footer=2, content=3)
+        depth: Link depth level (default 0, can be increased for hierarchical tracking)
+    """
+    url: str
+    text: str
+    location: str  # "nav", "footer", "content"
+    priority: int  # Lower = higher priority
+    depth: int = 0
+
+
+@dataclass
+class PageVisit:
+    """
+    Result of visiting a single page during multi-page exploration.
+
+    Attributes:
+        url: URL that was visited
+        status: One of "SUCCESS", "TIMEOUT", "ERROR"
+        screenshot_path: Optional path to screenshot capture
+        page_title: Title of the page
+        navigation_time_ms: Time taken to navigate to and load page
+        scroll_result: Optional ScrollResult if intelligent scrolling was performed
+    """
+    url: str
+    status: str  # "SUCCESS", "TIMEOUT", "ERROR"
+    screenshot_path: Optional[str] = None
+    page_title: str = ""
+    navigation_time_ms: int = 0
+    scroll_result: Optional["ScrollResult"] = None
+
+
+@dataclass
+class ExplorationResult:
+    """
+    Complete result of multi-page exploration.
+
+    Attributes:
+        base_url: Starting URL for exploration
+        pages_visited: List of PageVisit objects for each visited page
+        total_pages: Total number of pages visited
+        total_time_ms: Total time spent on all navigations
+        breadcrumbs: List of URLs visited in order
+        links_discovered: List of LinkInfo objects discovered during exploration
+    """
+    base_url: str
+    pages_visited: list[PageVisit] = field(default_factory=list)
+    total_pages: int = 0
+    total_time_ms: int = 0
+    breadcrumbs: list[str] = field(default_factory=list)
+    links_discovered: list[LinkInfo] = field(default_factory=list)
+
+    def to_dict(self) -> dict:
+        """Convert to JSON-serializable dictionary."""
+        return {
+            "base_url": self.base_url,
+            "total_pages": self.total_pages,
+            "total_time_ms": self.total_time_ms,
+            "breadcrumbs": self.breadcrumbs,
+            "pages_visited": [
+                {
+                    "url": pv.url,
+                    "status": pv.status,
+                    "screenshot_path": pv.screenshot_path,
+                    "page_title": pv.page_title,
+                    "navigation_time_ms": pv.navigation_time_ms,
+                    "scroll_result": pv.scroll_result.to_dict() if pv.scroll_result else None,
+                }
+                for pv in self.pages_visited
+            ],
+            "links_discovered": [
+                {
+                    "url": li.url,
+                    "text": li.text,
+                    "location": li.location,
+                    "priority": li.priority,
+                    "depth": li.depth,
+                }
+                for li in self.links_discovered
+            ],
+        }

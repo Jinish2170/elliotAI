@@ -1,176 +1,88 @@
-"""
-OSINT Types Module
+"""Data types and enums for OSINT sources.
 
-Data classes and enums for VERITAS Open Source Intelligence.
-
-Legal Compliance:
-- Read-only OSINT only
-- Data from public research and security blogs
-- No live darknet crawling
+Defines standardized data structures, enums, and configuration
+objects used across all OSINT source implementations.
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
+from datetime import datetime
 from enum import Enum
-from typing import List, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 
-# ============================================================
-# Darknet Marketplace Types
-# ============================================================
-
-class DarknetMarketplaceType(str, Enum):
-    """Darknet site marketplace type classification."""
-
-    MARKETPLACE = "marketplace"
-    FORUM = "forum"
-    EXCHANGE = "exchange"
-    UNKNOWN = "unknown"
+class SourceStatus(str, Enum):
+    """Status of OSINT source query execution."""
+    SUCCESS = "success"
+    ERROR = "error"
+    TIMEOUT = "timeout"
+    RATE_LIMITED = "rate_limited"
 
 
-class ExitRiskLevel(str, Enum):
-    """Exit scam risk level for darknet marketplaces."""
+class OSINTCategory(str, Enum):
+    """Category of OSINT intelligence source."""
+    DNS = "dns"
+    WHOIS = "whois"
+    SSL = "ssl"
+    THREAT_INTEL = "threat_intel"
+    REPUTATION = "reputation"
+    SOCIAL = "social"
 
-    HIGH = "high"
-    MEDIUM = "medium"
-    LOW = "low"
-    UNKNOWN = "unknown"
-
-
-@dataclass
-class VendorReputation:
-    """
-    Vendor reputation data for darknet threat intelligence.
-
-    Historical data from security research only - not for live trading.
-
-    Attributes:
-        vendor_id: Vendor identifier (hashed for privacy)
-        reputation_score: Normalized score 0.0-1.0
-        transactions_count: Historical transaction count
-        feedback_count: Number of feedback entries
-        scam_flags: Known scam or fraud indicators
-        exit_risk: Exit scam risk level
-        last_activity: Last known activity timestamp
-    """
-
-    vendor_id: str
-    reputation_score: float
-    transactions_count: int
-    feedback_count: int
-    scam_flags: List[str] = field(default_factory=list)
-    exit_risk: ExitRiskLevel = ExitRiskLevel.UNKNOWN
-    last_activity: Optional[str] = None
-
-    def to_dict(self) -> dict:
-        """Convert to dictionary for JSON serialization."""
-        return {
-            "vendor_id": self.vendor_id,
-            "reputation_score": self.reputation_score,
-            "transactions_count": self.transactions_count,
-            "feedback_count": self.feedback_count,
-            "scam_flags": self.scam_flags,
-            "exit_risk": self.exit_risk.value,
-            "last_activity": self.last_activity,
-        }
-
-
-@dataclass
-class MarketplaceThreatData:
-    """
-    Threat intelligence data for darknet marketplaces.
-
-    Static threat feeds from research/security blogs only.
-    No marketplace URLs provided to users.
-
-    Attributes:
-        marketplace_type: Type of marketplace
-        vendor_reputations: Known vendor reputation data
-        product_categories: Known product categories
-        risk_factors: Additional risk indicators
-        exit_scam_status: Whether marketplace exit scammed
-        shutdown_date: Known shutdown date (if applicable)
-    """
-
-    marketplace_type: DarknetMarketplaceType
-    vendor_reputations: List[VendorReputation] = field(default_factory=list)
-    product_categories: List[str] = field(default_factory=list)
-    risk_factors: List[str] = field(default_factory=list)
-    exit_scam_status: bool = False
-    shutdown_date: Optional[str] = None
-    seizure_notice: bool = False
-
-    def to_dict(self) -> dict:
-        """Convert to dictionary for JSON serialization."""
-        return {
-            "marketplace_type": self.marketplace_type.value,
-            "vendor_reputations": [v.to_dict() for v in self.vendor_reputations],
-            "product_categories": self.product_categories,
-            "risk_factors": self.risk_factors,
-            "exit_scam_status": self.exit_scam_status,
-            "shutdown_date": self.shutdown_date,
-            "seizure_notice": self.seizure_notice,
-        }
-
-
-@dataclass
-class Tor2WebThreatData:
-    """
-    Tor2Web gateway de-anonymization threat data.
-
-    Tor2Web gateways allow clearnet access to .onion sites,
-    potentially compromising user anonymity.
-
-    Attributes:
-        gateway_domains: Known Tor2Web gateway domains
-        de_anon_risk: Risk level of de-anonymization
-        referrer_leaks: Whether referrer headers leak onion URLs
-        recommendation: Recommended action
-    """
-
-    gateway_domains: List[str] = field(default_factory=list)
-    de_anon_risk: ExitRiskLevel = ExitRiskLevel.UNKNOWN
-    referrer_leaks: bool = True
-    recommendation: str = "Avoid accessing .onion sites through clearnet gateways"
-
-    def to_dict(self) -> dict:
-        """Convert to dictionary for JSON serialization."""
-        return {
-            "gateway_domains": self.gateway_domains,
-            "de_anon_risk": self.de_anon_risk.value,
-            "referrer_leaks": self.referrer_leaks,
-            "recommendation": self.recommendation,
-        }
-
-
-# ============================================================
-# OSINT Result Types
-# ============================================================
 
 @dataclass
 class OSINTResult:
-    """
-    Generic OSINT query result.
+    """Result from an OSINT source query.
 
     Attributes:
-        found: Whether a result was found
-        source: Source name
-        data: Result data (can be MarketplaceThreatData, Tor2WebThreatData, etc.)
-        confidence: Detection confidence 0.0-1.0
-        metadata: Additional metadata
+        source: Name of the OSINT source (e.g., "dns", "whois", "ssl")
+        category: Category of the intelligence (OSINTCategory enum)
+        query_type: Type of query performed (e.g., "A", "MX", "certificate")
+        query_value: Value queried (e.g., domain, hostname, IP)
+        status: Execution status (SourceStatus enum)
+        data: Fetched intelligence data (dict or list)
+        confidence_score: Confidence score in range 0.0-1.0
+        cached_at: Timestamp when result was cached (None if not cached)
+        error_message: Error message if status is ERROR
     """
-
-    found: bool
     source: str
-    data: Optional[dict] = None
-    confidence: float = 0.5
-    metadata: dict = field(default_factory=dict)
+    category: OSINTCategory
+    query_type: str
+    query_value: str
+    status: SourceStatus
+    data: Optional[Dict[str, Any]] = None
+    confidence_score: float = 0.0
+    cached_at: Optional[datetime] = None
+    error_message: Optional[str] = None
 
-    def to_dict(self) -> dict:
-        """Convert to dictionary for JSON serialization."""
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert result to dictionary for JSON serialization."""
         return {
-            "found": self.found,
             "source": self.source,
+            "category": self.category.value,
+            "query_type": self.query_type,
+            "query_value": self.query_value,
+            "status": self.status.value,
             "data": self.data,
-            "confidence": self.confidence,
-            "metadata": self.metadata,
+            "confidence_score": self.confidence_score,
+            "cached_at": self.cached_at.isoformat() if self.cached_at else None,
+            "error_message": self.error_message,
         }
+
+
+@dataclass
+class SourceConfig:
+    """Configuration for an OSINT source.
+
+    Attributes:
+        enabled: Whether the source is enabled
+        priority: Source priority (1=CRITICAL, 2=IMPORTANT, 3=SUPPLEMENTARY)
+        requires_api_key: Whether source requires API key
+        rate_limit_rpm: Requests per minute rate limit
+        rate_limit_rph: Requests per hour rate limit
+        api_key: API key (not used for core free sources)
+    """
+    enabled: bool = True
+    priority: int = 2  # Default: IMPORTANT
+    requires_api_key: bool = False
+    rate_limit_rpm: Optional[int] = None
+    rate_limit_rph: Optional[int] = None
+    api_key: Optional[str] = None

@@ -426,6 +426,76 @@ def get_all_sub_types() -> list[DarkPatternSubType]:
     return result
 
 
+# ============================================================
+# Vision Agent Pass-Specific Prompts
+# ============================================================
+
+VISION_PASS_PROMPTS: dict[int, str] = {
+    1: """
+    ANNOTATE ALL DARK PATTERN REGIONS you detect.
+
+    For each region, return:
+    - bbox: [x, y, width, height] coordinates (0-100 scale)
+    - type: countdown_timer, fake_urgency, forced_comparison, social_proof, confirmshaming
+    - severity: low/medium/high based on prominence
+
+    Focus on HIGH-PRIORITY patterns: countdowns, fake urgency countdowns, countdown banners.
+
+    Be QUICK and PRECISE. Mark obvious patterns only.
+    """,
+
+    2: """
+    Perform SOPHISTICATED DARK PATTERN DETECTION.
+
+    DARK PATTERN TAXONOMY:
+    - Urgency: fake countdowns, limited time offers, "only X left"
+    - Scarcity: fake low inventory, "selling fast", "almost gone"
+    - Social Proof: fake reviews, fabricated testimonials, inflated counts
+    - Misdirection: deceptive action buttons, hidden terms, confusing layouts
+    - Obstruction: difficult cancellation, confirmshaming, hard-to-close modals
+
+    Return bbox, type, technique, confidence for each region.
+    Be THOROUGH and NUANCED.
+    """,
+
+    3: """
+    Detect TEMPORAL DYNAMIC CONTENT changes.
+
+    Compare this screenshot to previous screenshot context.
+
+    Return regions that CHANGED between screenshots:
+    - bbox: [x, y, width, height]
+    - change_type: content_update, timer_change, element_appear, element_disappear
+    - severity: low/medium/high
+
+    Focus on SUSPICIOUS temporal changes: timers that reset, price changes, element appearances.
+    """,
+
+    4: """
+    Cross-reference VISUAL FINDINGS with ENTITY VERIFICATION.
+
+    Identify visual elements requiring EXTERNAL VERIFICATION:
+    - Company logos/brand names, trust badges, certifications
+    - Social media handles, third-party endorsements
+
+    Return bbox, entity_type, visual_text, verification_needed=true.
+    These will be cross-referenced in Phase 8 OSINT.
+    """,
+
+    5: """
+    Synthesize ALL PASSES into final confidence scoring.
+
+    Review findings from all previous passes.
+
+    For each finding: confidence (0-100), justification, risk level, evidence.
+
+    Identify FALSE POSITIVES: legitimate countdowns, genuine scarcity, real social proof.
+
+    Return final adjudicated findings.
+    """
+}
+
+
 def get_severity_weight(severity_or_category: str, sub_type: str = "") -> float:
     """
     Map severity to numerical weight for scoring.

@@ -27,10 +27,15 @@ import time
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
+
+if TYPE_CHECKING:
+    from veritas.core.types import ExplorationResult, PageVisit, ScrollResult
 
 from playwright.async_api import (Browser, BrowserContext, Page, Playwright,
                                   async_playwright)
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from config import settings
@@ -226,6 +231,9 @@ class ScoutResult:
     # Form validation results (from FormActionValidator)
     form_validation: dict = field(default_factory=dict)
 
+    # Scroll orchestration results (from ScrollOrchestrator)
+    scroll_result: Optional["ScrollResult"] = None
+
 
 # ============================================================
 # The Stealth Scout Agent
@@ -241,13 +249,12 @@ class StealthScout:
             print(result.status, result.screenshots)
     """
 
-    def __init__(self, evidence_dir: Optional[Path] = None):
+    def __init__(self, evidence_dir: Optional[Path] = None, progress_emitter: Optional["ProgressEmitter"] = None):
         self._playwright: Optional[Playwright] = None
         self._browser: Optional[Browser] = None
         self._evidence_dir = evidence_dir or settings.EVIDENCE_DIR
         self._evidence_dir.mkdir(parents=True, exist_ok=True)
-        # Initialize IOC detector for threat intelligence
-        self._ioc_detector = IOCDetector() if _IOC_AVAILABLE else None
+        self.progress_emitter = progress_emitter
 
     async def __aenter__(self):
         self._playwright = await async_playwright().start()
@@ -283,6 +290,8 @@ class StealthScout:
         url: str,
         temporal_delay: Optional[int] = None,
         viewport: str = "desktop",
+        enable_scrolling: bool = True,
+        progress_emitter: Optional["ProgressEmitter"] = None,
     ) -> ScoutResult:
         """
         Full forensic investigation of a URL:
@@ -294,11 +303,13 @@ class StealthScout:
             6. Take Screenshot_B (t+delay) — viewport shot (for timer comparison)
             7. Take full-page screenshot
             8. Extract comprehensive page metadata
+            9. Intelligent scrolling (optional) for lazy-loaded content
 
         Args:
             url: Target URL to investigate
             temporal_delay: Seconds between Screenshot_A and B (default: from settings)
             viewport: "desktop" or "mobile"
+            enable_scrolling: Enable intelligent scroll orchestration (default: True)
 
         Returns:
             ScoutResult with all screenshots, metadata, and status
@@ -306,6 +317,12 @@ class StealthScout:
         delay = temporal_delay if temporal_delay is not None else settings.TEMPORAL_DELAY
         audit_id = uuid.uuid4().hex[:8]
         user_agent = ""
+        scroll_result = None
+        emitter = progress_emitter or self.progress_emitter
+
+        # Emit agent start status
+        if emitter:
+            await emitter.emit_agent_status("Scout", "running", f"Capturing {url}...")
 
         context = await self._create_stealth_context(viewport)
         page = await context.new_page()
@@ -320,6 +337,9 @@ class StealthScout:
             nav_time = (time.time() - start_time) * 1000
 
             if not nav_success:
+                if emitter:
+                    await emitter.emit_error("nav_error", "Navigation failed after all retry strategies", "Scout", recoverable=True)
+                    await emitter.emit_agent_status("Scout", "failed", "Navigation failed")
                 return ScoutResult(
                     url=url,
                     status="TIMEOUT",
@@ -334,6 +354,15 @@ class StealthScout:
                 ss_path = await self._take_screenshot(page, audit_id, "captcha")
                 title = await self._safe_title(page)
                 logger.info(f"CAPTCHA detected on {url}")
+                if emitter:
+                    await emitter.emit_error("captcha_blocked", "Site blocked by CAPTCHA", "Scout", recoverable=False)
+                    await emitter.emit_agent_status("Scout", "failed", "CAPTCHA blocked")
+                    if ss_path:
+                        # Emit CAPTCHA screenshot
+                        import os
+                        if os.path.exists(ss_path):
+                            with open(ss_path, "rb") as f:
+                                await emitter.emit_screenshot(f.read(), "captcha", "Scout")
                 return ScoutResult(
                     url=url,
                     status="CAPTCHA_BLOCKED",
@@ -353,8 +382,16 @@ class StealthScout:
             ss_a = await self._take_screenshot(page, audit_id, "t0")
             ts_a = time.time()
             logger.debug(f"Screenshot A captured for {url}")
+            if emitter and ss_a:
+                import os
+                if os.path.exists(ss_a):
+                    with open(ss_a, "rb") as f:
+                        await emitter.emit_screenshot(f.read(), "t0", "Scout")
+                        await emitter.emit_progress("Scout", "screenshot_a", 15, "Initial capture complete")
 
             # --- Human Simulation ---
+            if emitter:
+                await emitter.emit_progress("Scout", "human_sim", 20, "Simulating human behavior...")
             await self._simulate_human(page)
 
             # --- Temporal Wait ---
@@ -368,10 +405,24 @@ class StealthScout:
             ss_b = await self._take_screenshot(page, audit_id, f"t{delay}")
             ts_b = time.time()
             logger.debug(f"Screenshot B captured for {url}")
+            if emitter and ss_b:
+                import os
+                if os.path.exists(ss_b):
+                    with open(ss_b, "rb") as f:
+                        await emitter.emit_screenshot(f.read(), f"t{delay}", "Scout")
+                        await emitter.emit_progress("Scout", "screenshot_b", 30, "Temporal capture complete")
 
             # --- Full-page Screenshot ---
+            if emitter:
+                await emitter.emit_progress("Scout", "screenshot_full", 40, "Capturing full page...")
             ss_full = await self._take_full_screenshot(page, audit_id)
             ts_full = time.time()
+            if emitter and ss_full:
+                import os
+                if os.path.exists(ss_full):
+                    with open(ss_full, "rb") as f:
+                        await emitter.emit_screenshot(f.read(), "fullpage", "Scout")
+                        await emitter.emit_progress("Scout", "screenshot_full_complete", 50, "Full page capture complete")
 
             # --- Metadata Extraction ---
             metadata = await self._extract_metadata(page)
@@ -422,37 +473,39 @@ class StealthScout:
             except Exception as e:
                 logger.warning(f"Form validation failed (non-critical): {e}")
 
-            # --- IOC Detection (Threat Intelligence) ---
-            ioc_detected = False
-            ioc_indicators = []
-            onion_detected = False
-            onion_addresses = []
-            ioc_content = None
-            try:
-                if self._ioc_detector:
-                    # Get page content for scanning
-                    ioc_content = await page.content()
+            # --- Intelligent Scrolling (Optional) ---
+            if enable_scrolling:
+                try:
+                    if emitter:
+                        await emitter.emit_progress("Scout", "scrolling", 60, "Intelligent scrolling...")
+                    from veritas.agents.scout_nav.scroll_orchestrator import ScrollOrchestrator
+                    from veritas.agents.scout_nav.lazy_load_detector import LazyLoadDetector
 
-                    # Run IOC detection
-                    ioc_result = await self._ioc_detector.detect_content(
-                        url=url,
-                        content=ioc_content,
-                        links=metadata.links_external[:100],  # Limit to avoid huge scans
+                    detector = LazyLoadDetector()
+                    orchestrator = ScrollOrchestrator(self._evidence_dir, detector)
+
+                    scroll_start_time = time.time()
+                    scroll_result = await orchestrator.scroll_page(page, audit_id)
+                    scroll_time = (time.time() - scroll_start_time) * 1000
+
+                    logger.info(
+                        f"Scroll complete: {scroll_result.total_cycles} cycles, "
+                        f"stabilized={scroll_result.stabilized}, "
+                        f"lazy_load={scroll_result.lazy_load_detected}, "
+                        f"screenshots={scroll_result.screenshots_captured}, "
+                        f"time={scroll_time:.0f}ms"
                     )
-
-                    ioc_detected = ioc_result.found
-                    ioc_indicators = [ind.to_dict() for ind in ioc_result.indicators]
-                    onion_detected = ioc_result.onion_detected
-                    onion_addresses = [ind["value"] for ind in ioc_indicators if ind.get("type") == "ONION_ADDRESS"]
-
-                    # Log findings
-                    if ioc_detected:
-                        logger.info(
-                            f"IOC detection: {len(ioc_indicators)} indicators "
-                            f"({len(onion_addresses)} onions)"
+                    if emitter and scroll_result and scroll_result.screenshots_captured > 0:
+                        # Emit progress for scrolling cycles
+                        await emitter.emit_progress(
+                            "Scout",
+                            "scroll_complete",
+                            75,
+                            f"Scrolled {scroll_result.total_cycles} cycles, {scroll_result.screenshots_captured} screenshots"
                         )
-            except Exception as e:
-                logger.warning(f"IOC detection failed (non-critical): {e}")
+                except Exception as e:
+                    logger.warning(f"Scroll orchestration failed (non-critical): {e}")
+                    scroll_result = None
 
             # --- Assemble Result ---
             screenshots = [p for p in [ss_a, ss_b, ss_full] if p]
@@ -501,6 +554,11 @@ class StealthScout:
                 f"{' | onions=' + str(len(onion_addresses)) if onion_detected else ''}"
             )
 
+            # Emit completion status
+            if emitter:
+                await emitter.emit_progress("Scout", "complete", 100, f"Investigation complete: {len(screenshots)} screenshots")
+                await emitter.emit_agent_status("Scout", "completed")
+
             return ScoutResult(
                 url=url,
                 status="SUCCESS",
@@ -540,10 +598,14 @@ class StealthScout:
                 site_type_confidence=site_type_conf,
                 dom_analysis=dom_result,
                 form_validation=form_val_result,
+                scroll_result=scroll_result,
             )
 
         except Exception as e:
             logger.error(f"Investigation error for {url}: {e}", exc_info=True)
+            if emitter:
+                await emitter.emit_error("scout_error", str(e), "Scout", recoverable=True)
+                await emitter.emit_agent_status("Scout", "failed", str(e))
             return ScoutResult(
                 url=url,
                 status="ERROR",
@@ -563,6 +625,7 @@ class StealthScout:
         self,
         url: str,
         viewport: str = "desktop",
+        progress_emitter: Optional["ProgressEmitter"] = None,
     ) -> ScoutResult:
         """
         Lightweight navigation for sub-pages (no temporal screenshots).
@@ -570,6 +633,12 @@ class StealthScout:
         (e.g., /about, /contact, /terms, /cancel).
         """
         audit_id = uuid.uuid4().hex[:8]
+        emitter = progress_emitter or self.progress_emitter
+
+        # Emit agent start status
+        if emitter:
+            await emitter.emit_agent_status("Scout", "running", f"Capturing subpage: {url}")
+
         context = await self._create_stealth_context(viewport)
         page = await context.new_page()
 
@@ -580,9 +649,15 @@ class StealthScout:
             nav_time = (time.time() - start_time) * 1000
 
             if not nav_success:
+                if emitter:
+                    await emitter.emit_error("nav_error", "Navigation failed", "Scout", recoverable=True)
+                    await emitter.emit_agent_status("Scout", "failed", "Navigation failed")
                 return ScoutResult(url=url, status="TIMEOUT", navigation_time_ms=nav_time)
 
             if await self._detect_captcha(page):
+                if emitter:
+                    await emitter.emit_error("captcha_blocked", "Site blocked by CAPTCHA", "Scout", recoverable=False)
+                    await emitter.emit_agent_status("Scout", "failed", "CAPTCHA blocked")
                 return ScoutResult(
                     url=url, status="CAPTCHA_BLOCKED", captcha_detected=True
                 )
@@ -613,6 +688,18 @@ class StealthScout:
 
             screenshots = [p for p in [ss, ss_full] if p]
 
+            # Emit screenshots
+            if emitter:
+                import os
+                if ss and os.path.exists(ss):
+                    with open(ss, "rb") as f:
+                        await emitter.emit_screenshot(f.read(), "subpage", "Scout")
+                if ss_full and os.path.exists(ss_full):
+                    with open(ss_full, "rb") as f2:
+                        await emitter.emit_screenshot(f2.read(), "subpage_full", "Scout")
+                await emitter.emit_agent_status("Scout", "completed")
+                await emitter.emit_progress("Scout", "subpage_complete", 100, f"Subpage captured: {len(screenshots)} screenshots")
+
             return ScoutResult(
                 url=url,
                 status="SUCCESS",
@@ -637,10 +724,162 @@ class StealthScout:
                 navigation_time_ms=nav_time,
             )
         except Exception as e:
+            if emitter:
+                await emitter.emit_error("scout_error", str(e), "Scout", recoverable=True)
+                await emitter.emit_agent_status("Scout", "failed", str(e))
             return ScoutResult(url=url, status="ERROR", error_message=str(e))
         finally:
             await page.close()
             await context.close()
+
+    # ================================================================
+    # Public: Multi-Page Exploration
+    # ================================================================
+
+    async def explore_multi_page(
+        self,
+        url: str,
+        max_pages: int = 8,
+        timeout_per_page_ms: int = 15000,
+        enable_scrolling: bool = False,
+    ) -> "ExplorationResult":
+        """
+        Explore multiple pages beyond the initial landing page.
+
+        Discovers navigation links (nav, footer, content) and visits
+        priority-sorted pages up to max_pages limit.
+
+        Args:
+            url: Base URL to start exploration from
+            max_pages: Maximum number of additional pages to visit (default 8)
+            timeout_per_page_ms: Timeout per navigation in milliseconds (default 15000)
+            enable_scrolling: Whether to apply intelligent scrolling (default False)
+
+        Returns:
+            ExplorationResult with visited pages, times, and discovered links
+        """
+        from veritas.core.types import ExplorationResult, PageVisit
+        from veritas.agents.scout_nav.link_explorer import LinkExplorer
+
+        context = None
+        page = None
+
+        try:
+            # Initialize result
+            result = ExplorationResult(
+                base_url=url,
+                pages_visited=[],
+                total_pages=0,
+                total_time_ms=0,
+                breadcrumbs=[],
+                links_discovered=[],
+            )
+
+            # Create browser context
+            context = await self._create_stealth_context(viewport="desktop")
+            page = await context.new_page()
+            await self._apply_stealth(page)
+
+            # Generate audit_id for screenshot naming
+            audit_id = uuid.uuid4().hex[:8]
+
+            # Navigate to base URL first to discover links
+            logger.info(f"Navigating to base URL: {url}")
+            nav_success = await self._navigate_with_timeout(page, url, settings.SCREENSHOT_TIMEOUT * 1000)
+
+            if not nav_success:
+                logger.warning(f"Failed to navigate to base URL: {url}")
+                return result
+
+            # Initialize LinkExplorer and discover links
+            explorer = LinkExplorer(url)
+            discovered_links = await explorer.discover_links(page)
+
+            # Store discovered links in result
+            result.links_discovered = discovered_links
+            logger.info(f"Discovered {len(discovered_links)} links to explore")
+
+            # Visit up to max_pages links
+            links_to_visit = discovered_links[:max_pages]
+
+            for i, link_info in enumerate(links_to_visit):
+                page_start_time = time.time()
+
+                # Navigate to subpage
+                nav_success = await self._navigate_with_timeout(page, link_info.url, timeout_per_page_ms)
+                navigation_time_ms = int((time.time() - page_start_time) * 1000)
+
+                if not nav_success:
+                    # Create TIMEOUT PageVisit
+                    page_visit = PageVisit(
+                        url=link_info.url,
+                        status="TIMEOUT",
+                        navigation_time_ms=navigation_time_ms,
+                    )
+                    result.pages_visited.append(page_visit)
+                    result.breadcrumbs.append(link_info.url)
+                    logger.warning(f"Navigation timeout for: {link_info.url}")
+                    continue
+
+                # Capture screenshot
+                screenshot_path = await self._take_screenshot(page, audit_id, f"page_{i}")
+
+                # Get page title
+                page_title = await self._safe_title(page)
+
+                # Optional: Apply intelligent scrolling
+                scroll_result = None
+                if enable_scrolling:
+                    try:
+                        from veritas.agents.scout_nav.scroll_orchestrator import ScrollOrchestrator
+                        from veritas.agents.scout_nav.lazy_load_detector import LazyLoadDetector
+
+                        detector = LazyLoadDetector()
+                        orchestrator = ScrollOrchestrator(self._evidence_dir, detector)
+                        scroll_result = await orchestrator.scroll_page(page, audit_id)
+                        logger.debug(f"Scroll results for {link_info.url}: {scroll_result.screenshots_captured} screenshots")
+                    except Exception as e:
+                        logger.debug(f"Scroll orchestration failed (non-critical) for {link_info.url}: {e}")
+                        scroll_result = None
+
+                # Create SUCCESS PageVisit
+                page_visit = PageVisit(
+                    url=link_info.url,
+                    status="SUCCESS",
+                    screenshot_path=screenshot_path,
+                    page_title=page_title,
+                    navigation_time_ms=navigation_time_ms,
+                    scroll_result=scroll_result,
+                )
+
+                result.pages_visited.append(page_visit)
+                result.breadcrumbs.append(link_info.url)
+
+                logger.info(
+                    f"Visited page {i + 1}/{max_pages}: {link_info.url} "
+                    f"(title={page_title}, time={navigation_time_ms}ms)"
+                )
+
+            # Calculate totals
+            result.total_pages = len(result.pages_visited)
+            result.total_time_ms = sum(pv.navigation_time_ms for pv in result.pages_visited)
+
+            logger.info(
+                f"Multi-page exploration complete: {result.total_pages} pages visited, "
+                f"{result.total_time_ms}ms total, {len(result.links_discovered)} links discovered"
+            )
+
+            return result
+
+        except Exception as e:
+            logger.error(f"Multi-page exploration error for {url}: {e}", exc_info=True)
+            # Return partial result if available
+            return result
+        finally:
+            if page:
+                await page.close()
+            if context:
+                await context.close()
 
     # ================================================================
     # Private: Browser Context Setup
@@ -701,7 +940,23 @@ class StealthScout:
         Tries: networkidle → domcontentloaded → load → commit
         """
         timeout_ms = settings.SCREENSHOT_TIMEOUT * 1000
+        return await self._navigate_with_timeout(page, url, timeout_ms)
 
+    async def _navigate_with_timeout(self, page: Page, url: str, timeout_ms: int) -> bool:
+        """
+        Navigate with fallback wait strategies using specific timeout.
+
+        Tries strategies in order: networkidle → domcontentloaded → load → commit.
+        Returns True on first successful navigation, False if all fail.
+
+        Args:
+            page: Playwright Page object
+            url: URL to navigate to
+            timeout_ms: Timeout in milliseconds
+
+        Returns:
+            True if navigation succeeded, False otherwise
+        """
         for wait_strategy in ["networkidle", "domcontentloaded", "load", "commit"]:
             try:
                 await page.goto(url, wait_until=wait_strategy, timeout=timeout_ms)
@@ -711,6 +966,7 @@ class StealthScout:
                 logger.debug(f"Navigation with {wait_strategy} failed: {e}")
                 continue
 
+        logger.warning(f"Navigation failed for all strategies: {url}")
         return False
 
     async def _safe_title(self, page: Page) -> str:

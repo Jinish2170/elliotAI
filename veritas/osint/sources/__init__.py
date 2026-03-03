@@ -1,5 +1,5 @@
-"""
-OSINT Sources Package
+"""OSINT source implementations.
 
-Various threat intelligence and OSINT data sources.
+Contains individual source implementations for DNS, WHOIS, SSL,
+and other intelligence sources.
 """

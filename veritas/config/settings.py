@@ -65,6 +65,18 @@ TAVILY_REQUESTS_PER_MINUTE: int = int(os.getenv("TAVILY_REQUESTS_PER_MINUTE", "5
 
 
 # ============================================================
+# OSINT / CTI APIs — Threat Intelligence Sources
+# ============================================================
+# URLVoid API key (free tier: 500 requests/day)
+URLVOID_API_KEY: str = os.getenv("URLVOID_API_KEY", "")
+URLVOID_REQUESTS_PER_MINUTE: int = int(os.getenv("URLVOID_REQUESTS_PER_MINUTE", "20"))
+
+# AbuseIPDB API key (free tier: 1000 requests/day)
+ABUSEIPDB_API_KEY: str = os.getenv("ABUSEIPDB_API_KEY", "")
+ABUSEIPDB_REQUESTS_PER_MINUTE: int = int(os.getenv("ABUSEIPDB_REQUESTS_PER_MINUTE", "15"))
+
+
+# ============================================================
 # Graph Intelligence Timeouts / Concurrency
 # ============================================================
 GRAPH_PHASE_TIMEOUT_S: int = int(os.getenv("GRAPH_PHASE_TIMEOUT_S", "90"))
@@ -76,6 +88,19 @@ GRAPH_VERIFY_TIMEOUT_S: int = int(os.getenv("GRAPH_VERIFY_TIMEOUT_S", "20"))
 GRAPH_SEARCH_TIMEOUT_S: int = int(os.getenv("GRAPH_SEARCH_TIMEOUT_S", "15"))
 GRAPH_VERIFY_CONCURRENCY: int = int(os.getenv("GRAPH_VERIFY_CONCURRENCY", "3"))
 GRAPH_SEARCH_FOLLOW_LINKS: bool = os.getenv("GRAPH_SEARCH_FOLLOW_LINKS", "false").lower() == "true"
+
+
+# ============================================================
+# Graph OSINT/CTI Configuration
+# ============================================================
+# OSINT integration feature flags
+GRAPH_ENABLE_OSINT: bool = os.getenv("GRAPH_ENABLE_OSINT", "true").lower() == "true"
+GRAPH_OSINT_TIMEOUT_S: int = int(os.getenv("GRAPH_OSINT_TIMEOUT_S", "30"))
+GRAPH_OSINT_MAX_PARALLEL: int = int(os.getenv("GRAPH_OSINT_MAX_PARALLEL", "3"))
+
+# CTI integration feature flags
+GRAPH_ENABLE_CTI: bool = os.getenv("GRAPH_ENABLE_CTI", "true").lower() == "true"
+GRAPH_CTI_MIN_CONFIDENCE: float = float(os.getenv("GRAPH_CTI_MIN_CONFIDENCE", "0.3"))
 
 
 # ============================================================

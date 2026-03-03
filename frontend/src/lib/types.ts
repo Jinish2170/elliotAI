@@ -12,6 +12,9 @@ export interface PhaseState {
   pct: number;
   summary?: Record<string, unknown>;
   error?: string;
+  // Vision phase specific
+  activePass?: number;
+  completedPasses?: number[];
 }
 
 export interface Finding {
@@ -84,6 +87,28 @@ export interface AuditResult {
   elapsed_seconds: number;
   errors: string[];
   verdict_mode: string;
+}
+
+export interface VisionPassStartEvent {
+  type: 'vision_pass_start';
+  pass: number;
+  description: string;
+  screenshots: number;
+}
+
+export interface VisionPassFindingsEvent {
+  type: 'vision_pass_findings';
+  pass: number;
+  findings: Finding[];
+  count: number;
+  batch: boolean;
+}
+
+export interface VisionPassCompleteEvent {
+  type: 'vision_pass_complete';
+  pass: number;
+  findings_count: number;
+  confidence: number;
 }
 
 export interface AuditEvent {

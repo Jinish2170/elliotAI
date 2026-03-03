@@ -35,6 +35,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from config import settings
 from core.nim_client import NIMClient
+from veritas.osint.orchestrator import OSINTOrchestrator
+from veritas.osint.reputation import ReputationManager, VerdictType
+from veritas.osint.cti import CThreatIntelligence
+from veritas.quality.consensus_engine import ConsensusEngine
 
 logger = logging.getLogger("veritas.graph")
 
@@ -122,6 +126,15 @@ class GraphResult:
     tavily_searches: int = 0
     errors: list[str] = field(default_factory=list)
 
+    # OSINT/CTI fields
+    osint_sources: dict = field(default_factory=dict)
+    osint_consensus: dict = field(default_factory=dict)
+    osint_indicators: list = field(default_factory=list)
+    cti_techniques: list = field(default_factory=list)
+    threat_attribution: dict = field(default_factory=dict)
+    threat_level: str = "none"
+    osint_confidence: float = 0.0
+
     @property
     def domain_age_days(self) -> int:
         return self.domain_intel.age_days if self.domain_intel else -1
@@ -131,6 +144,27 @@ class GraphResult:
         if self.domain_intel:
             return bool(self.domain_intel.ssl_issuer)
         return False
+
+    @property
+    def osint_score(self) -> float:
+        """Calculate OSINT-based trust score (0-1, higher = more trustworthy)."""
+        if self.osint_consensus:
+            status = self.osint_consensus.get("consensus_status", "")
+            verdict = self.osint_consensus.get("verdict", "")
+
+            if status == "confirmed":
+                return 0.9 if verdict == "safe" else 0.3
+            elif status == "conflicted":
+                return 0.5  # Neutral on conflicts
+            elif status == "likely":
+                return 0.8 if verdict == "safe" else 0.4
+
+        return 0.5  # Neutral if no OSINT data
+
+    @property
+    def has_threat_indicators(self) -> bool:
+        """Check if there are threat indicators."""
+        return self.threat_level in ["critical", "high", "medium"]
 
 
 # ============================================================
@@ -154,8 +188,9 @@ class GraphInvestigator:
         print(f"Inconsistencies: {len(result.inconsistencies)}")
     """
 
-    def __init__(self, nim_client: Optional[NIMClient] = None):
+    def __init__(self, nim_client: Optional[NIMClient] = None, db_session=None):
         self._nim = nim_client or NIMClient()
+        self._db_session = db_session
         self._tavily_client = None
         self._search_count = 0
         self._whois_timeout_s = max(1, int(getattr(settings, "GRAPH_WHOIS_TIMEOUT_S", 12)))
@@ -166,6 +201,19 @@ class GraphInvestigator:
         self._search_timeout_s = max(1, int(getattr(settings, "GRAPH_SEARCH_TIMEOUT_S", 15)))
         self._verify_concurrency = max(1, int(getattr(settings, "GRAPH_VERIFY_CONCURRENCY", 3)))
         self._search_follow_links = bool(getattr(settings, "GRAPH_SEARCH_FOLLOW_LINKS", False))
+
+        # Initialize OSINT/CTI components if db session provided
+        if self._db_session:
+            self._osint_orchestrator = OSINTOrchestrator(self._db_session)
+            self._reputation_manager = ReputationManager()
+            self._consensus_engine = ConsensusEngine(min_sources=2)
+        else:
+            self._osint_orchestrator = None
+            self._reputation_manager = None
+            self._consensus_engine = None
+
+        # CThreatIntelligence doesn't require db session
+        self._cti = CThreatIntelligence()
 
     # ================================================================
     # Public: Full Investigation
@@ -179,6 +227,7 @@ class GraphInvestigator:
         external_links: Optional[list[str]] = None,
         site_type: str = "",
         form_validation: Optional[dict] = None,
+        page_html: Optional[str] = None,
     ) -> GraphResult:
         """
         Full graph-based investigation of a URL.
@@ -188,6 +237,9 @@ class GraphInvestigator:
             page_metadata: Metadata dict from Scout
             page_text: Extracted text content from the page
             external_links: External links found on the page
+            site_type: Site type classification
+            form_validation: Form validation results
+            page_html: HTML content of the page for OSINT/CTI analysis
 
         Returns:
             GraphResult with knowledge graph, verifications, and scores
@@ -331,6 +383,47 @@ class GraphInvestigator:
                 graph.nodes[url]["ip_country"] = geo["country"]
 
         # -----------------------------------------------------------
+        # Phase 4d: OSINT Investigation
+        # -----------------------------------------------------------
+        osint_results = {}
+        if self._osint_orchestrator:
+            hostname = self._extract_hostname(url)
+            ip_address = domain_intel.ip_address if domain_intel else ""
+            osint_results = await self._run_osint_investigation(domain, hostname, ip_address)
+
+            if osint_results:
+                result.osint_sources = osint_results
+                result.osint_consensus = osint_results.get("_consensus", {})
+
+                # Enhance DomainIntel with OSINT data
+                if result.domain_intel and "whois" in osint_results:
+                    whois_data = osint_results["whois"].get("data", {})
+                    result.domain_intel.age_days = whois_data.get(
+                        "age_days", result.domain_intel.age_days
+                    )
+                    result.domain_intel.registrar = whois_data.get(
+                        "registrar", result.domain_intel.registrar
+                    )
+
+        # -----------------------------------------------------------
+        # Phase 4e: CTI-Lite Analysis
+        # -----------------------------------------------------------
+        if page_html and self._cti and osint_results:
+            try:
+                cti_result = await self._cti.analyze_threats(
+                    url, page_html, page_text, page_metadata, osint_results
+                )
+
+                result.osint_indicators = cti_result.get("indicators", [])
+                result.cti_techniques = cti_result.get("mitre_techniques", [])
+                result.threat_attribution = cti_result.get("attribution", {})
+                result.threat_level = cti_result.get("threat_level", "none")
+                result.osint_confidence = cti_result.get("confidence", 0.0)
+            except Exception as e:
+                logger.warning(f"CTI analysis failed: {e}")
+                result.errors.append(f"CTI analysis failed: {e}")
+
+        # -----------------------------------------------------------
         # Phase 5: Inconsistency Detection
         # -----------------------------------------------------------
         inconsistencies = self._detect_inconsistencies(
@@ -340,12 +433,18 @@ class GraphInvestigator:
         result.inconsistencies = inconsistencies
 
         # -----------------------------------------------------------
+        # Phase 5b: Add OSINT Nodes to Graph
+        # -----------------------------------------------------------
+        if osint_results:
+            self._add_osint_nodes_to_graph(graph, domain, osint_results, result)
+
+        # -----------------------------------------------------------
         # Phase 6: Compute Scores
         # -----------------------------------------------------------
         result.graph = graph
         result.graph_node_count = graph.number_of_nodes()
         result.graph_edge_count = graph.number_of_edges()
-        result.graph_score = self._compute_graph_score(verifications, inconsistencies)
+        result.graph_score = self._calculate_enhanced_graph_score(result, graph)
         result.meta_score = self._compute_meta_score(domain_intel)
         result.tavily_searches = self._search_count
 
@@ -449,6 +548,106 @@ class GraphInvestigator:
             pass  # No SSL or unreachable — will be reflected in scoring
 
         return intel
+
+    async def _run_osint_investigation(
+        self, domain: str, hostname: str, ip_address: str
+    ) -> dict:
+        """
+        Run OSINT investigation using OSINTOrchestrator.
+
+        Coordinated queries to DNS, WHOIS, SSL, threat intel sources.
+        Returns dict with source results and consensus.
+        """
+        if not self._osint_orchestrator:
+            logger.warning("OSINT orchestrator not available (no db session)")
+            return {}
+
+        from veritas.osint.types import OSINTCategory
+
+        results = {}
+
+        # Query DNS if domain provided
+        if domain:
+            try:
+                dns_result = await self._osint_orchestrator.query_with_retry(
+                    "dns", "query", domain
+                )
+                if dns_result.status.value == "success":
+                    results["dns"] = dns_result.to_dict()
+            except Exception as e:
+                logger.warning(f"DNS OSINT query failed: {e}")
+
+        # Query WHOIS if domain provided
+        if domain:
+            try:
+                whois_result = await self._osint_orchestrator.query_with_retry(
+                    "whois", "query", domain
+                )
+                if whois_result.status.value == "success":
+                    results["whois"] = whois_result.to_dict()
+            except Exception as e:
+                logger.warning(f"WHOIS OSINT query failed: {e}")
+
+        # Query SSL if hostname provided
+        if hostname:
+            try:
+                ssl_result = await self._osint_orchestrator.query_with_retry(
+                    "ssl", "query", hostname
+                )
+                if ssl_result.status.value == "success":
+                    results["ssl"] = ssl_result.to_dict()
+            except Exception as e:
+                logger.warning(f"SSL OSINT query failed: {e}")
+
+        # Query threat intel sources if available
+        if domain and results:
+            try:
+                from veritas.osint.types import OSINTResult
+
+                # Get available threat intel sources
+                threat_results = await self._osint_orchestrator.query_all(
+                    OSINTCategory.THREAT_INTEL, "domain", domain, max_parallel=2
+                )
+
+                # Add successful results
+                for source_name, result in threat_results.items():
+                    if isinstance(result, OSINTResult) and result.status.value == "success":
+                        results[source_name] = result.to_dict()
+            except Exception as e:
+                logger.warning(f"Threat intel OSINT query failed: {e}")
+
+        # Compute consensus if results exist
+        if results and self._consensus_engine:
+            try:
+                # Convert results dicts back to OSINTResult objects for consensus
+                from veritas.osint.types import OSINTResult, SourceStatus, OSINTCategory
+
+                osint_objects = {}
+                for source_name, result_dict in results.items():
+                    try:
+                        # Reconstruct OSINTResult from dict
+                        osint_objects[source_name] = OSINTResult(
+                            source=source_name,
+                            category=OSINTCategory(result_dict.get("category", "dns")),
+                            query_type=result_dict.get("query_type", "query"),
+                            query_value=result_dict.get("query_value", domain),
+                            status=SourceStatus(result_dict.get("status", "success")),
+                            data=result_dict.get("data"),
+                            confidence_score=result_dict.get("confidence_score", 0.0),
+                        )
+                    except Exception:
+                        # Skip if reconstruction fails
+                        continue
+
+                if osint_objects:
+                    consensus = self._consensus_engine.compute_osint_consensus(
+                        osint_objects, min_sources=2
+                    )
+                    results["_consensus"] = consensus
+            except Exception as e:
+                logger.warning(f"Consensus computation failed: {e}")
+
+        return results
 
     # ================================================================
     # Private: Entity Extraction
@@ -959,6 +1158,116 @@ class GraphInvestigator:
         return inconsistencies
 
     # ================================================================
+    # Private: OSINT Graph Nodes
+    # ================================================================
+
+    def _add_osint_nodes_to_graph(
+        self, graph: nx.DiGraph, domain: str, osint_results: dict, result: GraphResult
+    ) -> None:
+        """Add OSINT findings as nodes in the knowledge graph."""
+        # Create Website node reference
+        website_id = f"Website_{domain}"
+
+        # Ensure Website node has OSINT sources attribute
+        if website_id in graph:
+            graph.nodes[website_id]["osint_sources"] = list(osint_results.keys())
+        else:
+            # Create Website node if not exists
+            graph.add_node(
+                website_id,
+                node_type="WebsiteNode",
+                domain=domain,
+                osint_sources=list(osint_results.keys()),
+            )
+
+        # Add OSINT source nodes
+        for source_name in osint_results.keys():
+            if source_name == "_consensus":
+                continue
+
+            source_data = osint_results[source_name]
+
+            # Create OSINTSource node
+            source_id = f"OSINTSource_{source_name}"
+            graph.add_node(
+                source_id,
+                node_type="OSINTSourceNode",
+                source=source_name,
+                category=source_data.get("category", "unknown"),
+                confidence=source_data.get("confidence_score", 0.0),
+                status=source_data.get("status", "unknown"),
+            )
+
+            # Add VERIFIED_BY edge from Website to OSINTSource
+            graph.add_edge(website_id, source_id, edge_type="VERIFIED_BY")
+
+        # Add Consensus node if available
+        if "_consensus" in osint_results:
+            consensus = osint_results["_consensus"]
+            consensus_id = f"OSINTConsensus_{domain}"
+
+            graph.add_node(
+                consensus_id,
+                node_type="ConsensusNode",
+                status=consensus.get("consensus_status", ""),
+                verdict=consensus.get("verdict", ""),
+                agreement_count=consensus.get("agreement_count", 0),
+                has_conflict=consensus.get("has_conflict", False),
+            )
+
+            # Add CONTRIBUTES_TO edges from OSINTSources to Consensus
+            for source_name in osint_results.keys():
+                if source_name == "_consensus":
+                    continue
+                source_id = f"OSINTSource_{source_name}"
+                graph.add_edge(source_id, consensus_id, edge_type="CONTRIBUTES_TO")
+
+        # Add IOC nodes
+        for indicator in result.osint_indicators:
+            if not isinstance(indicator, dict):
+                continue
+
+            ioc_type = indicator.get("ioc_type", "unknown")
+            ioc_value = indicator.get("value", "")
+            if not ioc_value:
+                continue
+
+            # Create unique IOC node ID
+            ioc_id = f"IOC_{ioc_type}_{ioc_value[:20]}"
+            graph.add_node(
+                ioc_id,
+                node_type="IOCNode",
+                ioc_type=ioc_type,
+                value=ioc_value,
+                threat_level=indicator.get("threat_level", "unknown"),
+            )
+
+            # Add CONTAINS_IOC edge from Website to IOC
+            graph.add_edge(website_id, ioc_id, edge_type="CONTAINS_IOC")
+
+        # Add MITRE ATT&CK technique nodes
+        for technique in result.cti_techniques:
+            if not isinstance(technique, dict):
+                continue
+
+            technique_id = technique.get("technique_id", "")
+            if not technique_id:
+                continue
+
+            mitre_id = f"MITRE_{technique_id}"
+            graph.add_node(
+                mitre_id,
+                node_type="MITRETacticNode",
+                technique_id=technique_id,
+                technique_name=technique.get("technique_name", ""),
+                tactic=technique.get("tactic", ""),
+                confidence=technique.get("confidence", 0.0),
+            )
+
+            # Add EXHIBITS_PATTERN edge from Website to MITRE technique
+            graph.add_edge(website_id, mitre_id, edge_type="EXHIBITS_PATTERN")
+
+    # ================================================================
     # Private: Scoring
     # ================================================================
 
@@ -997,6 +1306,75 @@ class GraphInvestigator:
             score -= severity_penalty * inc.confidence
 
         return round(max(0.0, min(1.0, score)), 3)
+
+    def _calculate_enhanced_graph_score(self, result: GraphResult, graph: nx.DiGraph) -> float:
+        """
+        Calculate enhanced graph score incorporating OSINT and CTI signals.
+
+        Weighting:
+        - Existing graph signals (meta_score): 40%
+        - Entity verification signals: 30%
+        - OSINT consensus: 20%
+        - CTI threat indicators: 10%
+
+        Args:
+            result: GraphResult with OSINT/CTI data
+            graph: Knowledge graph (for node/edge counts if needed)
+
+        Returns:
+            Enhanced graph score (0.0 to 1.0)
+        """
+        meta_score = result.meta_score if result.meta_score else 0.5
+
+        # Entity verification score
+        if result.verifications:
+            verified_count = sum(1 for v in result.verifications if v.status == "confirmed")
+            entity_score = verified_count / len(result.verifications)
+        else:
+            entity_score = 0.5
+
+        # OSINT consensus score
+        if result.osint_consensus:
+            status_scores = {
+                "confirmed": 0.9,
+                "likely": 0.8,
+                "possible": 0.6,
+                "insufficient": 0.4,
+                "conflicted": 0.5,
+            }
+            consensus_status = result.osint_consensus.get("consensus_status", "")
+            osint_score = status_scores.get(consensus_status, 0.5)
+
+            # Invert score if verdict is malicious
+            verdict = result.osint_consensus.get("verdict", "")
+            if verdict == "malicious":
+                osint_score = 1.0 - osint_score
+        else:
+            osint_score = 0.5
+
+        # CTI threat score
+        threat_scores = {
+            "critical": 0.0,
+            "high": 0.2,
+            "medium": 0.4,
+            "low": 0.7,
+            "none": 1.0,
+        }
+        cti_score = threat_scores.get(result.threat_level, 1.0)
+
+        # Blend with osint_confidence
+        if result.osint_confidence > 0:
+            cti_score = cti_score * (1 - result.osint_confidence) + 0.5 * result.osint_confidence
+
+        # Weighted combination
+        final_score = (
+            meta_score * 0.40
+            + entity_score * 0.30
+            + osint_score * 0.20
+            + cti_score * 0.10
+        )
+
+        return max(0.0, min(1.0, final_score))
 
     def _compute_meta_score(self, intel: DomainIntel) -> float:
         """

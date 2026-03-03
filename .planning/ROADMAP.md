@@ -1,197 +1,171 @@
-# Roadmap: VERITAS Masterpiece Upgrade
+# Roadmap: VERITAS
 
-**Milestone:** v1.0 - Core Stabilization
-**Created:** 2026-02-20
-**Mode:** yolo (GO) | Depth: Standard | Parallelization: Enabled
+## Overview
+
+VERITAS's journey from initial concept to production masterpiece: v1.0 established a production-grade foundation with stabilized architecture (IPC, state management, persistence). v2.0 adds masterpiece features (5-pass Vision Agent, OSINT integration, dual-tier Judge, 25+ security modules, agent theater) that differentiate it as a portfolio-ready thesis project demonstrating expert-level capabilities in autonomous multi-modal web forensics.
+
+## Milestones
+
+- ✅ **v1.0 Core Stabilization** - Phases 1-5 (shipped 2026-02-23)
+- ✅ **v2.0 Masterpiece Features** - Phases 6-11 (shipped 2026-02-28)
 
 ## Phases
 
-- [x] **Phase 1: IPC Communication Stabilization** - Replace fragile stdout parsing with multiprocessing.Queue (COMPLETE)
-- [x] **Phase 2: Agent Architecture Refactor** - Create proper SecurityAgent class matching agent patterns (COMPLETE)
-- [x] **Phase 3: LangGraph State Machine Investigation** - Investigate and enable proper LangGraph execution (COMPLETE - Resolution: Sequential with Enhanced Tracking)
-- [ ] **Phase 4: Stub Cleanup & Code Quality** - Replace empty return stubs with NotImplementedError
-- [x] **Phase 5: Persistent Audit Storage** - Implement SQLite database for audit persistence (COMPLETE)
+<details>
+<summary>✅ v1.0 Core Stabilization (Phases 1-5) - SHIPPED 2026-02-23</summary>
+
+**Phases completed:** 5 phases, 22 plans
+
+**Key accomplishments:**
+- Replaced fragile stdout parsing with multiprocessing.Queue IPC (40 passing tests)
+- Created SecurityAgent class matching agent architecture patterns
+- Resolved LangGraph Python 3.14 CancelledError with sequential execution tracking
+- Replaced empty return stubs with context-specific exceptions for fail-loud error handling
+- Implemented SQLite audit persistence with WAL mode and AuditRepository CRUD operations
+- Built audit history and compare API endpoints for forensic evidence management
+
+</details>
+
+### ✅ v2.0 Masterpiece Features (SHIPPED 2026-02-28)
+
+<details>
+<summary>**Phases completed:** 6 phases, 28 plans</summary>
+
+**Milestone Goal:** Implemented masterpiece-quality features (40 requirements) on top of the stabilized foundation.
+
+**Key accomplishments:**
+- 5-pass Vision Agent pipeline with temporal analysis and dark pattern detection
+- Multi-page Scout navigation with lazy-loaded content capture
+- 15+ OSINT/CTI intelligence sources with consensus-based verification
+- Dual-tier Judge System (technical CWE/CVSS + plain English recommendations)
+- 25+ enterprise security modules with tier-based parallel execution
+- Agent Theater with personality system, carousel overlays, and celebration effects
+
+</details>
+
+**Phases:**
+- ✅ **Phase 6: Vision Agent Enhancement** - 5-pass pipeline with CV temporal analysis for sophisticated dark pattern detection (6 reqs) - **COMPLETE 2026-02-24**
+- [x] **Phase 7: Scout Navigation & Quality Foundation** - Multi-page scrolling coverage with false positive protection (6 reqs) (completed 2026-02-26)
+- [x] **Phase 8: OSINT & CTI Integration** - 15+ intelligence sources with cross-referencing for entity verification (7 reqs) (completed 2026-02-28)
+- [x] **Phase 9: Judge System & Orchestrator** - Dual-tier verdicts with site-type strategies in smart orchestration framework (9 reqs) (completed 2026-02-28)
+- [x] **Phase 10: Cybersecurity Deep Dive** - 25+ enterprise modules with tier-based execution, CVSS scoring, darknet threat detection (2 reqs) - **COMPLETE 2026-02-28**
+- [x] **Phase 11: Agent Theater & Content Showcase** - Engaging real-time UI with progressive visual feedback (4 reqs) - **COMPLETE 2026-02-28**
 
 ## Phase Details
 
-### Phase 1: IPC Communication Stabilization
+### Phase 6: Vision Agent Enhancement
+**Goal**: Deliver sophisticated 5-pass visual analysis pipeline with computer vision temporal analysis for detecting dark patterns and dynamic scams, providing visual intelligence foundation for all downstream features
+**Depends on**: v1.0 Core Stabilization (Phases 1-5)
+**Requirements**: VISION-01, VISION-02, VISION-03, VISION-04, SMART-VIS-01, SMART-VIS-02
+**Success Criteria** (what must be TRUE):
+  1. User can observe Vision Agent complete 5-pass analysis (initial scan, dark patterns, temporal dynamics, graph cross-reference, final synthesis)
+  2. User can see findings detected from sophisticated dark patterns (urgency tactics, fake social proof, etc.) with confidence scores
+  3. User can view temporal analysis results showing dynamic content changes detected between screenshots
+  4. System emits progress events during vision analysis (not batched until end) showing which pass is active
+  5. Vision findings are cross-referenced with external threat intelligence sources for verification
+**Plans**: [phases/06-vision-enhancement/](.planning/phases/06-vision-enhancement/)
 
-**Goal**: Backend can receive structured progress events from Veritas subprocess without parsing stdout
+### Phase 7: Scout Navigation & Quality Foundation
+**Goal**: Deliver complete page coverage via scrolling and multi-page exploration, with quality management foundation preventing false positives through multi-factor validation
+**Depends on**: Phase 6
+**Requirements**: SCROLL-01, SCROLL-02, SCROLL-03, QUAL-01, QUAL-02, QUAL-03
+**Success Criteria** (what must be TRUE):
+  1. User can view full screenshot series captured during scroll-based lazy loading
+  2. User can see exploration beyond landing page including About, Contact, Privacy pages
+  3. System waits for lazy-loaded content before capturing screenshots
+  4. Threat findings require 2+ source agreement before appearing as "confirmed" (prevents solo-source false positives)
+  5. Each finding displays confidence score (0-100%) with supporting reasoning
+**Plans**: [phases/07-scout-navigation-quality-foundation/](.planning/phases/07-scout-navigation-quality-foundation/)
 
-**Depends on**: None (first phase)
+### Phase 8: OSINT & CTI Integration
+**Goal**: Deliver open-source intelligence from 15+ sources with multi-source cross-referencing, providing entity verification data for Judge Agent and threat exposure monitoring
+**Depends on**: Phase 6 (Vision screenshots provide OSINT context)
+**Requirements**: OSINT-01, OSINT-02, OSINT-03, CTI-01, CTI-02, CTI-03, CTI-04
+**Success Criteria** (what must be TRUE):
+  1. User can view domain verification data (whois, DNS records, SSL certificate)
+  2. User can see malicious URL check results from VirusTotal and PhishTank databases
+  3. User can observe social media presence verification (linked accounts, authenticity checks)
+  4. System detects and displays darknet exposure indicators
+  5. OSINT findings are cross-referenced across sources with conflict detection and confidence scoring
+**Plans**: [phases/08-osint-cti-integration/](.planning/phases/08-osint-cti-integration/)
 
-**Requirements**: CORE-02, CORE-02-2, CORE-02-3, CORE-02-4, CORE-02-5, CORE-06
+### Phase 9: Judge System & Orchestrator
+**Goal**: Deliver dual-tier verdict system (technical CWE/CVSS + plain English recommendations) with site-type-specific scoring strategies, integrated into smart orchestration framework with adaptive time management
+**Depends on**: Phase 7 (Quality foundation), Phase 8 (OSINT data for technical verdicts)
+**Requirements**: JUDGE-01, JUDGE-02, JUDGE-03, ORCH-01, ORCH-02, ORCH-03, PROG-01, PROG-02, PROG-03
+**Success Criteria** (what must be TRUE):
+  1. User can access dual-tier verdict: technical details (CWE IDs, CVSS scores) and plain language explanation
+  2. User can observe context-aware scoring based on detected site type (e-commerce, financial, portfolio, etc.)
+  3. System adapts timeout strategies based on page complexity during audit execution
+  4. System provides estimated completion time countdown during long audits
+  5. Graceful degradation ensures partial results return even if agents crash ("show must go on")
+**Plans**: [phases/09-judge-orchestrator/](.planning/phases/09-judge-orchestrator/)
+
+### Phase 10: Cybersecurity Deep Dive
+**Goal**: Deliver 25+ enterprise-grade security modules (OWASP Top 10, PCI DSS, GDPR compliance) with CVSS scoring and darknet threat detection fed into Judge verdict scores
+**Depends on**: Phase 9 (Security findings feed Judge verdict, CVSS/CWE integration)
+**Requirements**: SEC-01, SEC-02
+**Success Criteria** (what must be TRUE):
+  1. User can view OWASP Top 10 compliance status with per-vulnerability findings
+  2. User can see PCI DSS and GDPR compliance check results
+  3. Each security finding displays CVSS 3.1 severity score
+  4. System correlates darknet threat intelligence with security findings
+  5. Security modules are grouped by execution tier (fast/medium/deep) with appropriate timeout configuration
+**Plans**: [10-01-PLAN.md](.planning/phases/10-cybersecurity-deep-dive/10-01-PLAN.md) — Base architecture and FAST tier modules
+**Plans**: [10-02-PLAN.md](.planning/phases/10-cybersecurity-deep-dive/10-02-PLAN.md) — OWASP Top 10 modules (A01-A10)
+**Plans**: [10-03-PLAN.md](.planning/phases/10-cybersecurity-deep-dive/10-03-PLAN.md) — PCI DSS and GDPR compliance modules
+**Plans**: [10-04-PLAN.md](.planning/phases/10-cybersecurity-deep-dive/10-04-PLAN.md) — SecurityAgent rewrite with tier execution and darknet correlation
+
+### Phase 11: Agent Theater & Content Showcase
+**Goal**: Deliver engaging real-time UI showcase with all 5 agents in Agent Theater, screenshot carousel with highlight overlays, and running log with personality - the key differentiator for portfolio/thesis presentation
+**Depends on**: Phase 9 (Orchestrator), Phase 10 (Cybersecurity data)
+**Requirements**: SHOWCASE-01, SHOWCASE-02, SHOWCASE-03, SHOWCASE-04
+**Success Criteria** (what must be TRUE):
+  1. User experiences "always something happening" every 5-10 seconds during ~3-5 minute audits via live feed
+  2. User can navigate through screenshot carousel with highlight overlays for detected patterns (coordinates align visually)
+  3. User reads running log showing agent activities with timestamps and task completion celebrations ("Vision found 3 dark patterns!")
+  4. Green flag celebrations appear prominently when audits return positive results (no major issues)
+  5. Personality elements (agent emojis, finding "flexing", interesting highlights during waiting periods) maintain engagement throughout audit
+**Plans**: [phase-11/PLAN.md](.planning/phase-11/PLAN.md)
+
+## Progress
+
+| Phase | Milestone | Plans Complete | Status | Completed |
+|-------|-----------|----------------|--------|-----------|
+| 1 | v1.0 | 22/22 | ✅ Complete | 2026-02-23 |
+| 6 | v2.0 | 6/6 | ✅ Complete | 2026-02-24 |
+| 7 | v2.0 | 4/4 | ✅ Complete | 2026-02-26 |
+| 8 | v2.0 | 6/6 | ✅ Complete | 2026-02-28 |
+| 9 | v2.0 | 3/3 | ✅ Complete | 2026-02-28 |
+| 10 | 4/4 | Complete    | 2026-02-28 |
+| 11 | v2.0 | 0/2 | 📝 Planned | - |
+| 12 | 1/5 | In Progress|  | - |
+
+Coverage:
+- v1 phases: 5 phases, 22 plans
+- v2 phases: 7 phases, 30 total plans (23 complete, 7 planned)
+- Total: 12 phases, 52 plans (45 complete, 7 planned)
+
+### Phase 12: Premium Darknet Auditor
+
+**Goal:** Deliver premium darknet category with TOR integration, hidden service detection, marketplace analysis, and specialized VERITAS agent workflows for darknet threat detection
+**Requirements**: DARKNET-01, DARKNET-02, DARKNET-03, DARKNET-04, DARKNET-05
+**Depends on:** Phase 11
+**Plans:** 1/5 plans executed
 
 **Success Criteria** (what must be TRUE):
-1. Backend receives structured progress events from Veritas subprocess via multiprocessing.Queue
-2. Audit completes without parsing `##PROGRESS:` markers from stdout
-3. Fallback to stdout mode works for instant rollback (flag-controlled)
-4. Dual-mode operation enabled via `--use-queue-ipc` CLI flag for gradual migration
-5. Unit and integration tests verify Queue-based communication works correctly
+  1. User can route .onion URL requests through TOR SOCKS5h proxy (127.0.0.1:9050)
+  2. User can validate .onion URLs with base32 checksum verification (v2/v3 addresses)
+  3. User can query 6 marketplace threat feeds for vendor reputation and exit scam indicators
+  4. System analyzes darknet vulnerabilities (escrow, crypto-only, Tor2Web exposure)
+  5. Interface shows TOR status, marketplace intelligence, and legal read-only OSINT warnings
 
-**Plans**: 5 plans
-
-Plans:
-- [x] 01-01-PLAN.md — Create core IPC infrastructure with ProgressEvent dataclass and Queue utilities (COMPLETE)
-- [x] 01-02-PLAN.md — Add CLI flags and mode selection logic for dual-mode IPC (COMPLETE)
-- [x] 01-03-PLAN.md — Modify VeritasOrchestrator to support dual-mode emission (COMPLETE)
-- [x] 01-04-PLAN.md — Modify AuditRunner to create Queue and implement auto-fallback (COMPLETE)
-- [x] 01-05-PLAN.md — Add integration tests for Queue IPC and fallback behavior (COMPLETE)
+**Plans:** [phases/12-darknet-auditor/](.planning/phases/12-darknet-auditor/)
+- [ ] 12-01-PLAN.md: TOR Client and SOCKS5h Integration (DARKNET-01)
+- [ ] 12-02-PLAN.md: .onion Validator and Marketplace Classifier (DARKNET-02)
+- [ ] 12-03-PLAN.md: Marketplace Threat Feed OSINT Sources (DARKNET-03)
+- [ ] 12-04-PLAN.md: VERITAS Darknet Agent Workflows (DARKNET-04)
+- [ ] 12-05-PLAN.md: Premium Category UI Integration (DARKNET-05)
 
 ---
-
-### Phase 2: Agent Architecture Refactor
-
-**Goal**: SecurityAgent class matches VisionAgent and JudgeAgent patterns with feature-flagged migration
-
-**Depends on**: Phase 1
-
-**Requirements**: CORE-01, CORE-01-2, CORE-01-3, CORE-01-4, CORE-06-2
-
-**Success Criteria** (what must be TRUE):
-1. SecurityAgent class exists with async analyze() method returning SecurityResult dataclass
-2. SecurityAgent includes all security modules (headers, phishing, redirects, JS analysis, form validation)
-3. SecurityAgent matches VisionAgent and JudgeAgent patterns (consistent interface)
-4. Feature flag enables gradual migration from function to class-based agent
-5. SecurityAgent class follows same test pattern as VisionAgent/JudgeAgent
-
-**Plans**: 5 plans
-
-Plans:
-- [x] 02-01-PLAN.md — Create SecurityAgent core data structures and class skeleton (COMPLETE)
-- [x] 02-02-PLAN.md — Implement module auto-discovery and SecurityResult aggregation (COMPLETE)
-- [x] 02-03-PLAN.md — Add feature flag infrastructure and migration path (COMPLETE)
-- [x] 02-04-PLAN.md — Add unit tests for SecurityAgent and dataclasses (COMPLETE)
-- [x] 02-05-PLAN.md — Add integration tests and verify migration works (COMPLETE)
-
----
-
-### Phase 3: LangGraph State Machine Investigation
-
-**Goal**: Investigate Python 3.14 CancelledError and enable proper LangGraph execution or document workaround
-
-**Depends on**: Phase 2
-
-**Requirements**: CORE-03, CORE-03-2, CORE-03-3, CORE-03-4, CORE-03-5, CORE-06-3
-
-**Success Criteria** (what must be TRUE):
-1. LangGraph StateGraph executes via ainvoke() without Python 3.14 CancelledError OR workaround documented ✅
-2. Proper LangGraph debugging, visualization, and checkpointing are enabled ⚠️ (Deferred - requires ainvoke)
-3. Isolated reproduction test documents root cause of CancelledError ✅
-4. Resolution documented: version pin, hybrid execution, or sequential with tracking ✅
-5. Sequential execution fallback maintained for instant rollback ✅
-6. LangGraph reproduction test covers Python 3.14 async behavior ✅ (tested on 3.11.5)
-
-**Plans**: 3 plans
-
-Plans:
-- [x] 03-01-PLAN.md — Create minimal reproduction test for isolated LangGraph ainvoke() behavior (COMPLETE)
-- [x] 03-02-PLAN.md — Create full audit test with mocked NIMClient and agents (COMPLETE)
-- [x] 03-03-PLAN.md — Create behavioral differences test and document resolution (COMPLETE)
-
-**Resolution**: Option B - Maintain Sequential Execution with Enhanced Tracking
-- Root cause: LangGraph 0.5.3 framework hangs on complex graph topologies
-- All node logic verified correct (16/16 tests passed)
-- Sequential execution production-ready and stable
-
----
-
-### Phase 4: Stub Cleanup & Code Quality
-
-**Goal**: All empty return stubs replaced with NotImplementedError or proper implementations
-
-**Depends on**: Phase 3
-
-**Requirements**: CORE-04, CORE-04-2, CORE-04-3, CORE-04-4, CORE-04-5, CORE-06-4
-
-**Success Criteria** (what must be TRUE):
-1. evidence_store.py stubs (lines 207, 250, 309, 327, 351, 362) raise context-specific exceptions (ValueError, FileNotFoundError, RuntimeError)
-2. judge.py empty returns (lines 943, 960) raise RuntimeError for missing state
-3. dom_analyzer.py empty return (line 345 only - _check_dark_patterns_css placeholder) raises NotImplementedError. Line 318 returns [] for acceptable tracking levels (intentional business logic)
-4. dark_patterns.py empty return (line 407) raises ValueError for invalid category_id
-5. Tests verify correct exceptions are raised (RuntimeError, ValueError, NotImplementedError, FileNotFoundError)
-6. No silent failures from empty return stubs (line 318 in dom_analyzer.py is intentional behavior, not a stub)
-
-**Plans**: 3 plans
-
-Plans:
-- [x] 04-01-PLAN.md — Search for existing callers and replace evidence_store.py stubs with context-specific exceptions (lines 207, 250, 309, 327, 351, 362) (COMPLETE 2026-02-22)
-- [ ] 04-02-PLAN.md — Search for existing callers and replace judge.py, dom_analyzer.py, dark_patterns.py stubs with proper exceptions (lines 943, 960, 345, 407)
-- [ ] 04-03-PLAN.md — Create test_stub_cleanup.py with comprehensive exception tests
-
----
-
-### Phase 5: Persistent Audit Storage
-
-**Goal**: Audit results persist across backend restart in SQLite database with dual-write migration
-
-**Depends on**: Phase 4
-
-**Requirements**: CORE-05, CORE-05-2, CORE-05-3, CORE-05-4, CORE-05-5, CORE-06-5
-
-**Success Criteria** (what must be TRUE):
-1. Audit results persist across backend restart in SQLite database
-2. SQLite uses WAL mode for concurrent write support
-3. Dual-write migration (memory + SQLite) enables gradual data migration
-4. Screenshots stored in filesystem, references stored in database
-5. Audit history API supports historical audit retrieval and comparison
-6. SQLite persistence tested with concurrent audit simulation
-
-**Plans**: 6 plans
-
-Plans:
-- [x] 05-01-PLAN.md — Create SQLAlchemy models and initialize SQLite database with WAL mode (Wave 1) (COMPLETE 2026-02-23)
-- [x] 05-02-PLAN.md — Create AuditRepository and integrate FastAPI DbSession dependency injection (Wave 2) (COMPLETE 2026-02-23)
-- [x] 05-03-PLAN.md — Create ScreenshotStorage filesystem service (Wave 1) (COMPLETE 2026-02-23)
-- [x] 05-04-PLAN.md — Implement dual-write migration with USE_DB_PERSISTENCE feature flag (Wave 3) (COMPLETE 2026-02-23)
-- [x] 05-05-PLAN.md — Create audit history API endpoints (history + compare) (Wave 3) (COMPLETE 2026-02-23)
-- [x] 05-06-PLAN.md — Create concurrent write simulation tests (Wave 4) (COMPLETE 2026-02-23)
-
----
-
-## Progress Tracking
-
-| Phase | Plans Complete | Status | Completed |
-|-------|----------------|--------|-----------|
-| 1. IPC Communication Stabilization | 5/5 | COMPLETE | 2026-02-20 |
-| 2. Agent Architecture Refactor | 5/5 | COMPLETE   | 2026-02-21 |
-| 3. LangGraph State Machine Investigation | 3/3 | COMPLETE   | 2026-02-22 |
-| 4. Stub Cleanup & Code Quality | 1/3 | In progress | 2026-02-22 |
-| 5. Persistent Audit Storage | 6/6 | COMPLETE | 2026-02-23 |
-| Overall | 20/24 (83%) | Phase 4 in progress, Phase 5 complete | 2026-02-23 |
-
----
-
-## Coverage Summary
-
-**v1 Requirements:** 30 total
-**Phases:** 5
-**Depth:** Standard (5-8 phases)
-**Coverage:** 30/30 requirements mapped (100%)
-
-| Requirement Category | Count | Phase |
-|---------------------|-------|-------|
-| IPC Communication | 6 | Phase 1 |
-| Agent Architecture | 5 | Phase 2 |
-| State Machine | 6 | Phase 3 |
-| Code Quality | 6 | Phase 4 |
-| Data Persistence | 6 | Phase 5 |
-
----
-
-## Notes
-
-- **Phase Ordering**: Based on research recommendation from STABILIZATION.md - IPC first (most fragile), then architecture pattern, then state machine, then stub cleanup, then persistence
-- **Feature Flags**: All major refactors use feature flags for gradual migration (CORE-02-5, CORE-01-4, CORE-03-5, CORE-05-3)
-- **Testing**: Each phase includes corresponding test requirements (CORE-06 series)
-- **Rollback**: Each phase maintains fallback paths for instant rollback capability
-- **Research Flags**: Phase 3 (LangGraph) has LOW confidence due to Python 3.14 CancelledError root cause requiring investigation
-
----
-
-*Last updated: 2026-02-23*
-*Phase 1 completed: 5/5 plans executed (2026-02-20)*
-*Phase 2 completed: 5/5 plans executed (2026-02-21)*
-*Phase 3 completed: 3/3 plans executed (2026-02-22)*
-*Phase 5 completed: 6/6 plans executed - SQLite persistence with WAL mode validated (2026-02-23)*
-*Resolution: Option B - Sequential Execution with Enhanced Tracking*
+*Last updated: 2026-03-01 - Phase 12 plans created (5 plans: 12-01 through 12-05)*

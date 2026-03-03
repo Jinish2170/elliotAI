@@ -105,11 +105,35 @@ class NIMClient:
     # Public API
     # ================================================================
 
+    def get_cache_key(
+        self, image_path: str, prompt: str, pass_type: Optional[int] = None
+    ) -> str:
+        """
+        Generate cache key including pass type for pass-specific caching.
+
+        Key format: md5(image_bytes + prompt + pass_type)
+
+        Args:
+            image_path: Path to image file
+            prompt: The prompt text
+            pass_type: Optional pass type identifier (for Vision Agent multi-pass pipeline)
+
+        Returns:
+            MD5 hash as cache key
+        """
+        with open(image_path, "rb") as f:
+            image_bytes = f.read()
+        key_data = image_bytes + prompt.encode()
+        if pass_type is not None:
+            key_data += str(pass_type).encode()
+        return hashlib.md5(key_data).hexdigest()
+
     async def analyze_image(
         self,
         image_path: str,
         prompt: str,
         category_hint: str = "",
+        pass_type: Optional[int] = None,
     ) -> dict:
         """
         Analyze an image using VLM with 4-level fallback chain.
@@ -118,6 +142,7 @@ class NIMClient:
             image_path: Path to JPEG/PNG screenshot file
             prompt: The VLM forensic prompt (from dark_patterns.py)
             category_hint: Optional dark pattern category for cache grouping
+            pass_type: Optional pass type for pass-specific caching (Vision Agent multi-pass)
 
         Returns:
             {
@@ -129,8 +154,12 @@ class NIMClient:
         """
         self._ensure_client()
 
-        # Check cache
-        cache_key = self._cache_key(f"vision:{image_path}:{prompt}:{category_hint}")
+        # Check cache - use pass-aware key if pass_type provided
+        if pass_type is not None:
+            cache_key = self.get_cache_key(image_path, prompt, pass_type)
+        else:
+            cache_key = self._cache_key(f"vision:{image_path}:{prompt}:{category_hint}")
+
         cached = self._read_cache(cache_key)
         if cached:
             self._cache_hits += 1
