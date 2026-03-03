@@ -30,6 +30,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from config import settings
 from config.dark_patterns import DARK_PATTERN_TAXONOMY
+from ui.darknet_components import (
+    render_darknet_panel,
+    render_marketplace_intelligence_dashboard,
+    render_darknet_toggle,
+)
 
 logger = logging.getLogger("veritas.ui")
 
@@ -748,6 +753,10 @@ with st.sidebar:
         sec_redirect = st.checkbox("🔄 Redirect Chain Analysis", value=False)
         sec_js = st.checkbox("⚡ JS Obfuscation Detection", value=False)
         sec_forms = st.checkbox("📝 Form Validation", value=False)
+        st.markdown("---")
+        st.caption("**🧅 Darknet Analysis** (Premium)")
+        sec_darknet = st.checkbox("🧅 Darknet Threat Intelligence", value=False,
+                                  help="Enable TOR-aware security with marketplace threat intelligence")
 
     enabled_sec = []
     if sec_headers: enabled_sec.append("security_headers")
@@ -755,6 +764,7 @@ with st.sidebar:
     if sec_redirect: enabled_sec.append("redirect_chain")
     if sec_js: enabled_sec.append("js_analysis")
     if sec_forms: enabled_sec.append("form_validation")
+    if sec_darknet: enabled_sec.append("darknet_analysis")
 
     st.markdown("---")
 
