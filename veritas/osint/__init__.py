@@ -11,8 +11,23 @@ from veritas.osint.ioc_detector import (
     IOCIndicator,
 )
 
+from veritas.osint.types import (
+    OSINTResult,
+    DarknetMarketplaceType,
+    ExitRiskLevel,
+    VendorReputation,
+    MarketplaceThreatData,
+    Tor2WebThreatData,
+)
+
 __all__ = [
     "IOCDetector",
     "IOCDetectionResult",
     "IOCIndicator",
+    "OSINTResult",
+    "DarknetMarketplaceType",
+    "ExitRiskLevel",
+    "VendorReputation",
+    "MarketplaceThreatData",
+    "Tor2WebThreatData",
 ]
