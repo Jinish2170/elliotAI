@@ -2,7 +2,9 @@
 
 import type { Phase, PhaseState } from "@/lib/types";
 import { PHASE_META } from "@/lib/types";
+import { getPersonalityMessage } from "@/config/agent_personalities";
 import { motion } from "framer-motion";
+import { useEffect, useState } from "react";
 
 interface AgentCardProps {
   phase: Phase;
@@ -20,6 +22,31 @@ const STATUS_STYLES = {
 export function AgentCard({ phase, state, isActive }: AgentCardProps) {
   const meta = PHASE_META[phase];
   if (!meta || phase === "init") return null;
+
+  // Personality message for active agents
+  const [personalityMessage, setPersonalityMessage] = useState("");
+
+  // Update personality message when agent is active
+  useEffect(() => {
+    if (state.status === "active") {
+      // Set initial message
+      setPersonalityMessage(getPersonalityMessage(phase, "working"));
+
+      // Update every 8-10 seconds
+      const interval = setInterval(() => {
+        setPersonalityMessage(getPersonalityMessage(phase, "working"));
+      }, 8000 + Math.random() * 2000); // Random between 8-10 seconds
+
+      return () => clearInterval(interval);
+    }
+
+    // Show flex message on complete
+    if (state.status === "complete" && state.summary) {
+      const count = (state.summary as Record<string, unknown>).count as number;
+      const score = (state.summary as Record<string, unknown>).score as number;
+      setPersonalityMessage(getPersonalityMessage(phase, "complete", { count, score }));
+    }
+  }, [phase, state.status, state.summary]);
 
   return (
     <motion.div
@@ -60,10 +87,17 @@ export function AgentCard({ phase, state, isActive }: AgentCardProps) {
             </div>
           )}
 
-          {/* Summary when complete */}
-          {state.status === "complete" && state.message && (
-            <p className="text-[10px] text-[var(--v-text-tertiary)] mt-1 truncate">
-              {state.message}
+          {/* Personality message when active */}
+          {state.status === "active" && personalityMessage && (
+            <p className="text-[10px] text-[var(--v-text-secondary)] mt-1.5 animate-pulse">
+              {personalityMessage}
+            </p>
+          )}
+
+          {/* Flex message when complete */}
+          {state.status === "complete" && personalityMessage && (
+            <p className="text-[10px] text-emerald-400 font-semibold mt-1 truncate">
+              {personalityMessage}
             </p>
           )}
 

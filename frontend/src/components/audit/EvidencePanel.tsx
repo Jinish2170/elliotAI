@@ -2,6 +2,7 @@
 
 import { SeverityBadge } from "@/components/data-display/SeverityBadge";
 import { StatCounter } from "@/components/data-display/StatCounter";
+import { ScreenshotCarousel } from "@/components/audit/ScreenshotCarousel";
 import type { AuditStats, Finding, Screenshot } from "@/lib/types";
 import { AnimatePresence, motion } from "framer-motion";
 import { useState } from "react";
@@ -96,7 +97,18 @@ export function EvidencePanel({ screenshots, findings, stats }: EvidencePanelPro
                   No screenshots yet
                 </p>
               ) : (
-                <ScreenshotGallery screenshots={screenshots} />
+                <div>
+                  <ScreenshotCarousel
+                    screenshots={screenshots}
+                    onFindings={(index) =>
+                      findings.filter((f) => f.screenshot_index === index || undefined)
+                    }
+                  />
+                  {/* Keyboard shortcuts hint */}
+                  <div className="text-[10px] text-[var(--v-text-tertiary)] text-center mt-4">
+                    Arrow keys to navigate • +/- to zoom • H to toggle overlays
+                  </div>
+                </div>
               )}
             </motion.div>
           )}
@@ -121,63 +133,6 @@ export function EvidencePanel({ screenshots, findings, stats }: EvidencePanelPro
         </AnimatePresence>
       </div>
     </div>
-  );
-}
-
-/* ── Screenshot Gallery ── */
-
-function ScreenshotGallery({ screenshots }: { screenshots: Screenshot[] }) {
-  const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
-
-  return (
-    <>
-      <div className="grid grid-cols-2 gap-2">
-        {screenshots.map((ss, i) => (
-          <motion.div
-            key={i}
-            initial={{ opacity: 0, scale: 0.9, rotate: Math.random() * 4 - 2 }}
-            animate={{ opacity: 1, scale: 1, rotate: 0 }}
-            transition={{ duration: 0.4, delay: i * 0.05 }}
-            className="cursor-pointer rounded-lg overflow-hidden border border-white/10 hover:border-cyan-500/30 transition-colors"
-            onClick={() => setSelectedIdx(i)}
-          >
-            {ss.data ? (
-              <img
-                src={`data:image/jpeg;base64,${ss.data}`}
-                alt={ss.label}
-                className="w-full h-20 object-cover"
-              />
-            ) : (
-              <div className="w-full h-20 bg-white/5 flex items-center justify-center text-xs text-[var(--v-text-tertiary)]">
-                📸 {ss.label}
-              </div>
-            )}
-          </motion.div>
-        ))}
-      </div>
-
-      {/* Lightbox */}
-      <AnimatePresence>
-        {selectedIdx !== null && screenshots[selectedIdx]?.data && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
-            onClick={() => setSelectedIdx(null)}
-          >
-            <motion.img
-              initial={{ scale: 0.9 }}
-              animate={{ scale: 1 }}
-              exit={{ scale: 0.9 }}
-              src={`data:image/jpeg;base64,${screenshots[selectedIdx].data}`}
-              alt={screenshots[selectedIdx].label}
-              className="max-w-[90vw] max-h-[85vh] rounded-lg border border-white/10"
-            />
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </>
   );
 }
 
