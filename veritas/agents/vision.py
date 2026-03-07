@@ -673,224 +673,224 @@ class VisionAgent:
         try:
             all_findings = []
 
-        # Detect content type for adaptive SSIM thresholds
-        content_type = self._detect_content_type(url, scout_result)
-        logger.info(f"Detected content type: {content_type}")
-
-        # Initialize TemporalAnalyzer with content-type-specific thresholds
-        try:
-            from agents.vision.temporal_analysis import TemporalAnalyzer
-            self.temporal_analyzer = TemporalAnalyzer(content_type=content_type)
-        except (ImportError, Exception) as e:
-            logger.warning(f"Temporal analyzer not available: {e}")
-            self.temporal_analyzer = None
-
-        # Temporal analysis (CV-based)
-        temporal_result = None
-        has_temporal_changes = False
-
-        if len(screenshots) >= 2 and self.temporal_analyzer:
+            # Detect content type for adaptive SSIM thresholds
+            content_type = self._detect_content_type(url, scout_result)
+            logger.info(f"Detected content type: {content_type}")
+    
+            # Initialize TemporalAnalyzer with content-type-specific thresholds
             try:
-                temporal_result = self.temporal_analyzer.analyze_temporal_changes(
-                    screenshots[0], screenshots[1]
+                from agents.vision.temporal_analysis import TemporalAnalyzer
+                self.temporal_analyzer = TemporalAnalyzer(content_type=content_type)
+            except (ImportError, Exception) as e:
+                logger.warning(f"Temporal analyzer not available: {e}")
+                self.temporal_analyzer = None
+    
+            # Temporal analysis (CV-based)
+            temporal_result = None
+            has_temporal_changes = False
+    
+            if len(screenshots) >= 2 and self.temporal_analyzer:
+                try:
+                    temporal_result = self.temporal_analyzer.analyze_temporal_changes(
+                        screenshots[0], screenshots[1]
+                    )
+                    has_temporal_changes = temporal_result['has_changes']
+                    logger.info(
+                        f"Temporal analysis: SSIM={temporal_result['ssim_score']:.3f}, "
+                        f"has_changes={has_temporal_changes}"
+                    )
+                except Exception as e:
+                    logger.warning(f"Temporal analysis failed: {e}")
+                    if emitter:
+                        await emitter.emit_error("temporal_analysis", f"Temporal analysis failed: {e}", "Vision", recoverable=True)
+    
+            # Determine screenshots to analyze based on temporal result
+            if temporal_result and temporal_result.get('recommendation') == 'fullpage_only':
+                # No temporal changes - analyze only fullpage if available
+                screenshots_to_analyze = [screenshots[-1]] if screenshots else []
+            else:
+                screenshots_to_analyze = screenshots
+    
+            # Run 5-pass analysis
+            passes_completed = 0
+            for pass_num in range(1, 6):
+                # Check if this pass should run based on priority logic
+                if not should_run_pass(pass_num, all_findings, has_temporal_changes):
+                    logger.debug(f"Skipping Pass {pass_num} (priority rule)")
+                    # Emit skip progress via ProgressEmitter
+                    if emitter:
+                        pass_pct = {1: 10, 2: 30, 3: 50, 4: 70, 5: 90}
+                        await emitter.emit_progress(
+                            "Vision",
+                            f"pass_{pass_num}",
+                            pass_pct[pass_num],
+                            f"Pass {pass_num} skipped via priority rule"
+                        )
+                    continue
+    
+                # Get pass description and emit start event
+                description = self._get_pass_description(pass_num)
+                await self.event_emitter.emit_pass_start(
+                    pass_num, description, len(screenshots_to_analyze)
                 )
-                has_temporal_changes = temporal_result['has_changes']
-                logger.info(
-                    f"Temporal analysis: SSIM={temporal_result['ssim_score']:.3f}, "
-                    f"has_changes={has_temporal_changes}"
-                )
-            except Exception as e:
-                logger.warning(f"Temporal analysis failed: {e}")
+    
+                # Emit progress for this pass via ProgressEmitter
                 if emitter:
-                    await emitter.emit_error("temporal_analysis", f"Temporal analysis failed: {e}", "Vision", recoverable=True)
-
-        # Determine screenshots to analyze based on temporal result
-        if temporal_result and temporal_result.get('recommendation') == 'fullpage_only':
-            # No temporal changes - analyze only fullpage if available
-            screenshots_to_analyze = [screenshots[-1]] if screenshots else []
-        else:
-            screenshots_to_analyze = screenshots
-
-        # Run 5-pass analysis
-        passes_completed = 0
-        for pass_num in range(1, 6):
-            # Check if this pass should run based on priority logic
-            if not should_run_pass(pass_num, all_findings, has_temporal_changes):
-                logger.debug(f"Skipping Pass {pass_num} (priority rule)")
-                # Emit skip progress via ProgressEmitter
-                if emitter:
+                    pass_messages = {
+                        1: "Scanning for threats...",
+                        2: "Detecting dark patterns...",
+                        3: "Analyzing temporal changes...",
+                        4: "Cross-referencing with graph...",
+                        5: "Synthesizing verdict..."
+                    }
                     pass_pct = {1: 10, 2: 30, 3: 50, 4: 70, 5: 90}
+    
+                    await emitter.emit_agent_status(
+                        "Vision",
+                        "running",
+                        f"Pass {pass_num}: {description}"
+                    )
                     await emitter.emit_progress(
                         "Vision",
                         f"pass_{pass_num}",
                         pass_pct[pass_num],
-                        f"Pass {pass_num} skipped via priority rule"
+                        pass_messages.get(pass_num, "Processing...")
                     )
-                continue
-
-            # Get pass description and emit start event
-            description = self._get_pass_description(pass_num)
-            await self.event_emitter.emit_pass_start(
-                pass_num, description, len(screenshots_to_analyze)
-            )
-
-            # Emit progress for this pass via ProgressEmitter
-            if emitter:
-                pass_messages = {
-                    1: "Scanning for threats...",
-                    2: "Detecting dark patterns...",
-                    3: "Analyzing temporal changes...",
-                    4: "Cross-referencing with graph...",
-                    5: "Synthesizing verdict..."
-                }
-                pass_pct = {1: 10, 2: 30, 3: 50, 4: 70, 5: 90}
-
-                await emitter.emit_agent_status(
-                    "Vision",
-                    "running",
-                    f"Pass {pass_num}: {description}"
-                )
-                await emitter.emit_progress(
-                    "Vision",
-                    f"pass_{pass_num}",
-                    pass_pct[pass_num],
-                    pass_messages.get(pass_num, "Processing...")
-                )
-
-            # Get prompt for this pass (with temporal context injection for Pass 3)
-            prompt = get_pass_prompt(pass_num, temporal_result)
-
-            # Process each screenshot in this pass
-            pass_findings = []
-            for screenshot in screenshots_to_analyze:
-                # Check cache first
-                cache_key = self._nim.get_cache_key(screenshot, prompt, pass_num)
-                cached = self._nim._read_cache(cache_key)
-
-                if cached:
-                    # Use cached results
-                    logger.debug(f"Cache hit for Pass {pass_num}, screenshot={screenshot}")
-                    cached_findings = cached.get("findings", [])
-                    for f_data in cached_findings:
+    
+                # Get prompt for this pass (with temporal context injection for Pass 3)
+                prompt = get_pass_prompt(pass_num, temporal_result)
+    
+                # Process each screenshot in this pass
+                pass_findings = []
+                for screenshot in screenshots_to_analyze:
+                    # Check cache first
+                    cache_key = self._nim.get_cache_key(screenshot, prompt, pass_num)
+                    cached = self._nim._read_cache(cache_key)
+    
+                    if cached:
+                        # Use cached results
+                        logger.debug(f"Cache hit for Pass {pass_num}, screenshot={screenshot}")
+                        cached_findings = cached.get("findings", [])
+                        for f_data in cached_findings:
+                            try:
+                                pass_findings.append(DarkPatternFinding(**f_data))
+                            except (TypeError, KeyError):
+                                logger.warning(f"Failed to restore cached finding: {f_data}")
+                    else:
+                        # Execute VLM analysis
                         try:
-                            pass_findings.append(DarkPatternFinding(**f_data))
-                        except (TypeError, KeyError):
-                            logger.warning(f"Failed to restore cached finding: {f_data}")
-                else:
-                    # Execute VLM analysis
-                    try:
-                        vlm_response = await self._nim.analyze_image(
-                            image_path=screenshot,
-                            prompt=prompt,
-                            category_hint=""
-                        )
-                    except Exception as e:
-                        logger.error(f"VLM error in Pass {pass_num}: {e}")
-                        if emitter:
-                            await emitter.emit_error("vlm_error", f"Vision model error: {e}", "Vision", recoverable=True)
-                        # Continue to next screenshot
-                        continue
-
-                    # Parse response into findings
-                    findings_from_pass = self._parse_vlm_response(
-                        vlm_response, f"pass_{pass_num}", None, screenshot
-                    )
-                    pass_findings.extend(findings_from_pass)
-
-                    # Stream findings via ProgressEmitter (especially for Pass 2 dark patterns)
-                    if emitter and pass_num == 2:  # Pass 2 is dark pattern detection
-                        for finding in findings_from_pass:
-                            severity_map = {
-                                "CRITICAL": "CRITICAL",
-                                "HIGH": "HIGH",
-                                "MEDIUM": "MEDIUM",
-                                "LOW": "LOW"
-                            }
-                            severity = severity_map.get(finding.severity, "MEDIUM")
-                            await emitter.emit_finding(
-                                category="dark_pattern",
-                                severity=severity,
-                                message=finding.description or finding.category,
-                                phase="Vision",
-                                confidence=int(finding.confidence) if finding.confidence else None
+                            vlm_response = await self._nim.analyze_image(
+                                image_path=screenshot,
+                                prompt=prompt,
+                                category_hint=""
                             )
-
-                    # Cache results
-                    cache_data = {
-                        "findings": [f.__dict__ for f in findings_from_pass],
-                        "prompt": prompt,
-                        "pass_num": pass_num,
-                        "model": vlm_response.get("model", "unknown"),
-                        "fallback_mode": vlm_response.get("fallback_mode", False),
-                    }
-                    self._nim._write_cache(cache_key, cache_data)
-
-            # Deduplicate findings within this pass
-            pass_findings = self._deduplicate_findings(pass_findings)
-            all_findings.extend(pass_findings)
-
-            # Emit findings event
-            await self.event_emitter.emit_pass_findings(pass_num, pass_findings)
-
-            # Compute confidence and emit complete event
-            confidence = self._compute_confidence(pass_findings) if pass_findings else 0.0
-            await self.event_emitter.emit_pass_complete(
-                pass_num, len(pass_findings), confidence
+                        except Exception as e:
+                            logger.error(f"VLM error in Pass {pass_num}: {e}")
+                            if emitter:
+                                await emitter.emit_error("vlm_error", f"Vision model error: {e}", "Vision", recoverable=True)
+                            # Continue to next screenshot
+                            continue
+    
+                        # Parse response into findings
+                        findings_from_pass = self._parse_vlm_response(
+                            vlm_response, f"pass_{pass_num}", None, screenshot
+                        )
+                        pass_findings.extend(findings_from_pass)
+    
+                        # Stream findings via ProgressEmitter (especially for Pass 2 dark patterns)
+                        if emitter and pass_num == 2:  # Pass 2 is dark pattern detection
+                            for finding in findings_from_pass:
+                                severity_map = {
+                                    "CRITICAL": "CRITICAL",
+                                    "HIGH": "HIGH",
+                                    "MEDIUM": "MEDIUM",
+                                    "LOW": "LOW"
+                                }
+                                severity = severity_map.get(finding.severity, "MEDIUM")
+                                await emitter.emit_finding(
+                                    category="dark_pattern",
+                                    severity=severity,
+                                    message=finding.description or finding.category,
+                                    phase="Vision",
+                                    confidence=int(finding.confidence) if finding.confidence else None
+                                )
+    
+                        # Cache results
+                        cache_data = {
+                            "findings": [f.__dict__ for f in findings_from_pass],
+                            "prompt": prompt,
+                            "pass_num": pass_num,
+                            "model": vlm_response.get("model", "unknown"),
+                            "fallback_mode": vlm_response.get("fallback_mode", False),
+                        }
+                        self._nim._write_cache(cache_key, cache_data)
+    
+                # Deduplicate findings within this pass
+                pass_findings = self._deduplicate_findings(pass_findings)
+                all_findings.extend(pass_findings)
+    
+                # Emit findings event
+                await self.event_emitter.emit_pass_findings(pass_num, pass_findings)
+    
+                # Compute confidence and emit complete event
+                confidence = self._compute_confidence(pass_findings) if pass_findings else 0.0
+                await self.event_emitter.emit_pass_complete(
+                    pass_num, len(pass_findings), confidence
+                )
+    
+                passes_completed += 1
+                logger.info(
+                    f"Pass {pass_num} complete: {len(pass_findings)} findings, "
+                    f"confidence={confidence:.1f}"
+                )
+    
+            # Cross-reference findings (Phase 8 placeholder)
+            all_findings = self._cross_reference_findings(all_findings)
+    
+            # Emit interesting highlight during vision analysis
+            if emitter and len(all_findings) > 0:
+                await emitter.emit_interesting_highlight(
+                    f"Vision Agent found {len(all_findings)} potential dark patterns",
+                    phase="Vision"
+                )
+    
+            # Flush any queued events (both emitters)
+            await self.event_emitter.flush_queue()
+            if emitter:
+                await emitter.flush()
+    
+            # Emit vision complete event
+            await self.event_emitter.emit_vision_complete(len(all_findings), passes_completed)
+            if emitter:
+                await emitter.emit_agent_status("Vision", "completed")
+                await emitter.emit_progress("Vision", "complete", 100, f"Analysis complete: {len(all_findings)} findings")
+    
+            # Build VisionResult
+            result = VisionResult()
+            result.dark_patterns = all_findings
+            result.screenshots_analyzed = len(screenshots)
+            result.prompts_sent = passes_completed * len(screenshots_to_analyze)
+    
+            # Capture NIM stats
+            nim_stats = self._nim.get_stats()
+            result.nim_calls_made = nim_stats["api_calls"]
+            result.cache_hits = nim_stats["cache_hits"]
+            result.fallback_used = nim_stats["fallback_count"] > 0
+    
+            # Compute scores
+            result.visual_score = self._compute_visual_score(all_findings)
+            result.temporal_score = (
+                1.0 if temporal_result and not temporal_result['has_changes']
+                else 0.5 if temporal_result and temporal_result['has_changes']
+                else 0.5  # No temporal data
             )
-
-            passes_completed += 1
+    
             logger.info(
-                f"Pass {pass_num} complete: {len(pass_findings)} findings, "
-                f"confidence={confidence:.1f}"
+                f"5-pass analysis complete: {len(all_findings)} total findings, "
+                f"{passes_completed} passes completed, visual_score={result.visual_score:.2f}"
             )
-
-        # Cross-reference findings (Phase 8 placeholder)
-        all_findings = self._cross_reference_findings(all_findings)
-
-        # Emit interesting highlight during vision analysis
-        if emitter and len(all_findings) > 0:
-            await emitter.emit_interesting_highlight(
-                f"Vision Agent found {len(all_findings)} potential dark patterns",
-                phase="Vision"
-            )
-
-        # Flush any queued events (both emitters)
-        await self.event_emitter.flush_queue()
-        if emitter:
-            await emitter.flush()
-
-        # Emit vision complete event
-        await self.event_emitter.emit_vision_complete(len(all_findings), passes_completed)
-        if emitter:
-            await emitter.emit_agent_status("Vision", "completed")
-            await emitter.emit_progress("Vision", "complete", 100, f"Analysis complete: {len(all_findings)} findings")
-
-        # Build VisionResult
-        result = VisionResult()
-        result.dark_patterns = all_findings
-        result.screenshots_analyzed = len(screenshots)
-        result.prompts_sent = passes_completed * len(screenshots_to_analyze)
-
-        # Capture NIM stats
-        nim_stats = self._nim.get_stats()
-        result.nim_calls_made = nim_stats["api_calls"]
-        result.cache_hits = nim_stats["cache_hits"]
-        result.fallback_used = nim_stats["fallback_count"] > 0
-
-        # Compute scores
-        result.visual_score = self._compute_visual_score(all_findings)
-        result.temporal_score = (
-            1.0 if temporal_result and not temporal_result['has_changes']
-            else 0.5 if temporal_result and temporal_result['has_changes']
-            else 0.5  # No temporal data
-        )
-
-        logger.info(
-            f"5-pass analysis complete: {len(all_findings)} total findings, "
-            f"{passes_completed} passes completed, visual_score={result.visual_score:.2f}"
-        )
-
-        return result
+    
+            return result
         except Exception as e:
             logger.error(f"Vision analysis error: {e}", exc_info=True)
             if emitter:

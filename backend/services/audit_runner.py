@@ -21,6 +21,7 @@ import subprocess
 import sys
 import time
 import uuid
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, Optional
 
@@ -579,7 +580,185 @@ class AuditRunner:
                         "plain_english": finding.get("plain_english", finding.get("description", "")),
                     },
                 })
+
+        # ============================================================
+        # Advanced Data Events - Vision Agent
+        # ============================================================
+
+        # Emit dark_pattern_finding events with full metadata
+        for finding in vision.get("dark_patterns", []) or []:
+            await send({
+                "type": "dark_pattern_finding",
+                "finding": {
+                    "category_id": finding.get("category_id", "unknown"),
+                    "pattern_type": finding.get("pattern_type", "unknown"),
+                    "confidence": finding.get("confidence", 0.0),
+                    "severity": finding.get("severity", "medium"),
+                    "evidence": finding.get("evidence", ""),
+                    "screenshot_path": finding.get("screenshot_path", ""),
+                    "raw_vlm_response": finding.get("raw_vlm_response"),
+                    "model_used": finding.get("model_used"),
+                    "fallback_mode": finding.get("fallback_mode", False),
+                },
+            })
+
+        # Emit temporal_finding events for time-based deception detection
+        for temporal in vision.get("temporal_findings", []) or []:
+            await send({
+                "type": "temporal_finding",
+                "finding": {
+                    "finding_type": temporal.get("finding_type", "unknown"),
+                    "value_at_t0": temporal.get("value_at_t0", ""),
+                    "value_at_t_delay": temporal.get("value_at_t_delay", ""),
+                    "delta_seconds": temporal.get("delta_seconds", 0),
+                    "is_suspicious": temporal.get("is_suspicious", False),
+                    "explanation": temporal.get("explanation", ""),
+                    "confidence": temporal.get("confidence", 0.0),
+                },
+            })
+
+        # Emit vision pass summaries if available
+        vision_passes = vision.get("vision_passes", []) or []
+        for pass_data in vision_passes:
+            await send({
+                "type": "vision_pass_complete",
+                "pass": pass_data.get("pass_num", 0),
+                "pass_name": pass_data.get("pass_name", f"Pass {pass_data.get('pass_num', 0)}"),
+                "findings_count": pass_data.get("findings_count", 0),
+                "confidence": pass_data.get("confidence", 0.0),
+                "prompt_used": pass_data.get("prompt_used"),
+                "model_used": pass_data.get("model_used"),
+            })
+
+        # ============================================================
+        # Advanced Data Events - OSINT / Graph Investigator
+        # ============================================================
+
+        # Emit OSINT results with full metadata
+        for osint in graph_result.get("osint_results", []) or []:
+            await send({
+                "type": "osint_result",
+                "result": {
+                    "source": osint.get("source", ""),
+                    "category": osint.get("category", ""),
+                    "query_type": osint.get("query_type", ""),
+                    "query_value": osint.get("query_value", ""),
+                    "status": osint.get("status", ""),
+                    "data": osint.get("data"),
+                    "confidence_score": osint.get("confidence_score", 0.0),
+                    "cached_at": osint.get("cached_at"),
+                    "error_message": osint.get("error_message"),
+                },
+            })
+
+        # Emit darknet threat data
+        for threat in graph_result.get("darknet_threats", []) or []:
+            await send({
+                "type": "darknet_threat",
+                "threat": {
+                    "marketplace_name": threat.get("marketplace_name", ""),
+                    "marketplace_type": threat.get("marketplace_type", "unknown"),
+                    "onion_address": threat.get("onion_address", ""),
+                    "threat_level": threat.get("threat_level", "none"),
+                    "confidence": threat.get("confidence", 0.0),
+                    "description": threat.get("description", ""),
+                    "indicators": threat.get("indicators", []),
+                    "source": threat.get("source", ""),
+                },
+            })
+
+        # Emit IOC indicators
+        for ioc in graph_result.get("ioc_indicators", []) or []:
+            await send({
+                "type": "ioc_indicator",
+                "ioc": {
+                    "type": ioc.get("type", "unknown"),
+                    "value": ioc.get("value", ""),
+                    "confidence": ioc.get("confidence", 0.0),
+                    "source": ioc.get("source", ""),
+                    "context": ioc.get("context"),
+                },
+            })
+
+        # Emit IOC detection complete event if available
+        ioc_detection = graph_result.get("ioc_detection")
+        if ioc_detection:
+            await send({
+                "type": "ioc_detection_complete",
+                "result": {
+                    "iocs": ioc_detection.get("iocs", []),
+                    "threat_score": ioc_detection.get("threat_score", 0.0),
+                    "attack_patterns": ioc_detection.get("attack_patterns", []),
+                },
+            })
+
+        # ============================================================
+        # Advanced Data Events - Judge Dual Verdict
+        # ============================================================
+
+        # Emit technical verdict if available
+        technical_verdict = judge.get("technical_verdict")
+        if technical_verdict:
+            await send({
+                "type": "verdict_technical",
+                "technical": technical_verdict,
+                "trust_score": trust_result.get("final_score", 0),
+            })
+
+        # Emit non-technical verdict if available
+        non_technical_verdict = judge.get("non_technical_verdict")
+        if non_technical_verdict:
+            await send({
+                "type": "verdict_nontechnical",
+                "verdict": non_technical_verdict,
+                "trust_score": trust_result.get("final_score", 0),
+            })
+
+        # Emit dual verdict complete if both are available
+        if technical_verdict and non_technical_verdict:
+            await send({
+                "type": "dual_verdict_complete",
+                "dual_verdict": {
+                    "technical": technical_verdict,
+                    "non_technical": non_technical_verdict,
+                    "trust_score": trust_result.get("final_score", 0),
+                    "timestamp": result.get("timestamp") or datetime.now().isoformat(),
+                },
+            })
+
         overrides = trust_result.get("overrides_applied", []) or []
+
+        # Extract green flags from judge for positive audit results
+        green_flags = judge.get("green_flags", []) or []
+        if not green_flags and trust_result.get("final_score", 0) >= 80:
+            # Generate common green flags if score is high but none provided
+            green_flags = []
+            if domain_intel.get("age_days", 0) > 365:
+                green_flags.append({
+                    "id": "domain_age",
+                    "category": "trust",
+                    "label": "Valid Domain Age",
+                    "icon": "📅"
+                })
+            if meta_ssl.get("valid", True):
+                green_flags.append({
+                    "id": "ssl_valid",
+                    "category": "security",
+                    "label": "Valid SSL Certificate",
+                    "icon": "🔒"
+                })
+            if entity_verified:
+                green_flags.append({
+                    "id": "entity_verified",
+                    "category": "compliance",
+                    "label": "Entity Verified",
+                    "icon": "✅"
+                })
+            if green_flags:
+                await send({
+                    "type": "green_flags",
+                    "green_flags": green_flags,
+                })
 
         # Stats update
         n_screenshots = sum(
@@ -615,6 +794,7 @@ class AuditRunner:
                 "recommendations": judge.get("recommendations", []),
                 "findings": normalized_findings,
                 "dark_pattern_summary": vision.get("dark_pattern_summary", {}),
+                "green_flags": green_flags or [],
                 "security_results": result.get("security_results", {}),
                 "site_type": result.get("site_type", ""),
                 "site_type_confidence": result.get("site_type_confidence", 0),

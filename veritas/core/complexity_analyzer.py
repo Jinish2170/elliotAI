@@ -11,7 +11,7 @@ Design:
 """
 
 import logging
-from typing import Optional
+from typing import Optional, Any
 
 from veritas.core.timeout_manager import (
     ComplexityMetrics,

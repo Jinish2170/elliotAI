@@ -29,6 +29,16 @@ export function Navbar() {
 
         {/* Right links */}
         <div className="flex items-center gap-6">
+          <Link
+            href="/history"
+            className={`text-xs transition-colors ${
+              pathname?.startsWith("/history")
+                ? "text-cyan-400 font-medium"
+                : "text-[var(--v-text-secondary)] hover:text-[var(--v-text)]"
+            }`}
+          >
+            History
+          </Link>
           {(isAuditPage || isReportPage) && (
             <Link
               href="/"

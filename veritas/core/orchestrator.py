@@ -22,6 +22,7 @@ import asyncio
 import json as _json
 import logging
 import multiprocessing
+import os
 import sys
 import time
 from dataclasses import asdict
@@ -230,11 +231,13 @@ async def vision_node(state: AuditState) -> dict:
         nim = NIMClient()
         agent = VisionAgent(nim_client=nim)
 
+        # Use 5-pass enhanced pipeline with progress events for Phase 6
         result = await agent.analyze(
             screenshots=all_screenshots,
             screenshot_labels=all_labels,
             url=state.get("url", ""),
             site_type=state.get("site_type", ""),
+            use_5_pass_pipeline=True,
         )
 
         # Serialize VisionResult
@@ -742,6 +745,7 @@ async def security_node_with_agent(state: AuditState) -> dict:
             await agent.initialize()
 
             # Run analysis with new signature for tier execution
+            result = None
             result = await agent.analyze(
                 url=url,
                 page_content=page_content,

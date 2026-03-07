@@ -49,7 +49,240 @@ export interface AuditStats {
   elapsed_seconds: number;
 }
 
+// ========================================
+// Vision Agent Advanced Types
+// ========================================
+
+export interface DarkPatternFinding {
+  category_id: string;         // e.g., "visual_interference"
+  pattern_type: string;        // e.g., "misdirected_click"
+  confidence: number;          // 0.0 to 1.0
+  severity: "low" | "medium" | "high" | "critical";
+  evidence: string;            // Description of what was found
+  screenshot_path: string;     // Which screenshot
+  raw_vlm_response?: string;   // Full VLM response for audit trail
+  model_used?: string;         // Which model produced this finding
+  fallback_mode?: boolean;     // True if not using primary NIM VLM
+}
+
+export interface TemporalFinding {
+  finding_type: string;        // "fake_countdown", "fake_scarcity", "consistent"
+  value_at_t0: string;         // Timer/counter value at first capture
+  value_at_t_delay: string;    // Timer/counter value at second capture
+  delta_seconds: number;       // Time between captures
+  is_suspicious: boolean;      // True if deception detected
+  explanation: string;         // Human-readable explanation
+  confidence: number;          // 0.0 to 1.0
+}
+
+export interface VisionPassSummary {
+  pass_num: number;
+  pass_name: string;           // "full_page_scan", "element_interaction", etc.
+  findings_count: number;
+  confidence: number;
+  prompt_used?: string;
+  model_used?: string;
+}
+
+// ========================================
+// Scout Agent Advanced Types
+// ========================================
+
+export interface ScrollState {
+  cycle: number;
+  has_lazy_load: boolean;
+  last_scroll_y: number;
+  last_scroll_height: number;
+  cycles_without_content: number;
+  stabilized: boolean;
+}
+
+export interface ScrollResult {
+  total_cycles: number;
+  stabilized: boolean;
+  lazy_load_detected: boolean;
+  screenshots_captured: number;
+  scroll_states: ScrollState[];
+}
+
+export interface PageVisit {
+  url: string;
+  status: "SUCCESS" | "TIMEOUT" | "ERROR";
+  screenshot_path?: string;
+  page_title: string;
+  navigation_time_ms: number;
+  scroll_result?: ScrollResult;
+}
+
+export interface ExplorationResult {
+  base_url: string;
+  total_pages: number;
+  total_time_ms: number;
+  breadcrumbs: string[];
+  pages_visited: PageVisit[];
+  links_discovered: LinkInfo[];
+}
+
+export interface LinkInfo {
+  url: string;
+  text: string;
+  location: "nav" | "footer" | "content";
+  priority: number;         // Lower = higher priority
+  depth: number;
+}
+
+// ========================================
+// OSINT / Graph Investigator Advanced Types
+// ========================================
+
+export type OSINTCategory =
+  | "dns"
+  | "whois"
+  | "ssl"
+  | "threat_intel"
+  | "reputation"
+  | "social";
+
+export type SourceStatus =
+  | "success"
+  | "error"
+  | "timeout"
+  | "rate_limited";
+
+export interface OSINTResult {
+  source: string;
+  category: OSINTCategory;
+  query_type: string;
+  query_value: string;
+  status: SourceStatus;
+  data?: Record<string, unknown>;
+  confidence_score: number;
+  cached_at?: string;        // ISO datetime
+  error_message?: string;
+}
+
+export type ExitRiskLevel =
+  | "none"
+  | "low"
+  | "medium"
+  | "high"
+  | "critical";
+
+export type DarknetMarketplaceType =
+  | "marketplace"
+  | "forum"
+  | "exchange"
+  | "hacking"
+  | "carding"
+  | "drugs"
+  | "weapons"
+  | "unknown";
+
+export interface MarketplaceThreatData {
+  marketplace_name: string;
+  marketplace_type: DarknetMarketplaceType;
+  onion_address: string;
+  threat_level: ExitRiskLevel;
+  confidence: number;
+  description: string;
+  indicators: string[];
+  source: string;
+}
+
+// IOC (Indicators of Compromise) Types
+export type IOCType =
+  | "url"
+  | "domain"
+  | "ipv4"
+  | "ipv6"
+  | "email"
+  | "md5"
+  | "sha1"
+  | "sha256"
+  | "filename"
+  | "onion";
+
+export interface IOCIndicator {
+  type: IOCType;
+  value: string;
+  confidence: number;
+  source: string;
+  context?: string;
+}
+
+export interface IOCDetectionResult {
+  iocs: IOCIndicator[];
+  threat_score: number;
+  attack_patterns?: string[];  // MITRE ATT&CK techniques
+}
+
+// ========================================
+// Judge Agent Dual-Verdict Types
+// ========================================
+
+export interface CWEEntry {
+  cwe_id: string;            // e.g., "CWE-79"
+  name: string;
+  description: string;
+  severity: "LOW" | "MEDIUM" | "HIGH";
+}
+
+export interface CVSSMetric {
+  name: string;
+  value: string;
+  severity: "NONE" | "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+}
+
+export interface VerdictTechnical {
+  cwe_entries: CWEEntry[];
+  cvss_metrics: CVSSMetric[];
+  cvss_base_score: number;
+  cvss_vector: string;
+  iocs: IOCIndicator[];
+  threat_indicators: string[];
+  attack_techniques: string[];  // MITRE ATT&CK
+  exploitability: "NONE" | "LOW" | "HIGH";
+  impact: "NONE" | "LOW" | "HIGH";
+}
+
+export interface VerdictNonTechnical {
+  risk_level: "trusted" | "probably_safe" | "suspicious" | "high_risk" | "likely_fraudulent";
+  summary: string;
+  key_findings: string[];
+  recommendations: string[];
+  warnings: string[];
+  green_flags: GreenFlag[];
+  simple_explanation: string;
+  what_to_do: string[];
+}
+
+export interface DualVerdict {
+  technical: VerdictTechnical;
+  non_technical: VerdictNonTechnical;
+  trust_score: number;
+  timestamp: string;
+}
+
+// ========================================
+// Agent Theater Types
+// ========================================
+
+export interface AgentPersonality {
+  agent: Phase;
+  context: "working" | "complete" | "success" | "error";
+  message: string;
+  params?: Record<string, unknown>;
+  animation?: string;
+}
+
 export interface LogEntry {
+  timestamp: string;
+  agent: string;
+  message: string;
+  level: "info" | "warn" | "error";
+  context?: "working" | "complete" | "success" | "error"; // for personality context
+  params?: Record<string, unknown>; // for message substitution
+}
   timestamp: string;
   agent: string;
   message: string;

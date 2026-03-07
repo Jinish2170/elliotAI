@@ -12,14 +12,21 @@ Checks:
 Tier: FAST, timeout: 5 seconds
 """
 
-from typing import List, Optional
+from typing import List, Optional, TYPE_CHECKING
 
-from .base import SecurityFinding, SecurityModule, SecurityTier
-from ...config.security_rules import (
-    calculate_cvss_for_severity,
-    get_cwe_for_finding,
-    get_severity_for_finding,
-)
+if TYPE_CHECKING:
+    from veritas.config.security_rules import (
+        calculate_cvss_for_severity,
+        get_cwe_for_finding,
+        get_severity_for_finding,
+    )
+
+from veritas.analysis.security.base import SecurityFinding, SecurityModule, SecurityTier
+from veritas.config import security_rules
+
+calculate_cvss_for_severity = security_rules.calculate_cvss_for_severity
+get_cwe_for_finding = security_rules.get_cwe_for_finding
+get_severity_for_finding = security_rules.get_severity_for_finding
 
 
 class SecurityHeaderAnalyzerEnhanced(SecurityModule):

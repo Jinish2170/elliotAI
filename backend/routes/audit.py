@@ -374,6 +374,14 @@ async def on_audit_started(audit_id: str, data: dict, db: AsyncSession) -> None:
 
     repo = AuditRepository(db)
 
+    # Try to fetch existing audit first to handle React Strict Mode reconnects
+    existing = await repo.get_by_id(audit_id)
+    if existing:
+        existing.status = AuditStatus.RUNNING
+        await repo.update(existing)
+        logger.info(f"[{audit_id}] Audit re-connected and updated in database")
+        return
+
     # Create audit record
     audit = Audit(
         id=audit_id,

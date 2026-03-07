@@ -426,6 +426,12 @@ class StealthScout:
 
             # --- Metadata Extraction ---
             metadata = await self._extract_metadata(page)
+            
+            # --- IOC Initialization ---
+            ioc_detected = False
+            ioc_indicators = []
+            onion_detected = False
+            onion_addresses = []
 
             # --- Site Type Classification ---
             has_price = any(

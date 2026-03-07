@@ -5,9 +5,9 @@ URLs, domains, IP addresses, email addresses, and file hashes.
 """
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional, Set, Union
 
 
 class IOCType(str, Enum):
@@ -21,6 +21,17 @@ class IOCType(str, Enum):
     SHA1 = "sha1"
     SHA256 = "sha256"
     FILENAME = "filename"
+    ONION_ADDRESS = "onion_address"
+    IP_ADDRESS = "ip_address"
+
+
+class IOCSeverity(str, Enum):
+    """Severity level for an IOC."""
+    NONE = "none"
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    CRITICAL = "critical"
 
 
 @dataclass
@@ -31,14 +42,22 @@ class Indicator:
         ioc_type: Type of the indicator (IOCType enum)
         value: The actual indicator value (e.g., "192.168.1.1", "malicious.exe")
         confidence: Confidence score in range 0.0-1.0
-        context: Additional context about where/when this was found
+        severity: Severity level of this indicator (IOCSeverity enum)
+        context: Additional context about where/when this was found (str or dict)
         source: Source of this indicator (e.g., URL, filename)
     """
     ioc_type: IOCType
     value: str
     confidence: float
-    context: str = ""
+    severity: IOCSeverity = IOCSeverity.NONE
+    context: Union[str, Dict[str, Any]] = ""
     source: str = ""
+    type: Optional[str] = None  # Alias for ioc_type for backward compatibility
+
+    def __post_init__(self):
+        """Initialize type field for backward compatibility."""
+        if self.type is None:
+            self.type = self.ioc_type.value
 
     def __hash__(self) -> int:
         """Hash based on (ioc_type, value) pair for deduplication."""
@@ -56,9 +75,148 @@ class Indicator:
             "ioc_type": self.ioc_type.value,
             "value": self.value,
             "confidence": self.confidence,
+            "severity": self.severity.value if isinstance(self.severity, IOCSeverity) else self.severity,
             "context": self.context,
             "source": self.source,
+            "type": self.type,
         }
+
+
+@dataclass
+class IOCDetectionResult:
+    """Result of IOC detection with statistics.
+
+    Attributes:
+        found: Whether any IOC was detected
+        onion_detected: Whether .onion addresses were detected
+        onion_count: Number of .onion addresses detected
+        ioc_counts: Count of each IOC type detected
+        highest_severity: Highest severity level detected
+        indicators: List of all detected indicators
+        ip_detected: Whether IP addresses were detected (computed)
+        hash_detected: Whether any hashes were detected (computed)
+    """
+    found: bool = False
+    onion_detected: bool = False
+    onion_count: int = 0
+    ioc_counts: Dict[str, int] = field(default_factory=dict)
+    highest_severity: IOCSeverity = IOCSeverity.NONE
+    indicators: List[Indicator] = field(default_factory=list)
+    indicators_set: Set[Indicator] = field(default_factory=set)
+
+    @property
+    def ip_detected(self) -> bool:
+        """Whether any IP addresses were detected."""
+        return any(ind.ioc_type in (IOCType.IPV4, IOCType.IPV6, IOCType.IP_ADDRESS)
+                   for ind in self.indicators)
+
+    @property
+    def hash_detected(self) -> bool:
+        """Whether any file hashes were detected."""
+        return any(ind.ioc_type in (IOCType.MD5, IOCType.SHA1, IOCType.SHA256, type)
+                   for ind in self.indicators
+                   if "hash" in ind.type.lower() or ind.ioc_type in (IOCType.MD5, IOCType.SHA1, IOCType.SHA256))
+
+    def add_indicator(self, indicator: Indicator) -> None:
+        """Add an indicator to the result and update statistics."""
+        # Deduplicate using the set
+        if indicator in self.indicators_set:
+            return
+
+        self.indicators_set.add(indicator)
+        self.indicators.append(indicator)
+        self.found = True
+
+        # Update IOC type count
+        ioc_type = indicator.ioc_type.value
+        self.ioc_counts[ioc_type] = self.ioc_counts.get(ioc_type, 0) + 1
+
+        # Update onion detection
+        if indicator.ioc_type == IOCType.ONION_ADDRESS:
+            self.onion_detected = True
+            self.onion_count += 1
+
+        # Update highest severity
+        severity_order = [IOCSeverity.NONE, IOCSeverity.LOW, IOCSeverity.MEDIUM,
+                          IOCSeverity.HIGH, IOCSeverity.CRITICAL]
+        current_idx = severity_order.index(self.highest_severity)
+        indicator_idx = severity_order.index(indicator.severity)
+        if indicator_idx > current_idx:
+            self.highest_severity = indicator.severity
+
+    def to_dict(self) -> Dict:
+        """Convert to dictionary for JSON serialization."""
+        return {
+            "found": self.found,
+            "onion_detected": self.onion_detected,
+            "onion_count": self.onion_count,
+            "ioc_counts": self.ioc_counts,
+            "highest_severity": self.highest_severity.value,
+            "indicators": [ind.to_dict() for ind in self.indicators],
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict) -> "IOCDetectionResult":
+        """Create an IOCDetectionResult from a dictionary."""
+        result = cls(
+            found=data.get("found", False),
+            onion_detected=data.get("onion_detected", False),
+            onion_count=data.get("onion_count", 0),
+            ioc_counts=data.get("ioc_counts", {}),
+            highest_severity=IOCSeverity(data.get("highest_severity", "none")),
+        )
+        for ind_data in data.get("indicators", []):
+            indicator = Indicator(
+                ioc_type=IOCType(ind_data.get("ioc_type", ind_data.get("type", "url"))),
+                value=ind_data["value"],
+                confidence=ind_data.get("confidence", 0.0),
+                severity=IOCSeverity(ind_data.get("severity", "none")),
+                context=ind_data.get("context", ""),
+                source=ind_data.get("source", ""),
+            )
+            result.add_indicator(indicator)
+        return result
+
+
+def is_onion_url(url: str) -> bool:
+    """Check if a URL is a .onion address.
+
+    Args:
+        url: URL string to check
+
+    Returns:
+        True if the URL is a .onion address, False otherwise
+    """
+    return bool(re.search(r"\.onion(?:/|$)", url.lower()))
+
+
+async def detect_onion_addresses(url: str, content: str) -> List[str]:
+    """Detect .onion addresses in content.
+
+    Args:
+        url: The URL being analyzed
+        content: Page content to search for .onion addresses
+
+    Returns:
+        List of discovered .onion addresses
+    """
+    # Pattern for .onion addresses
+    # V3: 56 chars + .onion (alphanumeric)
+    # V2: 16 chars + .onion (alphanumeric)
+    onion_pattern = r'(?:https?:\/\/)?([a-z2-7]{16,56})\.onion(?:\/[^\s]*)?'
+
+    matches = re.findall(onion_pattern, content.lower(), re.IGNORECASE)
+
+    # Deduplicate and format
+    unique_onions = []
+    seen = set()
+    for match in matches:
+        address = f"{match}.onion"
+        if address not in seen:
+            seen.add(address)
+            unique_onions.append(address)
+
+    return unique_onions
 
 
 class IOCDetector:
@@ -98,6 +256,10 @@ class IOCDetector:
         IOCType.IPV6: [
             r'\b(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}\b',
             r'\b::(?:[0-9a-fA-F]{1,4}:){0,7}[0-9a-fA-F]{1,4}\b',
+        ],
+        IOCType.IP_ADDRESS: [
+            r'\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b',
+            r'\b(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}\b',
         ],
         IOCType.URL: [
             r'https?://(?:[-\w.]|(?:%[\da-fA-F]{2}))+[^\s]*',
@@ -149,11 +311,14 @@ class IOCDetector:
                     value = match.group(0)
                     if self._is_valid_ioc(ioc_type, value):
                         confidence = self._calculate_confidence(ioc_type, value)
+
+                        # Set context as dict with source for backward compatibility
+                        context_dict = {"source": source}
                         indicators.append(Indicator(
                             ioc_type=ioc_type,
                             value=value,
                             confidence=confidence,
-                            source=source,
+                            context=context_dict,
                         ))
 
         # Deduplicate by IOC type and value
@@ -183,8 +348,7 @@ class IOCDetector:
                     ioc_type=IOCType.URL,
                     value=url,
                     confidence=confidence,
-                    context="href attribute",
-                    source="html",
+                    context={"type": "href attribute"},
                 ))
 
         # Extract URLs from src attributes
@@ -197,8 +361,7 @@ class IOCDetector:
                     ioc_type=IOCType.URL,
                     value=url,
                     confidence=confidence,
-                    context="src attribute",
-                    source="html",
+                    context={"type": "src attribute"},
                 ))
 
         # Also extract from text content of HTML
@@ -228,8 +391,7 @@ class IOCDetector:
                         ioc_type=IOCType.URL,
                         value=link,
                         confidence=confidence,
-                        context="external link",
-                        source="metadata",
+                        context={"type": "external link"},
                     ))
 
         # Check for script sources
@@ -243,8 +405,7 @@ class IOCDetector:
                             ioc_type=IOCType.URL,
                             value=src,
                             confidence=confidence,
-                            context="script source",
-                            source="metadata",
+                            context={"type": "script source"},
                         ))
 
         # Also scan other metadata values for IOCs
@@ -394,3 +555,158 @@ class IOCDetector:
             return "low"
         else:
             return "none"
+
+    def detect_url(self, url: str) -> Optional[Indicator]:
+        """Detect IOCs in a URL.
+
+        Synchronous method for URL-based IOC detection.
+        Returns the most significant indicator found, or None.
+
+        Args:
+            url: The URL to analyze
+
+        Returns:
+            Indicator for the most significant IOC found, or None
+        """
+        if not url:
+            return None
+
+        # First check if URL is a .onion address (highest priority)
+        if is_onion_url(url):
+            # Extract onion address without protocol and port
+            onion_match = re.search(r'([a-z2-7]{16,56})\.onion', url.lower())
+            if onion_match:
+                return Indicator(
+                    ioc_type=IOCType.ONION_ADDRESS,
+                    value=f"{onion_match.group(1)}.onion",
+                    confidence=0.95,
+                    severity=IOCSeverity.HIGH,
+                    context={"source": "url"},
+                )
+
+        # Check if URL contains an IP address
+        ip_match = re.search(
+            r'(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}'
+            r'(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)',
+            url
+        )
+        if ip_match:
+            ip = ip_match.group(0)
+            # Don't flag private IPs as severe threats
+            severity = IOCSeverity.MEDIUM
+            if ip.startswith(('192.168.', '10.', '172.16.', '172.17.', '172.18.', '172.19.', '172.20.', '172.21.', '172.22.', '172.23.', '172.24.', '172.25.', '172.26.', '172.27.', '172.28.', '172.29.', '172.30.', '172.31.', '127.')):
+                severity = IOCSeverity.LOW
+
+            return Indicator(
+                ioc_type=IOCType.IP_ADDRESS,
+                value=ip,
+                confidence=0.8,
+                severity=severity,
+                context={"source": "host"},
+            )
+
+        # Normal URLs are not considered IOCs
+        return None
+
+    async def detect_content(
+        self,
+        url: str,
+        content: Optional[str] = None,
+        links: Optional[List[str]] = None
+    ) -> IOCDetectionResult:
+        """Detect IOCs from URL, content, and links.
+
+        Async method for comprehensive IOC detection.
+
+        Args:
+            url: The target URL being analyzed
+            content: The page content (HTML or text)
+            links: List of external links found on the page
+
+        Returns:
+            IOCDetectionResult with all detected indicators
+        """
+        result = IOCDetectionResult()
+
+        # First, check URL for IOC
+        url_indicator = self.detect_url(url)
+        if url_indicator:
+            result.add_indicator(url_indicator)
+
+        # Analyze content if provided
+        if content:
+            # Extract IOCs from text content
+            text_indicators = self.extract_from_text(content, source="content")
+            for ind in text_indicators:
+                # Add hash_type context for hash indicators
+                if ind.ioc_type == IOCType.MD5:
+                    if hasattr(ind, 'context') and isinstance(ind.context, dict):
+                        ind.context["hash_type"] = "MD5"
+                    else:
+                        ind.context = {"hash_type": "MD5", "source": "content"}
+                    ind.severity = IOCSeverity.MEDIUM
+                elif ind.ioc_type == IOCType.SHA1:
+                    if hasattr(ind, 'context') and isinstance(ind.context, dict):
+                        ind.context["hash_type"] = "SHA1"
+                    else:
+                        ind.context = {"hash_type": "SHA1", "source": "content"}
+                    ind.severity = IOCSeverity.HIGH
+                elif ind.ioc_type == IOCType.SHA256:
+                    if hasattr(ind, 'context') and isinstance(ind.context, dict):
+                        ind.context["hash_type"] = "SHA256"
+                    else:
+                        ind.context = {"hash_type": "SHA256", "source": "content"}
+                    ind.severity = IOCSeverity.HIGH
+                elif ind.ioc_type == IOCType.ONION_ADDRESS:
+                    ind.severity = IOCSeverity.HIGH
+                result.add_indicator(ind)
+
+            # Extract IOCs from HTML (if content is HTML)
+            html_indicators = self.extract_from_html(content)
+            for ind in html_indicators:
+                result.add_indicator(ind)
+
+        # Analyze links if provided
+        if links:
+            for link in links:
+                # Check for onion in link
+                onion_match = re.search(r'([a-z2-7]{16,56})\.onion', link.lower())
+                if onion_match:
+                    indicator = Indicator(
+                        ioc_type=IOCType.ONION_ADDRESS,
+                        value=f"{onion_match.group(1)}.onion",
+                        confidence=0.85,
+                        severity=IOCSeverity.HIGH,
+                        context="external link",
+                        source=link
+                    )
+                    result.add_indicator(indicator)
+                elif self._is_valid_ioc(IOCType.URL, link):
+                    confidence = self._calculate_confidence(IOCType.URL, link)
+                    indicator = Indicator(
+                        ioc_type=IOCType.URL,
+                        value=link,
+                        confidence=confidence,
+                        severity=IOCSeverity.NONE,
+                        context="external link",
+                        source="links"
+                    )
+                    result.add_indicator(indicator)
+
+        return result
+
+
+# Backward compatibility alias for tests
+IOCIndicator = Indicator
+
+
+__all__ = [
+    "IOCType",
+    "Indicator",
+    "IOCIndicator",  # Alias for backward compatibility
+    "IOCSeverity",
+    "IOCDetectionResult",
+    "IOCDetector",
+    "is_onion_url",
+    "detect_onion_addresses",
+]

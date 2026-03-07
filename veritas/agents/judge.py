@@ -27,7 +27,7 @@ from typing import Optional
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from agents.graph_investigator import GraphResult
-from agents.scout import ScoutResult
+from veritas.agents.scout import ScoutResult
 from agents.vision import VisionResult
 from config import settings
 from config.trust_weights import (DEFAULT_WEIGHTS, RiskLevel, SignalWeights,
@@ -351,7 +351,7 @@ class JudgeAgent:
     # Private: Verdict Rendering
     # ================================================================
 
-    def _build_dual_verdict(self, evidence: AuditEvidence, decision: JudgeDecision) -> DualVerdict:
+    def _build_dual_verdict(self, evidence: AuditEvidence, decision: JudgeDecision) -> 'DualVerdict':
         """
         Build dual-tier verdict combining technical and non-technical explanations.
 

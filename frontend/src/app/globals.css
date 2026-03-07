@@ -176,3 +176,101 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ========== THEATER THEMED ANIMATIONS ========== */
+@keyframes gradient-slide {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.animate-gradient {
+  animation: gradient-slide 8s ease infinite;
+  background-size: 400% 100%;
+}
+
+@keyframes stage-entrance {
+  0% { opacity: 0; transform: scale(0.8) translateY(30px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.animate-stage-entrance {
+  animation: stage-entrance 0.8s ease-out forwards;
+}
+
+@keyframes spotlight-pulse {
+  0%, 100% { opacity: 0.3; transform: scale(1.5); }
+  50% { opacity: 0.6; transform: scale(1.8); }
+}
+
+.animate-spotlight {
+  animation: spotlight-pulse 2s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes curtain-rise {
+  0% { transform: translateX(-100%); }
+ 100% { transform: translateX(0); }
+}
+
+.animate-curtain {
+  animation: curtain-rise 0.8s ease-out forwards;
+}
+
+@keyframes reveal-scale {
+  0% { opacity: 0; transform: scale(0.5) blur(10px); }
+  100% { opacity: 1; transform: scale(1) blur(0px); }
+}
+
+.animate-reveal {
+  animation: reveal-scale 0.8s ease-out forwards;
+}
+
+@keyframes countdown-pulse {
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(0.95); opacity: 0.8; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.animate-countdown {
+  animation: countdown-pulse 2s ease-in-out infinite;
+}
+
+@keyframes tier-glow {
+  0%, 100% { box-shadow: 0 0 20px var(--v-cyan); }
+  50% { box-shadow: 0 0 40px var(--v-cyan); }
+}
+
+@keyframes tier-glow-green {
+ 0%, 100% { box-shadow: 0 0 20px var(--v-safe); }
+  50% { box-shadow: 0 0 40px var(--v-safe); }
+}
+
+@keyframes tier-glow-amber {
+  0%, 100% { box-shadow: 0 0 20px var(--v-caution); }
+  50% { box-shadow: 0 0 40px var(--v-warning); }
+}
+
+@keyframes tier-glow-red {
+  0%, 100% { box-shadow: 0 0 20px var(--v-danger); }
+  50% { box-shadow: 0 0 40px var(--v-danger); }
+}
+
+.tier-glow {
+  animation: tier-glow 2s ease-in-out infinite;
+}
+
+/* Tier-specific glow effects based on risk level */
+.tier-excellent { animation: tier-glow-green; }
+.tier-good { animation: tier-glow-cyan; }
+.tier-moderate { animation: tier-glow-amber; }
+.tier-low { animation: tier-glow-red; }
+.tier-very-low { animation: tier-glow-red; }

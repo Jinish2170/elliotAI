@@ -86,3 +86,70 @@ class SourceConfig:
     rate_limit_rpm: Optional[int] = None
     rate_limit_rph: Optional[int] = None
     api_key: Optional[str] = None
+
+
+# ============================================================
+# Darknet / Threat Intelligence Types
+# ============================================================
+
+class DarknetMarketplaceType(str, Enum):
+    """Type of darknet marketplace or forum."""
+    MARKETPLACE = "marketplace"
+    FORUM = "forum"
+    EXCHANGE = "exchange"
+    HACKING = "hacking"
+    CARDING = "carding"
+    DRUGS = "drugs"
+    WEAPONS = "weapons"
+    UNKNOWN = "unknown"
+
+
+class ExitRiskLevel(str, Enum):
+    """Risk level classification for a darknet exit or exposure."""
+    NONE = "none"
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    CRITICAL = "critical"
+
+
+@dataclass
+class MarketplaceThreatData:
+    """Intelligence data about a darknet marketplace threat.
+
+    Attributes:
+        marketplace_name: Human-readable name of the marketplace
+        marketplace_type: Type of marketplace (DarknetMarketplaceType)
+        onion_address: .onion address of the marketplace
+        threat_level: Severity level of the threat (ExitRiskLevel)
+        confidence: Confidence score in range 0.0-1.0
+        description: Human-readable description of the threat
+        indicators: List of IOC indicators associated with threat
+        source: OSINT source that discovered this threat
+    """
+    marketplace_name: str = ""
+    marketplace_type: DarknetMarketplaceType = DarknetMarketplaceType.UNKNOWN
+    onion_address: str = ""
+    threat_level: ExitRiskLevel = ExitRiskLevel.NONE
+    confidence: float = 0.0
+    description: str = ""
+    indicators: List[str] = None
+    source: str = ""
+
+    def __post_init__(self):
+        if self.indicators is None:
+            self.indicators = []
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        return {
+            "marketplace_name": self.marketplace_name,
+            "marketplace_type": self.marketplace_type.value,
+            "onion_address": self.onion_address,
+            "threat_level": self.threat_level.value,
+            "confidence": self.confidence,
+            "description": self.description,
+            "indicators": self.indicators,
+            "source": self.source,
+        }
+

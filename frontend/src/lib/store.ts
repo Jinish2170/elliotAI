@@ -7,11 +7,20 @@ import type {
     AuditResult,
     AuditStats,
     Finding,
+    GreenFlag,
     LogEntry,
     Phase,
     PhaseState,
     Screenshot,
     SecurityResultItem,
+    DarkPatternFinding,
+    TemporalFinding,
+    OSINTResult,
+    MarketplaceThreatData,
+    IOCIndicator,
+    VisionPassSummary,
+    DualVerdict,
+    IOCDetectionResult,
 } from "@/lib/types";
 import { create } from "zustand";
 import { EventSequencer, type SequencedEvent } from "@/hooks/useEventSequencer";
@@ -48,6 +57,20 @@ interface AuditStore {
   securityResults: SecurityResultItem[];
   result: AuditResult | null;
   error: string | null;
+
+  // Advanced Vision Data
+  darkPatternFindings: DarkPatternFinding[];
+  temporalFindings: TemporalFinding[];
+  visionPasses: VisionPassSummary[];
+
+  // Advanced OSINT Data
+  osintResults: OSINTResult[];
+  marketplaceThreats: MarketplaceThreatData[];
+  iocIndicators: IOCIndicator[];
+  iocDetection: IOCDetectionResult | null;
+
+  // Advanced Judge Data
+  dualVerdict: DualVerdict | null;
 
   // Actions
   setAudit: (id: string, url: string, tier: string) => void;
@@ -92,6 +115,16 @@ export const useAuditStore = create<AuditStore>((set, get) => ({
   result: null,
   error: null,
 
+  // Advanced data initialization
+  darkPatternFindings: [],
+  temporalFindings: [],
+  visionPasses: [],
+  osintResults: [],
+  marketplaceThreats: [],
+  iocIndicators: [],
+  iocDetection: null,
+  dualVerdict: null,
+
   setAudit: (id, url, tier) => set({ auditId: id, url, tier, status: "connecting" }),
 
   setStatus: (s) => set({ status: s }),
@@ -115,6 +148,15 @@ export const useAuditStore = create<AuditStore>((set, get) => ({
       securityResults: [],
       result: null,
       error: null,
+      // Reset advanced data
+      darkPatternFindings: [],
+      temporalFindings: [],
+      visionPasses: [],
+      osintResults: [],
+      marketplaceThreats: [],
+      iocIndicators: [],
+      iocDetection: null,
+      dualVerdict: null,
     });
   },
 
@@ -317,6 +359,20 @@ function processSingleEvent(
       break;
     }
 
+    case "green_flags": {
+      const greenFlags = (event.green_flags as GreenFlag[]) || [];
+      // Update result with green flags
+      if (state.result) {
+        set({
+          result: {
+            ...state.result,
+            green_flags: greenFlags,
+          } as AuditResult,
+        });
+      }
+      break;
+    }
+
     case "audit_complete": {
       set({ status: "complete" });
       break;
@@ -402,6 +458,101 @@ function processSingleEvent(
             message: `Pass ${passNum} complete: ${event.findings_count} findings`,
           },
         },
+        // Track vision pass summary
+        visionPasses: [
+          ...state.visionPasses,
+          {
+            pass_num: passNum,
+            pass_name: (event.pass_name as string) || `Pass ${passNum}`,
+            findings_count: event.findings_count as number,
+            confidence: event.confidence as number,
+            prompt_used: event.prompt_used as string | undefined,
+            model_used: event.model_used as string | undefined,
+          },
+        ],
+      });
+      break;
+    }
+
+    // Advanced Vision Data Events
+    case "dark_pattern_finding": {
+      const finding = event.finding as DarkPatternFinding;
+      set({ darkPatternFindings: [...state.darkPatternFindings, finding] });
+      break;
+    }
+
+    case "temporal_finding": {
+      const finding = event.finding as TemporalFinding;
+      set({ temporalFindings: [...state.temporalFindings, finding] });
+      break;
+    }
+
+    // Advanced OSINT Data Events
+    case "osint_result": {
+      const osintResult = event.result as OSINTResult;
+      set({ osintResults: [...state.osintResults, osintResult] });
+      break;
+    }
+
+    case "darknet_threat": {
+      const threat = event.threat as MarketplaceThreatData;
+      set({ marketplaceThreats: [...state.marketplaceThreats, threat] });
+      break;
+    }
+
+    case "ioc_indicator": {
+      const ioc = event.ioc as IOCIndicator;
+      set({ iocIndicators: [...state.iocIndicators, ioc] });
+      break;
+    }
+
+    case "ioc_detection_complete": {
+      set({
+        iocDetection: event.result as IOCDetectionResult,
+      });
+      break;
+    }
+
+    // Advanced Judge Data Events
+    case "verdict_technical": {
+      const existingVerdict = state.dualVerdict;
+      set({
+        dualVerdict: {
+          ...(existingVerdict || {
+            technical: undefined as any,
+            non_technical: undefined as any,
+            trust_score: 0,
+            timestamp: new Date().toISOString(),
+          }),
+          technical: event.technical as any,
+          trust_score: event.trust_score as number,
+          timestamp: event.timestamp as string || new Date().toISOString(),
+        },
+      });
+      break;
+    }
+
+    case "verdict_nontechnical": {
+      const existingVerdict = state.dualVerdict;
+      set({
+        dualVerdict: {
+          ...(existingVerdict || {
+            technical: undefined as any,
+            non_technical: undefined as any,
+            trust_score: 0,
+            timestamp: new Date().toISOString(),
+          }),
+          non_technical: event.verdict as any,
+          trust_score: event.trust_score as number,
+          timestamp: event.timestamp as string || new Date().toISOString(),
+        },
+      });
+      break;
+    }
+
+    case "dual_verdict_complete": {
+      set({
+        dualVerdict: event.dual_verdict as DualVerdict,
       });
       break;
     }

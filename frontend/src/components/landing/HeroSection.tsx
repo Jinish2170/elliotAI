@@ -9,22 +9,31 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 const tiers = [
   {
-    id: "quick_scan",
+    id: "quick",
     label: "Quick Scan",
     time: "~60 seconds",
-    desc: "Basic checks & surface-level analysis",
+    duration: "60s",
+    pages: "1-3 pages",
+    credits: "~5 credits",
+    description: "DNS, headers, visible patterns"
   },
   {
     id: "standard_audit",
     label: "Standard Audit",
     time: "~3 minutes",
-    desc: "Full multi-agent investigation",
+    duration: "3min",
+    pages: "5 pages",
+    credits: "~20 credits",
+    description: "Full 5-agent pipeline, screenshots, scoring"
   },
   {
     id: "deep_forensic",
     label: "Deep Forensic",
     time: "~5 minutes",
-    desc: "Maximum depth — every signal checked",
+    duration: "5min",
+    pages: "10 pages",
+    credits: "~50 credits",
+    description: "Temporal analysis, extended crawl, graph"
   },
 ];
 
@@ -32,6 +41,7 @@ export function HeroSection() {
   const router = useRouter();
   const [url, setUrl] = useState("");
   const [tier, setTier] = useState("standard_audit");
+  const [verdictMode, setVerdictMode] = useState("expert");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -47,13 +57,13 @@ export function HeroSection() {
       const res = await fetch(`${API_URL}/api/audit/start`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: targetUrl, tier, verdict_mode: "expert" }),
+        body: JSON.stringify({ url: targetUrl, tier, verdict_mode: verdictMode }),
       });
 
       if (!res.ok) throw new Error("Failed to start audit");
 
       const data = await res.json();
-      router.push(`/audit/${data.audit_id}?url=${encodeURIComponent(targetUrl)}&tier=${tier}`);
+      router.push(`/audit/${data.audit_id}?url=${encodeURIComponent(targetUrl)}&tier=${tier}&verdict=${verdictMode}`);
     } catch {
       setError("Could not connect to Veritas backend. Make sure the server is running.");
       setLoading(false);
@@ -152,36 +162,96 @@ export function HeroSection() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.75, duration: 0.6 }}
-          className="flex flex-wrap justify-center gap-3 max-w-2xl mx-auto"
+          className="flex flex-wrap justify-center gap-4 max-w-3xl mx-auto"
         >
           {tiers.map((t) => (
             <button
               key={t.id}
               onClick={() => setTier(t.id)}
               className={`
-                px-5 py-3 rounded-xl border text-left transition-all duration-300 min-w-[180px]
+                relative px-5 py-4 rounded-xl border text-left transition-all duration-300 min-w-[200px]
                 ${
                   tier === t.id
-                    ? "border-cyan-500/50 bg-cyan-500/10 glow-cyan"
+                    ? "border-cyan-500/50 bg-cyan-500/10 glow-cyan shadow-lg shadow-cyan-500/10"
                     : "border-white/5 bg-[var(--v-surface)] hover:border-white/10"
                 }
               `}
             >
-              <div className="flex items-center gap-2 mb-1">
+              {/* Radio indicator */}
+              <div className="flex items-center gap-2 mb-2">
                 <div
-                  className={`w-3 h-3 rounded-full border-2 ${
+                  className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-colors ${
                     tier === t.id
-                      ? "border-cyan-500 bg-cyan-500"
+                      ? "border-cyan-500"
                       : "border-[var(--v-text-tertiary)]"
                   }`}
-                />
+                >
+                  {tier === t.id && (
+                    <div className="w-2 h-2 rounded-full bg-cyan-500" />
+                  )}
+                </div>
                 <span className="text-sm font-medium text-[var(--v-text)]">
                   {t.label}
                 </span>
               </div>
-              <p className="text-xs text-[var(--v-text-tertiary)] ml-5">{t.time}</p>
+              <div className="mb-2">
+                <p className="text-xs text-[var(--v-text-secondary)]">{t.time}</p>
+                <p className="text-xs text-[var(--v-text-tertiary)]">{t.description}</p>
+              </div>
+              {/* Stats */}
+              <div className="flex gap-3 text-xs text-[var(--v-text-secondary)] ml-6">
+                <span>{t.pages}</span>
+                <span>•</span>
+                <span>{t.credits}</span>
+              </div>
+              {/* Badge for selected tier */}
+              {tier === t.id && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="absolute -top-2 -right-2 px-2 py-0.5 bg-cyan-500 text-[var(--v-deep)] text-[10px] font-bold rounded-full"
+                >
+                  SELECTED
+                </motion.div>
+              )}
             </button>
           ))}
+        </motion.div>
+
+        {/* Verdict Mode Toggle */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.8, duration: 0.6 }}
+          className="flex items-center justify-center gap-6 mt-6"
+        >
+          <label className="text-sm text-[var(--v-text-secondary)]">Verdict Mode:</label>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setVerdictMode("simple")}
+              className={`
+                px-4 py-2 rounded-lg border text-sm transition-colors
+                ${verdictMode === "simple"
+                  ? "border-purple-500/50 bg-purple-500/10 text-purple-400"
+                  : "border-white/5 bg-[var(--v-surface)] text-[var(--v-text-secondary)] hover:border-white/10"
+                }
+              `}
+            >
+              Simple
+            </button>
+            <button
+              onClick={() => setVerdictMode("expert")}
+              className={`
+                px-4 py-2 rounded-lg border text-sm transition-colors
+                ${verdictMode === "expert"
+                  ? "border-purple-500/50 bg-purple-500/10 text-purple-400"
+                  : "border-white/5 bg-[var(--v-surface)] text-[var(--v-text-secondary)] hover:border-white/10"
+                }
+              `}
+            >
+              Expert
+            </button>
+          </div>
         </motion.div>
       </motion.div>
     </section>

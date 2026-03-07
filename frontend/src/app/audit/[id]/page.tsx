@@ -6,10 +6,11 @@ import { AuditHeader } from "@/components/audit/AuditHeader";
 import { CompletionOverlay } from "@/components/audit/CompletionOverlay";
 import { EvidencePanel } from "@/components/audit/EvidencePanel";
 import { ForensicLog } from "@/components/audit/ForensicLog";
+import { GreenFlagCelebration } from "@/components/audit/GreenFlagCelebration";
 import { NarrativeFeed } from "@/components/audit/NarrativeFeed";
 import { useAuditStream } from "@/hooks/useAuditStream";
 import { AnimatePresence } from "framer-motion";
-import { use, useState } from "react";
+import { use, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 
 // Phase-dependent particle colors
@@ -21,8 +22,7 @@ const PHASE_COLORS: Record<string, string> = {
   judge: "cyan",
 };
 
-export default function AuditPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
+function AuditPageContent({ id }: { id: string }) {
   const searchParams = useSearchParams();
   const url = searchParams.get("url") || undefined;
   const tier = searchParams.get("tier") || undefined;
@@ -62,13 +62,12 @@ export default function AuditPage({ params }: { params: Promise<{ id: string }> 
               return (
                 <div
                   key={phase}
-                  className={`flex-shrink-0 px-3 py-1.5 rounded-full text-[10px] font-medium border ${
-                    s.status === "active"
+                  className={`flex-shrink-0 px-3 py-1.5 rounded-full text-[10px] font-medium border ${s.status === "active"
                       ? "border-cyan-500/50 text-cyan-400 bg-cyan-500/10"
                       : s.status === "complete"
-                      ? "border-emerald-500/30 text-emerald-400 bg-emerald-500/10"
-                      : "border-white/10 text-[var(--v-text-tertiary)]"
-                  }`}
+                        ? "border-emerald-500/30 text-emerald-400 bg-emerald-500/10"
+                        : "border-white/10 text-[var(--v-text-tertiary)]"
+                    }`}
                 >
                   {s.status === "complete" ? "✅" : s.status === "error" ? "❌" : ""}{" "}
                   {phase.charAt(0).toUpperCase() + phase.slice(1)}
@@ -86,6 +85,7 @@ export default function AuditPage({ params }: { params: Promise<{ id: string }> 
               logs={store.logs}
               status={store.status}
               trustScore={store.result?.trust_score}
+              greenFlags={store.result?.green_flags}
             />
           </div>
 
@@ -124,5 +124,19 @@ export default function AuditPage({ params }: { params: Promise<{ id: string }> 
         )}
       </AnimatePresence>
     </div>
+  );
+}
+
+export default function AuditPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
+
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-[var(--v-deep)] flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-500" />
+      </div>
+    }>
+      <AuditPageContent id={id} />
+    </Suspense>
   );
 }
