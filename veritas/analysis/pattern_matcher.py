@@ -23,7 +23,7 @@ from typing import Optional
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from config.dark_patterns import (DARK_PATTERN_TAXONOMY, get_all_vlm_prompts,
+from veritas.config.dark_patterns import (DARK_PATTERN_TAXONOMY, get_all_vlm_prompts,
                                   get_severity_weight, get_temporal_categories)
 
 logger = logging.getLogger("veritas.pattern_matcher")

@@ -23,17 +23,13 @@ Patterns from:
 import enum
 import json
 import logging
-import sys
 import time
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import List, Optional
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-
-from config.dark_patterns import (DARK_PATTERN_TAXONOMY, get_all_vlm_prompts,
+from veritas.config.dark_patterns import (DARK_PATTERN_TAXONOMY, get_all_vlm_prompts,
                                   get_severity_weight, get_temporal_categories)
-from core.nim_client import NIMClient
+from veritas.core.nim_client import NIMClient
 
 # Lazy imports for optional modules (avoid circular import with TemporalFinding)
 # from analysis.temporal_analyzer import TemporalAnalyzer  — imported in method
@@ -123,7 +119,7 @@ def get_pass_prompt(pass_num: int, temporal_result: Optional[dict] = None) -> st
     Returns:
         The full prompt string for this pass, with temporal context if applicable
     """
-    from config.dark_patterns import VISION_PASS_PROMPTS
+    from veritas.config.dark_patterns import VISION_PASS_PROMPTS
 
     base_prompt = VISION_PASS_PROMPTS.get(pass_num, "")
 
@@ -402,7 +398,7 @@ class VisionAgent:
         # Optional pattern matcher for batched prompt efficiency
         self._pattern_matcher = None
         try:
-            from analysis.pattern_matcher import PatternMatcher
+            from veritas.analysis.pattern_matcher import PatternMatcher
             self._pattern_matcher = PatternMatcher()
         except Exception:
             logger.debug("PatternMatcher not available — using individual prompts")
@@ -467,7 +463,7 @@ class VisionAgent:
         elif site_type:
             # Reorder so priority categories for this site type are analysed first
             try:
-                from config.site_types import SITE_TYPE_PROFILES, SiteType
+                from veritas.config.site_types import SITE_TYPE_PROFILES, SiteType
                 st = SiteType(site_type)
                 profile = SITE_TYPE_PROFILES.get(st)
                 if profile and profile.priority_patterns:
@@ -511,7 +507,7 @@ class VisionAgent:
             # Phase 2b: Heuristic temporal analysis (pixel-diff + OCR)
             #           Acts as ground-truth validation for VLM claims
             try:
-                from analysis.temporal_analyzer import TemporalAnalyzer
+                from veritas.analysis.temporal_analyzer import TemporalAnalyzer
                 heuristic_analyzer = TemporalAnalyzer()
                 heuristic_findings = heuristic_analyzer.compare_screenshots(
                     t0_path, t_delay_path, delay_seconds=10.0
@@ -677,10 +673,10 @@ class VisionAgent:
             content_type = self._detect_content_type(url, scout_result)
             logger.info(f"Detected content type: {content_type}")
     
-            # Initialize TemporalAnalyzer with content-type-specific thresholds
+            # Initialize TemporalAnalyzer
             try:
-                from agents.vision.temporal_analysis import TemporalAnalyzer
-                self.temporal_analyzer = TemporalAnalyzer(content_type=content_type)
+                from veritas.analysis.temporal_analyzer import TemporalAnalyzer
+                self.temporal_analyzer = TemporalAnalyzer()
             except (ImportError, Exception) as e:
                 logger.warning(f"Temporal analyzer not available: {e}")
                 self.temporal_analyzer = None

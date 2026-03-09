@@ -19,7 +19,7 @@ import urllib.parse
 import urllib.request
 from dataclasses import dataclass, field
 
-from veritas.analysis import SecurityModuleBase
+from veritas.analysis import SecurityModule
 
 logger = logging.getLogger("veritas.analysis.redirect_analyzer")
 
@@ -84,7 +84,7 @@ _TRACKING_DOMAINS = {
 }
 
 
-class RedirectAnalyzer(SecurityModuleBase):
+class RedirectAnalyzer(SecurityModule):
     """Analyze the HTTP redirect chain of a URL."""
 
     # Module metadata for auto-discovery

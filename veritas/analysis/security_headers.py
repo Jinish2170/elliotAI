@@ -14,7 +14,7 @@ import ssl
 from dataclasses import dataclass, field
 from typing import Optional
 
-from veritas.analysis import SecurityModuleBase
+from veritas.analysis import SecurityModule
 
 logger = logging.getLogger("veritas.analysis.security_headers")
 
@@ -104,7 +104,7 @@ _HEADER_DEFS: list[tuple[str, str, str]] = [
 _SEVERITY_WEIGHT = {"critical": 0.25, "high": 0.20, "medium": 0.12, "low": 0.05}
 
 
-class SecurityHeaderAnalyzer(SecurityModuleBase):
+class SecurityHeaderAnalyzer(SecurityModule):
     """Analyze HTTP security headers of a URL."""
 
     # Module metadata for auto-discovery

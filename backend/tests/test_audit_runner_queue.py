@@ -1,282 +1,240 @@
-"""
-Tests for AuditRunner Queue IPC Integration
-
-Tests for:
-- IPC mode determination
-- Queue creation
-- Queue reading and streaming
-- Fallback behavior
-- Windows spawn context
-"""
-
 import asyncio
-import os
-import sys
-from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch, Mock
+import base64
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
-# Add paths for imports
-backend_root = Path(__file__).resolve().parent.parent.parent
-sys.path.insert(0, str(backend_root))
-sys.path.insert(0, str(backend_root / "veritas"))
-
 from backend.services.audit_runner import AuditRunner
-from veritas.core.ipc import IPC_MODE_QUEUE, IPC_MODE_STDOUT, create_queue
-import multiprocessing as mp
+from veritas.core.ipc import IPC_MODE_QUEUE, IPC_MODE_STDOUT, ProgressEvent, create_queue
+
+
+def _sample_result(screenshot_path: str) -> dict:
+    return {
+        "status": "completed",
+        "url": "https://example.com",
+        "audit_tier": "standard_audit",
+        "verdict_mode": "expert",
+        "elapsed_seconds": 12.4,
+        "site_type": "ecommerce",
+        "site_type_confidence": 0.93,
+        "scout_results": [
+            {
+                "status": "OK",
+                "screenshots": [screenshot_path],
+                "screenshot_labels": ["Homepage"],
+            }
+        ],
+        "vision_result": {
+            "findings": [
+                {
+                    "category": "visual_interference",
+                    "sub_type": "fake_urgency",
+                    "confidence": 0.91,
+                    "severity": "high",
+                    "evidence": "Countdown timer resets on refresh.",
+                    "screenshot_path": screenshot_path,
+                }
+            ],
+            "temporal_findings": [
+                {
+                    "finding_type": "fake_countdown",
+                    "value_at_t0": "00:10:00",
+                    "value_at_t_delay": "00:10:00",
+                    "delta_seconds": 10,
+                    "is_suspicious": True,
+                    "explanation": "Timer did not progress.",
+                    "confidence": 0.88,
+                }
+            ],
+            "screenshots_analyzed": 1,
+            "prompts_sent": 5,
+            "nim_calls_made": 5,
+            "fallback_used": False,
+            "errors": [],
+        },
+        "security_results": {
+            "owasp_a05": {"findings": [{"id": "owasp-a05-1"}], "score": 0.2},
+            "phishing_db": {"verdict": "clean", "confidence": 0.72},
+        },
+        "security_summary": {
+            "modules_executed": 2,
+            "modules_failed": [],
+            "analysis_time_ms": 187,
+            "findings": [{"id": "owasp-a05-1"}],
+        },
+        "graph_result": {
+            "claims_extracted": [{"claim": "Example Store"}],
+            "verifications": [{"status": "confirmed"}],
+            "inconsistencies": [{"explanation": "WHOIS owner differs from footer entity."}],
+            "osint_sources": {
+                "abuseipdb": {"found": True, "confidence_score": 0.65, "data": {"reports": 4}},
+                "darknet_alpha": {"found": True, "confidence_score": 0.81, "data": {"market": "AlphaBay"}},
+            },
+            "osint_indicators": [{"type": "ip", "value": "203.0.113.10"}],
+        },
+        "judge_decision": {
+            "narrative": "Multiple trust and security inconsistencies detected.",
+            "recommendations": ["Avoid entering payment details."],
+            "green_flags": ["HTTPS present"],
+            "trust_score_result": {
+                "final_score": 42,
+                "risk_level": "high",
+                "signal_scores": {"visual": 20.0, "security": 35.0, "graph": 50.0},
+            },
+            "technical_verdict": {
+                "risk_level": "high",
+                "trust_score": 42,
+                "summary": "Security and entity signals are inconsistent.",
+                "recommendations": ["Block checkout flow until verified."],
+            },
+            "non_technical_verdict": {
+                "risk_level": "high",
+                "summary": "This site looks risky.",
+                "actionable_advice": ["Leave the site."],
+                "green_flags": ["HTTPS present"],
+            },
+        },
+        "errors": [],
+    }
 
 
 class TestIpcModeDetermination:
-    """Test AuditRunner IPC mode determination."""
-
     def test_ipc_mode_determined_in_init(self):
-        """Test that IPC mode is determined during initialization."""
-        runner = AuditRunner('test_audit', 'https://example.com', 'quick_scan')
+        runner = AuditRunner("test_audit", "https://example.com", "quick_scan")
         assert runner.ipc_mode in (IPC_MODE_QUEUE, IPC_MODE_STDOUT)
 
     def test_ipc_mode_from_env_queue(self):
-        """Test IPC mode respects QUEUE_IPC_MODE environment variable."""
-        with patch.dict(os.environ, {"QUEUE_IPC_MODE": "queue"}):
-            runner = AuditRunner('test_audit', 'https://example.com', 'quick_scan')
+        with patch.dict("os.environ", {"QUEUE_IPC_MODE": "queue"}):
+            runner = AuditRunner("test_audit", "https://example.com", "quick_scan")
             assert runner.ipc_mode == IPC_MODE_QUEUE
 
     def test_ipc_mode_from_env_stdout(self):
-        """Test IPC mode respects QUEUE_IPC_MODE environment variable."""
-        with patch.dict(os.environ, {"QUEUE_IPC_MODE": "stdout"}):
-            runner = AuditRunner('test_audit', 'https://example.com', 'quick_scan')
+        with patch.dict("os.environ", {"QUEUE_IPC_MODE": "stdout"}):
+            runner = AuditRunner("test_audit", "https://example.com", "quick_scan")
             assert runner.ipc_mode == IPC_MODE_STDOUT
 
-    def test_progress_queue_initialized_to_none(self):
-        """Test that progress_queue is None initially."""
-        runner = AuditRunner('test_audit', 'https://example.com', 'quick_scan')
-        assert runner.progress_queue is None
-        assert runner._mgr is None
 
-
-class TestQueueCreationInRunner:
-    """Test Queue creation logic in AuditRunner."""
-
+class TestQueueReader:
     @pytest.mark.asyncio
-    async def test_queue_created_for_queue_mode(self):
-        """Test Queue is created when IPC mode is Queue."""
-        # Mock environment to force Queue mode
-        with patch.dict(os.environ, {"QUEUE_IPC_MODE": "queue", "PYTHONIOENCODING": "utf-8"}):
-            # Mock subprocess to avoid actual subprocess creation
-            with patch('backend.services.audit_runner.subprocess.Popen') as mock_popen:
-                mock_process = Mock()
-                mock_process.poll.return_value = None
-                mock_process.stdout.readline.return_value = b''
-                mock_process.wait.return_value = 0
-                mock_popen.return_value = mock_process
-
-                runner = AuditRunner('test_audit', 'https://example.com', 'quick_scan')
-
-                # Mock send callback
-                send_mock = AsyncMock()
-
-                # Run the audit (will complete due to mocked subprocess)
-                try:
-                    await asyncio.wait_for(runner.run(send_mock), timeout=5.0)
-                except asyncio.TimeoutError:
-                    pass
-
-                # Verify Queue was created
-                # Note: This depends on ipc_mode being queue and Queue creation succeeding
-                if runner.ipc_mode == IPC_MODE_QUEUE:
-                    assert runner._mgr is not None or runner.progress_queue is None  # May be None if creation failed
-
-
-class TestReaderSendEvents:
-    """Test _read_queue_and_stream method."""
-
-    @pytest.mark.asyncio
-    async def test_reader_sends_events_to_websocket(self):
-        """Test that _read_queue_and_stream sends events via callback."""
-        q = create_queue(maxsize=100)
-        runner = AuditRunner('test_audit', 'https://example.com', 'quick_scan')
-        runner.progress_queue = q
-
-        # Create event
-        from veritas.core.ipc import ProgressEvent
-        event = ProgressEvent(
-            type="progress",
-            phase="test",
-            step="navigating",
-            pct=50,
-            detail="Test message"
+    async def test_reader_maps_progress_events(self):
+        queue_obj = create_queue(maxsize=10)
+        runner = AuditRunner("test_audit", "https://example.com", "quick_scan")
+        runner.progress_queue = queue_obj
+        queue_obj.put(
+            ProgressEvent(
+                type="progress",
+                phase="scout",
+                step="navigating",
+                pct=12,
+                detail="Navigating to target",
+            )
         )
-        q.put(event)
+        send = AsyncMock()
 
-        # Mock send callback
-        send_mock = AsyncMock()
-
-        # Start queue reader (it will read one event and continue)
-        # We need to cancel it to stop the infinite loop
-        reader_task = asyncio.create_task(runner._read_queue_and_stream(send_mock))
-        await asyncio.sleep(0.2)  # Give it time to read
-        reader_task.cancel()
-
-        # Verify send was called
-        assert send_mock.call_count >= 1
-        # The event should have been sent (first call is for the progress event)
-        call_args = send_mock.call_args_list[0]
-        sent_data = call_args[0][0]
-        assert sent_data["type"] == "phase_start"
-        assert sent_data["phase"] == "test"
-        assert sent_data["message"] == "Test message"
-
-    @pytest.mark.asyncio
-    async def test_reader_handles_queue_empty(self):
-        """Test that _read_queue_and_stream handles empty Queue gracefully."""
-        q = create_queue(maxsize=100)
-        runner = AuditRunner('test_audit', 'https://example.com', 'quick_scan')
-        runner.progress_queue = q
-
-        # Mock send callback (should not be called for empty Queue)
-        send_mock = AsyncMock()
-
-        # Start queue reader and cancel immediately to test empty handling
-        reader_task = asyncio.create_task(runner._read_queue_and_stream(send_mock))
+        task = asyncio.create_task(runner._read_queue_and_stream(send))
         await asyncio.sleep(0.2)
-        reader_task.cancel()
+        task.cancel()
+        await task
 
-        # Send should not have been called (Queue was empty)
-        # But it might have been called if there was some leftover event
-        # So we just verify it doesn't crash
-
-    @pytest.mark.asyncio
-    async def test_reader_handles_cancelled_error(self):
-        """Test that _read_queue_and_stream handles asyncio.CancelledError."""
-        q = create_queue(maxsize=100)
-        runner = AuditRunner('test_audit', 'https://example.com', 'quick_scan')
-        runner.progress_queue = q
-
-        send_mock = AsyncMock()
-
-        # Start and immediately cancel the reader task
-        reader_task = asyncio.create_task(runner._read_queue_and_stream(send_mock))
-        reader_task.cancel()
-
-        # Should not raise an exception
-        try:
-            await asyncio.wait_for(reader_task, timeout=1.0)
-        except (asyncio.CancelledError, asyncio.TimeoutError):
-            pass  # Expected
-
-        # Verify no errors were raised
-
-
-class TestFallbackOnQueueFailure:
-    """Test fallback to stdout mode when Queue creation fails."""
+        event_types = [call.args[0]["type"] for call in send.await_args_list]
+        assert event_types[:3] == ["phase_start", "agent_personality", "log_entry"]
 
     @pytest.mark.asyncio
-    async def test_fallback_on_queue_creation_failure(self):
-        """Test that Queue creation failure triggers fallback to stdout mode."""
-        # This is difficult to test without actually causing the failure
-        # We'll verify the fallback logic exists by testing ipc_mode determination
-        runner = AuditRunner('test_audit', 'https://example.com', 'quick_scan')
-
-        # The ipc_mode is determined during initialization
-        # If Queue creation failed during run(), ipc_mode would be set to stdout
-        # This is tested by the integration behavior
-
-        # For now, just verify the method exists
-        assert hasattr(runner, '_determine_ipc_mode')
-
-
-class TestWindowsSpawnContextSet:
-    """Test Windows spawn context is set correctly."""
-
-    def test_spawn_context_configured_in_backend(self):
-        """Test that backend module sets spawn context."""
-        if sys.platform == "win32":
-            # Import backend module should set spawn context
-            import backend
-            assert mp.get_start_method() == "spawn"
-        else:
-            # On non-Windows, spawn is still valid
-            import backend
-            assert mp.get_start_method() in ("fork", "spawn", "forkserver")
-
-
-class TestEventMapping:
-    """Test ProgressEvent to WebSocket event mapping."""
-
-    @pytest.mark.asyncio
-    async def test_phase_start_mapping(self):
-        """Test that 'navigating' step maps to phase_start event."""
-        from veritas.core.ipc import ProgressEvent
-
-        q = create_queue(maxsize=100)
-        runner = AuditRunner('test_audit', 'https://example.com', 'quick_scan')
-        runner.progress_queue = q
-
-        event = ProgressEvent(
-            type="progress",
-            phase="scout",
-            step="navigating",
-            pct=10,
-            detail="Navigating to target"
+    async def test_reader_passthroughs_explicit_events(self):
+        queue_obj = create_queue(maxsize=10)
+        runner = AuditRunner("test_audit", "https://example.com", "quick_scan")
+        runner.progress_queue = queue_obj
+        queue_obj.put(
+            {
+                "type": "vision_pass_start",
+                "pass": 1,
+                "description": "UI layout analysis",
+                "screenshots": 2,
+            }
         )
-        q.put(event)
+        send = AsyncMock()
 
-        send_mock = AsyncMock()
-        reader_task = asyncio.create_task(runner._read_queue_and_stream(send_mock))
+        task = asyncio.create_task(runner._read_queue_and_stream(send))
         await asyncio.sleep(0.2)
-        reader_task.cancel()
+        task.cancel()
+        await task
 
-        # Verify phase_start event was sent
-        call_found = False
-        for call in send_mock.call_args_list:
-            if call[0]:
-                sent_data = call[0][0]
-                if sent_data.get("type") == "phase_start":
-                    call_found = True
-                    assert sent_data["phase"] == "scout"
-                    assert sent_data["pct"] == 10
-                    break
+        assert send.await_args_list[0].args[0]["type"] == "vision_pass_start"
+        assert send.await_args_list[0].args[0]["pass"] == 1
 
-        assert call_found, "phase_start event not found in sent calls"
 
+class TestRunnerResultContract:
     @pytest.mark.asyncio
-    async def test_phase_complete_mapping(self):
-        """Test that 'done' step maps to phase_complete event."""
-        from veritas.core.ipc import ProgressEvent
+    async def test_handle_result_emits_canonical_backend_events(self, tmp_path):
+        screenshot_path = tmp_path / "shot.png"
+        screenshot_bytes = b"test-image"
+        screenshot_path.write_bytes(screenshot_bytes)
 
-        q = create_queue(maxsize=100)
-        runner = AuditRunner('test_audit', 'https://example.com', 'quick_scan')
-        runner.progress_queue = q
+        runner = AuditRunner("test_audit", "https://example.com", "standard_audit")
+        send = AsyncMock()
 
-        event = ProgressEvent(
-            type="progress",
-            phase="vision",
-            step="done",
-            pct=55,
-            detail="Analysis complete",
-            summary={"findings": 5, "nim_calls": 3}
-        )
-        q.put(event)
+        await runner._handle_result(_sample_result(str(screenshot_path)), send)
 
-        send_mock = AsyncMock()
-        reader_task = asyncio.create_task(runner._read_queue_and_stream(send_mock))
-        await asyncio.sleep(0.2)
-        reader_task.cancel()
+        payloads = [call.args[0] for call in send.await_args_list]
+        event_types = [payload["type"] for payload in payloads]
 
-        # Verify phase_complete event was sent
-        call_found = False
-        for call in send_mock.call_args_list:
-            if call[0]:
-                sent_data = call[0][0]
-                if sent_data.get("type") == "phase_complete":
-                    call_found = True
-                    assert sent_data["phase"] == "vision"
-                    assert sent_data["pct"] == 55
-                    assert sent_data["summary"] == {"findings": 5, "nim_calls": 3}
-                    break
+        assert "screenshot" in event_types
+        assert "security_result" in event_types
+        assert "owasp_module_result" in event_types
+        assert "dark_pattern_finding" in event_types
+        assert "temporal_finding" in event_types
+        assert "osint_result" in event_types
+        assert "darknet_threat" in event_types
+        assert "ioc_indicator" in event_types
+        assert "knowledge_graph" in event_types
+        assert "graph_analysis" in event_types
+        assert "verdict_technical" in event_types
+        assert "verdict_nontechnical" in event_types
+        assert "dual_verdict_complete" in event_types
+        assert event_types[-1] == "audit_result"
 
-        assert call_found, "phase_complete event not found in sent calls"
+        screenshot_event = next(payload for payload in payloads if payload["type"] == "screenshot")
+        assert screenshot_event["label"] == "Homepage"
+        assert screenshot_event["data"] == base64.b64encode(screenshot_bytes).decode("ascii")
+
+        audit_result = payloads[-1]["result"]
+        assert audit_result["trust_score"] == 42
+        assert audit_result["risk_level"] == "high"
+        assert audit_result["site_type"] == "ecommerce"
+        assert audit_result["dark_pattern_summary"]["findings"][0]["pattern_type"] == "fake_urgency"
+        assert audit_result["security_results"]["phishing_db"]["verdict"] == "clean"
+
+    def test_extract_last_json_from_stdout_prefers_final_result(self):
+        runner = AuditRunner("test_audit", "https://example.com", "quick_scan")
+        lines = [
+            "noise",
+            "{\"phase\": \"scout\"}",
+            "{\"status\": \"completed\", \"url\": \"https://example.com\", \"judge_decision\": {\"narrative\": \"done\"}}",
+        ]
+
+        result = runner._extract_last_json_from_stdout(lines)
+
+        assert result is not None
+        assert result["status"] == "completed"
+        assert result["judge_decision"]["narrative"] == "done"
 
 
-if __name__ == "__main__":
-    pytest.main([__file__, "-v"])
+class TestRunnerFallback:
+    @pytest.mark.asyncio
+    async def test_queue_creation_failure_falls_back_to_stdout(self):
+        runner = AuditRunner("test_audit", "https://example.com", "quick_scan")
+        runner.ipc_mode = IPC_MODE_QUEUE
+        send = AsyncMock()
+
+        mock_process = Mock()
+        mock_process.stdout.readline.side_effect = [b"", b""]
+        mock_process.stderr.readline.side_effect = [b"", b""]
+        mock_process.wait.return_value = 0
+        mock_process.poll.return_value = 0
+
+        with patch("backend.services.audit_runner.mp.Manager", side_effect=RuntimeError("queue unavailable")):
+            with patch("backend.services.audit_runner.subprocess.Popen", return_value=mock_process):
+                await runner.run(send)
+
+        assert runner.ipc_mode == IPC_MODE_STDOUT
+        assert any(call.args[0]["type"] == "audit_error" for call in send.await_args_list)

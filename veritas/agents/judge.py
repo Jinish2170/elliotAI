@@ -26,14 +26,14 @@ from typing import Optional
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from agents.graph_investigator import GraphResult
+from veritas.agents.graph_investigator import GraphResult
 from veritas.agents.scout import ScoutResult
-from agents.vision import VisionResult
-from config import settings
-from config.trust_weights import (DEFAULT_WEIGHTS, RiskLevel, SignalWeights,
+from veritas.agents.vision import VisionResult
+from veritas.config import settings
+from veritas.config.trust_weights import (DEFAULT_WEIGHTS, RiskLevel, SignalWeights,
                                   SubSignal, TrustScoreResult,
                                   compute_trust_score)
-from core.nim_client import NIMClient
+from veritas.core.nim_client import NIMClient
 
 # Dual-verdict imports (V2 feature)
 # These are imported conditionally to avoid dependency issues
@@ -417,7 +417,7 @@ class JudgeAgent:
 
         # Fill in security results
         sec = evidence.security_results or {}
-        phishing = sec.get("phishing", {})
+        phishing = sec.get("phishing_db") or sec.get("phishing", {})
         ctx.has_phishing_hits = phishing.get("is_phishing", False)
         js = sec.get("js_analysis", {})
         ctx.js_risk_score = js.get("risk_score", 0.0)
@@ -621,7 +621,7 @@ class JudgeAgent:
         weights = DEFAULT_WEIGHTS
         paranoia_mode = False
         try:
-            from config.site_types import SITE_TYPE_PROFILES, SiteType
+            from veritas.config.site_types import SITE_TYPE_PROFILES, SiteType
             if evidence.site_type:
                 st = SiteType(evidence.site_type)
                 profile = SITE_TYPE_PROFILES.get(st)
@@ -641,7 +641,7 @@ class JudgeAgent:
 
         sec = evidence.security_results
         if sec:
-            phishing = sec.get("phishing", {})
+            phishing = sec.get("phishing_db") or sec.get("phishing", {})
             is_phishing = phishing.get("is_phishing", False)
             js = sec.get("js_analysis", {})
             js_risk_score = js.get("risk_score", 0.0)
@@ -833,7 +833,7 @@ class JudgeAgent:
                 sec_evidence_count += 1
 
             # Phishing
-            phishing = sec.get("phishing", {})
+            phishing = sec.get("phishing_db") or sec.get("phishing", {})
             if phishing:
                 if phishing.get("is_phishing"):
                     sec_score = max(0.0, sec_score - 0.4)
@@ -842,7 +842,7 @@ class JudgeAgent:
                 sec_evidence_count += 1
 
             # Redirect analysis
-            redirects = sec.get("redirects", {})
+            redirects = sec.get("redirect_chain") or sec.get("redirects", {})
             if redirects:
                 if redirects.get("is_suspicious"):
                     sec_score = max(0.0, sec_score - 0.2)

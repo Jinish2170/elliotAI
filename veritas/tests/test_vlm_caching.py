@@ -23,8 +23,8 @@ import pytest
 # Add veritas root to path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from core.nim_client import NIMClient
-from agents.vision import VisionAgent, DarkPatternFinding
+from veritas.core.nim_client import NIMClient
+from veritas.agents.vision import VisionAgent, DarkPatternFinding
 
 
 # ============================================================

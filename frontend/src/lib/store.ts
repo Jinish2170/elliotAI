@@ -21,6 +21,48 @@ import type {
     VisionPassSummary,
     DualVerdict,
     IOCDetectionResult,
+    DarknetAnalysisResult,
+    Tor2WebThreatData,
+    CVEEntry,
+    CVSSMetric,
+    TechniqueMatch,
+    ThreatAttribution,
+    ExploitationAdvisory,
+    AttackScenario,
+    SecurityModuleResult,
+    OWASPModuleResult,
+    AgentPerformance,
+    TaskMetric,
+    KnowledgeGraph,
+    GraphAnalysis,
+    SiteClassification,
+    BusinessEntity,
+    ScoutResult,
+    PageMetadata,
+    VisionResult,
+    GraphResult,
+    SecurityResult,
+    JudgeDecision,
+    AuditEvidence,
+    EntityClaim,
+    VerificationResult,
+    DomainIntel,
+    GraphInconsistency,
+    SecurityFindingDetailed,
+    SecurityConfig,
+    ConsensusResult,
+    NavigationStartEvent,
+    NavigationCompleteEvent,
+    PageScannedEvent,
+    ScrollEvent,
+    ExplorationPath,
+    CaptchaResult,
+    FormDetection,
+    APTGroupAttribution,
+    TrustScoreResult,
+    SubSignal,
+    OverrideRule,
+    SecuritySeverity,
 } from "@/lib/types";
 import { create } from "zustand";
 import { EventSequencer, type SequencedEvent } from "@/hooks/useEventSequencer";
@@ -71,6 +113,73 @@ interface AuditStore {
 
   // Advanced Judge Data
   dualVerdict: DualVerdict | null;
+
+  // Premium Darknet Analysis Data
+  darknetAnalysisResult: DarknetAnalysisResult | null;
+  marketplaceDetails: MarketplaceThreatData[];
+  tor2WebThreats: Tor2WebThreatData[];
+
+  // CVSS / CVE Technical Data
+  cveEntries: CVEEntry[];
+  cvssMetrics: CVSSMetric[];
+  cvssScore: number | null;
+
+  // MITRE ATT&CK Data
+  mitreTechniques: TechniqueMatch[];
+  threatAttribution: ThreatAttribution | null;
+  attackPatterns: string[];
+
+  // Exploitation Advisory & Scenarios
+  exploitationAdvisories: ExploitationAdvisory[];
+  attackScenarios: AttackScenario[];
+
+  // Security Module Results
+  securityModuleResults: SecurityModuleResult[];
+  owaspResults: OWASPModuleResult[];
+
+  // Agent Performance Metrics
+  agentPerformance: AgentPerformance[];
+  taskMetrics: TaskMetric[];
+
+  // Knowledge Graph Data
+  knowledgeGraph: KnowledgeGraph | null;
+  graphAnalysis: GraphAnalysis | null;
+
+  // Site Classification & Business Entity
+  siteClassification: SiteClassification | null;
+  businessEntities: BusinessEntity[];
+
+  // Complete Agent Results
+  scoutResult: ScoutResult | null;
+  pageMetadata: PageMetadata | null;
+  complete_vision_result: VisionResult | null;
+  complete_graph_result: GraphResult | null;
+  complete_security_result: SecurityResult | null;
+
+  // Judge Agent Data
+  judge_decision: JudgeDecision | null;
+  audit_evidence: AuditEvidence | null;
+
+  // Graph Investigation Data
+  entityClaims: EntityClaim[];
+  verificationResults: VerificationResult[];
+  domainIntel: DomainIntel | null;
+  graphInconsistencies: GraphInconsistency[];
+
+  // Consensus Results
+  consensusResults: ConsensusResult[];
+
+  // Scout Navigation Events
+  navigationEvents: Array<NavigationStartEvent | NavigationCompleteEvent | PageScannedEvent | ScrollEvent>;
+  explorationPath: ExplorationPath | null;
+  captchaResults: CaptchaResult[];
+  formDetections: FormDetection[];
+
+  // APT Group Data
+  aptGroupAttributions: APTGroupAttribution[];
+
+  // Trust Score Data
+  trustScoreResult: TrustScoreResult | null;
 
   // Actions
   setAudit: (id: string, url: string, tier: string) => void;
@@ -125,6 +234,73 @@ export const useAuditStore = create<AuditStore>((set, get) => ({
   iocDetection: null,
   dualVerdict: null,
 
+  // Premium Darknet Analysis Data
+  darknetAnalysisResult: null,
+  marketplaceDetails: [],
+  tor2WebThreats: [],
+
+  // CVSS / CVE Technical Data
+  cveEntries: [],
+  cvssMetrics: [],
+  cvssScore: null,
+
+  // MITRE ATT&CK Data
+  mitreTechniques: [],
+  threatAttribution: null,
+  attackPatterns: [],
+
+  // Exploitation Advisory & Scenarios
+  exploitationAdvisories: [],
+  attackScenarios: [],
+
+  // Security Module Results
+  securityModuleResults: [],
+  owaspResults: [],
+
+  // Agent Performance Metrics
+  agentPerformance: [],
+  taskMetrics: [],
+
+  // Knowledge Graph Data
+  knowledgeGraph: null,
+  graphAnalysis: null,
+
+  // Site Classification & Business Entity
+  siteClassification: null,
+  businessEntities: [],
+
+  // Complete Agent Results
+  scoutResult: null,
+  pageMetadata: null,
+  complete_vision_result: null,
+  complete_graph_result: null,
+  complete_security_result: null,
+
+  // Judge Agent Data
+  judge_decision: null,
+  audit_evidence: null,
+
+  // Graph Investigation Data
+  entityClaims: [],
+  verificationResults: [],
+  domainIntel: null,
+  graphInconsistencies: [],
+
+  // Consensus Results
+  consensusResults: [],
+
+  // Scout Navigation Events
+  navigationEvents: [],
+  explorationPath: null,
+  captchaResults: [],
+  formDetections: [],
+
+  // APT Group Data
+  aptGroupAttributions: [],
+
+  // Trust Score Data
+  trustScoreResult: null,
+
   setAudit: (id, url, tier) => set({ auditId: id, url, tier, status: "connecting" }),
 
   setStatus: (s) => set({ status: s }),
@@ -157,6 +333,51 @@ export const useAuditStore = create<AuditStore>((set, get) => ({
       iocIndicators: [],
       iocDetection: null,
       dualVerdict: null,
+      // Reset premium data
+      darknetAnalysisResult: null,
+      marketplaceDetails: [],
+      tor2WebThreats: [],
+      cveEntries: [],
+      cvssMetrics: [],
+      cvssScore: null,
+      mitreTechniques: [],
+      threatAttribution: null,
+      attackPatterns: [],
+      exploitationAdvisories: [],
+      attackScenarios: [],
+      securityModuleResults: [],
+      owaspResults: [],
+      agentPerformance: [],
+      taskMetrics: [],
+      knowledgeGraph: null,
+      graphAnalysis: null,
+      siteClassification: null,
+      businessEntities: [],
+      // Reset complete agent results
+      scoutResult: null,
+      pageMetadata: null,
+      complete_vision_result: null,
+      complete_graph_result: null,
+      complete_security_result: null,
+      // Reset judge agent data
+      judge_decision: null,
+      audit_evidence: null,
+      // Reset graph investigation data
+      entityClaims: [],
+      verificationResults: [],
+      domainIntel: null,
+      graphInconsistencies: [],
+      // Reset consensus results
+      consensusResults: [],
+      // Reset navigation events
+      navigationEvents: [],
+      explorationPath: null,
+      captchaResults: [],
+      formDetections: [],
+      // Reset APT group data
+      aptGroupAttributions: [],
+      // Reset trust score data
+      trustScoreResult: null,
     });
   },
 
@@ -192,6 +413,41 @@ function processSingleEvent(
   get: () => AuditStore
 ): void {
   const state = get();
+  const normalizeGreenFlags = (flags: unknown): GreenFlag[] => {
+    if (!Array.isArray(flags)) return [];
+    return flags.map((flag, index) => {
+      if (typeof flag === "string") {
+        return {
+          id: `green-flag-${index}`,
+          category: "trust",
+          label: flag,
+          icon: "✅",
+        };
+      }
+      return flag as GreenFlag;
+    });
+  };
+  const defaultTechnicalVerdict: DualVerdict["technical"] = {
+    cwe_entries: [],
+    cvss_metrics: [],
+    cvss_base_score: 0,
+    cvss_vector: "",
+    iocs: [],
+    threat_indicators: [],
+    attack_techniques: [],
+    exploitability: "LOW",
+    impact: "LOW",
+  };
+  const defaultNonTechnicalVerdict: DualVerdict["non_technical"] = {
+    risk_level: "suspicious",
+    summary: "",
+    key_findings: [],
+    recommendations: [],
+    warnings: [],
+    green_flags: [],
+    simple_explanation: "",
+    what_to_do: [],
+  };
 
   switch (type) {
     case "phase_start": {
@@ -316,7 +572,17 @@ function processSingleEvent(
     }
 
     case "stats_update": {
-      set({ stats: event.stats as AuditStats });
+      const stats = (event.stats as Record<string, unknown>) || {};
+      set({
+        stats: {
+          pages_scanned: (stats.pages_scanned as number) || 0,
+          screenshots: (stats.screenshots as number) || state.stats.screenshots,
+          findings: (stats.findings as number) || (stats.findings_detected as number) || state.stats.findings,
+          ai_calls: (stats.ai_calls as number) || state.stats.ai_calls,
+          security_checks: (stats.security_checks as number) || state.stats.security_checks,
+          elapsed_seconds: (stats.elapsed_seconds as number) || (stats.duration_seconds as number) || state.stats.elapsed_seconds,
+        },
+      });
       break;
     }
 
@@ -355,12 +621,18 @@ function processSingleEvent(
     }
 
     case "audit_result": {
-      set({ result: event.result as AuditResult });
+      const result = event.result as AuditResult;
+      set({
+        result: {
+          ...result,
+          green_flags: normalizeGreenFlags(result.green_flags || []),
+        } as AuditResult,
+      });
       break;
     }
 
     case "green_flags": {
-      const greenFlags = (event.green_flags as GreenFlag[]) || [];
+      const greenFlags = normalizeGreenFlags(event.green_flags || event.flags);
       // Update result with green flags
       if (state.result) {
         set({
@@ -476,7 +748,18 @@ function processSingleEvent(
 
     // Advanced Vision Data Events
     case "dark_pattern_finding": {
-      const finding = event.finding as DarkPatternFinding;
+      const raw = (event.finding || {}) as Record<string, unknown>;
+      const finding: DarkPatternFinding = {
+        category_id: (raw.category_id as string) || (raw.category as string) || "unknown",
+        pattern_type: (raw.pattern_type as string) || "unknown",
+        confidence: (raw.confidence as number) || 0,
+        severity: ((raw.severity as DarkPatternFinding["severity"]) || "medium"),
+        evidence: (raw.evidence as string) || (raw.description as string) || "",
+        screenshot_path: (raw.screenshot_path as string) || "",
+        raw_vlm_response: raw.raw_vlm_response as string | undefined,
+        model_used: raw.model_used as string | undefined,
+        fallback_mode: raw.fallback_mode as boolean | undefined,
+      };
       set({ darkPatternFindings: [...state.darkPatternFindings, finding] });
       break;
     }
@@ -501,7 +784,7 @@ function processSingleEvent(
     }
 
     case "ioc_indicator": {
-      const ioc = event.ioc as IOCIndicator;
+      const ioc = (event.indicator || event.ioc) as IOCIndicator;
       set({ iocIndicators: [...state.iocIndicators, ioc] });
       break;
     }
@@ -515,44 +798,362 @@ function processSingleEvent(
 
     // Advanced Judge Data Events
     case "verdict_technical": {
+      const verdict = (event.verdict || {}) as Record<string, unknown>;
       const existingVerdict = state.dualVerdict;
       set({
         dualVerdict: {
           ...(existingVerdict || {
-            technical: undefined as any,
-            non_technical: undefined as any,
+            technical: defaultTechnicalVerdict,
+            non_technical: defaultNonTechnicalVerdict,
             trust_score: 0,
             timestamp: new Date().toISOString(),
           }),
-          technical: event.technical as any,
-          trust_score: event.trust_score as number,
-          timestamp: event.timestamp as string || new Date().toISOString(),
+          technical: {
+            ...defaultTechnicalVerdict,
+            ...(verdict as unknown as Partial<DualVerdict["technical"]>),
+            cvss_base_score:
+              (verdict.cvss_base_score as number) ||
+              (verdict.cvss_score as number) ||
+              0,
+            cvss_vector: (verdict.cvss_vector as string) || "",
+          },
+          trust_score: (verdict.trust_score as number) || existingVerdict?.trust_score || 0,
+          timestamp: (event.timestamp as string) || existingVerdict?.timestamp || new Date().toISOString(),
         },
       });
       break;
     }
 
     case "verdict_nontechnical": {
+      const verdict = (event.verdict || {}) as Record<string, unknown>;
       const existingVerdict = state.dualVerdict;
       set({
         dualVerdict: {
           ...(existingVerdict || {
-            technical: undefined as any,
-            non_technical: undefined as any,
+            technical: defaultTechnicalVerdict,
+            non_technical: defaultNonTechnicalVerdict,
             trust_score: 0,
             timestamp: new Date().toISOString(),
           }),
-          non_technical: event.verdict as any,
-          trust_score: event.trust_score as number,
-          timestamp: event.timestamp as string || new Date().toISOString(),
+          non_technical: {
+            ...defaultNonTechnicalVerdict,
+            ...(verdict as unknown as Partial<DualVerdict["non_technical"]>),
+            risk_level: (verdict.risk_level as DualVerdict["non_technical"]["risk_level"]) || "suspicious",
+            summary: (verdict.summary as string) || "",
+            key_findings: (verdict.key_findings as string[]) || [],
+            recommendations: (verdict.recommendations as string[]) || (verdict.actionable_advice as string[]) || [],
+            warnings: (verdict.warnings as string[]) || [],
+            green_flags: normalizeGreenFlags(verdict.green_flags || []),
+            simple_explanation: (verdict.simple_explanation as string) || (verdict.summary as string) || "",
+            what_to_do: (verdict.actionable_advice as string[]) || [],
+          },
+          trust_score: existingVerdict?.trust_score || 0,
+          timestamp: (event.timestamp as string) || existingVerdict?.timestamp || new Date().toISOString(),
         },
       });
       break;
     }
 
     case "dual_verdict_complete": {
+      const payload = (event.dual_verdict || {}) as Record<string, unknown>;
       set({
-        dualVerdict: event.dual_verdict as DualVerdict,
+        dualVerdict: {
+          technical:
+            ((payload.verdict_technical as DualVerdict["technical"] | undefined) || state.dualVerdict?.technical || defaultTechnicalVerdict),
+          non_technical: {
+            ...defaultNonTechnicalVerdict,
+            ...((payload.verdict_nontechnical as Record<string, unknown>) || {}),
+            green_flags: normalizeGreenFlags(((payload.verdict_nontechnical as Record<string, unknown> | undefined)?.green_flags) || []),
+          },
+          trust_score:
+            (((payload.verdict_technical as Record<string, unknown> | undefined)?.trust_score) as number) ||
+            state.dualVerdict?.trust_score ||
+            0,
+          timestamp:
+            (((payload.metadata as Record<string, unknown> | undefined)?.timestamp) as string) ||
+            state.dualVerdict?.timestamp ||
+            new Date().toISOString(),
+        },
+      });
+      break;
+    }
+
+    // ============================================================
+    // Premium Darknet Events
+    // ============================================================
+
+    case "darknet_analysis_result": {
+      set({
+        darknetAnalysisResult: event.result as DarknetAnalysisResult,
+      });
+      break;
+    }
+
+    case "marketplace_threat": {
+      const threat = event.threat as MarketplaceThreatData;
+      set({
+        marketplaceDetails: [...state.marketplaceDetails, threat],
+      });
+      break;
+    }
+
+    case "tor2web_anonymous_breach": {
+      set({
+        tor2WebThreats: [...state.tor2WebThreats, event.threat as Tor2WebThreatData],
+      });
+      break;
+    }
+
+    case "exit_scam_detected": {
+      set({
+        logs: [
+          ...state.logs,
+          {
+            timestamp: new Date().toLocaleTimeString(),
+            agent: "darknet",
+            message: `⚠️ Exit scam detected: ${event.marketplace} (${event.shutdown_date})`,
+            level: "error" as const,
+            context: "error" as const,
+            params: { marketplace: event.marketplace, shutdown_date: event.shutdown_date },
+          },
+        ],
+      });
+      break;
+    }
+
+    // ============================================================
+    // CVSS / CVE Technical Events
+    // ============================================================
+
+    case "cvss_metrics": {
+      set({
+        cvssMetrics: event.metrics as CVSSMetric[],
+        cvssScore: event.base_score as number,
+      });
+      break;
+    }
+
+    case "cve_detected": {
+      set({
+        cveEntries: [...state.cveEntries, event.cve as CVEEntry],
+      });
+      break;
+    }
+
+    // ============================================================
+    // MITRE ATT&CK Events
+    // ============================================================
+
+    case "mitre_technique_mapped": {
+      set({
+        mitreTechniques: [...state.mitreTechniques, event.technique as TechniqueMatch],
+      });
+      break;
+    }
+
+    case "threat_attribution": {
+      set({
+        threatAttribution: event.attribution as ThreatAttribution,
+      });
+      break;
+    }
+
+    case "attack_pattern_detected": {
+      set({
+        attackPatterns: [...state.attackPatterns, event.pattern as string],
+      });
+      break;
+    }
+
+    // ============================================================
+    // Exploitation & Scenario Events
+    // ============================================================
+
+    case "exploitation_advisory": {
+      set({
+        exploitationAdvisories: [...state.exploitationAdvisories, event.advisory as ExploitationAdvisory],
+      });
+      break;
+    }
+
+    case "attack_scenario": {
+      set({
+        attackScenarios: [...state.attackScenarios, event.scenario as AttackScenario],
+      });
+      break;
+    }
+
+    // ============================================================
+    // Security Module Results Events
+    // ============================================================
+
+    case "security_module_result": {
+      set({
+        securityModuleResults: [...state.securityModuleResults, event.result as SecurityModuleResult],
+      });
+      break;
+    }
+
+    case "owasp_module_result": {
+      set({
+        owaspResults: [...state.owaspResults, event.result as OWASPModuleResult],
+      });
+      break;
+    }
+
+    case "agent_performance": {
+      set({
+        agentPerformance: [...state.agentPerformance, event.performance as AgentPerformance],
+      });
+      break;
+    }
+
+    // ============================================================
+    // Knowledge Graph Events
+    // ============================================================
+
+    case "knowledge_graph": {
+      set({
+        knowledgeGraph: event.graph as KnowledgeGraph,
+      });
+      break;
+    }
+
+    case "graph_analysis": {
+      set({
+        graphAnalysis: event.analysis as GraphAnalysis,
+      });
+      break;
+    }
+
+    // ============================================================
+    // Site Classification Events
+    // ============================================================
+
+    case "site_classification": {
+      set({
+        siteClassification: event.classification as SiteClassification,
+      });
+      break;
+    }
+
+    // ============================================================
+    // Scout Agent Navigation & Detection Events
+    // ============================================================
+
+    case "cvss_metric": {
+      const metric = event.metric as CVSSMetric;
+      set({ cvssMetrics: [...state.cvssMetrics, metric] });
+      break;
+    }
+
+    case "apt_group_attribution": {
+      set({
+        aptGroupAttributions: [...state.aptGroupAttributions, event as unknown as APTGroupAttribution],
+      });
+      break;
+    }
+
+    case "navigation_start": {
+      const navigation = event as unknown as NavigationStartEvent;
+      set({
+        navigationEvents: [...state.navigationEvents, navigation],
+        phases: {
+          ...state.phases,
+          scout: {
+            ...state.phases.scout,
+            status: "active",
+            message: `Navigating to: ${navigation.url}`,
+          },
+        },
+      });
+      break;
+    }
+
+    case "navigation_complete": {
+      const navigation = event as unknown as NavigationCompleteEvent;
+      set({
+        navigationEvents: [...state.navigationEvents, navigation],
+        phases: {
+          ...state.phases,
+          scout: {
+            ...state.phases.scout,
+            message: `Navigation ${navigation.status}: ${navigation.duration_ms}ms`,
+          },
+        },
+      });
+      break;
+    }
+
+    case "page_scanned": {
+      set({
+        navigationEvents: [...state.navigationEvents, event as unknown as PageScannedEvent],
+        stats: {
+          ...state.stats,
+          pages_scanned: (state.stats.pages_scanned || 0) + 1,
+        },
+      });
+      break;
+    }
+
+    case "scroll_event": {
+      const scrollEvent = event as unknown as ScrollEvent;
+      set({
+        navigationEvents: [...state.navigationEvents, scrollEvent],
+        phases: {
+          ...state.phases,
+          scout: {
+            ...state.phases.scout,
+            message: `Scroll cycle ${scrollEvent.cycle}: lazy_load=${scrollEvent.has_lazy_load}, stabilized=${scrollEvent.stabilized}`,
+          },
+        },
+      });
+      break;
+    }
+
+    case "exploration_path": {
+      const exploration = event as unknown as ExplorationPath;
+      set({
+        explorationPath: exploration,
+        phases: {
+          ...state.phases,
+          scout: {
+            ...state.phases.scout,
+            message: `Explored ${exploration.total_pages} pages in ${exploration.total_time_ms}ms`,
+          },
+        },
+      });
+      break;
+    }
+
+    case "form_detected": {
+      const formDetection = event as unknown as FormDetection;
+      set({
+        formDetections: [...state.formDetections, formDetection],
+        phases: {
+          ...state.phases,
+          scout: {
+            ...state.phases.scout,
+            message: `${formDetection.count} form(s) detected`,
+          },
+        },
+      });
+      break;
+    }
+
+    case "captcha_detected": {
+      const captcha = event as unknown as CaptchaResult;
+      set({
+        captchaResults: [...state.captchaResults, captcha],
+        phases: {
+          ...state.phases,
+          scout: {
+            ...state.phases.scout,
+            message: captcha.detected
+              ? `CAPTCHA detected: ${captcha.captcha_type || "unknown"} (${(captcha.confidence * 100).toFixed(0)}%)`
+              : "No CAPTCHA detected",
+          },
+        },
       });
       break;
     }

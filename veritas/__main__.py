@@ -31,10 +31,10 @@ if sys.platform == "win32":
 # Add veritas root to path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from config import settings
-from core.ipc import determine_ipc_mode, IPC_MODE_QUEUE, IPC_MODE_STDOUT, IPC_MODE_VALIDATE
-from core.orchestrator import VeritasOrchestrator
-from reporting.report_generator import ReportGenerator
+from veritas.config import settings
+from veritas.core.ipc import determine_ipc_mode, IPC_MODE_QUEUE, IPC_MODE_STDOUT, IPC_MODE_VALIDATE
+from veritas.core.orchestrator import VeritasOrchestrator
+from veritas.reporting.report_generator import ReportGenerator
 
 
 def setup_logging(verbose: bool = False):

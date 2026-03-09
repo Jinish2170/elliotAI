@@ -32,7 +32,7 @@ class ModuleInfo(NamedTuple):
     requires_page: bool  # True if module needs Playwright Page object
 
 
-class SecurityModuleBase(ABC):
+class SecurityModule(ABC):
     """
     Abstract base class for security analysis modules.
 
@@ -49,7 +49,7 @@ class SecurityModuleBase(ABC):
         OR async validate(page, page_url: str) -> result - Form-style validation method
 
     Example:
-        class MyModule(SecurityModuleBase):
+        class MyModule(SecurityModule):
             module_name = "my_module"
             category = "custom"
 

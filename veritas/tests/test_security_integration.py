@@ -145,7 +145,7 @@ class TestSecurityAgentWithOrchestrator:
 
         assert "security_results" in result
         assert "security_mode" in result
-        assert result["security_mode"] in ("agent", "function", "function_fallback")
+        assert result["security_mode"] in ("agent", "agent_tier", "agent_legacy", "function", "function_fallback")
 
 
 # ============================================================
@@ -249,19 +249,19 @@ class TestSecurityAgentModuleDiscovery:
     @pytest.mark.asyncio
     async def test_all_modules_discoverable(self):
         """Test that all security modules are discoverable."""
-        from veritas.analysis import SecurityModuleBase, ModuleInfo
+        from veritas.analysis import SecurityModule, ModuleInfo
         from veritas.analysis.security_headers import SecurityHeaderAnalyzer
         from veritas.analysis.phishing_checker import PhishingChecker
         from veritas.analysis.redirect_analyzer import RedirectAnalyzer
         from veritas.analysis.js_analyzer import JSObfuscationDetector
         from veritas.analysis.form_validator import FormActionValidator
 
-        # Check all modules inherit from SecurityModuleBase
-        assert issubclass(SecurityHeaderAnalyzer, SecurityModuleBase)
-        assert issubclass(PhishingChecker, SecurityModuleBase)
-        assert issubclass(RedirectAnalyzer, SecurityModuleBase)
-        assert issubclass(JSObfuscationDetector, SecurityModuleBase)
-        assert issubclass(FormActionValidator, SecurityModuleBase)
+        # Check all modules inherit from SecurityModule
+        assert issubclass(SecurityHeaderAnalyzer, SecurityModule)
+        assert issubclass(PhishingChecker, SecurityModule)
+        assert issubclass(RedirectAnalyzer, SecurityModule)
+        assert issubclass(JSObfuscationDetector, SecurityModule)
+        assert issubclass(FormActionValidator, SecurityModule)
 
         # Check all modules are discoverable
         assert SecurityHeaderAnalyzer.is_discoverable()

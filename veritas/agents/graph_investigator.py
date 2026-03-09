@@ -23,18 +23,14 @@ import logging
 import re
 import socket
 import ssl
-import sys
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Any, Optional
 
 import networkx as nx
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-
-from config import settings
-from core.nim_client import NIMClient
+from veritas.config import settings
+from veritas.core.nim_client import NIMClient
 from veritas.osint.orchestrator import OSINTOrchestrator
 from veritas.osint.reputation import ReputationManager, VerdictType
 from veritas.osint.cti import CThreatIntelligence
@@ -349,7 +345,7 @@ class GraphInvestigator:
         # Phase 4b: MetaAnalyzer (MX/SPF/DMARC, deep SSL)
         # -----------------------------------------------------------
         try:
-            from analysis.meta_analyzer import MetaAnalyzer
+            from veritas.analysis.meta_analyzer import MetaAnalyzer
             meta_az = MetaAnalyzer()
             meta_result = await self._run_with_timeout(
                 meta_az.analyze(domain),
@@ -889,7 +885,7 @@ class GraphInvestigator:
 
         # Fallback: custom Playwright-based DuckDuckGo scraper
         try:
-            from core.web_searcher import web_search
+            from veritas.core.web_searcher import web_search
             return await self._run_with_timeout(
                 web_search(
                     query=query,

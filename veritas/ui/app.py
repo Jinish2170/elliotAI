@@ -28,9 +28,10 @@ import streamlit as st
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from config import settings
-from config.dark_patterns import DARK_PATTERN_TAXONOMY
-from ui.darknet_components import (
+from veritas.config import settings
+from veritas.config.dark_patterns import DARK_PATTERN_TAXONOMY
+from veritas.ui.darknet_components import (
+    check_tor_connection,
     render_darknet_panel,
     render_marketplace_intelligence_dashboard,
     render_darknet_toggle,
@@ -561,6 +562,15 @@ def _find_python_exe() -> str:
     return str(exe)
 
 
+def _get_tor_status() -> bool | None:
+    try:
+        return asyncio.run(check_tor_connection())
+    except RuntimeError:
+        return None
+    except Exception:
+        return False
+
+
 def _run_audit_streaming(url: str, tier: str, progress_container, log_container,
                          pipeline_placeholder, stats_placeholder,
                          verdict_mode: str = "expert", enabled_security_modules: list = None):
@@ -755,8 +765,12 @@ with st.sidebar:
         sec_forms = st.checkbox("📝 Form Validation", value=False)
         st.markdown("---")
         st.caption("**🧅 Darknet Analysis** (Premium)")
-        sec_darknet = st.checkbox("🧅 Darknet Threat Intelligence", value=False,
-                                  help="Enable TOR-aware security with marketplace threat intelligence")
+        tor_status = _get_tor_status()
+        if tor_status is None:
+            st.caption("TOR Proxy: unknown")
+        else:
+            st.caption(f"TOR Proxy: {'connected' if tor_status else 'unavailable'}")
+        sec_darknet = "darknet" in render_darknet_toggle([])
 
     enabled_sec = []
     if sec_headers: enabled_sec.append("security_headers")
@@ -1304,6 +1318,18 @@ if st.session_state.audit_result:
                     form_issues = fv.get("issues", [])
                     for fi in form_issues:
                         st.markdown(f"- ⚠️ {fi}")
+
+                darknet_result = sec_results.get("darknet_analysis", {})
+                if darknet_result:
+                    st.markdown("##### 🧅 Darknet Threat Intelligence")
+                    render_darknet_panel(
+                        darknet_enabled=True,
+                        tor_status=_get_tor_status(),
+                        analysis_result=darknet_result,
+                    )
+                    marketplace_data = darknet_result.get("marketplace_threats", [])
+                    if marketplace_data:
+                        render_marketplace_intelligence_dashboard(marketplace_data)
             else:
                 st.info("No security modules were enabled for this audit.")
 

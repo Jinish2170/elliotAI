@@ -21,7 +21,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
 
-from veritas.analysis import SecurityModuleBase
+from veritas.analysis import SecurityModule
 
 logger = logging.getLogger("veritas.analysis.phishing_checker")
 
@@ -82,7 +82,7 @@ _URL_RED_FLAGS = [
 ]
 
 
-class PhishingChecker(SecurityModuleBase):
+class PhishingChecker(SecurityModule):
     """Check URLs against phishing databases and heuristics."""
 
     # Module metadata for auto-discovery

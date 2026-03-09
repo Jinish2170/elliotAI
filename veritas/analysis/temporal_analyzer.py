@@ -28,7 +28,7 @@ logger = logging.getLogger("veritas.temporal")
 # Data Structures (reuse from vision agent)
 # ============================================================
 
-from agents.vision import TemporalFinding
+from veritas.agents.vision import TemporalFinding
 
 # ============================================================
 # Temporal Analyzer
@@ -88,6 +88,32 @@ class TemporalAnalyzer:
         findings.extend(ocr_findings)
 
         return findings
+
+    def analyze_temporal_changes(self, path_a: str, path_b: str) -> dict:
+        """
+        Adapter method for the Vision Agent 5-pass pipeline.
+        Computes CV-based changes and returns the structure expected by vision.py.
+        """
+        similarity = self._compute_similarity(path_a, path_b)
+        
+        if similarity is None:
+            # Fallback if pixel comparison fails
+            return {
+                "has_changes": False,
+                "ssim_score": 0.0,
+                "changed_regions": [],
+                "recommendation": "fullpage_only"
+            }
+            
+        # Using 0.995 as the threshold from compare_screenshots
+        has_changes = bool(similarity < 0.995)
+        
+        return {
+            "has_changes": has_changes,
+            "ssim_score": similarity,
+            "changed_regions": [],
+            "recommendation": "analyze_both" if has_changes else "fullpage_only"
+        }
 
     def _compute_similarity(
         self, path_a: str, path_b: str,

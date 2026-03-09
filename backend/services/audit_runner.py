@@ -1,17 +1,5 @@
-"""
-Veritas Audit Runner — Wraps VeritasOrchestrator for WebSocket streaming.
-
-Captures ##PROGRESS stdout markers from the orchestrator and converts them
-into typed WebSocket JSON events for the frontend.
-
-Uses subprocess.Popen + asyncio.run_in_executor for Windows compatibility
-(asyncio.create_subprocess_exec raises NotImplementedError on Windows
-when the event loop is SelectorEventLoop).
-"""
-
 import asyncio
 import base64
-import functools
 import json
 import logging
 import multiprocessing as mp
@@ -23,827 +11,571 @@ import time
 import uuid
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, Optional
+from typing import Callable, Optional
 
-# Add veritas to path for IPC imports
 project_root = Path(__file__).resolve().parent.parent.parent
-sys.path.insert(0, str(project_root))
 
-from veritas.core.ipc import (
-    determine_ipc_mode,
-    IPC_MODE_QUEUE,
-    IPC_MODE_STDOUT,
-    create_queue,
-    serialize_queue,
-    ProgressEvent,
-)
+from veritas.core.ipc import IPC_MODE_QUEUE, IPC_MODE_STDOUT, determine_ipc_mode, serialize_queue
 
 logger = logging.getLogger("veritas.audit_runner")
 
 
 def _find_venv_python() -> str:
-    """Locate the .venv Python executable relative to the project root."""
-    project_root = Path(__file__).resolve().parent.parent.parent
     if sys.platform == "win32":
-        venv_python = project_root / ".venv" / "Scripts" / "python.exe"
+        path = project_root / ".venv" / "Scripts" / "python.exe"
     else:
-        venv_python = project_root / ".venv" / "bin" / "python"
-
-    if venv_python.exists():
-        return str(venv_python)
-
-    # Fallback to current interpreter
-    return sys.executable
+        path = project_root / ".venv" / "bin" / "python"
+    return str(path) if path.exists() else sys.executable
 
 
 class AuditRunner:
-    """
-    Runs a Veritas audit in a subprocess and streams structured events
-    via a callback function (typically WebSocket.send_json).
-    """
-
-    def __init__(self, audit_id: str, url: str, tier: str,
-                 verdict_mode: str = "expert",
-                 security_modules: Optional[list[str]] = None):
+    def __init__(self, audit_id: str, url: str, tier: str, verdict_mode: str = "expert", security_modules: Optional[list[str]] = None):
         self.audit_id = audit_id
         self.url = url
         self.tier = tier
         self.verdict_mode = verdict_mode
         self.security_modules = security_modules
-        self._screenshot_index = 0
-        self._findings_sent: set[str] = set()
-        self._result_sent = False
-
-        # Determine IPC mode
-        self.ipc_mode = self._determine_ipc_mode()
+        self.ipc_mode = determine_ipc_mode(cli_use_queue_ipc=False, cli_use_stdout=False)
         self.progress_queue: Optional[mp.Queue] = None
         self._mgr = None
-
-    def _determine_ipc_mode(self) -> str:
-        """Determine IPC mode from environment or use percentage-based default."""
-        # Use environment variables only (CLI flags would come from API request context)
-        ipc_mode = determine_ipc_mode(cli_use_queue_ipc=False, cli_use_stdout=False)
-        return ipc_mode
+        self._result_sent = False
+        self._findings_sent: set[str] = set()
+        self._screenshot_index = 0
 
     async def _read_queue_and_stream(self, send: Callable):
-        """Read events from Queue and send to WebSocket."""
-        loop = asyncio.get_running_loop()
         if self.progress_queue is None:
             return
-
         while True:
             try:
-                # Non-blocking get with 1 second timeout
                 event = await asyncio.to_thread(self.progress_queue.get, timeout=1.0)
-
-                # Convert ProgressEvent dataclass to dict if needed
-                if hasattr(event, '__dict__'):
-                    event_dict = {
-                        "type": getattr(event, 'type', 'progress'),
-                        "phase": getattr(event, 'phase', ''),
-                        "step": getattr(event, 'step', ''),
-                        "pct": getattr(event, 'pct', 0),
-                        "detail": getattr(event, 'detail', ''),
+                if hasattr(event, "__dict__"):
+                    payload = {
+                        "type": getattr(event, "type", "progress"),
+                        "phase": getattr(event, "phase", ""),
+                        "step": getattr(event, "step", ""),
+                        "pct": getattr(event, "pct", 0),
+                        "detail": getattr(event, "detail", ""),
+                        "summary": getattr(event, "summary", {}),
                     }
-                    summary = getattr(event, 'summary', {})
-                    # Map progress events to WebSocket event types
-                    if event_dict["step"] in ("navigating", "scanning", "analyzing", "investigating", "deliberating"):
-                        await send({
-                            "type": "phase_start",
-                            "phase": event_dict["phase"],
-                            "message": event_dict["detail"],
-                            "pct": event_dict["pct"],
-                        })
-                        await send({
-                            "type": "log_entry",
-                            "timestamp": time.strftime("%H:%M:%S"),
-                            "agent": event_dict["phase"].title(),
-                            "message": event_dict["detail"],
-                            "level": "info",
-                        })
-                    elif event_dict["step"] == "done":
-                        await send({
-                            "type": "phase_complete",
-                            "phase": event_dict["phase"],
-                            "message": event_dict["detail"],
-                            "pct": event_dict["pct"],
-                            "summary": summary or {},
-                        })
-                        await send({
-                            "type": "log_entry",
-                            "timestamp": time.strftime("%H:%M:%S"),
-                            "agent": event_dict["phase"].title(),
-                            "message": f"Complete — {event_dict['detail']}",
-                            "level": "info",
-                        })
-                    elif event_dict["step"] == "error":
-                        await send({
-                            "type": "phase_error",
-                            "phase": event_dict["phase"],
-                            "message": event_dict["detail"],
-                            "pct": event_dict["pct"],
-                            "error": event_dict["detail"],
-                        })
-                        await send({
-                            "type": "log_entry",
-                            "timestamp": time.strftime("%H:%M:%S"),
-                            "agent": event_dict["phase"].title(),
-                            "message": f"Error — {event_dict['detail']}",
-                            "level": "error",
-                        })
-                    elif event_dict["step"] == "starting":
-                        await send({
-                            "type": "phase_start",
-                            "phase": event_dict["phase"],
-                            "message": event_dict["detail"],
-                            "pct": 0,
-                        })
                 else:
-                    # Already a dict
-                    await send(event)
-
+                    payload = event
+                await self._handle_progress(payload, send)
             except queue.Empty:
-                continue  # No events yet, poll again
-            except asyncio.CancelledError:
-                logger.info(f"[{self.audit_id}] Queue reader cancelled")
-                break
-            except Exception as e:
-                logger.error(f"[{self.audit_id}] Queue read error: {e}")
                 continue
+            except asyncio.CancelledError:
+                break
+            except Exception as exc:
+                logger.error("[%s] queue read error: %s", self.audit_id, exc)
 
     async def run(self, send: Callable):
-        """
-        Run the audit as a subprocess and stream typed events via `send`.
-        `send` is an async callable that takes a dict and sends it as JSON.
-
-        Uses subprocess.Popen + run_in_executor to avoid the Windows
-        NotImplementedError with asyncio.create_subprocess_exec.
-        """
-        veritas_dir = Path(__file__).resolve().parent.parent.parent / "veritas"
-        python_exe = _find_venv_python()
-
         cmd = [
-            python_exe, "-m", "veritas",
+            _find_venv_python(),
+            "-m",
+            "veritas",
             self.url,
-            "--tier", self.tier,
-            "--verdict-mode", self.verdict_mode,
+            "--tier",
+            self.tier,
+            "--verdict-mode",
+            self.verdict_mode,
             "--json",
         ]
-
         if self.security_modules:
             cmd.extend(["--security-modules", ",".join(self.security_modules)])
 
-        # Setup Queue if Queue mode selected
-        self.progress_queue = None
-        self._mgr = None
-        queue_env_vars = {}
-
+        env = {**os.environ, "PYTHONIOENCODING": "utf-8"}
         if self.ipc_mode == IPC_MODE_QUEUE:
             try:
-                mp.set_start_method('spawn', force=True)
+                mp.set_start_method("spawn", force=True)
                 self._mgr = mp.Manager()
                 self.progress_queue = self._mgr.Queue(maxsize=1000)
                 fd, serialized = serialize_queue(self.progress_queue)
-                queue_env_vars = {
-                    "AUDIT_QUEUE_FD": str(fd),
-                    "AUDIT_QUEUE_KEY": serialized,
-                }
-                cmd.append("--use-queue-ipc")  # Pass flag to subprocess
-                logger.info(f"[{self.audit_id}] Using Queue IPC mode")
-            except Exception as e:
-                logger.warning(f"[{self.audit_id}] Queue creation failed: {e}, falling back to stdout mode")
+                env["AUDIT_QUEUE_FD"] = str(fd)
+                env["AUDIT_QUEUE_KEY"] = serialized
+                cmd.append("--use-queue-ipc")
+            except Exception as exc:
+                logger.warning("[%s] queue setup failed, using stdout: %s", self.audit_id, exc)
                 self.ipc_mode = IPC_MODE_STDOUT
-        else:
-            logger.info(f"[{self.audit_id}] Using stdout IPC mode")
 
-        env = {**os.environ, **queue_env_vars}
-        env["PYTHONIOENCODING"] = "utf-8"
-
-        cwd = str(veritas_dir.parent)
-
-        logger.info(f"[{self.audit_id}] Python: {python_exe}")
-        logger.info(f"[{self.audit_id}] CWD:    {cwd}")
-        logger.info(f"[{self.audit_id}] CMD:    {' '.join(cmd)}")
-
-        # Start subprocess (sync Popen — works on all platforms)
-        loop = asyncio.get_running_loop()
         process = subprocess.Popen(
             cmd,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            cwd=cwd,
+            cwd=str(project_root),
             env=env,
         )
-
-        # Parse stdout line-by-line (blocking reads run in thread pool)
-        json_buffer: list[str] = []
-        stdout_lines: list[str] = []
+        loop = asyncio.get_running_loop()
         stderr_lines: list[str] = []
-        collecting_json = False
+        stdout_lines: list[str] = []
+        buffer: list[str] = []
+        collecting = False
         start_time = time.time()
 
-        async def _drain_stderr():
-            """Drain stderr continuously to avoid pipe backpressure deadlocks."""
+        async def drain_stderr():
             while True:
-                raw_err = await loop.run_in_executor(None, process.stderr.readline)
-                if not raw_err:
+                raw = await loop.run_in_executor(None, process.stderr.readline)
+                if not raw:
                     break
-                err_line = raw_err.decode("utf-8", errors="replace").rstrip("\n\r")
-                if err_line:
-                    stderr_lines.append(err_line)
+                line = raw.decode("utf-8", errors="replace").rstrip("\r\n")
+                if line:
+                    stderr_lines.append(line)
 
+        stderr_task = asyncio.create_task(drain_stderr())
+        queue_task = asyncio.create_task(self._read_queue_and_stream(send)) if self.ipc_mode == IPC_MODE_QUEUE else None
         try:
-            stderr_task = asyncio.create_task(_drain_stderr())
-            queue_reader_task = None
-
-            # Start queue reader if Queue mode
-            if self.ipc_mode == IPC_MODE_QUEUE:
-                queue_reader_task = asyncio.create_task(self._read_queue_and_stream(send))
-
             while True:
-                # Read one line in a thread so we don't block the event loop
-                raw_line = await loop.run_in_executor(
-                    None, process.stdout.readline
-                )
-                if not raw_line:
-                    break  # EOF — subprocess finished writing
-
-                line = raw_line.decode("utf-8", errors="replace").rstrip("\n\r")
+                raw = await loop.run_in_executor(None, process.stdout.readline)
+                if not raw:
+                    break
+                line = raw.decode("utf-8", errors="replace").rstrip("\r\n")
                 stdout_lines.append(line)
-
                 if line.startswith("##PROGRESS:"):
-                    payload = line[len("##PROGRESS:"):]
                     try:
-                        data = json.loads(payload)
-                        await self._handle_progress(data, send)
+                        await self._handle_progress(json.loads(line[len("##PROGRESS:"):]), send)
                     except json.JSONDecodeError:
                         pass
-                elif line.lstrip().startswith("{") or collecting_json:
-                    collecting_json = True
-                    json_buffer.append(line)
-                    # Try to parse accumulated JSON
+                    continue
+                if line.lstrip().startswith("{") or collecting:
+                    collecting = True
+                    buffer.append(line)
                     try:
-                        full_json = "\n".join(json_buffer)
-                        result = json.loads(full_json)
-                        collecting_json = False
-                        json_buffer = []
-                        await self._handle_result(result, send)
+                        payload = json.loads("\n".join(buffer))
                     except json.JSONDecodeError:
-                        pass
+                        continue
+                    collecting = False
+                    buffer = []
+                    await self._handle_result(payload, send)
 
-            # Wait for process to finish
             await loop.run_in_executor(None, process.wait)
-
-            # Ensure stderr drain is fully consumed
+            if queue_task is not None and not queue_task.done():
+                queue_task.cancel()
             try:
                 await asyncio.wait_for(stderr_task, timeout=5)
             except Exception:
                 stderr_task.cancel()
-
-            # Cancel queue reader task if running
-            if queue_reader_task is not None and not queue_reader_task.done():
-                queue_reader_task.cancel()
-                try:
-                    await asyncio.wait_for(queue_reader_task, timeout=2)
-                except Exception:
-                    pass
-
-            # Log stderr if any
-            if stderr_lines:
-                for stderr_line in stderr_lines[-20:]:
-                    logger.info(f"[{self.audit_id}] stderr: {stderr_line}")
-
-            # Fallback parse if streaming parse missed JSON block
             if not self._result_sent:
-                fallback_result = self._extract_last_json_from_stdout(stdout_lines)
-                if fallback_result:
-                    await self._handle_result(fallback_result, send)
-
-            # Ensure completion event
-            elapsed = time.time() - start_time
+                payload = self._extract_last_json_from_stdout(stdout_lines)
+                if payload is not None:
+                    await self._handle_result(payload, send)
             if self._result_sent:
-                await send({
-                    "type": "audit_complete",
-                    "audit_id": self.audit_id,
-                    "elapsed": round(elapsed, 1),
-                })
+                await send({"type": "audit_complete", "audit_id": self.audit_id, "elapsed": round(time.time() - start_time, 1)})
             else:
-                await send({
-                    "type": "audit_error",
-                    "audit_id": self.audit_id,
-                    "error": "Audit finished but final result JSON could not be parsed",
-                })
-
-        except Exception as e:
-            logger.error(f"[{self.audit_id}] Runner error: {e}", exc_info=True)
-            await send({
-                "type": "audit_error",
-                "audit_id": self.audit_id,
-                "error": str(e),
-            })
+                await send({"type": "audit_error", "audit_id": self.audit_id, "error": "Audit finished but result JSON could not be parsed"})
+        except Exception as exc:
+            logger.error("[%s] runner error: %s", self.audit_id, exc, exc_info=True)
+            await send({"type": "audit_error", "audit_id": self.audit_id, "error": str(exc)})
         finally:
-            # Clean up if process is still running
             if process.poll() is None:
                 process.terminate()
-
-            # Cleanup Manager (closes Queue)
             if self._mgr is not None:
                 self._mgr.shutdown()
                 self._mgr = None
+            for line in stderr_lines[-20:]:
+                logger.info("[%s] stderr: %s", self.audit_id, line)
 
     async def _handle_progress(self, data: dict, send: Callable):
-        """Convert a ##PROGRESS message into typed WebSocket events."""
+        if data.get("type") and data.get("type") != "progress":
+            await send(data)
+            return
         phase = data.get("phase", "")
         step = data.get("step", "")
         pct = data.get("pct", 0)
         detail = data.get("detail", "")
+        label = {"init": "Initialization", "scout": "Browser Reconnaissance", "security": "Security Audit", "vision": "Visual Intelligence", "graph": "Intelligence Network", "judge": "Forensic Judge"}.get(phase, phase.title())
+        if step in {"navigating", "scanning", "analyzing", "investigating", "deliberating", "starting"}:
+            await send({"type": "phase_start", "phase": phase, "message": detail, "pct": pct, "label": label})
+            await send({"type": "agent_personality", "agent": phase, "context": "working", "timestamp": time.strftime("%H:%M:%S"), "params": {"phase": phase, "step": step, "detail": detail}})
+            await send({"type": "log_entry", "timestamp": time.strftime("%H:%M:%S"), "agent": label, "message": detail, "level": "info"})
+        elif step == "done":
+            await send({"type": "phase_complete", "phase": phase, "message": detail, "pct": pct, "label": label, "summary": data.get("summary", {}) or {}})
+            await send({"type": "agent_personality", "agent": phase, "context": "complete", "timestamp": time.strftime("%H:%M:%S"), "params": {"phase": phase, "success": True, "summary": detail}})
+            await send({"type": "log_entry", "timestamp": time.strftime("%H:%M:%S"), "agent": label, "message": f"Complete - {detail}", "level": "info"})
+        elif step == "error":
+            await send({"type": "phase_error", "phase": phase, "message": detail, "pct": pct, "error": detail})
+            await send({"type": "log_entry", "timestamp": time.strftime("%H:%M:%S"), "agent": label, "message": f"Error - {detail}", "level": "error"})
 
-        # Map phase names to user-friendly labels
-        phase_labels = {
-            "init": "Initialization",
-            "scout": "Browser Reconnaissance",
-            "security": "Security Audit",
-            "vision": "Visual Intelligence",
-            "graph": "Intelligence Network",
-            "judge": "Forensic Judge",
-            "complete": "Complete",
-            "iteration": "Iteration",
+    def _vision_findings(self, result: dict) -> list[dict]:
+        vision = result.get("vision_result") or {}
+        findings = vision.get("findings") or vision.get("dark_patterns") or []
+        out = []
+        for i, item in enumerate(findings):
+            if not isinstance(item, dict):
+                continue
+            pattern_type = item.get("pattern_type") or item.get("sub_type") or "unknown"
+            category = item.get("category") or item.get("category_id") or "unknown"
+            description = item.get("description") or item.get("evidence") or ""
+            out.append({**item, "id": item.get("id") or f"{pattern_type}_{i}", "pattern_type": pattern_type, "category": category, "description": description, "plain_english": item.get("plain_english") or description})
+        return out
+
+    def _security_modules(self, result: dict) -> list[tuple[str, dict]]:
+        modules = result.get("security_results") or {}
+        if not isinstance(modules, dict):
+            return []
+        return [(name, value if isinstance(value, dict) else {"value": value}) for name, value in modules.items() if isinstance(name, str) and not name.startswith("_")]
+
+    def _iso_timestamp(self) -> str:
+        return datetime.now().isoformat()
+
+    def _severity_rank(self, severity: str) -> int:
+        return {"critical": 4, "high": 3, "medium": 2, "low": 1, "info": 0}.get(str(severity).lower(), 0)
+
+    def _infer_module_severity(self, module_result: dict) -> str:
+        if not isinstance(module_result, dict):
+            return "low"
+        explicit = module_result.get("severity")
+        if explicit:
+            return str(explicit).lower()
+        highest = "low"
+        findings = module_result.get("findings") or []
+        for finding in findings:
+            if not isinstance(finding, dict):
+                continue
+            severity = str(finding.get("severity", "low")).lower()
+            if self._severity_rank(severity) > self._severity_rank(highest):
+                highest = severity
+        if module_result.get("is_phishing") is True:
+            return "critical"
+        if module_result.get("tor2web_exposure") is True:
+            return "high"
+        return highest
+
+    def _security_module_event(self, module_name: str, module_result: dict) -> dict:
+        findings = module_result.get("findings") if isinstance(module_result, dict) else []
+        findings_count = len(findings) if isinstance(findings, list) else 0
+        composite_score = module_result.get("score")
+        if composite_score is None:
+            composite_score = module_result.get("overall_score")
+        if composite_score is None:
+            composite_score = module_result.get("risk_score")
+        if composite_score is None:
+            composite_score = 1.0
+        return {
+            "module_name": module_name,
+            "category": "owasp" if module_name.startswith("owasp_") else module_name,
+            "findings_count": findings_count,
+            "severity": self._infer_module_severity(module_result).upper(),
+            "composite_score": composite_score,
+            "execution_time_ms": module_result.get("analysis_time_ms", 0),
+            "findings": findings if isinstance(findings, list) else [],
+            "details": module_result,
+            "recommendations": module_result.get("recommendations", []),
         }
 
-        if step == "start" and phase == "iteration":
-            return  # Skip raw iteration markers
-
-        if step in ("navigating", "scanning", "analyzing", "investigating", "deliberating"):
-            await send({
-                "type": "phase_start",
-                "phase": phase,
-                "message": detail,
-                "pct": pct,
-                "label": phase_labels.get(phase, phase.title()),
-            })
-
-            # Send log entry
-            await send({
-                "type": "log_entry",
-                "timestamp": time.strftime("%H:%M:%S"),
-                "agent": phase_labels.get(phase, phase.title()),
-                "message": detail,
-                "level": "info",
-            })
-
-        elif step == "done":
-            summary = {}
-            if phase == "scout":
-                summary = {
-                    "pages": data.get("iteration", 1),
-                    "screenshots": data.get("screenshots", 0),
-                }
-            elif phase == "security":
-                summary = {"modules": data.get("modules", [])}
-            elif phase == "vision":
-                summary = {
-                    "findings_count": data.get("findings", 0),
-                    "ai_calls": data.get("nim_calls", 0),
-                }
-            elif phase == "graph":
-                summary = {
-                    "domain_age_days": data.get("domain_age", "?"),
-                    "nodes": data.get("nodes", 0),
-                }
-            elif phase == "judge":
-                summary = {
-                    "trust_score": data.get("trust_score", "?"),
-                    "risk_level": data.get("risk_level", "?"),
-                }
-
-            await send({
-                "type": "phase_complete",
-                "phase": phase,
-                "message": detail,
-                "pct": pct,
-                "label": phase_labels.get(phase, phase.title()),
-                "summary": summary,
-            })
-
-            await send({
-                "type": "log_entry",
-                "timestamp": time.strftime("%H:%M:%S"),
-                "agent": phase_labels.get(phase, phase.title()),
-                "message": f"Complete — {detail}",
-                "level": "info",
-            })
-
-        elif step == "error":
-            await send({
-                "type": "phase_error",
-                "phase": phase,
-                "message": detail,
-                "pct": pct,
-                "label": phase_labels.get(phase, phase.title()),
-                "error": detail,
-            })
-
-            await send({
-                "type": "log_entry",
-                "timestamp": time.strftime("%H:%M:%S"),
-                "agent": phase_labels.get(phase, phase.title()),
-                "message": f"Error — {detail}",
-                "level": "error",
-            })
-
-        elif step == "starting" and phase == "init":
-            await send({
-                "type": "phase_start",
-                "phase": "init",
-                "message": detail,
-                "pct": 0,
-                "label": "Initialization",
-            })
+    def _summary(self, result: dict) -> dict:
+        judge = result.get("judge_decision") or {}
+        trust = judge.get("trust_score_result") or {}
+        graph = result.get("graph_result") or {}
+        signal_scores = trust.get("signal_scores", {}) or {}
+        if not signal_scores:
+            for key, data in (trust.get("sub_signals", {}) or {}).items():
+                if isinstance(data, dict):
+                    raw = data.get("raw_score", 0)
+                    try:
+                        raw = float(raw)
+                    except (TypeError, ValueError):
+                        raw = 0.0
+                    signal_scores[key] = round(raw * 100 if raw <= 1 else raw, 1)
+        findings = self._vision_findings(result)
+        dark_pattern_summary = judge.get("dark_pattern_summary")
+        if not dark_pattern_summary:
+            dark_pattern_summary = {"findings": findings}
+        elif isinstance(dark_pattern_summary, list):
+            dark_pattern_summary = {"findings": dark_pattern_summary}
+        screenshots_count = sum(len((item or {}).get("screenshots", [])) for item in result.get("scout_results", []) if isinstance(item, dict))
+        return {
+            "url": result.get("url", self.url),
+            "status": result.get("status", "unknown"),
+            "audit_tier": result.get("audit_tier", self.tier),
+            "verdict_mode": result.get("verdict_mode", self.verdict_mode),
+            "trust_score": trust.get("final_score"),
+            "risk_level": trust.get("risk_level"),
+            "narrative": judge.get("narrative", ""),
+            "signal_scores": signal_scores,
+            "dark_pattern_summary": dark_pattern_summary,
+            "recommendations": judge.get("recommendations", []),
+            "green_flags": judge.get("green_flags", []),
+            "security_results": result.get("security_results", {}),
+            "security_summary": result.get("security_summary", {}),
+            "site_type": result.get("site_type", ""),
+            "site_type_confidence": result.get("site_type_confidence", 0.0),
+            "domain_info": {
+                "age_days": (graph.get("domain_intel") or {}).get("age_days") or graph.get("domain_age_days"),
+                "registrar": (graph.get("domain_intel") or {}).get("registrar"),
+                "ip": (graph.get("domain_intel") or {}).get("ip_address"),
+                "ssl_issuer": (graph.get("domain_intel") or {}).get("ssl_issuer"),
+                "country": (graph.get("ip_geolocation") or {}).get("country"),
+                "inconsistencies": [(item.get("explanation") if isinstance(item, dict) else str(item)) for item in (graph.get("inconsistencies") or [])],
+                "entity_verified": any(isinstance(v, dict) and v.get("status") == "confirmed" for v in (graph.get("verifications") or [])),
+            },
+            "pages_scanned": len(result.get("investigated_urls") or result.get("scout_results") or []),
+            "screenshots_count": screenshots_count,
+            "elapsed_seconds": result.get("elapsed_seconds", 0),
+            "errors": result.get("errors", []),
+        }
 
     async def _handle_result(self, result: dict, send: Callable):
-        """Process the final JSON result from the CLI and send detailed events."""
         self._result_sent = True
+        findings = self._vision_findings(result)
+        summary = self._summary(result)
+        graph = result.get("graph_result") or {}
+        judge = result.get("judge_decision") or {}
+        trust = judge.get("trust_score_result") or {}
+        timestamp = self._iso_timestamp()
+        scout_results = [item for item in (result.get("scout_results") or []) if isinstance(item, dict)]
 
-        graph_result = result.get("graph_result", {}) or {}
-        judge = result.get("judge_decision", {}) or {}
-        trust_result = judge.get("trust_score_result", {}) or {}
-        vision = result.get("vision_result", {}) or {}
+        visited_urls: list[str] = []
+        total_navigation_time_ms = 0
+        for scout_result in scout_results:
+            scout_url = scout_result.get("url") or summary["url"]
+            visited_urls.append(scout_url)
+            await send({"type": "navigation_start", "url": scout_url, "timestamp": timestamp})
+            await send({
+                "type": "page_scanned",
+                "url": scout_url,
+                "page_title": scout_result.get("page_title", ""),
+                "navigation_time_ms": scout_result.get("navigation_time_ms", 0),
+                "timestamp": timestamp,
+            })
+            total_navigation_time_ms += int(scout_result.get("navigation_time_ms", 0) or 0)
 
-        # Normalize findings shape for frontend components
-        normalized_findings = []
-        for finding in vision.get("findings", []) or []:
-            pattern_type = finding.get("pattern_type") or finding.get("sub_type") or "unknown"
-            description = finding.get("description") or finding.get("evidence") or ""
-            normalized_findings.append({
-                **finding,
-                "id": finding.get("id") or f"{pattern_type}_{finding.get('confidence', 0)}",
-                "pattern_type": pattern_type,
-                "description": description,
-                "plain_english": finding.get("plain_english") or description,
+            forms = scout_result.get("forms_detected") or []
+            if isinstance(forms, list) and forms:
+                normalized_forms = []
+                for idx, form in enumerate(forms):
+                    if not isinstance(form, dict):
+                        continue
+                    inputs = form.get("inputs", [])
+                    normalized_forms.append({
+                        "id": form.get("id") or f"form_{idx}",
+                        "action": form.get("action"),
+                        "method": form.get("method", "GET"),
+                        "inputs": len(inputs) if isinstance(inputs, list) else 0,
+                        "has_password": bool(form.get("has_password") or form.get("hasPassword")),
+                    })
+                if normalized_forms:
+                    await send({
+                        "type": "form_detected",
+                        "count": len(normalized_forms),
+                        "forms": normalized_forms,
+                        "timestamp": timestamp,
+                    })
+
+            captcha_detected = bool(scout_result.get("captcha_detected"))
+            await send({
+                "type": "captcha_detected",
+                "detected": captcha_detected,
+                "captcha_type": "challenge" if captcha_detected else None,
+                "confidence": 1.0 if captcha_detected else 0.0,
+                "timestamp": timestamp,
+            })
+            await send({
+                "type": "navigation_complete",
+                "url": scout_url,
+                "status": scout_result.get("status", "SUCCESS"),
+                "duration_ms": scout_result.get("navigation_time_ms", 0),
+                "screenshots_count": len(scout_result.get("screenshots", []) or []),
+                "timestamp": timestamp,
             })
 
-        # Normalize signal scores (UI expects 0-100)
-        signal_scores = trust_result.get("signal_scores", {}) or {}
-        if not signal_scores:
-            sub_signals = trust_result.get("sub_signals", {}) or {}
-            if isinstance(sub_signals, dict):
-                for key, data in sub_signals.items():
-                    if isinstance(data, dict):
-                        raw = data.get("raw_score", 0)
-                        try:
-                            raw_f = float(raw)
-                        except (TypeError, ValueError):
-                            raw_f = 0.0
-                        signal_scores[key] = round(raw_f * 100 if raw_f <= 1 else raw_f, 1)
+        if visited_urls:
+            await send({
+                "type": "exploration_path",
+                "base_url": summary["url"],
+                "visited_urls": visited_urls,
+                "breadcrumbs": visited_urls,
+                "total_pages": len(visited_urls),
+                "total_time_ms": total_navigation_time_ms,
+            })
 
-        # Normalize domain info
-        domain_intel = graph_result.get("domain_intel") or {}
-        ip_geo = graph_result.get("ip_geolocation") or {}
-        meta_analysis = graph_result.get("meta_analysis") or {}
-        meta_domain_age = (meta_analysis.get("domain_age") or {}) if isinstance(meta_analysis, dict) else {}
-        meta_ssl = (meta_analysis.get("ssl") or {}) if isinstance(meta_analysis, dict) else {}
-        meta_dns = (meta_analysis.get("dns") or {}) if isinstance(meta_analysis, dict) else {}
-
-        inconsistencies = []
-        for item in graph_result.get("inconsistencies", []) or []:
-            if isinstance(item, dict):
-                inconsistencies.append(
-                    item.get("explanation")
-                    or item.get("claim_text")
-                    or item.get("inconsistency_type")
-                    or "Inconsistency detected"
-                )
-            else:
-                inconsistencies.append(str(item))
-
-        verifications = graph_result.get("verifications", []) or []
-        entity_verified = any(
-            isinstance(v, dict) and v.get("status") == "confirmed"
-            for v in verifications
-        )
-
-        # Extract screenshots
-        for scout_result in result.get("scout_results", []):
-            for i, screenshot_path in enumerate(scout_result.get("screenshots", [])):
-                labels = scout_result.get("screenshot_labels", [])
+        for scout_result in scout_results:
+            labels = scout_result.get("screenshot_labels", []) or []
+            for i, screenshot_path in enumerate(scout_result.get("screenshots", []) or []):
                 label = labels[i] if i < len(labels) else f"Screenshot {self._screenshot_index + 1}"
-
-                # Try to read and base64-encode the screenshot
-                img_data = None
-                p = Path(screenshot_path)
-                if p.exists():
+                data = None
+                path = Path(screenshot_path)
+                if path.exists():
                     try:
-                        img_data = base64.b64encode(p.read_bytes()).decode("ascii")
+                        data = base64.b64encode(path.read_bytes()).decode("ascii")
                     except Exception:
-                        pass
-
-                await send({
-                    "type": "screenshot",
-                    "url": screenshot_path,
-                    "label": label,
-                    "index": self._screenshot_index,
-                    "data": img_data,
-                })
+                        data = None
+                await send({"type": "screenshot", "url": screenshot_path, "label": label, "index": self._screenshot_index, "data": data})
                 self._screenshot_index += 1
 
-        # Extract site type
-        site_type = result.get("site_type", "")
-        if site_type:
-            await send({
-                "type": "site_type",
-                "site_type": site_type,
-                "confidence": result.get("site_type_confidence", 0),
-            })
+        if summary["site_type"]:
+            await send({"type": "site_type", "site_type": summary["site_type"], "confidence": summary["site_type_confidence"]})
 
-        # Extract security results
-        for module_name, module_result in result.get("security_results", {}).items():
-            await send({
-                "type": "security_result",
-                "module": module_name,
-                "result": module_result,
-            })
+        for module_name, module_result in self._security_modules(result):
+            await send({"type": "security_result", "module": module_name, "result": module_result})
+            await send({"type": "security_module_result", "result": self._security_module_event(module_name, module_result)})
+            if module_name.startswith("owasp_"):
+                await send({"type": "owasp_module_result", "result": {"module": module_name, **module_result}})
+            if module_name == "darknet_analysis":
+                await send({"type": "darknet_analysis_result", "result": module_result})
+                for threat in module_result.get("marketplace_threats", []) or []:
+                    if isinstance(threat, dict):
+                        await send({"type": "marketplace_threat", "threat": threat})
+                        if threat.get("status") == "exit_scam":
+                            await send({
+                                "type": "exit_scam_detected",
+                                "marketplace": threat.get("marketplace", "unknown"),
+                                "shutdown_date": threat.get("shutdown_date") or threat.get("date"),
+                            })
+                if module_result.get("tor2web_exposure"):
+                    await send({
+                        "type": "tor2web_anonymous_breach",
+                        "threat": {
+                            "gateway_domains": ["tor2web"],
+                            "de_anon_risk": "high",
+                            "recommendation": "Use direct TOR Browser for .onion access.",
+                            "anonymity_breach": "TOR gateway exposure detected",
+                        },
+                    })
 
-        # Extract findings from vision
-        for finding in normalized_findings:
-            fid = finding.get("pattern_type", "") + str(finding.get("confidence", 0))
-            if fid not in self._findings_sent:
-                self._findings_sent.add(fid)
-                await send({
-                    "type": "finding",
-                    "finding": {
-                        "id": fid,
-                        "category": finding.get("category", "unknown"),
-                        "pattern_type": finding.get("pattern_type", "unknown"),
-                        "severity": finding.get("severity", "medium"),
-                        "confidence": finding.get("confidence", 0.5),
-                        "description": finding.get("description", ""),
-                        "plain_english": finding.get("plain_english", finding.get("description", "")),
-                    },
-                })
+        for finding in findings:
+            if finding["id"] not in self._findings_sent:
+                self._findings_sent.add(finding["id"])
+                await send({"type": "finding", "finding": {"id": finding["id"], "category": finding["category"], "pattern_type": finding["pattern_type"], "severity": finding.get("severity", "medium"), "confidence": finding.get("confidence", 0.0), "description": finding["description"], "plain_english": finding["plain_english"]}})
+            await send({"type": "dark_pattern_finding", "finding": {"category": finding["category"], "pattern_type": finding["pattern_type"], "severity": finding.get("severity", "medium"), "confidence": finding.get("confidence", 0.0), "description": finding["description"], "plain_english": finding["plain_english"], "screenshot_path": finding.get("screenshot_path", "")}})
 
-        # ============================================================
-        # Advanced Data Events - Vision Agent
-        # ============================================================
+        for temporal in (result.get("vision_result") or {}).get("temporal_findings", []) or []:
+            if isinstance(temporal, dict):
+                await send({"type": "temporal_finding", "finding": temporal})
 
-        # Emit dark_pattern_finding events with full metadata
-        for finding in vision.get("dark_patterns", []) or []:
-            await send({
-                "type": "dark_pattern_finding",
-                "finding": {
-                    "category_id": finding.get("category_id", "unknown"),
-                    "pattern_type": finding.get("pattern_type", "unknown"),
-                    "confidence": finding.get("confidence", 0.0),
-                    "severity": finding.get("severity", "medium"),
-                    "evidence": finding.get("evidence", ""),
-                    "screenshot_path": finding.get("screenshot_path", ""),
-                    "raw_vlm_response": finding.get("raw_vlm_response"),
-                    "model_used": finding.get("model_used"),
-                    "fallback_mode": finding.get("fallback_mode", False),
-                },
-            })
+        for source_name, source_result in (graph.get("osint_sources") or {}).items():
+            if source_name == "_consensus" or not isinstance(source_result, dict):
+                continue
+            payload = {"source": source_name, **source_result}
+            await send({"type": "osint_result", "result": payload})
+            if source_name.startswith("darknet_") or "tor2web" in source_name:
+                await send({"type": "darknet_threat", "threat": {"source": source_name, "data": payload.get("data"), "confidence": payload.get("confidence_score", 0.0)}})
 
-        # Emit temporal_finding events for time-based deception detection
-        for temporal in vision.get("temporal_findings", []) or []:
-            await send({
-                "type": "temporal_finding",
-                "finding": {
-                    "finding_type": temporal.get("finding_type", "unknown"),
-                    "value_at_t0": temporal.get("value_at_t0", ""),
-                    "value_at_t_delay": temporal.get("value_at_t_delay", ""),
-                    "delta_seconds": temporal.get("delta_seconds", 0),
-                    "is_suspicious": temporal.get("is_suspicious", False),
-                    "explanation": temporal.get("explanation", ""),
-                    "confidence": temporal.get("confidence", 0.0),
-                },
-            })
+        for indicator in graph.get("osint_indicators", []) or []:
+            await send({"type": "ioc_indicator", "indicator": indicator})
 
-        # Emit vision pass summaries if available
-        vision_passes = vision.get("vision_passes", []) or []
-        for pass_data in vision_passes:
-            await send({
-                "type": "vision_pass_complete",
-                "pass": pass_data.get("pass_num", 0),
-                "pass_name": pass_data.get("pass_name", f"Pass {pass_data.get('pass_num', 0)}"),
-                "findings_count": pass_data.get("findings_count", 0),
-                "confidence": pass_data.get("confidence", 0.0),
-                "prompt_used": pass_data.get("prompt_used"),
-                "model_used": pass_data.get("model_used"),
-            })
+        if self._has_graph_data(result):
+            knowledge_graph = await self._construct_knowledge_graph(result, trust.get("final_score", 0) or 0)
+            await send({"type": "knowledge_graph", "graph": knowledge_graph})
+            await send({"type": "graph_analysis", "analysis": self._calculate_graph_analysis(knowledge_graph)})
 
-        # ============================================================
-        # Advanced Data Events - OSINT / Graph Investigator
-        # ============================================================
+        technical = judge.get("technical_verdict") or {"risk_level": trust.get("risk_level", "unknown"), "trust_score": trust.get("final_score", 0), "summary": judge.get("narrative", judge.get("reason", "")), "recommendations": judge.get("recommendations", [])}
+        nontechnical = judge.get("non_technical_verdict") or {"risk_level": trust.get("risk_level", "unknown"), "summary": judge.get("simple_narrative") or judge.get("narrative", ""), "actionable_advice": judge.get("simple_recommendations") or judge.get("recommendations", []), "green_flags": judge.get("green_flags", [])}
+        await send({"type": "verdict_technical", "verdict": technical})
+        await send({"type": "verdict_nontechnical", "verdict": nontechnical})
+        await send({"type": "dual_verdict_complete", "dual_verdict": {"verdict_technical": technical, "verdict_nontechnical": nontechnical, "metadata": {"timestamp": datetime.now().isoformat(), "audit_id": self.audit_id}}})
 
-        # Emit OSINT results with full metadata
-        for osint in graph_result.get("osint_results", []) or []:
-            await send({
-                "type": "osint_result",
-                "result": {
-                    "source": osint.get("source", ""),
-                    "category": osint.get("category", ""),
-                    "query_type": osint.get("query_type", ""),
-                    "query_value": osint.get("query_value", ""),
-                    "status": osint.get("status", ""),
-                    "data": osint.get("data"),
-                    "confidence_score": osint.get("confidence_score", 0.0),
-                    "cached_at": osint.get("cached_at"),
-                    "error_message": osint.get("error_message"),
-                },
-            })
-
-        # Emit darknet threat data
-        for threat in graph_result.get("darknet_threats", []) or []:
-            await send({
-                "type": "darknet_threat",
-                "threat": {
-                    "marketplace_name": threat.get("marketplace_name", ""),
-                    "marketplace_type": threat.get("marketplace_type", "unknown"),
-                    "onion_address": threat.get("onion_address", ""),
-                    "threat_level": threat.get("threat_level", "none"),
-                    "confidence": threat.get("confidence", 0.0),
-                    "description": threat.get("description", ""),
-                    "indicators": threat.get("indicators", []),
-                    "source": threat.get("source", ""),
-                },
-            })
-
-        # Emit IOC indicators
-        for ioc in graph_result.get("ioc_indicators", []) or []:
-            await send({
-                "type": "ioc_indicator",
-                "ioc": {
-                    "type": ioc.get("type", "unknown"),
-                    "value": ioc.get("value", ""),
-                    "confidence": ioc.get("confidence", 0.0),
-                    "source": ioc.get("source", ""),
-                    "context": ioc.get("context"),
-                },
-            })
-
-        # Emit IOC detection complete event if available
-        ioc_detection = graph_result.get("ioc_detection")
-        if ioc_detection:
-            await send({
-                "type": "ioc_detection_complete",
-                "result": {
-                    "iocs": ioc_detection.get("iocs", []),
-                    "threat_score": ioc_detection.get("threat_score", 0.0),
-                    "attack_patterns": ioc_detection.get("attack_patterns", []),
-                },
-            })
-
-        # ============================================================
-        # Advanced Data Events - Judge Dual Verdict
-        # ============================================================
-
-        # Emit technical verdict if available
-        technical_verdict = judge.get("technical_verdict")
-        if technical_verdict:
-            await send({
-                "type": "verdict_technical",
-                "technical": technical_verdict,
-                "trust_score": trust_result.get("final_score", 0),
-            })
-
-        # Emit non-technical verdict if available
-        non_technical_verdict = judge.get("non_technical_verdict")
-        if non_technical_verdict:
-            await send({
-                "type": "verdict_nontechnical",
-                "verdict": non_technical_verdict,
-                "trust_score": trust_result.get("final_score", 0),
-            })
-
-        # Emit dual verdict complete if both are available
-        if technical_verdict and non_technical_verdict:
-            await send({
-                "type": "dual_verdict_complete",
-                "dual_verdict": {
-                    "technical": technical_verdict,
-                    "non_technical": non_technical_verdict,
-                    "trust_score": trust_result.get("final_score", 0),
-                    "timestamp": result.get("timestamp") or datetime.now().isoformat(),
-                },
-            })
-
-        overrides = trust_result.get("overrides_applied", []) or []
-
-        # Extract green flags from judge for positive audit results
-        green_flags = judge.get("green_flags", []) or []
-        if not green_flags and trust_result.get("final_score", 0) >= 80:
-            # Generate common green flags if score is high but none provided
-            green_flags = []
-            if domain_intel.get("age_days", 0) > 365:
-                green_flags.append({
-                    "id": "domain_age",
-                    "category": "trust",
-                    "label": "Valid Domain Age",
-                    "icon": "📅"
-                })
-            if meta_ssl.get("valid", True):
-                green_flags.append({
-                    "id": "ssl_valid",
-                    "category": "security",
-                    "label": "Valid SSL Certificate",
-                    "icon": "🔒"
-                })
-            if entity_verified:
-                green_flags.append({
-                    "id": "entity_verified",
-                    "category": "compliance",
-                    "label": "Entity Verified",
-                    "icon": "✅"
-                })
-            if green_flags:
-                await send({
-                    "type": "green_flags",
-                    "green_flags": green_flags,
-                })
-
-        # Stats update
-        n_screenshots = sum(
-            len(sr.get("screenshots", []))
-            for sr in result.get("scout_results", [])
-        )
-        n_findings = len(vision.get("findings", []))
+        if summary["green_flags"]:
+            await send({"type": "green_flags", "flags": summary["green_flags"], "green_flags": summary["green_flags"]})
 
         await send({
             "type": "stats_update",
             "stats": {
-                "pages_scanned": len(result.get("investigated_urls", [])),
-                "screenshots": n_screenshots,
-                "findings": n_findings,
-                "ai_calls": result.get("nim_calls_used", 0),
-                "security_checks": len(result.get("security_results", {})),
-                "elapsed_seconds": result.get("elapsed_seconds", 0),
+                "pages_scanned": summary["pages_scanned"],
+                "screenshots": summary["screenshots_count"],
+                "findings": len(findings),
+                "findings_detected": len(findings),
+                "ai_calls": (result.get("vision_result") or {}).get("nim_calls_made", 0),
+                "security_checks": len(self._security_modules(result)),
+                "elapsed_seconds": summary["elapsed_seconds"],
+                "duration_seconds": summary["elapsed_seconds"],
             },
         })
+        for performance in self._calculate_agent_performance(result):
+            await send({"type": "agent_performance", "performance": performance})
+        await send({"type": "audit_result", "result": summary})
 
-        # Full result
-        await send({
-            "type": "audit_result",
-            "result": {
-                "url": result.get("url", self.url),
-                "status": result.get("status", "unknown"),
-                "audit_tier": result.get("audit_tier", "standard_audit"),
-                "trust_score": trust_result.get("final_score", 0),
-                "risk_level": trust_result.get("risk_level", "unknown"),
-                "signal_scores": signal_scores,
-                "overrides": overrides,
-                "narrative": judge.get("narrative", ""),
-                "recommendations": judge.get("recommendations", []),
-                "findings": normalized_findings,
-                "dark_pattern_summary": vision.get("dark_pattern_summary", {}),
-                "green_flags": green_flags or [],
-                "security_results": result.get("security_results", {}),
-                "site_type": result.get("site_type", ""),
-                "site_type_confidence": result.get("site_type_confidence", 0),
-                "domain_info": {
-                    "age_days": domain_intel.get("age_days") or graph_result.get("domain_age_days") or meta_domain_age.get("age_days"),
-                    "registrar": domain_intel.get("registrar") or meta_domain_age.get("registrar"),
-                    "country": ip_geo.get("country"),
-                    "ip": domain_intel.get("ip_address") or graph_result.get("ip_address") or (
-                        (meta_dns.get("a_records") or [None])[0]
-                        if isinstance(meta_dns, dict)
-                        else None
-                    ),
-                    "ssl_issuer": domain_intel.get("ssl_issuer") or meta_ssl.get("issuer"),
-                    "inconsistencies": inconsistencies,
-                    "entity_verified": entity_verified,
-                },
-                "pages_scanned": len(result.get("investigated_urls", [])),
-                "screenshots_count": n_screenshots,
-                "elapsed_seconds": result.get("elapsed_seconds", 0),
-                "errors": result.get("errors", []),
-                "verdict_mode": result.get("verdict_mode", "expert"),
-            },
-        })
+    def _calculate_agent_performance(self, result: dict) -> list:
+        performances = []
+        scout_results = result.get("scout_results", []) or []
+        if scout_results:
+            performances.append({"agent": "scout", "tasks_completed": len(scout_results), "tasks_total": len(scout_results), "accuracy": 1.0 if all((item or {}).get("status") != "ERROR" for item in scout_results if isinstance(item, dict)) else 0.0, "processing_time_ms": 0, "finding_rate": sum(len((item or {}).get("screenshots", [])) for item in scout_results if isinstance(item, dict)) / max(1, len(scout_results))})
+        vision_result = result.get("vision_result") or {}
+        if vision_result:
+            analyzed = vision_result.get("screenshots_analyzed", 0)
+            performances.append({"agent": "vision", "tasks_completed": analyzed, "tasks_total": analyzed, "accuracy": 1.0 - (0.1 if vision_result.get("fallback_used") else 0.0), "processing_time_ms": 0, "finding_rate": len(self._vision_findings(result)) / max(1, analyzed or 1)})
+        security_summary = result.get("security_summary") or {}
+        if security_summary:
+            executed = security_summary.get("modules_executed", len(security_summary.get("modules_run", [])))
+            performances.append({"agent": "security", "tasks_completed": executed, "tasks_total": executed, "accuracy": 1.0 - (len(security_summary.get("modules_failed", [])) / max(1, executed or 1)), "processing_time_ms": security_summary.get("analysis_time_ms", 0), "finding_rate": len(security_summary.get("findings", [])) / max(1, executed or 1)})
+        graph_result = result.get("graph_result") or {}
+        if graph_result:
+            verifications = graph_result.get("verifications", []) or []
+            performances.append({"agent": "graph", "tasks_completed": len(graph_result.get("claims_extracted", []) or []), "tasks_total": len(graph_result.get("claims_extracted", []) or []), "accuracy": sum(1 for item in verifications if isinstance(item, dict) and item.get("status") == "confirmed") / max(1, len(verifications)), "processing_time_ms": 0, "finding_rate": len(graph_result.get("inconsistencies", []) or []) / max(1, len(verifications) or 1)})
+        judge_result = result.get("judge_decision") or {}
+        if judge_result:
+            performances.append({"agent": "judge", "tasks_completed": 1 if judge_result.get("action") == "RENDER_VERDICT" else 0, "tasks_total": 1, "accuracy": 1.0 if judge_result.get("trust_score_result") else 0.0, "processing_time_ms": 0})
+        return performances
+
+    def _has_graph_data(self, result: dict) -> bool:
+        graph = result.get("graph_result") or {}
+        return bool(graph.get("graph_data") or graph.get("graph_node_count", 0) > 0 or graph.get("graph_edge_count", 0) > 0 or graph.get("claims_extracted"))
+
+    async def _construct_knowledge_graph(self, result: dict, trust_score: int) -> dict:
+        graph = (result.get("graph_result") or {}).get("graph_data")
+        if isinstance(graph, dict) and (graph.get("nodes") or graph.get("edges")):
+            nodes = graph.get("nodes", []) or []
+            edges = graph.get("edges", []) or []
+            density = len(edges) / (len(nodes) * (len(nodes) - 1)) if len(nodes) > 1 else 0.0
+            return {
+                **graph,
+                "node_count": graph.get("node_count", len(nodes)),
+                "edge_count": graph.get("edge_count", len(edges)),
+                "graph_density": graph.get("graph_density", density),
+                "avg_clustering": graph.get("avg_clustering", 0.0),
+                "largest_component_size": graph.get("largest_component_size", len(nodes)),
+                "isolated_nodes": graph.get("isolated_nodes", 0),
+            }
+        url = result.get("url", self.url)
+        nodes = [{"id": f"domain:{url}", "type": "domain", "label": url, "properties": {"url": url, "trust_score": trust_score, "site_type": result.get("site_type")}}]
+        edges = []
+        for agent_name, present in [("scout", bool(result.get("scout_results"))), ("vision", bool(result.get("vision_result"))), ("security", bool(result.get("security_results"))), ("graph", bool(result.get("graph_result"))), ("judge", bool(result.get("judge_decision")))]:
+            if present:
+                node_id = f"{agent_name}:{url}"
+                nodes.append({"id": node_id, "type": "agent_result", "label": agent_name, "properties": {"agent": agent_name}})
+                edges.append({"source": f"domain:{url}", "target": node_id, "relationship": "analyzed_by", "weight": 1.0})
+        density = len(edges) / (len(nodes) * (len(nodes) - 1)) if len(nodes) > 1 else 0.0
+        return {
+            "nodes": nodes,
+            "edges": edges,
+            "node_count": len(nodes),
+            "edge_count": len(edges),
+            "graph_density": density,
+            "avg_clustering": 0.0,
+            "largest_component_size": len(nodes),
+            "isolated_nodes": 0 if edges else max(0, len(nodes) - 1),
+        }
+
+    def _calculate_graph_analysis(self, graph: dict) -> dict:
+        nodes = graph.get("nodes", []) or []
+        edges = graph.get("edges", []) or []
+        density = len(edges) / (len(nodes) * (len(nodes) - 1)) if len(nodes) > 1 else 0.0
+        return {
+            "total_nodes": len(nodes),
+            "total_edges": len(edges),
+            "graph_sparsity": 1.0 - density,
+            "avg_clustering": graph.get("avg_clustering", 0.0),
+            "connected_components": 1 if nodes else 0,
+            "strongly_connected": bool(nodes and density > 0.5),
+            "osint_clusters": [],
+        }
 
     def _extract_last_json_from_stdout(self, lines: list[str]) -> Optional[dict]:
-        """Best-effort extraction of the last top-level JSON object from stdout."""
-        if not lines:
-            return None
-
         text = "\n".join(lines)
         decoder = json.JSONDecoder()
+        index = 0
         last_obj: Optional[dict] = None
-
-        idx = 0
         while True:
-            start = text.find("{", idx)
+            start = text.find("{", index)
             if start == -1:
                 break
             try:
-                obj, end = decoder.raw_decode(text[start:])
-                if isinstance(obj, dict) and ("status" in obj or "judge_decision" in obj):
-                    last_obj = obj
-                idx = start + max(end, 1)
+                obj, consumed = decoder.raw_decode(text[start:])
             except json.JSONDecodeError:
-                idx = start + 1
-
+                index = start + 1
+                continue
+            if isinstance(obj, dict) and ("status" in obj or "judge_decision" in obj):
+                last_obj = obj
+            index = start + max(consumed, 1)
         return last_obj
 
 
 def generate_audit_id() -> str:
-    """Generate a short unique audit ID."""
     return f"vrts_{uuid.uuid4().hex[:8]}"

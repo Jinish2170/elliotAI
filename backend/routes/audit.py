@@ -5,15 +5,15 @@ Audit routes — Start + WebSocket stream.
 import asyncio
 import json
 import logging
+from datetime import datetime
 from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import Optional
 
-from services.audit_runner import AuditRunner, generate_audit_id
+from backend.services.audit_runner import AuditRunner, generate_audit_id
 from veritas.config.settings import should_use_db_persistence
 from veritas.db import get_db
 from veritas.db.models import Audit, AuditFinding, AuditScreenshot, AuditStatus
@@ -429,11 +429,14 @@ async def on_audit_completed(audit_id: str, result: dict, db: AsyncSession) -> N
         audit.pages_scanned = result.get("pages_scanned", 0)
         audit.elapsed_seconds = result.get("elapsed_seconds", 0)
         audit.status = AuditStatus.COMPLETED
-        audit.completed_at = result.get("completed_at")  # Will be set by default if None
+        audit.completed_at = result.get("completed_at") or datetime.utcnow()
 
         # Add findings from result
-        findings_data = result.get("dark_pattern_summary", {}).get("findings", [])
+        dark_pattern_summary = result.get("dark_pattern_summary") or {}
+        findings_data = dark_pattern_summary.get("findings", []) if isinstance(dark_pattern_summary, dict) else []
         for finding_data in findings_data:
+            if not isinstance(finding_data, dict):
+                continue
             finding = AuditFinding(
                 audit_id=audit_id,
                 pattern_type=finding_data.get("pattern_type", "unknown"),

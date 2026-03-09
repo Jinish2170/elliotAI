@@ -9,18 +9,21 @@ historical threat data analysis.
 """
 
 import logging
+from dataclasses import asdict
 from dataclasses import dataclass, field
 from typing import Optional
 
-from analysis import SecurityModuleBase
-from core.types import SecurityFinding, Severity
-from osint.types import (
+from veritas.analysis import ModuleInfo
+from veritas.analysis.security.base import SecurityFinding as ModuleSecurityFinding
+from veritas.analysis.security.base import SecurityModule, SecurityTier
+from veritas.core.types import SecurityFinding as CoreSecurityFinding, Severity
+from veritas.osint.types import (
     DarknetMarketplaceType,
     ExitRiskLevel,
     MarketplaceThreatData,
     OSINTResult,
 )
-from osint.ioc_detector import IOCDetector
+from veritas.osint.ioc_detector import IOCDetector, IOCType
 
 logger = logging.getLogger("veritas.analysis.security.darknet")
 
@@ -35,8 +38,11 @@ class DarknetAnalysisResult:
     darknet_risk_score: float = 0.0
     recommendations: list[str] = field(default_factory=list)
 
+    def to_dict(self) -> dict:
+        return asdict(self)
 
-class DarknetAnalyzer(SecurityModuleBase):
+
+class DarknetAnalyzer(SecurityModule):
     """
     Darknet vulnerability and hidden service analysis module.
 
@@ -53,6 +59,7 @@ class DarknetAnalyzer(SecurityModuleBase):
     module_name = "darknet_analysis"
     category = "darknet"
     requires_page = False  # Can analyze from URL and OSINT data
+    _default_tier: SecurityTier = SecurityTier.MEDIUM
 
     # Exit scam risk thresholds
     HIGH_EXIT_SCAM_CONFIDENCE = 0.8
@@ -60,15 +67,18 @@ class DarknetAnalyzer(SecurityModuleBase):
     def __init__(self):
         self._ioc_detector = IOCDetector()
 
+    @property
+    def category_id(self) -> str:
+        return self.module_name
+
     @classmethod
     def get_module_info(cls):
         """Get module metadata for auto-discovery."""
-        from analysis import ModuleInfo
         return ModuleInfo(
             module_name=cls.module_name,
             category=cls.category,
             analyzer_class=cls,
-            method_name="analyze",
+            method_name="analyze_with_details",
             requires_page=cls.requires_page,
         )
 
@@ -77,7 +87,12 @@ class DarknetAnalyzer(SecurityModuleBase):
         """Check if module should be auto-discovered."""
         return cls.module_name != "unknown"
 
-    async def analyze(self, url: str, page=None) -> DarknetAnalysisResult:
+    async def analyze_with_details(
+        self,
+        url: str,
+        page=None,
+        page_content: Optional[str] = None,
+    ) -> DarknetAnalysisResult:
         """
         Analyze URL for darknet-related security issues.
 
@@ -92,13 +107,18 @@ class DarknetAnalyzer(SecurityModuleBase):
 
         result = DarknetAnalysisResult()
 
-        # Step 1: Check for .onion references using IOC detector
-        ioc_result = await self._ioc_detector.detect_indicators(url)
-        if ioc_result and ioc_result.onion_addresses:
+        # Step 1: Check for .onion references using the IOC detector's
+        # canonical async API. This captures direct .onion URLs as well as
+        # references embedded in page content when content is available.
+        ioc_result = await self._ioc_detector.detect_content(url=url, content=page_content)
+        onion_indicators = [
+            indicator
+            for indicator in ioc_result.indicators
+            if indicator.ioc_type == IOCType.ONION_ADDRESS
+        ]
+        if onion_indicators:
             result.has_onion_references = True
-            result.onion_urls_detected = [
-                addr.onion_address for addr in ioc_result.onion_addresses
-            ]
+            result.onion_urls_detected = sorted({indicator.value for indicator in onion_indicators})
             logger.info(f"Found {len(result.onion_urls_detected)} .onion references")
 
         # Step 2: Query marketplace threat feeds for onion addresses
@@ -128,6 +148,66 @@ class DarknetAnalyzer(SecurityModuleBase):
         logger.info(f"Darknet analysis complete: risk_score={result.darknet_risk_score}")
         return result
 
+    async def analyze(
+        self,
+        url: str,
+        page_content: Optional[str] = None,
+        headers: Optional[dict] = None,
+        dom_meta: Optional[dict] = None,
+    ) -> list[ModuleSecurityFinding]:
+        """
+        Tier-execution entrypoint.
+
+        Returns tier-compatible security findings while preserving the
+        richer object result through `analyze_with_details()` for legacy
+        and compatibility flows.
+        """
+        result = await self.analyze_with_details(url, page_content=page_content)
+        if not (
+            result.has_onion_references
+            or result.marketplace_threats
+            or result.tor2web_exposure
+            or result.darknet_risk_score > 0
+        ):
+            return []
+
+        severity = "low"
+        if result.darknet_risk_score >= 0.7:
+            severity = "high"
+        elif result.darknet_risk_score >= 0.4:
+            severity = "medium"
+
+        pattern_type = "darknet_threat"
+        if result.tor2web_exposure:
+            pattern_type = "tor2web_exposure"
+        elif result.has_onion_references and not result.marketplace_threats:
+            pattern_type = "onion_reference"
+
+        evidence_bits = [
+            f"risk_score={result.darknet_risk_score:.2f}",
+            f"onion_refs={len(result.onion_urls_detected)}",
+            f"marketplace_matches={len(result.marketplace_threats)}",
+            f"tor2web={result.tor2web_exposure}",
+        ]
+        recommendation = " ".join(result.recommendations[:2])
+
+        from veritas.config.darknet_rules import get_darknet_cvss_score
+
+        return [
+            ModuleSecurityFinding(
+                category_id=self.module_name,
+                pattern_type=pattern_type,
+                severity=severity,
+                confidence=max(0.3, min(1.0, result.darknet_risk_score or 0.5)),
+                description="Darknet threat indicators detected",
+                evidence=", ".join(evidence_bits),
+                cwe_id="CWE-200",
+                cvss_score=get_darknet_cvss_score(result),
+                recommendation=recommendation,
+                url_finding=True,
+            )
+        ]
+
     async def _check_marketplace_threats(
         self, onion_address: str
     ) -> Optional[dict]:
@@ -141,11 +221,11 @@ class DarknetAnalyzer(SecurityModuleBase):
             Threat data dict if found, None otherwise
         """
         # Try each marketplace source
-        from osint.sources.darknet_alpha import AlphaBayMarketplaceSource
-        from osint.sources.darknet_hansa import HansaMarketplaceSource
-        from osint.sources.darknet_empire import EmpireMarketplaceSource
-        from osint.sources.darknet_dream import DreamMarketplaceSource
-        from osint.sources.darknet_wallstreet import WallStreetMarketplaceSource
+        from veritas.osint.sources.darknet_alpha import AlphaBayMarketplaceSource
+        from veritas.osint.sources.darknet_hansa import HansaMarketplaceSource
+        from veritas.osint.sources.darknet_empire import EmpireMarketplaceSource
+        from veritas.osint.sources.darknet_dream import DreamMarketplaceSource
+        from veritas.osint.sources.darknet_wallstreet import WallStreetMarketplaceSource
 
         sources = [
             AlphaBayMarketplaceSource(),
@@ -181,7 +261,7 @@ class DarknetAnalyzer(SecurityModuleBase):
         Returns:
             True if Tor2Web gateway detected
         """
-        from osint.sources.darknet_tor2web import Tor2WebDeanonSource
+        from veritas.osint.sources.darknet_tor2web import Tor2WebDeanonSource
 
         source = Tor2WebDeanonSource()
 
@@ -277,7 +357,7 @@ class DarknetAnalyzer(SecurityModuleBase):
 
     def to_security_finding(
         self, result: DarknetAnalysisResult, url: str
-    ) -> SecurityFinding:
+    ) -> CoreSecurityFinding:
         """
         Convert analysis result to SecurityFinding for Judge integration.
 
@@ -297,10 +377,10 @@ class DarknetAnalyzer(SecurityModuleBase):
             severity = Severity.LOW
 
         # Get CVSS score based on darknet threat patterns
-        from config.darknet_rules import get_darknet_cvss_score
+        from veritas.config.darknet_rules import get_darknet_cvss_score
         cvss_score = get_darknet_cvss_score(result)
 
-        return SecurityFinding(
+        return CoreSecurityFinding(
             severity=severity,
             category="darknet",
             rule_id="DARKNET-001",

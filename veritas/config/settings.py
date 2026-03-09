@@ -172,6 +172,9 @@ SECURITY_AGENT_RETRY_COUNT: int = int(os.getenv("SECURITY_AGENT_RETRY_COUNT", "2
 # Fail fast mode: stop on first module failure if True
 SECURITY_AGENT_FAIL_FAST: bool = os.getenv("SECURITY_AGENT_FAIL_FAST", "false").lower() == "true"
 
+# Tier execution is the default V2 security path when tier modules are available.
+SECURITY_USE_TIER_EXECUTION: bool = os.getenv("SECURITY_USE_TIER_EXECUTION", "true").lower() == "true"
+
 
 # ============================================================
 # Database Persistence (Plan 04-04 - Dual-write migration)

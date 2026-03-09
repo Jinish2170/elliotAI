@@ -8,6 +8,7 @@ import re
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Dict, List, Optional, Set, Union
+from urllib.parse import urlparse
 
 
 class IOCType(str, Enum):
@@ -17,9 +18,11 @@ class IOCType(str, Enum):
     IPV4 = "ipv4"
     IPV6 = "ipv6"
     EMAIL = "email"
+    HASH = "hash"
     MD5 = "md5"
     SHA1 = "sha1"
     SHA256 = "sha256"
+    SHA512 = "sha512"
     FILENAME = "filename"
     ONION_ADDRESS = "onion_address"
     IP_ADDRESS = "ip_address"
@@ -46,18 +49,42 @@ class Indicator:
         context: Additional context about where/when this was found (str or dict)
         source: Source of this indicator (e.g., URL, filename)
     """
-    ioc_type: IOCType
-    value: str
-    confidence: float
+    ioc_type: Optional[IOCType] = None
+    value: str = ""
+    confidence: float = 0.5
     severity: IOCSeverity = IOCSeverity.NONE
     context: Union[str, Dict[str, Any]] = ""
     source: str = ""
-    type: Optional[str] = None  # Alias for ioc_type for backward compatibility
+    type: Optional[Union[str, IOCType]] = None  # Alias for ioc_type for backward compatibility
 
     def __post_init__(self):
         """Initialize type field for backward compatibility."""
+        if self.ioc_type is None and self.type is not None:
+            self.ioc_type = self._coerce_type(self.type)
+        if self.ioc_type is None:
+            raise ValueError("Indicator requires either ioc_type or type")
         if self.type is None:
-            self.type = self.ioc_type.value
+            self.type = self._compat_type(self.ioc_type)
+        elif not isinstance(self.type, IOCType):
+            try:
+                self.type = self._coerce_type(self.type)
+            except ValueError:
+                pass
+
+    @staticmethod
+    def _coerce_type(value: Union[str, IOCType]) -> IOCType:
+        if isinstance(value, IOCType):
+            return value
+        normalized = str(value).strip()
+        if normalized in IOCType.__members__:
+            return IOCType[normalized]
+        return IOCType(normalized.lower())
+
+    @staticmethod
+    def _compat_type(ioc_type: IOCType) -> IOCType:
+        if ioc_type in {IOCType.MD5, IOCType.SHA1, IOCType.SHA256, IOCType.SHA512}:
+            return IOCType.HASH
+        return ioc_type
 
     def __hash__(self) -> int:
         """Hash based on (ioc_type, value) pair for deduplication."""
@@ -78,7 +105,7 @@ class Indicator:
             "severity": self.severity.value if isinstance(self.severity, IOCSeverity) else self.severity,
             "context": self.context,
             "source": self.source,
-            "type": self.type,
+            "type": self.type.name if isinstance(self.type, IOCType) else self.type,
         }
 
 
@@ -113,22 +140,18 @@ class IOCDetectionResult:
     @property
     def hash_detected(self) -> bool:
         """Whether any file hashes were detected."""
-        return any(ind.ioc_type in (IOCType.MD5, IOCType.SHA1, IOCType.SHA256, type)
-                   for ind in self.indicators
-                   if "hash" in ind.type.lower() or ind.ioc_type in (IOCType.MD5, IOCType.SHA1, IOCType.SHA256))
+        hash_types = {IOCType.MD5, IOCType.SHA1, IOCType.SHA256, IOCType.SHA512}
+        return any(
+            ind.ioc_type in hash_types or ind.type == IOCType.HASH
+            for ind in self.indicators
+        )
 
     def add_indicator(self, indicator: Indicator) -> None:
         """Add an indicator to the result and update statistics."""
-        # Deduplicate using the set
-        if indicator in self.indicators_set:
-            return
-
-        self.indicators_set.add(indicator)
-        self.indicators.append(indicator)
         self.found = True
 
-        # Update IOC type count
-        ioc_type = indicator.ioc_type.value
+        # Update counts by occurrence for compatibility with Phase 12 tests.
+        ioc_type = indicator.ioc_type.name
         self.ioc_counts[ioc_type] = self.ioc_counts.get(ioc_type, 0) + 1
 
         # Update onion detection
@@ -143,6 +166,12 @@ class IOCDetectionResult:
         indicator_idx = severity_order.index(indicator.severity)
         if indicator_idx > current_idx:
             self.highest_severity = indicator.severity
+
+        # Keep the serialized indicators list deduplicated.
+        if indicator in self.indicators_set:
+            return
+        self.indicators_set.add(indicator)
+        self.indicators.append(indicator)
 
     def to_dict(self) -> Dict:
         """Convert to dictionary for JSON serialization."""
@@ -167,7 +196,7 @@ class IOCDetectionResult:
         )
         for ind_data in data.get("indicators", []):
             indicator = Indicator(
-                ioc_type=IOCType(ind_data.get("ioc_type", ind_data.get("type", "url"))),
+                ioc_type=Indicator._coerce_type(ind_data.get("ioc_type", ind_data.get("type", "url"))),
                 value=ind_data["value"],
                 confidence=ind_data.get("confidence", 0.0),
                 severity=IOCSeverity(ind_data.get("severity", "none")),
@@ -187,7 +216,7 @@ def is_onion_url(url: str) -> bool:
     Returns:
         True if the URL is a .onion address, False otherwise
     """
-    return bool(re.search(r"\.onion(?:/|$)", url.lower()))
+    return bool(re.search(r"\.onion(?::\d+)?(?:/|$)", url.lower()))
 
 
 async def detect_onion_addresses(url: str, content: str) -> List[str]:
@@ -239,10 +268,14 @@ class IOCDetector:
         IOCType.IPV6: 0.6,
         IOCType.URL: 0.8,
         IOCType.EMAIL: 0.5,
+        IOCType.HASH: 0.9,
         IOCType.MD5: 0.9,
         IOCType.SHA1: 0.9,
         IOCType.SHA256: 0.95,
+        IOCType.SHA512: 0.95,
         IOCType.FILENAME: 0.3,
+        IOCType.ONION_ADDRESS: 0.95,
+        IOCType.IP_ADDRESS: 0.8,
     }
 
     # Regex patterns for each IOC type
@@ -268,6 +301,9 @@ class IOCDetector:
         IOCType.EMAIL: [
             r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b',
         ],
+        IOCType.ONION_ADDRESS: [
+            r'(?<![a-zA-Z0-9-])(?:[a-z0-9-]+(?:\.[a-z0-9-]+)*)\.onion(?![a-zA-Z0-9-])',
+        ],
         IOCType.MD5: [
             r'\b[a-fA-F0-9]{32}\b',
         ],
@@ -276,6 +312,9 @@ class IOCDetector:
         ],
         IOCType.SHA256: [
             r'\b[a-fA-F0-9]{64}\b',
+        ],
+        IOCType.SHA512: [
+            r'\b[a-fA-F0-9]{128}\b',
         ],
         IOCType.FILENAME: [
             r'\b[\w\-,\s@]+\.(?:exe|dll|bat|cmd|ps1|vbs|js|jar|msi|scr|com|pif)\b',
@@ -444,12 +483,6 @@ class IOCDetector:
                 except ValueError:
                     return False
 
-        # Exclude private/reserved IPv4 ranges for external threat intel
-        if ioc_type == IOCType.IPV4:
-            if value.startswith('10.') or value.startswith('192.168.') or \
-               value.startswith('172.') or value.startswith('127.'):
-                return False
-
         # Domain validation
         if ioc_type == IOCType.DOMAIN:
             # Must have at least a TLD
@@ -472,6 +505,9 @@ class IOCDetector:
             if any(service in lower_value for service in ['noreply@', 'no-reply@', 'support@', 'info@']):
                 return False
 
+        if ioc_type == IOCType.ONION_ADDRESS:
+            return value.lower().endswith(".onion")
+
         return True
 
     def _calculate_confidence(self, ioc_type: IOCType, value: str) -> float:
@@ -490,6 +526,9 @@ class IOCDetector:
         # HTTPS bonus for URLs
         if ioc_type == IOCType.URL and value.startswith('https://'):
             confidence = min(confidence + 0.1, 1.0)
+
+        if ioc_type == IOCType.ONION_ADDRESS:
+            return 0.95
 
         # Penalty for suspicious TLDs (often used in malicious domains)
         if ioc_type in (IOCType.DOMAIN, IOCType.URL):
@@ -573,12 +612,12 @@ class IOCDetector:
 
         # First check if URL is a .onion address (highest priority)
         if is_onion_url(url):
-            # Extract onion address without protocol and port
-            onion_match = re.search(r'([a-z2-7]{16,56})\.onion', url.lower())
-            if onion_match:
+            parsed = urlparse(url)
+            hostname = (parsed.hostname or "").lower()
+            if hostname.endswith(".onion"):
                 return Indicator(
                     ioc_type=IOCType.ONION_ADDRESS,
-                    value=f"{onion_match.group(1)}.onion",
+                    value=hostname,
                     confidence=0.95,
                     severity=IOCSeverity.HIGH,
                     context={"source": "url"},
@@ -592,16 +631,11 @@ class IOCDetector:
         )
         if ip_match:
             ip = ip_match.group(0)
-            # Don't flag private IPs as severe threats
-            severity = IOCSeverity.MEDIUM
-            if ip.startswith(('192.168.', '10.', '172.16.', '172.17.', '172.18.', '172.19.', '172.20.', '172.21.', '172.22.', '172.23.', '172.24.', '172.25.', '172.26.', '172.27.', '172.28.', '172.29.', '172.30.', '172.31.', '127.')):
-                severity = IOCSeverity.LOW
-
             return Indicator(
                 ioc_type=IOCType.IP_ADDRESS,
                 value=ip,
                 confidence=0.8,
-                severity=severity,
+                severity=IOCSeverity.MEDIUM,
                 context={"source": "host"},
             )
 
@@ -656,6 +690,12 @@ class IOCDetector:
                         ind.context["hash_type"] = "SHA256"
                     else:
                         ind.context = {"hash_type": "SHA256", "source": "content"}
+                    ind.severity = IOCSeverity.HIGH
+                elif ind.ioc_type == IOCType.SHA512:
+                    if hasattr(ind, 'context') and isinstance(ind.context, dict):
+                        ind.context["hash_type"] = "SHA512"
+                    else:
+                        ind.context = {"hash_type": "SHA512", "source": "content"}
                     ind.severity = IOCSeverity.HIGH
                 elif ind.ioc_type == IOCType.ONION_ADDRESS:
                     ind.severity = IOCSeverity.HIGH

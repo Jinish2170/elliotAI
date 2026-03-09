@@ -23,27 +23,23 @@ import json as _json
 import logging
 import multiprocessing
 import os
-import sys
 import time
 from dataclasses import asdict
-from pathlib import Path
 from typing import Annotated, Any, Callable, Optional, TypedDict
 
 from langgraph.graph import END, StateGraph
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-
-from agents.graph_investigator import GraphInvestigator, GraphResult
-from agents.judge import AuditEvidence, JudgeAgent, JudgeDecision
-from agents.scout import ScoutResult, StealthScout
-from agents.vision import VisionAgent, VisionResult
-from config import settings
-from config.trust_weights import TrustScoreResult
-from core.complexity_analyzer import ComplexityAnalyzer
-from core.degradation import DegradedResult, FallbackManager, FallbackMode
-from core.ipc import ProgressEvent, SecurityModeCompleted, SecurityModeStarted, safe_put
-from core.nim_client import NIMClient
-from core.timeout_manager import ComplexityMetrics, TimeoutManager, TimeoutStrategy
+from veritas.agents.graph_investigator import GraphInvestigator, GraphResult
+from veritas.agents.judge import AuditEvidence, JudgeAgent, JudgeDecision
+from veritas.agents.scout import ScoutResult, StealthScout
+from veritas.agents.vision import VisionAgent, VisionResult
+from veritas.config import settings
+from veritas.config.trust_weights import TrustScoreResult
+from veritas.core.complexity_analyzer import ComplexityAnalyzer
+from veritas.core.degradation import DegradedResult, FallbackManager, FallbackMode
+from veritas.core.ipc import ProgressEvent, SecurityModeCompleted, SecurityModeStarted, safe_put
+from veritas.core.nim_client import NIMClient
+from veritas.core.timeout_manager import ComplexityMetrics, TimeoutManager, TimeoutStrategy
 
 logger = logging.getLogger("veritas.orchestrator")
 
@@ -96,6 +92,7 @@ class AuditState(TypedDict):
     verdict_mode: str                    # "simple" | "expert"
     security_results: dict               # Results from security modules
     security_mode: str                   # "agent", "function", or "function_fallback"
+    security_summary: dict               # Aggregated metrics for the security phase
     enabled_security_modules: list[str]  # Which security modules to run
 
 
@@ -413,6 +410,13 @@ async def graph_node(state: AuditState) -> dict:
                 "is_privacy_protected": result.domain_intel.is_privacy_protected if result.domain_intel else False,
             } if result.domain_intel else None,
             "tavily_searches": result.tavily_searches,
+            "osint_sources": result.osint_sources,
+            "osint_consensus": result.osint_consensus,
+            "osint_indicators": result.osint_indicators,
+            "cti_techniques": result.cti_techniques,
+            "threat_attribution": result.threat_attribution,
+            "threat_level": result.threat_level,
+            "osint_confidence": result.osint_confidence,
             "errors": result.errors,
         }
 
@@ -459,7 +463,7 @@ async def judge_node(state: AuditState) -> dict:
     vision_result = None
     vr_dict = state.get("vision_result")
     if vr_dict:
-        from agents.vision import DarkPatternFinding, TemporalFinding
+        from veritas.agents.vision import DarkPatternFinding, TemporalFinding
         dark_patterns = []
         for p in vr_dict.get("findings", []):
             dark_patterns.append(DarkPatternFinding(
@@ -500,7 +504,7 @@ async def judge_node(state: AuditState) -> dict:
     graph_result = None
     gr_dict = state.get("graph_result")
     if gr_dict:
-        from agents.graph_investigator import (DomainIntel, EntityClaim,
+        from veritas.agents.graph_investigator import (DomainIntel, EntityClaim,
                                                GraphInconsistency,
                                                VerificationResult)
         claims = [EntityClaim(**c) for c in gr_dict.get("claims_extracted", [])]
@@ -682,7 +686,7 @@ async def security_node_with_agent(state: AuditState) -> dict:
     rollout_pct = settings.get_security_agent_rollout()
 
     # Phase 10-04: Feature flag for tier execution
-    use_tier_execution = os.getenv("SECURITY_USE_TIER_EXECUTION", "false").lower() == "true"
+    use_tier_execution = bool(getattr(settings, "SECURITY_USE_TIER_EXECUTION", True))
 
     # Extract Scout data for tier-based analysis
     scout_results = state.get("scout_results", [])
@@ -754,9 +758,8 @@ async def security_node_with_agent(state: AuditState) -> dict:
                 use_tier_execution=use_tier_execution
             )
 
-            # Convert SecurityResult to dict format compatible with function mode
-            results = {
-                "security_mode": security_mode,
+            results = dict(result.modules_results)
+            security_summary = {
                 "composite_score": result.composite_score,
                 "findings": [f.to_dict() if hasattr(f, 'to_dict') else f for f in result.findings],
                 "total_findings": result.total_findings,
@@ -785,10 +788,14 @@ async def security_node_with_agent(state: AuditState) -> dict:
             # Call original security_node function
             update = await security_node(state)
             results = update.get("security_results", {})
-            results["security_mode"] = security_mode
-            results["fallback_reason"] = str(e)
+            security_summary = update.get("security_summary", {})
+            security_summary["fallback_reason"] = str(e)
 
-            return {"security_results": results, "security_mode": security_mode}
+            return {
+                "security_results": results,
+                "security_mode": security_mode,
+                "security_summary": security_summary,
+            }
     else:
         security_mode = "function"
         logger.info(f"Security node: USING FUNCTION MODE for {url} | rollout={rollout_pct:.0%}")
@@ -797,10 +804,15 @@ async def security_node_with_agent(state: AuditState) -> dict:
     if security_mode == "function":
         update = await security_node(state)
         results = update.get("security_results", {})
-        results["security_mode"] = security_mode
+        security_summary = update.get("security_summary", {})
 
     logger.info(f"Security node complete: mode={security_mode} | url={url}")
-    return {"security_results": results, "security_mode": security_mode}
+    security_summary["security_mode"] = security_mode
+    return {
+        "security_results": results,
+        "security_mode": security_mode,
+        "security_summary": security_summary,
+    }
 
 
 async def security_node(state: AuditState) -> dict:
@@ -822,7 +834,7 @@ async def security_node(state: AuditState) -> dict:
     # 1. Security Headers
     if "security_headers" in enabled:
         try:
-            from analysis.security_headers import SecurityHeaderAnalyzer
+            from veritas.analysis.security_headers import SecurityHeaderAnalyzer
             analyzer = SecurityHeaderAnalyzer()
             res = await analyzer.analyze(url)
             results["security_headers"] = res.to_dict()
@@ -834,31 +846,31 @@ async def security_node(state: AuditState) -> dict:
     # 2. Phishing Check
     if "phishing_db" in enabled:
         try:
-            from analysis.phishing_checker import PhishingChecker
+            from veritas.analysis.phishing_checker import PhishingChecker
             checker = PhishingChecker()
             res = await checker.check(url)
-            results["phishing"] = res.to_dict()
+            results["phishing_db"] = res.to_dict()
             logger.info(
                 f"Phishing check: is_phishing={res.is_phishing}, "
                 f"heuristic_flags={len(res.heuristic_flags)}, sources={len(res.sources)}"
             )
         except Exception as e:
             logger.warning(f"Phishing check failed: {e}")
-            results["phishing"] = {"error": str(e)}
+            results["phishing_db"] = {"error": str(e)}
 
     # 3. Redirect Analysis
     if "redirect_chain" in enabled:
         try:
-            from analysis.redirect_analyzer import RedirectAnalyzer
+            from veritas.analysis.redirect_analyzer import RedirectAnalyzer
             analyzer = RedirectAnalyzer()
             res = await analyzer.analyze(url)
-            results["redirects"] = res.to_dict()
+            results["redirect_chain"] = res.to_dict()
             logger.info(
                 f"Redirect analysis: {res.total_hops} hops, suspicious={bool(res.suspicion_flags)}"
             )
         except Exception as e:
             logger.warning(f"Redirect analysis failed: {e}")
-            results["redirects"] = {"error": str(e)}
+            results["redirect_chain"] = {"error": str(e)}
 
     # 4. JS Obfuscation Detection (lightweight heuristic from scout data)
     if "js_analysis" in enabled:
@@ -885,7 +897,24 @@ async def security_node(state: AuditState) -> dict:
         except Exception as e:
             results["form_validation"] = {"error": str(e)}
 
-    return {"security_results": results}
+    modules_run = list(results.keys())
+    modules_failed = [
+        module_name for module_name, module_result in results.items()
+        if isinstance(module_result, dict) and module_result.get("error")
+    ]
+    security_summary = {
+        "composite_score": 1.0,
+        "findings": [],
+        "total_findings": 0,
+        "modules_run": modules_run,
+        "modules_failed": modules_failed,
+        "modules_executed": len(modules_run),
+        "analysis_time_ms": 0,
+        "errors": [results[m]["error"] for m in modules_failed],
+        "tier_execution": False,
+        "darknet_correlation": None,
+    }
+    return {"security_results": results, "security_summary": security_summary}
 
 
 # ============================================================
@@ -939,7 +968,7 @@ async def force_verdict_node(state: AuditState) -> dict:
     Force a verdict when the audit budget is exhausted but the Judge wanted
     more investigation.  Computes a trust score from whatever evidence we have.
     """
-    from config.trust_weights import SubSignal, compute_trust_score
+    from veritas.config.trust_weights import SubSignal, compute_trust_score
 
     vr = state.get("vision_result") or {}
     gr = state.get("graph_result") or {}
@@ -1228,7 +1257,7 @@ class VeritasOrchestrator:
         # Judge fallback: placeholder verdict
         async def judge_fallback(**kwargs) -> dict:
             # Force verdict from partial evidence
-            from config.trust_weights import SubSignal, compute_trust_score
+            from veritas.config.trust_weights import SubSignal, compute_trust_score
 
             vr = kwargs.get("vision_result", {})
             gr = kwargs.get("graph_result", {})
@@ -1443,6 +1472,7 @@ class VeritasOrchestrator:
             "verdict_mode": verdict_mode,
             "security_results": {},
             "security_mode": "",  # Will be set by security_node_with_agent
+            "security_summary": {},
             "enabled_security_modules": enabled_security_modules or getattr(
                 settings, 'ENABLED_SECURITY_MODULES', ["security_headers", "phishing_db"]
             ),

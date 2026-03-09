@@ -37,7 +37,7 @@ from conftest import (
 )
 
 # Import VERITAS modules
-from core.orchestrator import build_audit_graph
+from veritas.core.orchestrator import build_audit_graph
 
 
 # ============================================================

@@ -18,7 +18,7 @@ Previous Implementation (Function-based - Maintained for backward compatibility)
 
 Migration Path:
     - use_tier_execution=True → New tier-based execution (recommended)
-    - use_tier_execution=False → Original function-based implementation (default)
+    - use_tier_execution=False → Original function-based implementation (compatibility mode)
     - SECURITY_USE_TIER_EXECUTION environment variable controls orchestrator behavior
 
 Responsibilities:
@@ -53,17 +53,13 @@ import asyncio
 import logging
 import os
 import time
-from pathlib import Path
 from typing import Dict, List, Optional
-
-SYS_PATH = str(Path(__file__).resolve().parent.parent)
-if SYS_PATH not in os.sys.path:
-    os.sys.path.insert(0, SYS_PATH)
 
 from veritas.config.settings import (
     SECURITY_AGENT_FAIL_FAST,
     SECURITY_AGENT_RETRY_COUNT,
     SECURITY_AGENT_TIMEOUT,
+    SECURITY_USE_TIER_EXECUTION,
     USE_SECURITY_AGENT,
 )
 from veritas.core.nim_client import NIMClient
@@ -153,7 +149,7 @@ class SecurityAgent:
         result = await agent.analyze(url, use_tier_execution=False)
 
         # With custom NIM client and config
-        from core.types import SecurityConfig
+        from veritas.core.types import SecurityConfig
         config = SecurityConfig(timeout=20, retry_count=3)
         agent = SecurityAgent(nim_client=custom_nim, config=config)
 
@@ -163,7 +159,7 @@ class SecurityAgent:
     """
 
     # Feature flags
-    use_tier_execution: bool = False  # Set to True to enable tier execution
+    use_tier_execution: bool = True
     enable_cvss: bool = True          # Enable CVSS scoring
     enable_darknet: bool = True       # Enable darknet threat correlation
 
@@ -189,6 +185,7 @@ class SecurityAgent:
             fail_fast=SECURITY_AGENT_FAIL_FAST,
         )
         self._discovered_modules: Dict[str, type] = {}
+        self.use_tier_execution = bool(TIER_AVAILABLE and SECURITY_USE_TIER_EXECUTION)
 
         # Check availability of tier execution dependencies
         if not TIER_AVAILABLE:
@@ -247,7 +244,7 @@ class SecurityAgent:
         Returns:
             bool: True if SecurityAgent should be used, False for function mode
         """
-        from config.settings import should_use_security_agent
+        from veritas.config.settings import should_use_security_agent
         return should_use_security_agent(url)
 
     @staticmethod
@@ -474,7 +471,7 @@ class SecurityAgent:
         modules_failed = 0
 
         # Helper to convert SecurityModuleFinding to SecurityFinding
-        def convert_findings(module_findings: List[SecurityModuleFinding], module_name: str) -> List[SecurityFinding]:
+        def convert_findings(module_findings: List[SecurityModuleFinding]) -> List[SecurityFinding]:
             converted = []
             for mf in module_findings:
                 try:
@@ -482,7 +479,7 @@ class SecurityAgent:
                         category=mf.category_id,
                         severity=mf.severity,
                         evidence=mf.evidence,
-                        source_module=module_name,
+                        source_module=mf.category_id,
                         confidence=mf.confidence,
                         cwe_id=mf.cwe_id,
                         cvss_score=mf.cvss_score,
@@ -502,7 +499,10 @@ class SecurityAgent:
                 async with asyncio.timeout(SecurityTier.FAST.timeout_suggestion):
                     fast_findings = await execute_tier(fast_modules, url, page_content, headers, dom_meta)
                     all_findings.extend(fast_findings)
-                    result.modules_run.extend([m.__name__ for m in fast_modules])
+                    result.modules_run.extend([
+                        getattr(m, "module_name", None) or getattr(m(), "category_id", m.__name__)
+                        for m in fast_modules
+                    ])
                     modules_executed += len(fast_modules)
                     logger.info(f"FAST tier complete: {len(fast_findings)} findings")
             except (TimeoutError, Exception) as e:
@@ -519,7 +519,10 @@ class SecurityAgent:
                 async with asyncio.timeout(SecurityTier.MEDIUM.timeout_suggestion):
                     medium_findings = await execute_tier(medium_modules, url, page_content, headers, dom_meta)
                     all_findings.extend(medium_findings)
-                    result.modules_run.extend([m.__name__ for m in medium_modules])
+                    result.modules_run.extend([
+                        getattr(m, "module_name", None) or getattr(m(), "category_id", m.__name__)
+                        for m in medium_modules
+                    ])
                     modules_executed += len(medium_modules)
                     logger.info(f"MEDIUM tier complete: {len(medium_findings)} findings")
             except (TimeoutError, Exception) as e:
@@ -539,7 +542,9 @@ class SecurityAgent:
                     async with asyncio.timeout(timeout):
                         module_findings = await instance.analyze(url, page_content, headers, dom_meta)
                     all_findings.extend(module_findings)
-                    result.modules_run.append(module_class.__name__)
+                    result.modules_run.append(
+                        getattr(module_class, "module_name", None) or getattr(instance, "category_id", module_class.__name__)
+                    )
                     modules_executed += 1
                     logger.debug(f"DEEP module {module_class.__name__} complete: {len(module_findings)} findings")
                 except (TimeoutError, Exception) as e:
@@ -550,7 +555,7 @@ class SecurityAgent:
             logger.info(f"DEEP tier complete: {len(deep_modules)} modules executed")
 
         # Convert findings to core types
-        result.findings = convert_findings(all_findings, "security_modules")
+        result.findings = convert_findings(all_findings)
 
         # Update execution metrics
         result.modules_executed = modules_executed
@@ -563,6 +568,55 @@ class SecurityAgent:
         if self.enable_darknet and DARKNET_AVAILABLE:
             result.findings, darknet_intel = await self._correlate_darknet_threats(url, result.findings)
             result.darknet_correlation = darknet_intel
+
+        # Build per-module summaries from the normalized findings so the backend
+        # receives a stable `security_results` payload even in tier mode.
+        result.modules_results = {
+            module_name: {
+                "findings": [],
+                "findings_count": 0,
+                "severity": "LOW",
+                "score": 1.0,
+                "recommendations": [],
+            }
+            for module_name in result.modules_run
+        }
+        for finding in result.findings:
+            module_name = finding.source_module or finding.category
+            module_summary = result.modules_results.setdefault(
+                module_name,
+                {
+                    "findings": [],
+                    "findings_count": 0,
+                    "severity": "LOW",
+                    "score": 1.0,
+                    "recommendations": [],
+                },
+            )
+            module_summary["findings"].append(
+                {
+                    "category": finding.category,
+                    "severity": finding.severity.value,
+                    "evidence": finding.evidence,
+                    "confidence": finding.confidence,
+                    "cwe_id": finding.cwe_id,
+                    "cvss_score": finding.cvss_score,
+                    "recommendation": finding.recommendation,
+                }
+            )
+            module_summary["findings_count"] = len(module_summary["findings"])
+            severity_order = {"CRITICAL": 4, "HIGH": 3, "MEDIUM": 2, "LOW": 1, "INFO": 0}
+            if severity_order.get(finding.severity.value, 0) > severity_order.get(module_summary["severity"], 0):
+                module_summary["severity"] = finding.severity.value
+            module_summary["score"] = max(0.0, module_summary["score"] - {
+                "CRITICAL": 0.25,
+                "HIGH": 0.15,
+                "MEDIUM": 0.08,
+                "LOW": 0.03,
+                "INFO": 0.0,
+            }.get(finding.severity.value, 0.0) * finding.confidence)
+            if finding.recommendation and finding.recommendation not in module_summary["recommendations"]:
+                module_summary["recommendations"].append(finding.recommendation)
 
         # Compute composite score
         result.composite_score = self._compute_composite_score_from_findings(result.findings)
@@ -747,7 +801,7 @@ class SecurityAgent:
             page_text = ""
             page_metadata = {
                 "target_url": url,
-                "security_findings": [f.to_dict() for f in findings],
+                "security_findings": [SecurityResult._finding_to_dict(f) for f in findings],
             }
 
             # Analyze threats
@@ -861,8 +915,12 @@ class SecurityAgent:
                     instance = module_class()
                     module_result = await instance.validate(page, url)
                 else:
-                    logger.error(f"Unknown method name: {method_name}")
-                    return None
+                    instance = module_class()
+                    method = getattr(instance, method_name, None)
+                    if method is None:
+                        logger.error(f"Unknown method name: {method_name}")
+                        return None
+                    module_result = await method(url) if asyncio.iscoroutinefunction(method) else method(url)
 
                 elapsed_ms = int((time.time() - start_time) * 1000)
                 logger.debug(
@@ -1045,6 +1103,34 @@ class SecurityAgent:
                             source_module="form_validation",
                         )
                         result.add_finding(finding)
+
+        elif module_name == "darknet_analysis":
+            if hasattr(module_result, "darknet_risk_score") and (
+                module_result.darknet_risk_score > 0
+                or getattr(module_result, "has_onion_references", False)
+                or getattr(module_result, "tor2web_exposure", False)
+            ):
+                evidence = (
+                    f"Darknet indicators found: risk_score={module_result.darknet_risk_score:.2f}, "
+                    f"onion_refs={len(getattr(module_result, 'onion_urls_detected', []))}, "
+                    f"marketplace_matches={len(getattr(module_result, 'marketplace_threats', []))}, "
+                    f"tor2web={getattr(module_result, 'tor2web_exposure', False)}"
+                )
+                severity = "low"
+                if module_result.darknet_risk_score >= 0.7:
+                    severity = "high"
+                elif module_result.darknet_risk_score >= 0.4:
+                    severity = "medium"
+                finding = SecurityFinding.create(
+                    category="darknet_analysis",
+                    severity=severity,
+                    evidence=evidence,
+                    source_module="darknet_analysis",
+                    confidence=max(0.3, min(1.0, getattr(module_result, "darknet_risk_score", 0.5) or 0.5)),
+                    recommendation=" ".join(getattr(module_result, "recommendations", [])[:2]),
+                    url_finding=True,
+                )
+                result.add_finding(finding)
 
     # ================================================================
     # Score Computation

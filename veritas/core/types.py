@@ -146,7 +146,7 @@ class SecurityConfig:
             SecurityConfig instance with values from settings module
         """
         try:
-            from config.settings import (
+            from veritas.config.settings import (
                 SECURITY_AGENT_FAIL_FAST,
                 SECURITY_AGENT_RETRY_COUNT,
                 SECURITY_AGENT_TIMEOUT,

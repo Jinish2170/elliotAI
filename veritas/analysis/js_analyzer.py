@@ -18,7 +18,7 @@ import re
 from collections import Counter
 from dataclasses import dataclass, field
 
-from veritas.analysis import SecurityModuleBase
+from veritas.analysis import SecurityModule
 
 logger = logging.getLogger("veritas.analysis.js_analyzer")
 
@@ -119,7 +119,7 @@ _WEBSOCKET_DETECTION_JS = """
 """
 
 
-class JSObfuscationDetector(SecurityModuleBase):
+class JSObfuscationDetector(SecurityModule):
     """Detect obfuscated JavaScript and malware in a page."""
 
     # Module metadata for auto-discovery

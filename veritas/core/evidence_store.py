@@ -22,7 +22,7 @@ from typing import Optional
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from config import settings
+from veritas.config import settings
 
 logger = logging.getLogger("veritas.evidence_store")
 

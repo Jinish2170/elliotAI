@@ -73,7 +73,7 @@ def get_darknet_cvss_score(analysis_result) -> float:
     Returns:
         CVSS base score (0.0 - 10.0)
     """
-    from analysis.security.darknet import DarknetAnalysisResult
+    from veritas.analysis.security.darknet import DarknetAnalysisResult
 
     score = 0.0
 

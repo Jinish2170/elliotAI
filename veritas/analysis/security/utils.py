@@ -106,7 +106,15 @@ def group_modules_by_tier(modules: List[type[SecurityModule]]) -> Dict[SecurityT
         try:
             # Get module instance to access tier property
             module_info = module_class.get_module_info()
-            tier_str = module_info.get("tier", "MEDIUM")
+            if isinstance(module_info, dict):
+                tier_str = module_info.get("tier", "MEDIUM")
+            else:
+                tier_str = getattr(module_info, "tier", None)
+                if tier_str is None:
+                    try:
+                        tier_str = module_class().tier.value
+                    except Exception:
+                        tier_str = "MEDIUM"
             tier = SecurityTier(tier_str)
 
             grouped[tier].append(module_class)

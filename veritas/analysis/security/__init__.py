@@ -8,9 +8,6 @@ Main Exports:
     - SecurityModule: Abstract base class for security modules
     - SecurityFinding: Dataclass with CWE ID and CVSS score
     - SecurityTier: Enum (FAST, MEDIUM, DEEP) with timeout suggestions
-    - SecurityHeaderAnalyzerEnhanced: FAST tier TLS/SSL security header analyzer
-    - CookieSecurityAnalyzer: FAST tier cookie security analyzer
-    - ContentSecurityPolicyAnalyzer: FAST tier CSP analyzer
     - Utility functions: register_security_module(), get_registered_modules()
 
 Usage:

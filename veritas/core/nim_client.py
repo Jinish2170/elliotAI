@@ -34,7 +34,7 @@ from tenacity import (before_sleep_log, retry, retry_if_exception_type,
                       stop_after_attempt, wait_exponential)
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from config import settings
+from veritas.config import settings
 
 logger = logging.getLogger("veritas.nim")
 

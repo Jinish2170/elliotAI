@@ -37,9 +37,8 @@ from playwright.async_api import (Browser, BrowserContext, Page, Playwright,
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from config import settings
-from config.site_types import SiteType, classify_site_type
+from veritas.config import settings
+from veritas.config.site_types import SiteType, classify_site_type
 
 logger = logging.getLogger("veritas.scout")
 
@@ -255,6 +254,7 @@ class StealthScout:
         self._evidence_dir = evidence_dir or settings.EVIDENCE_DIR
         self._evidence_dir.mkdir(parents=True, exist_ok=True)
         self.progress_emitter = progress_emitter
+        self._ioc_detector = IOCDetector() if _IOC_AVAILABLE and IOCDetector is not None else None
 
     async def __aenter__(self):
         self._playwright = await async_playwright().start()
@@ -459,7 +459,7 @@ class StealthScout:
             # --- DOM Analysis (zero-AI structural checks) ---
             dom_result = {}
             try:
-                from analysis.dom_analyzer import DOMAnalyzer
+                from veritas.analysis.dom_analyzer import DOMAnalyzer
                 dom_analyzer = DOMAnalyzer()
                 dom_result = await dom_analyzer.analyze(page)
                 if not isinstance(dom_result, dict):
@@ -471,13 +471,33 @@ class StealthScout:
             # --- Form Validation ---
             form_val_result = {}
             try:
-                from analysis.form_validator import FormActionValidator
+                from veritas.analysis.form_validator import FormActionValidator
                 fv = FormActionValidator()
                 fv_res = await fv.validate(page, url)
                 form_val_result = fv_res.to_dict()
                 logger.debug(f"Form validation: {fv_res.total_forms} forms, {fv_res.critical_count} critical")
             except Exception as e:
                 logger.warning(f"Form validation failed (non-critical): {e}")
+
+            # --- IOC Detection ---
+            try:
+                if self._ioc_detector:
+                    ioc_content = await page.content()
+                    ioc_result = await self._ioc_detector.detect_content(
+                        url=url,
+                        content=ioc_content,
+                        links=metadata.links_external[:50],
+                    )
+                    ioc_detected = ioc_result.found
+                    ioc_indicators = [ind.to_dict() for ind in ioc_result.indicators[:20]]
+                    onion_detected = ioc_result.onion_detected
+                    onion_addresses = [
+                        ind["value"]
+                        for ind in ioc_indicators
+                        if str(ind.get("type", "")).upper() == "ONION_ADDRESS"
+                    ]
+            except Exception as e:
+                logger.warning(f"IOC detection failed (non-critical): {e}")
 
             # --- Intelligent Scrolling (Optional) ---
             if enable_scrolling:
@@ -688,7 +708,11 @@ class StealthScout:
                     ioc_detected = ioc_result.found
                     ioc_indicators = [ind.to_dict() for ind in ioc_result.indicators[:10]]
                     onion_detected = ioc_result.onion_detected
-                    onion_addresses = [ind["value"] for ind in ioc_indicators if ind.get("type") == "ONION_ADDRESS"]
+                    onion_addresses = [
+                        ind["value"]
+                        for ind in ioc_indicators
+                        if str(ind.get("type", "")).upper() == "ONION_ADDRESS"
+                    ]
             except Exception as e:
                 logger.warning(f"Subpage IOC detection failed (non-critical): {e}")
 

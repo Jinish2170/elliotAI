@@ -136,7 +136,25 @@ class TestSecurityAgentInit:
         async with SecurityAgent() as agent:
             assert agent is not None
             assert hasattr(agent, '_discovered_modules')
-            assert len(agent._discovered_modules) > 0
+            assert agent.use_tier_execution or len(agent._discovered_modules) > 0
+            if agent.use_tier_execution:
+                assert agent._modules_by_tier
+
+    @pytest.mark.asyncio
+    async def test_init_defaults_to_tier_execution_when_available(self, mock_nim_client):
+        """Test V2 defaults to tier execution when tier modules are available."""
+        with patch("veritas.agents.security_agent.TIER_AVAILABLE", True):
+            with patch("veritas.agents.security_agent.SECURITY_USE_TIER_EXECUTION", True):
+                agent = SecurityAgent(nim_client=mock_nim_client)
+        assert agent.use_tier_execution is True
+
+    @pytest.mark.asyncio
+    async def test_init_falls_back_when_tier_execution_unavailable(self, mock_nim_client):
+        """Test fallback to legacy execution when tier dependencies are unavailable."""
+        with patch("veritas.agents.security_agent.TIER_AVAILABLE", False):
+            with patch("veritas.agents.security_agent.SECURITY_USE_TIER_EXECUTION", True):
+                agent = SecurityAgent(nim_client=mock_nim_client)
+        assert agent.use_tier_execution is False
 
 
 # ============================================================

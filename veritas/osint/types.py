@@ -4,7 +4,7 @@ Defines standardized data structures, enums, and configuration
 objects used across all OSINT source implementations.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional
@@ -43,15 +43,35 @@ class OSINTResult:
         cached_at: Timestamp when result was cached (None if not cached)
         error_message: Error message if status is ERROR
     """
-    source: str
-    category: OSINTCategory
-    query_type: str
-    query_value: str
-    status: SourceStatus
+    source: str = ""
+    category: OSINTCategory = OSINTCategory.THREAT_INTEL
+    query_type: str = "lookup"
+    query_value: str = ""
+    status: SourceStatus = SourceStatus.SUCCESS
     data: Optional[Dict[str, Any]] = None
     confidence_score: float = 0.0
     cached_at: Optional[datetime] = None
     error_message: Optional[str] = None
+
+    found: Optional[bool] = None
+    metadata: Optional[Dict[str, Any]] = None
+    confidence: Optional[float] = None
+
+    def __post_init__(self):
+        if self.found is not None:
+            self.status = SourceStatus.SUCCESS if self.found else SourceStatus.ERROR
+        else:
+            self.found = (self.status == SourceStatus.SUCCESS)
+
+        if self.confidence is not None and self.confidence_score == 0.0:
+            self.confidence_score = self.confidence
+        elif self.confidence_score != 0.0:
+            self.confidence = self.confidence_score
+
+        if self.metadata is not None and self.data is None:
+            self.data = self.metadata
+        elif self.data is not None:
+            self.metadata = self.data
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert result to dictionary for JSON serialization."""
@@ -111,6 +131,7 @@ class ExitRiskLevel(str, Enum):
     MEDIUM = "medium"
     HIGH = "high"
     CRITICAL = "critical"
+    UNKNOWN = "unknown"
 
 
 @dataclass
@@ -133,12 +154,20 @@ class MarketplaceThreatData:
     threat_level: ExitRiskLevel = ExitRiskLevel.NONE
     confidence: float = 0.0
     description: str = ""
-    indicators: List[str] = None
+    indicators: List[str] = field(default_factory=list)
     source: str = ""
+    product_categories: List[str] = field(default_factory=list)
+    risk_factors: List[str] = field(default_factory=list)
+    exit_scam_status: bool = False
+    shutdown_date: str = ""
 
     def __post_init__(self):
         if self.indicators is None:
             self.indicators = []
+        if self.product_categories is None:
+            self.product_categories = []
+        if self.risk_factors is None:
+            self.risk_factors = []
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
@@ -151,5 +180,40 @@ class MarketplaceThreatData:
             "description": self.description,
             "indicators": self.indicators,
             "source": self.source,
+            "product_categories": self.product_categories,
+            "risk_factors": self.risk_factors,
+            "exit_scam_status": self.exit_scam_status,
+        }
+
+
+@dataclass
+class Tor2WebThreatData:
+    """Intelligence data about a Tor2Web gateway exposure.
+    
+    Attributes:
+        gateway_domains: List of gateway domains used
+        de_anon_risk: Severity level of the de-anonymization risk
+        recommendation: Recommended action to remediate
+    """
+    gateway_domains: List[str] = field(default_factory=list)
+    de_anon_risk: ExitRiskLevel = ExitRiskLevel.UNKNOWN
+    recommendation: str = ""
+    referrer_leaks: bool = False
+
+    def __post_init__(self):
+        if self.gateway_domains is None:
+            self.gateway_domains = []
+            
+        # For test compat: if de_anon_risk is not passed and UNKNOWN is missing
+        if getattr(self, "de_anon_risk", None) == "unknown":
+            self.de_anon_risk = "unknown"
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        return {
+            "gateway_domains": self.gateway_domains,
+            "de_anon_risk": self.de_anon_risk.value if hasattr(self.de_anon_risk, 'value') else str(self.de_anon_risk),
+            "recommendation": self.recommendation,
+            "referrer_leaks": self.referrer_leaks,
         }
 

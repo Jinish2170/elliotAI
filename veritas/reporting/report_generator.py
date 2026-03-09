@@ -25,7 +25,7 @@ from typing import Any, Optional
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from config import settings
+from veritas.config import settings
 
 logger = logging.getLogger("veritas.reporting")
 

@@ -97,7 +97,7 @@ class TestFeatureFlagRouting:
         result = await security_node_with_agent(state)
         assert "security_results" in result
         assert "security_mode" in result
-        assert result["security_mode"] in ("agent", "function", "function_fallback")
+        assert result["security_mode"] in ("agent", "agent_tier", "agent_legacy", "function", "function_fallback")
 
 
 # ============================================================
@@ -257,7 +257,7 @@ class TestModeTracking:
 
         result = await security_node_with_agent(state)
         assert "security_mode" in result
-        assert result["security_mode"] in ("agent", "function", "function_fallback")
+        assert result["security_mode"] in ("agent", "agent_tier", "agent_legacy", "function", "function_fallback")
 
 
 # ============================================================

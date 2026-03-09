@@ -15,7 +15,7 @@ import logging
 import urllib.parse
 from dataclasses import dataclass, field
 
-from veritas.analysis import SecurityModuleBase
+from veritas.analysis import SecurityModule
 
 logger = logging.getLogger("veritas.analysis.form_validator")
 
@@ -111,7 +111,7 @@ _FORM_EXTRACTION_JS = """
 """
 
 
-class FormActionValidator(SecurityModuleBase):
+class FormActionValidator(SecurityModule):
     """Validate form security within a Playwright page."""
 
     # Module metadata for auto-discovery
