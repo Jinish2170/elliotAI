@@ -43,7 +43,7 @@ except ImportError:
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
-from config.site_types import SiteType
+from veritas.config.site_types import SiteType
 
 logger = logging.getLogger("veritas.temporal.cv")
 

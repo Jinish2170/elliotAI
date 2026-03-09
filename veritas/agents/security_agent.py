@@ -60,45 +60,45 @@ SYS_PATH = str(Path(__file__).resolve().parent.parent)
 if SYS_PATH not in os.sys.path:
     os.sys.path.insert(0, SYS_PATH)
 
-from config.settings import (
+from veritas.config.settings import (
     SECURITY_AGENT_FAIL_FAST,
     SECURITY_AGENT_RETRY_COUNT,
     SECURITY_AGENT_TIMEOUT,
     USE_SECURITY_AGENT,
 )
-from core.nim_client import NIMClient
-from core.types import SecurityConfig, SecurityFinding, SecurityResult, Severity
+from veritas.core.nim_client import NIMClient
+from veritas.core.types import SecurityConfig, SecurityFinding, SecurityResult, Severity
 
 # Tier execution utilities
 try:
-    from analysis.security.utils import get_all_security_modules, group_modules_by_tier, execute_tier
-    from analysis.security.base import SecurityModule, SecurityTier, SecurityFinding as SecurityModuleFinding
+    from veritas.analysis.security.utils import get_all_security_modules, group_modules_by_tier, execute_tier
+    from veritas.analysis.security.base import SecurityModule, SecurityTier, SecurityFinding as SecurityModuleFinding
     TIER_AVAILABLE = True
 except ImportError:
     TIER_AVAILABLE = False
 
 # CVSS and CWE integration from Phase 9
 try:
-    from cwe.cvss_calculator import cvss_calculate_score, PRESET_METRICS, CVSSMetrics
-    from cwe.registry import map_finding_to_cwe
+    from veritas.cwe.cvss_calculator import cvss_calculate_score, PRESET_METRICS, CVSSMetrics
+    from veritas.cwe.registry import map_finding_to_cwe
     CVSS_AVAILABLE = True
 except ImportError:
     CVSS_AVAILABLE = False
 
 # Darknet threat intel from Phase 8 (CTI integration)
 try:
-    from osint.cti import CThreatIntelligence
+    from veritas.osint.cti import CThreatIntelligence
     DARKNET_AVAILABLE = True
 except ImportError:
     DARKNET_AVAILABLE = False
 
 # Legacy imports for backward compatibility
-from analysis.security_headers import SecurityHeaderAnalyzer
-from analysis.phishing_checker import PhishingChecker
-from analysis.redirect_analyzer import RedirectAnalyzer
-from analysis.js_analyzer import JSObfuscationDetector
-from analysis.form_validator import FormActionValidator
-from analysis.security.darknet import DarknetAnalyzer
+from veritas.analysis.security_headers import SecurityHeaderAnalyzer
+from veritas.analysis.phishing_checker import PhishingChecker
+from veritas.analysis.redirect_analyzer import RedirectAnalyzer
+from veritas.analysis.js_analyzer import JSObfuscationDetector
+from veritas.analysis.form_validator import FormActionValidator
+from veritas.analysis.security.darknet import DarknetAnalyzer
 
 logger = logging.getLogger("veritas.security_agent")
 

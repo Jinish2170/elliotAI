@@ -21,7 +21,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 # Import veritas modules (using actual orchestrator)
-from core.orchestrator import (
+from veritas.core.orchestrator import (
     AuditState,
     build_audit_graph,
     judge_node,
