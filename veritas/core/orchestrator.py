@@ -151,6 +151,14 @@ async def scout_node(state: AuditState) -> dict:
             "site_type_confidence": getattr(result, 'site_type_confidence', 0.0),
             "dom_analysis": getattr(result, 'dom_analysis', {}),
             "form_validation": getattr(result, 'form_validation', {}),
+            # Phase 12 darknet fields
+            "ioc_detected": getattr(result, 'ioc_detected', False),
+            "ioc_indicators": getattr(result, 'ioc_indicators', []),
+            "onion_detected": getattr(result, 'onion_detected', False),
+            "onion_addresses": getattr(result, 'onion_addresses', []),
+            # Phase 13-01: Real page content and response headers
+            "page_content": getattr(result, 'page_content', ''),
+            "response_headers": getattr(result, 'response_headers', {}),
         }
 
         new_scout_results = scout_results + [result_dict]
@@ -228,13 +236,19 @@ async def vision_node(state: AuditState) -> dict:
         nim = NIMClient()
         agent = VisionAgent(nim_client=nim)
 
-        # Use 5-pass enhanced pipeline with progress events for Phase 6
+        # Tier-aware pass count: read from AUDIT_TIERS config
+        audit_tier = state.get("audit_tier", "standard_audit")
+        tier_config = settings.AUDIT_TIERS.get(audit_tier, settings.AUDIT_TIERS["standard_audit"])
+        max_passes = tier_config.get("vision_passes", 3)
+        use_5_pass = max_passes >= 5
+
         result = await agent.analyze(
             screenshots=all_screenshots,
             screenshot_labels=all_labels,
             url=state.get("url", ""),
             site_type=state.get("site_type", ""),
-            use_5_pass_pipeline=True,
+            use_5_pass_pipeline=use_5_pass,
+            max_passes=max_passes,
         )
 
         # Serialize VisionResult
@@ -323,23 +337,39 @@ async def graph_node(state: AuditState) -> dict:
     # External links
     external_links = primary.get("links", [])
 
-    logger.info(f"Graph investigating {url} | text_length={len(page_text)}")
+    # Tier-aware OSINT depth
+    audit_tier = state.get("audit_tier", "standard_audit")
+    tier_config = settings.AUDIT_TIERS.get(audit_tier, settings.AUDIT_TIERS["standard_audit"])
+
+    logger.info(f"Graph investigating {url} | text_length={len(page_text)} | tier={audit_tier}")
 
     try:
         nim = NIMClient()
         agent = GraphInvestigator(nim_client=nim)
-        graph_timeout_s = max(10, int(getattr(settings, "GRAPH_PHASE_TIMEOUT_S", 90)))
+        graph_timeout_s = tier_config.get("graph_timeout_s", max(10, int(getattr(settings, "GRAPH_PHASE_TIMEOUT_S", 90))))
 
         try:
-            async with asyncio.timeout(graph_timeout_s):
-                result = await agent.investigate(
-                    url=url,
-                    page_metadata=metadata,
-                    page_text=page_text,
-                    external_links=external_links,
-                    site_type=state.get("site_type", ""),
-                    form_validation=primary.get("form_validation"),
-                )
+            if audit_tier == "quick_scan":
+                # Quick scan: run only basic DNS/SSL checks, skip entity verification and Tavily
+                async with asyncio.timeout(graph_timeout_s):
+                    result = await agent.investigate(
+                        url=url,
+                        page_metadata=metadata,
+                        page_text="",
+                        external_links=[],
+                        site_type=state.get("site_type", ""),
+                        form_validation=None,
+                    )
+            else:
+                async with asyncio.timeout(graph_timeout_s):
+                    result = await agent.investigate(
+                        url=url,
+                        page_metadata=metadata,
+                        page_text=page_text,
+                        external_links=external_links,
+                        site_type=state.get("site_type", ""),
+                        form_validation=primary.get("form_validation"),
+                    )
         except TimeoutError:
             timeout_msg = f"Graph phase timeout after {graph_timeout_s}s"
             logger.error(timeout_msg)
@@ -547,6 +577,14 @@ async def judge_node(state: AuditState) -> dict:
             graph_edge_count=gr_dict.get("graph_edge_count", 0),
             tavily_searches=gr_dict.get("tavily_searches", 0),
             errors=gr_dict.get("errors", []),
+            # Phase 8: OSINT/CTI fields
+            osint_sources=gr_dict.get("osint_sources", {}),
+            osint_consensus=gr_dict.get("osint_consensus", {}),
+            osint_indicators=gr_dict.get("osint_indicators", []),
+            cti_techniques=gr_dict.get("cti_techniques", []),
+            threat_attribution=gr_dict.get("threat_attribution", {}),
+            threat_level=gr_dict.get("threat_level", "none"),
+            osint_confidence=gr_dict.get("osint_confidence", 0.0),
         )
 
     # Build evidence bundle
@@ -568,7 +606,7 @@ async def judge_node(state: AuditState) -> dict:
     try:
         nim = NIMClient()
         judge = JudgeAgent(nim_client=nim)
-        decision = await judge.deliberate(evidence)
+        decision = await judge.analyze(evidence, use_dual_verdict=True)
 
         if decision.action == "REQUEST_MORE_INVESTIGATION":
             logger.info(f"Judge: need more investigation → {decision.investigate_urls}")
@@ -600,6 +638,8 @@ async def judge_node(state: AuditState) -> dict:
                 "evidence_timeline": decision.evidence_timeline,
                 "site_type": getattr(decision, 'site_type', ''),
                 "verdict_mode": getattr(decision, 'verdict_mode', 'expert'),
+                # Phase 9: dual-tier verdict (technical + non-technical)
+                "dual_verdict": getattr(decision, 'dual_verdict', None),
             }
 
             if decision.trust_score_result:
@@ -688,6 +728,12 @@ async def security_node_with_agent(state: AuditState) -> dict:
     # Phase 10-04: Feature flag for tier execution
     use_tier_execution = bool(getattr(settings, "SECURITY_USE_TIER_EXECUTION", True))
 
+    # Tier-aware: skip DEEP security modules on quick scans
+    audit_tier = state.get("audit_tier", "standard_audit")
+    if audit_tier == "quick_scan":
+        # Quick scan: only FAST tier security modules
+        use_tier_execution = True  # Force tier mode for granular control
+
     # Extract Scout data for tier-based analysis
     scout_results = state.get("scout_results", [])
     page_content = None
@@ -696,26 +742,9 @@ async def security_node_with_agent(state: AuditState) -> dict:
 
     if scout_results:
         first_result = scout_results[0]
-        # Extract page metadata (HTML content, forms, scripts, etc.)
-        page_metadata = first_result.get("page_metadata", {})
-        if page_metadata:
-            # Build simplified page_content from metadata
-            page_content = f"""<html>
-<head><title>{page_metadata.get('title', '')}</title></head>
-<body>
-<div class="meta">
-  <p>description: {page_metadata.get('description', '')}</p>
-  <p>keywords: {', '.join(page_metadata.get('keywords', []))}</p>
-</div>
-</body>
-</html>"""
-
-        # Extract response headers (simulated from scout metadata)
-        # In practice, Scout could capture actual HTTP response headers
-        headers = {
-            "content-type": "text/html",
-            "server": "unknown",  # Scout doesn't currently capture this
-        }
+        # Use real page_content and response_headers captured by Scout (Plan 13-01)
+        page_content = first_result.get("page_content", "")
+        headers = first_result.get("response_headers", {})
 
         # Extract DOM analysis from Scout
         dom_analysis = first_result.get("dom_analysis", {})
@@ -1109,6 +1138,26 @@ def build_audit_graph() -> StateGraph:
 # Orchestrator — High-Level API
 # ============================================================
 
+
+def _get_security_modules_for_tier(tier: str) -> list[str]:
+    """Return the security modules to enable based on audit tier."""
+    base = ["security_headers", "phishing_db"]
+    if tier == "quick_scan":
+        return base
+    standard = base + ["redirect_chain", "js_analysis", "form_validation", "cookies"]
+    if tier == "standard_audit":
+        return standard
+    deep = standard + [
+        "owasp_a01", "owasp_a02", "owasp_a03", "owasp_a04", "owasp_a05",
+        "owasp_a06", "owasp_a07", "owasp_a08", "owasp_a09", "owasp_a10",
+        "pci_dss", "gdpr",
+    ]
+    if tier == "deep_forensic":
+        return deep
+    # darknet_investigation: everything + darknet modules
+    return deep + ["darknet_correlation", "threat_intel"]
+
+
 class VeritasOrchestrator:
     """
     High-level API for running a Veritas audit.
@@ -1473,9 +1522,7 @@ class VeritasOrchestrator:
             "security_results": {},
             "security_mode": "",  # Will be set by security_node_with_agent
             "security_summary": {},
-            "enabled_security_modules": enabled_security_modules or getattr(
-                settings, 'ENABLED_SECURITY_MODULES', ["security_headers", "phishing_db"]
-            ),
+            "enabled_security_modules": enabled_security_modules or _get_security_modules_for_tier(tier),
             # Smart orchestrator fields (added via dict after to maintain TypedDict compatibility)
             "_timeout_config": None,  # TimeoutConfig computed from complexity
             "_complexity_score": 0.0,  # Complexity score from analysis
