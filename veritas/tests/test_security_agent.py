@@ -166,7 +166,7 @@ class TestSecurityAgentModuleDiscovery:
 
     @pytest.mark.asyncio
     async def test_discover_modules_finds_all_five_modules(self):
-        """Test that module discovery finds all 5 security modules."""
+        """Test that module discovery finds all 6 security modules (5 original + darknet_analysis added in Phase 13)."""
         agent = SecurityAgent()
         modules = agent._discover_modules()
         assert "security_headers" in modules
@@ -174,7 +174,8 @@ class TestSecurityAgentModuleDiscovery:
         assert "redirect_chain" in modules
         assert "js_analysis" in modules
         assert "form_validation" in modules
-        assert len(modules) == 5
+        assert "darknet_analysis" in modules
+        assert len(modules) == 6
 
     @pytest.mark.asyncio
     async def test_discover_modules_maps_correct_names(self):
@@ -372,10 +373,11 @@ class TestSecurityAgentMethods:
 
     @pytest.mark.asyncio
     async def test_initialize_disovers_modules(self):
-        """Test initialize method calls _discover_modules."""
+        """Test initialize method calls _discover_modules (legacy path, use_tier_execution=False)."""
         agent = SecurityAgent()
+        agent.use_tier_execution = False  # Force legacy discovery path for this test
         await agent.initialize()
-        assert len(agent._discovered_modules) == 5
+        assert len(agent._discovered_modules) == 6
 
     @pytest.mark.asyncio
     async def test_config_from_settings(self):

@@ -149,18 +149,20 @@ class VisionEventEmitter:
     - Event queuing: Accumulates events when throttled
     """
 
-    def __init__(self, max_events_per_sec: int = 5, batch_size: int = 5):
+    def __init__(self, max_events_per_sec: int = 5, batch_size: int = 5, progress_emitter=None):
         """
         Initialize the event emitter with rate limiting.
 
         Args:
             max_events_per_sec: Maximum number of events to emit per second
             batch_size: Maximum number of findings to batch in a single event
+            progress_emitter: Optional ProgressEmitter for WebSocket delivery
         """
         self.max_events_per_sec = max_events_per_sec
         self.batch_size = batch_size
         self.event_queue: List[dict] = []
         self.last_emit_time = 0.0
+        self.progress_emitter = progress_emitter
         self.logger = logging.getLogger("veritas.vision_emitter")
 
     async def emit_vision_start(self, total_screenshots: int) -> None:
@@ -253,11 +255,17 @@ class VisionEventEmitter:
 
         Uses the standard ##PROGRESS: stdout marker format that
         AuditRunner catches and converts to WebSocket events.
+        Also routes through ProgressEmitter if available for WebSocket delivery.
 
         Args:
             event: Event dictionary to emit
         """
         print(f"##PROGRESS:{json.dumps(event)}", flush=True)
+        if self.progress_emitter is not None:
+            try:
+                await self.progress_emitter.emit(event)
+            except Exception:
+                pass  # stdout path is the canonical IPC mechanism
 
     async def flush_queue(self) -> None:
         """Flush all accumulated queued events.
@@ -404,7 +412,7 @@ class VisionAgent:
             logger.debug("PatternMatcher not available — using individual prompts")
 
         # Vision event emitter for real-time progress streaming
-        self.event_emitter = VisionEventEmitter()
+        self.event_emitter = VisionEventEmitter(progress_emitter=progress_emitter)
 
         # Progress emitter for WebSocket streaming (token-bucket rate limited)
         self.progress_emitter = progress_emitter
@@ -424,6 +432,7 @@ class VisionAgent:
         categories: Optional[list[str]] = None,
         site_type: str = "",
         use_5_pass_pipeline: bool = False,
+        max_passes: int = 5,
     ) -> VisionResult:
         """
         Full visual forensics analysis on a set of screenshots.
@@ -444,7 +453,7 @@ class VisionAgent:
         # Use new 5-pass pipeline if requested
         if use_5_pass_pipeline:
             logger.info("Using 5-pass enhanced vision pipeline")
-            return await self.analyze_5_pass(screenshots, url)
+            return await self.analyze_5_pass(screenshots, url, max_passes=max_passes)
 
         # Original analysis path (backward compatible)
         result = VisionResult()
@@ -639,7 +648,8 @@ class VisionAgent:
         screenshots: list[str],
         url: str = "",
         scout_result: Optional["ScoutResult"] = None,
-        progress_emitter: Optional["ProgressEmitter"] = None
+        progress_emitter: Optional["ProgressEmitter"] = None,
+        max_passes: int = 5
     ) -> VisionResult:
         """
         Perform 5-pass vision analysis on screenshots using the enhanced pipeline.
@@ -709,7 +719,7 @@ class VisionAgent:
     
             # Run 5-pass analysis
             passes_completed = 0
-            for pass_num in range(1, 6):
+            for pass_num in range(1, min(max_passes, 5) + 1):
                 # Check if this pass should run based on priority logic
                 if not should_run_pass(pass_num, all_findings, has_temporal_changes):
                     logger.debug(f"Skipping Pass {pass_num} (priority rule)")

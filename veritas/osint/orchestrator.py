@@ -268,6 +268,34 @@ class OSINTOrchestrator:
         else:
             logger.info("OSINTOrchestrator: AbuseIPDB not registered (no API key)")
 
+        # Register darknet marketplace threat intelligence sources (read-only OSINT, no API key required)
+        import importlib
+        _darknet_sources = [
+            ("veritas.osint.sources.darknet_alpha", "AlphaBayMarketplaceSource"),
+            ("veritas.osint.sources.darknet_hansa", "HansaMarketplaceSource"),
+            ("veritas.osint.sources.darknet_empire", "EmpireMarketplaceSource"),
+            ("veritas.osint.sources.darknet_dream", "DreamMarketplaceSource"),
+            ("veritas.osint.sources.darknet_wallstreet", "WallStreetMarketplaceSource"),
+            ("veritas.osint.sources.darknet_tor2web", "Tor2WebDeanonSource"),
+        ]
+        for module_path, class_name in _darknet_sources:
+            try:
+                mod = importlib.import_module(module_path)
+                cls = getattr(mod, class_name)
+                self._register_source(
+                    cls(),
+                    SourceConfig(
+                        enabled=True,
+                        priority=3,
+                        requires_api_key=False,
+                        rate_limit_rpm=999,
+                        rate_limit_rph=999,
+                    )
+                )
+                logger.info(f"OSINTOrchestrator: Registered darknet source {class_name}")
+            except Exception as e:
+                logger.warning(f"OSINTOrchestrator: Could not register {class_name}: {e}")
+
         logger.info(f"OSINTOrchestrator: Discovered and registered {len(self._sources)} sources")
 
     def _register_source(self, source: object, config: SourceConfig) -> None:

@@ -24,6 +24,7 @@ from veritas.osint.types import (
     OSINTResult,
 )
 from veritas.osint.ioc_detector import IOCDetector, IOCType
+from veritas.darknet import OnionDetector, MarketplaceType
 
 logger = logging.getLogger("veritas.analysis.security.darknet")
 
@@ -66,6 +67,7 @@ class DarknetAnalyzer(SecurityModule):
 
     def __init__(self):
         self._ioc_detector = IOCDetector()
+        self._onion_detector = OnionDetector()
 
     @property
     def category_id(self) -> str:
@@ -120,6 +122,14 @@ class DarknetAnalyzer(SecurityModule):
             result.has_onion_references = True
             result.onion_urls_detected = sorted({indicator.value for indicator in onion_indicators})
             logger.info(f"Found {len(result.onion_urls_detected)} .onion references")
+
+            # Step 1b: Validate .onion addresses with OnionDetector
+            validated = [addr for addr in result.onion_urls_detected if self._onion_detector.validate_onion(addr)]
+            if validated:
+                result.onion_urls_detected = validated
+            else:
+                result.has_onion_references = False
+                logger.debug("All detected onion addresses failed OnionDetector validation")
 
         # Step 2: Query marketplace threat feeds for onion addresses
         if result.has_onion_references:
@@ -239,11 +249,13 @@ class DarknetAnalyzer(SecurityModule):
             try:
                 threat_result = await source.query(onion_address, indicator_type="onion")
                 if threat_result and threat_result.found:
+                    marketplace_type = self._onion_detector.classify_marketplace(onion_address)
                     return {
                         "marketplace": threat_result.metadata.get("marketplace"),
                         "status": threat_result.metadata.get("status"),
                         "confidence": threat_result.confidence,
                         "threat_data": threat_result.data,
+                        "marketplace_type": marketplace_type.value if marketplace_type else MarketplaceType.UNKNOWN.value,
                     }
             except Exception as e:
                 logger.debug(f"Source {source.name} error: {e}")

@@ -1,7 +1,7 @@
 """
 Veritas Darknet Module
 
-Provides TOR client functionality for darknet (.onion) URL auditing.
+Provides TOR client and onion detection functionality for darknet (.onion) URL auditing.
 
 Legal/Privacy Compliance:
 - Read-only OSINT only
@@ -11,5 +11,6 @@ Legal/Privacy Compliance:
 """
 
 from .tor_client import TORClient
+from .onion_detector import OnionDetector, MarketplaceType
 
-__all__ = ["TORClient"]
+__all__ = ["TORClient", "OnionDetector", "MarketplaceType"]

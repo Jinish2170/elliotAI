@@ -103,16 +103,20 @@ class TestEvidenceStoreStubs:
         """
         store = EvidenceStore()
 
-        with patch.object(store, '_ensure_init'):
-            with patch.object(store, '_db') as mock_db:
-                # Simulate missing table
-                mock_db.table_names.return_value = []
-                mock_db.open_table.side_effect = ValueError("Table does not exist")
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmpdir:
+            store._db_path = Path(tmpdir)  # Ensure no audits.jsonl exists
 
-                # The method will catch ValueError and fall back, which is expected behavior
-                # We verify the fallback is triggered instead of empty return
-                with pytest.raises(FileNotFoundError):
-                    store.search_similar("test query", k=5, table_name="audits")
+            with patch.object(store, '_ensure_init'):
+                with patch.object(store, '_db') as mock_db:
+                    # Simulate missing table
+                    mock_db.table_names.return_value = []
+                    mock_db.open_table.side_effect = ValueError("Table does not exist")
+
+                    # The method will catch ValueError and fall back, which is expected behavior
+                    # We verify the fallback is triggered instead of empty return
+                    with pytest.raises(FileNotFoundError):
+                        store.search_similar("test query", k=5, table_name="audits")
 
     def test_get_all_audits_table_not_exists_raises_valueerror(self):
         """Test that get_all_audits raises ValueError internally when audits table doesn't exist.
@@ -123,16 +127,20 @@ class TestEvidenceStoreStubs:
         """
         store = EvidenceStore()
 
-        with patch.object(store, '_ensure_init'):
-            with patch.object(store, '_db') as mock_db:
-                # Simulate missing table
-                mock_db.table_names.return_value = []
-                mock_db.open_table.side_effect = ValueError("Table does not exist")
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmpdir:
+            store._db_path = Path(tmpdir)  # Ensure no audits.jsonl exists
 
-                # The method will catch ValueError and fall back, which is expected behavior
-                # We verify the fallback is triggered instead of empty return
-                with pytest.raises(FileNotFoundError):
-                    store.get_all_audits(limit=50)
+            with patch.object(store, '_ensure_init'):
+                with patch.object(store, '_db') as mock_db:
+                    # Simulate missing table
+                    mock_db.table_names.return_value = []
+                    mock_db.open_table.side_effect = ValueError("Table does not exist")
+
+                    # The method will catch ValueError and fall back, which is expected behavior
+                    # We verify the fallback is triggered instead of empty return
+                    with pytest.raises(FileNotFoundError):
+                        store.get_all_audits(limit=50)
 
     def test_json_search_file_not_exists(self):
         """Test that _json_search raises FileNotFoundError when JSONL file is missing."""

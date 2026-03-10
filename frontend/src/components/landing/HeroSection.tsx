@@ -9,7 +9,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 const tiers = [
   {
-    id: "quick",
+    id: "quick_scan",
     label: "Quick Scan",
     time: "~60 seconds",
     duration: "60s",
@@ -34,6 +34,15 @@ const tiers = [
     pages: "10 pages",
     credits: "~50 credits",
     description: "Temporal analysis, extended crawl, graph"
+  },
+  {
+    id: "darknet_investigation",
+    label: "Darknet Investigation",
+    time: "~8 minutes",
+    duration: "8min",
+    pages: "15 pages",
+    credits: "~80 credits",
+    description: "Full forensic + TOR routing, darknet OSINT, threat intel"
   },
 ];
 

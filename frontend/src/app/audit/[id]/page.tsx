@@ -6,6 +6,7 @@ import { AuditHeader } from "@/components/audit/AuditHeader";
 import { CompletionOverlay } from "@/components/audit/CompletionOverlay";
 import { EvidencePanel } from "@/components/audit/EvidencePanel";
 import { ForensicLog } from "@/components/audit/ForensicLog";
+import { RunningLog } from "@/components/audit/RunningLog";
 import { GreenFlagCelebration } from "@/components/audit/GreenFlagCelebration";
 import { NarrativeFeed } from "@/components/audit/NarrativeFeed";
 import { useAuditStream } from "@/hooks/useAuditStream";
@@ -99,8 +100,11 @@ function AuditPageContent({ id }: { id: string }) {
           </div>
         </div>
 
-        {/* Bottom: Forensic Log */}
+        {/* Bottom: Forensic Log + Running Log */}
         <ForensicLog logs={store.logs} />
+        <div className="mt-3">
+          <RunningLog maxEntries={100} showPersonality={true} />
+        </div>
 
         {/* Mobile evidence panel - bottom sheet style */}
         <div className="lg:hidden mt-4">

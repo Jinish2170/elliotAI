@@ -56,6 +56,13 @@ try:
 except ImportError:
     DUAL_VERDICT_AVAILABLE = False
 
+# Quality/consensus imports (Phase 7 feature)
+try:
+    from veritas.quality.consensus_engine import ConsensusEngine
+    CONSENSUS_AVAILABLE = True
+except ImportError:
+    CONSENSUS_AVAILABLE = False
+
 logger = logging.getLogger("veritas.judge")
 
 
@@ -679,10 +686,91 @@ class JudgeAgent:
         )
 
         # -----------------------------------------------------------
+        # Step 3b: Multi-agent consensus cross-validation (Phase 7)
+        # Aggregates Vision + Security + Graph findings to identify
+        # CONFIRMED (2+ sources) vs UNCONFIRMED (1 source) vs CONFLICTED.
+        # -----------------------------------------------------------
+        consensus_summary = {}
+        if CONSENSUS_AVAILABLE:
+            try:
+                consensus_engine = ConsensusEngine(min_sources=2)
+
+                # Add vision dark-pattern findings
+                if evidence.vision_result:
+                    for pattern in evidence.vision_result.dark_patterns:
+                        finding_key = f"vision:{pattern.pattern_type}"
+                        consensus_engine.add_finding(
+                            finding_key=finding_key,
+                            agent_type="vision",
+                            finding_id=pattern.pattern_type,
+                            severity=pattern.severity.upper(),
+                            confidence=pattern.confidence,
+                        )
+
+                # Add security findings
+                sec_findings = evidence.security_results or {}
+                for check_name, check_data in sec_findings.items():
+                    if isinstance(check_data, dict) and check_data.get("is_phishing") or check_data.get("risk_score", 0) > 50:
+                        severity = "HIGH" if check_data.get("risk_score", 0) > 70 else "MEDIUM"
+                        consensus_engine.add_finding(
+                            finding_key=f"security:{check_name}",
+                            agent_type="security",
+                            finding_id=check_name,
+                            severity=severity,
+                            confidence=min(1.0, check_data.get("risk_score", 50) / 100.0),
+                        )
+
+                # Add graph inconsistency findings
+                if evidence.graph_result:
+                    gr = evidence.graph_result
+                    if hasattr(gr, 'inconsistencies') and gr.inconsistencies:
+                        for incon in gr.inconsistencies:
+                            finding_key = f"graph:{incon.get('type', 'inconsistency')}"
+                            consensus_engine.add_finding(
+                                finding_key=finding_key,
+                                agent_type="graph",
+                                finding_id=incon.get('type', 'inconsistency'),
+                                severity=incon.get('severity', 'MEDIUM').upper(),
+                                confidence=incon.get('confidence', 0.6),
+                            )
+
+                confirmed = consensus_engine.get_confirmed_findings()
+                conflicted = consensus_engine.get_conflicted_findings()
+                consensus_summary = {
+                    "confirmed_count": len(confirmed),
+                    "conflicted_count": len(conflicted),
+                    "total_findings": len(consensus_engine.findings),
+                    "confirmed_keys": [r.finding_key for r in confirmed],
+                }
+                logger.info(
+                    f"Consensus: confirmed={len(confirmed)}, "
+                    f"conflicted={len(conflicted)}, "
+                    f"total={len(consensus_engine.findings)}"
+                )
+            except Exception as e:
+                logger.warning(f"Consensus engine error (non-fatal): {e}")
+
+        # -----------------------------------------------------------
         # Step 4: Generate forensic narrative via NIM LLM
         #         ALWAYS generate expert narrative
         # -----------------------------------------------------------
         narrative = await self._generate_narrative(evidence, trust_result)
+
+        # Append consensus cross-validation summary to narrative
+        if consensus_summary.get("total_findings", 0) > 0:
+            confirmed_n = consensus_summary["confirmed_count"]
+            conflicted_n = consensus_summary["conflicted_count"]
+            if confirmed_n > 0:
+                narrative += (
+                    f"\n\n[MULTI-AGENT CONSENSUS] {confirmed_n} finding(s) CONFIRMED by 2+ independent agents"
+                )
+                if consensus_summary.get("confirmed_keys"):
+                    narrative += f": {', '.join(consensus_summary['confirmed_keys'][:5])}"
+            if conflicted_n > 0:
+                narrative += (
+                    f"\n[MULTI-AGENT CONSENSUS] {conflicted_n} finding(s) CONFLICTED between agents — "
+                    f"manual review recommended."
+                )
 
         # -----------------------------------------------------------
         # Step 4b: Generate simple-mode narrative

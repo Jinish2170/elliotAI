@@ -3,11 +3,15 @@ import sys
 import os
 from pathlib import Path
 
+import pytest
+
 # Add root to path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 from veritas.agents.security_agent import SecurityAgent
 
+
+@pytest.mark.skip(reason="Manual integration test — run directly with: python test_darknet_integration.py")
 async def test_run():
     print("Starting Elliot Phase 12/13 Integration Test...")
     agent = SecurityAgent()

@@ -53,10 +53,10 @@ def mock_image_file():
 @pytest.fixture
 def nim_client(temp_cache_dir):
     """Create a NIMClient with temp cache directory."""
-    with patch("config.settings.CACHE_DIR", temp_cache_dir):
-        client = NIMClient()
-        client._initialized = True
-        return client
+    client = NIMClient()
+    client._initialized = True
+    client._cache_dir = temp_cache_dir  # Override to temp dir for test isolation
+    return client
 
 
 @pytest.fixture
