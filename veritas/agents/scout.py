@@ -53,6 +53,17 @@ except ImportError:
     IOCDetector = None
     _IOC_AVAILABLE = False
 
+# Import OnionDetector and TORClient for .onion URL routing
+_ONION_DETECTOR_AVAILABLE = False
+try:
+    from veritas.darknet.onion_detector import OnionDetector as _OnionDetector
+    from veritas.darknet.tor_client import TORClient as _TORClient
+    _ONION_DETECTOR_AVAILABLE = True
+except ImportError:
+    logger.warning("OnionDetector/TORClient not available, TOR routing disabled")
+    _OnionDetector = None
+    _TORClient = None
+
 
 # ============================================================
 # User Agent Pool
@@ -233,6 +244,10 @@ class ScoutResult:
     # Scroll orchestration results (from ScrollOrchestrator)
     scroll_result: Optional["ScrollResult"] = None
 
+    # Real page data for downstream agents (Plan 13-01)
+    page_content: str = ""              # Full HTML of the page (up to 500KB)
+    response_headers: dict = field(default_factory=dict)  # HTTP response headers
+
 
 # ============================================================
 # The Stealth Scout Agent
@@ -248,28 +263,44 @@ class StealthScout:
             print(result.status, result.screenshots)
     """
 
-    def __init__(self, evidence_dir: Optional[Path] = None, progress_emitter: Optional["ProgressEmitter"] = None):
+    def __init__(self, evidence_dir: Optional[Path] = None, progress_emitter: Optional["ProgressEmitter"] = None, use_tor: bool = False):
         self._playwright: Optional[Playwright] = None
         self._browser: Optional[Browser] = None
         self._evidence_dir = evidence_dir or settings.EVIDENCE_DIR
         self._evidence_dir.mkdir(parents=True, exist_ok=True)
         self.progress_emitter = progress_emitter
+        self.use_tor = use_tor
         self._ioc_detector = IOCDetector() if _IOC_AVAILABLE and IOCDetector is not None else None
+        self._onion_detector = _OnionDetector() if _ONION_DETECTOR_AVAILABLE and _OnionDetector is not None else None
 
     async def __aenter__(self):
         self._playwright = await async_playwright().start()
+
+        # Build base launch args
+        launch_args = [
+            "--disable-blink-features=AutomationControlled",
+            "--disable-features=IsolateOrigins,site-per-process",
+            "--disable-dev-shm-usage",
+            "--no-sandbox",
+            "--disable-setuid-sandbox",
+            "--disable-accelerated-2d-canvas",
+            "--disable-gpu",
+            "--window-size=1920,1080",
+        ]
+
+        # TOR SOCKS5 proxy support (for darknet_investigation tier)
+        if self.use_tor:
+            tor_host = getattr(settings, "TOR_SOCKS_HOST", "127.0.0.1")
+            tor_port = getattr(settings, "TOR_SOCKS_PORT", 9050)
+            try:
+                launch_args.append(f"--proxy-server=socks5://{tor_host}:{tor_port}")
+                logger.info(f"StealthScout: TOR SOCKS5 proxy enabled ({tor_host}:{tor_port})")
+            except Exception as e:
+                logger.warning(f"StealthScout: TOR proxy setup failed, continuing without TOR: {e}")
+
         self._browser = await self._playwright.chromium.launch(
             headless=settings.BROWSER_HEADLESS,
-            args=[
-                "--disable-blink-features=AutomationControlled",
-                "--disable-features=IsolateOrigins,site-per-process",
-                "--disable-dev-shm-usage",
-                "--no-sandbox",
-                "--disable-setuid-sandbox",
-                "--disable-accelerated-2d-canvas",
-                "--disable-gpu",
-                "--window-size=1920,1080",
-            ],
+            args=launch_args,
         )
         logger.info("StealthScout browser launched")
         return self
@@ -324,8 +355,39 @@ class StealthScout:
         if emitter:
             await emitter.emit_agent_status("Scout", "running", f"Capturing {url}...")
 
+        # Route .onion URLs via TOR instead of browser (Plan 12-04)
+        if self._is_onion_url(url):
+            logger.info(f"Detected .onion URL — routing capture via TOR: {url}")
+            if emitter:
+                await emitter.emit_progress("Scout", "tor_routing", 10, "Routing via TOR network...")
+            tor_result = await self._capture_via_tor(url)
+            if emitter:
+                await emitter.emit_agent_status("Scout", "completed")
+            return ScoutResult(
+                url=url,
+                status="SUCCESS" if tor_result.get("status") and not tor_result.get("error") else "ERROR",
+                page_metadata={"tor_response": tor_result, "is_onion": True},
+                onion_detected=True,
+                onion_addresses=[url],
+                trust_modifier=-0.3,
+                trust_notes=["Target URL is a .onion hidden service — routed via TOR"],
+                error_message=tor_result.get("error") or "",
+            )
+
         context = await self._create_stealth_context(viewport)
         page = await context.new_page()
+
+        # Capture HTTP response headers from the main navigation response (Plan 13-01)
+        _captured_response_headers: dict = {}
+
+        async def _on_response(response) -> None:
+            try:
+                if response.url == url or url.rstrip("/") in response.url:
+                    _captured_response_headers.update(dict(response.headers))
+            except Exception:
+                pass
+
+        page.on("response", _on_response)
 
         try:
             await self._apply_stealth(page)
@@ -480,9 +542,12 @@ class StealthScout:
                 logger.warning(f"Form validation failed (non-critical): {e}")
 
             # --- IOC Detection ---
+            # Also capture full page content here (reuse for security analysis, Plan 13-01)
+            page_content = ""
             try:
                 if self._ioc_detector:
                     ioc_content = await page.content()
+                    page_content = ioc_content[:512_000]  # Truncate to 500KB
                     ioc_result = await self._ioc_detector.detect_content(
                         url=url,
                         content=ioc_content,
@@ -496,6 +561,10 @@ class StealthScout:
                         for ind in ioc_indicators
                         if str(ind.get("type", "")).upper() == "ONION_ADDRESS"
                     ]
+                else:
+                    # Capture page_content even without IOC detector
+                    raw_content = await page.content()
+                    page_content = raw_content[:512_000]
             except Exception as e:
                 logger.warning(f"IOC detection failed (non-critical): {e}")
 
@@ -625,6 +694,8 @@ class StealthScout:
                 dom_analysis=dom_result,
                 form_validation=form_val_result,
                 scroll_result=scroll_result,
+                page_content=page_content,
+                response_headers=_captured_response_headers,
             )
 
         except Exception as e:
@@ -668,6 +739,18 @@ class StealthScout:
         context = await self._create_stealth_context(viewport)
         page = await context.new_page()
 
+        # Capture HTTP response headers (Plan 13-01)
+        _subpage_response_headers: dict = {}
+
+        async def _on_subpage_response(response) -> None:
+            try:
+                if response.url == url or url.rstrip("/") in response.url:
+                    _subpage_response_headers.update(dict(response.headers))
+            except Exception:
+                pass
+
+        page.on("response", _on_subpage_response)
+
         try:
             await self._apply_stealth(page)
             start_time = time.time()
@@ -692,14 +775,16 @@ class StealthScout:
             ss_full = await self._take_full_screenshot(page, audit_id)
             metadata = await self._extract_metadata(page)
 
-            # IOC Detection for subpages
+            # IOC Detection for subpages + capture real page_content (Plan 13-01)
             ioc_detected = False
             ioc_indicators = []
             onion_detected = False
             onion_addresses = []
+            subpage_content = ""
             try:
                 if self._ioc_detector:
                     ioc_content = await page.content()
+                    subpage_content = ioc_content[:512_000]
                     ioc_result = await self._ioc_detector.detect_content(
                         url=url,
                         content=ioc_content,
@@ -713,6 +798,9 @@ class StealthScout:
                         for ind in ioc_indicators
                         if str(ind.get("type", "")).upper() == "ONION_ADDRESS"
                     ]
+                else:
+                    raw_content = await page.content()
+                    subpage_content = raw_content[:512_000]
             except Exception as e:
                 logger.warning(f"Subpage IOC detection failed (non-critical): {e}")
 
@@ -752,6 +840,8 @@ class StealthScout:
                 trust_notes=[f"{len(onion_addresses)} .onion links detected"] if onion_detected else [],
                 trust_modifier=-0.3 if onion_detected else 0.0,
                 navigation_time_ms=nav_time,
+                page_content=subpage_content,
+                response_headers=_subpage_response_headers,
             )
         except Exception as e:
             if emitter:
@@ -1220,3 +1310,31 @@ class StealthScout:
         except Exception as e:
             # Non-critical — continue even if simulation fails
             logger.debug(f"Human simulation error (non-critical): {e}")
+
+    # ================================================================
+    # Private: TOR Routing
+    # ================================================================
+
+    def _is_onion_url(self, url: str) -> bool:
+        """Check if URL is a .onion hidden service using OnionDetector."""
+        if self._onion_detector is None:
+            return ".onion" in url.lower()
+        return self._onion_detector.is_darknet_url(url)
+
+    async def _capture_via_tor(self, url: str) -> dict:
+        """Fetch .onion URL content through TOR SOCKS5h proxy."""
+        if _TORClient is None:
+            logger.warning(f"TORClient unavailable, cannot capture .onion URL: {url}")
+            return {"status": None, "text": None, "headers": {}, "error": "TOR not available"}
+        try:
+            async with _TORClient() as tor:
+                tor_available = await tor.check_connection()
+                if not tor_available:
+                    logger.warning("TOR proxy not running, skipping .onion capture")
+                    return {"status": None, "text": None, "headers": {}, "error": "TOR proxy not running"}
+                result = await tor.get(url)
+                logger.info(f"TOR capture complete for {url}: status={result.get('status')}")
+                return result
+        except Exception as e:
+            logger.warning(f"TOR capture failed for {url}: {e}")
+            return {"status": None, "text": None, "headers": {}, "error": str(e)}

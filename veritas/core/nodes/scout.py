@@ -10,6 +10,7 @@ import logging
 from typing import TYPE_CHECKING
 
 from veritas.agents.scout import ScoutResult, StealthScout
+from veritas.config import settings
 
 if TYPE_CHECKING:
     from veritas.core.orchestrator import AuditState
@@ -38,7 +39,12 @@ async def scout_node(state: AuditState) -> dict:
     logger.info(f"Scout investigating: {url}")
 
     try:
-        async with StealthScout() as scout:
+        # Read tier config for TOR routing
+        audit_tier = state.get("audit_tier", "standard_audit")
+        tier_config = settings.AUDIT_TIERS.get(audit_tier, settings.AUDIT_TIERS["standard_audit"])
+        use_tor = bool(tier_config.get("enable_tor", False))
+
+        async with StealthScout(use_tor=use_tor) as scout:
             # First URL gets full temporal investigation
             if len(investigated) == 0:
                 result = await scout.investigate(url)

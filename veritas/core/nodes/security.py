@@ -282,11 +282,14 @@ async def security_node(state: AuditState) -> dict:
         try:
             from veritas.analysis.security.darknet import DarknetAnalyzer
             analyzer = DarknetAnalyzer()
-            scout_iocs = []
-            for sr in state.get("scout_results", []):
-                scout_iocs.extend(sr.get("ioc_indicators", []))
-            res = await analyzer.analyze(url)
-            results["darknet_correlation"] = res if isinstance(res, dict) else (res.to_dict() if hasattr(res, 'to_dict') else str(res))
+            # Get page_content from scout results if available
+            scout_results_list = state.get("scout_results", [])
+            page_content_for_darknet = None
+            if scout_results_list:
+                page_content_for_darknet = scout_results_list[0].get("page_content", None)
+            # Use analyze_with_details() for full result dict
+            res = await analyzer.analyze_with_details(url, page_content=page_content_for_darknet)
+            results["darknet_correlation"] = res.to_dict()
         except Exception as e:
             results["darknet_correlation"] = {"error": str(e)}
 
