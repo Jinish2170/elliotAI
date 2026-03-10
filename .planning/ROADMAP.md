@@ -130,6 +130,29 @@ VERITAS's journey from initial concept to production masterpiece: v1.0 establish
 **Plans**: [11-02-PLAN.md](.planning/phases/11-agent-theater-showcase/11-02-PLAN.md) â€” Screenshot Carousel & Highlight Overlays
 **Plans**: [11-03-PLAN.md](.planning/phases/11-agent-theater-showcase/11-03-PLAN.md) â€” Running Log & Celebration System
 
+
+### Phase 13: Production Hardening & Workflow Repair
+**Goal**: Repair all broken agent workflows, wire disconnected features, make all 4 audit tiers functionally correct, and eliminate fabricated data from the pipeline
+**Depends on**: Phase 12 (TOR Client), Phases 6-11 (all features)
+**Requirements**: REPAIR-01, REPAIR-02, REPAIR-03, REPAIR-04, REPAIR-05, REPAIR-06, REPAIR-07, REPAIR-08, REPAIR-09, REPAIR-10, REPAIR-11, REPAIR-12, REPAIR-13, REPAIR-14
+**Success Criteria** (what must be TRUE):
+  1. Scout captures real page_content and response_headers (no fabricated HTML)
+  2. Each tier (quick_scan, standard_audit, deep_forensic, darknet_investigation) runs different module sets with different budgets
+  3. Darknet tier routes traffic through TOR SOCKS5 proxy
+  4. All duplicate modules consolidated (scout/scout_nav, two TORClients)
+  5. All 8 currently failing tests pass (onion regex + tier count)
+  6. Orchestrator nodes extracted into maintainable package structure
+  7. Frontend store matches actual backend event schema
+  8. Integration tests verify all 4 tier workflows end-to-end
+
+Plans:
+- [ ] 13-01-PLAN.md — Scout data capture & module consolidation
+- [ ] 13-02-PLAN.md — Tier-aware node behavior
+- [ ] 13-03-PLAN.md — Fix broken tests & consolidate darknet
+- [ ] 13-04-PLAN.md — Orchestrator refactor into nodes/ package
+- [ ] 13-05-PLAN.md — Darknet pipeline wiring
+- [ ] 13-06-PLAN.md — Frontend store cleanup & data flow alignment
+- [ ] 13-07-PLAN.md — Integration tests for all 4 tier workflows
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -142,10 +165,12 @@ VERITAS's journey from initial concept to production masterpiece: v1.0 establish
 | 10 | v2.0 | 4/4 | âœ… Complete | 2026-02-28 |
 | 11 | v2.0 | 3/3 | âœ… Complete | 2026-02-28 |
 
+| 13    | v2.1 | 0/7 |  In Progress | - |
+
 Coverage:
 - v1 phases: 5 phases, 22 plans
 - v2 phases: 6 phases, 28 total plans (28 complete) - v2.0 MILESTONE COMPLETE
-- Total: 11 phases, 50 plans (50 complete)
+- Total: 12 phases, 57 plans (50 complete)
 
 ---
-*Last updated: 2026-02-28 - Phase 11 COMPLETE: All Agent Theater & Content Showcase features delivered*
+*Last updated: 2026-03-01 - Phase 13 Production Hardening planned (7 plans in 3 waves)*
