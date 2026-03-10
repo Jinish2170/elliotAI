@@ -159,7 +159,7 @@ class TestSettings:
     def test_audit_tiers(self):
         from config import settings
 
-        assert len(settings.AUDIT_TIERS) == 3
+        assert len(settings.AUDIT_TIERS) == 4
         for tier_name, tier_data in settings.AUDIT_TIERS.items():
             assert "pages" in tier_data
             assert "nim_calls" in tier_data

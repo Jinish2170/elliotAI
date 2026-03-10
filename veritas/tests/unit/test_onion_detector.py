@@ -31,11 +31,11 @@ class TestOnionDetectorPatterns:
 
     def test_pattern_v3_matches_56_char(self):
         """Verify PATTERN_V3 matches valid v3 addresses (56 chars)."""
-        # 56 characters: 28 + 28
-        valid_v3 = "abcdefghijklmnopqrstuvwxyzabcdefghijklmn.onion"
+        # 56 characters: 16+16+16+8
+        valid_v3 = "abcdefghijklmnopabcdefghijklmnopabcdefghijklmnopabcdefgh.onion"
         matches = PATTERN_V3.findall(valid_v3)
         assert len(matches) == 1
-        assert matches[0] == "abcdefghijklmnopqrstuvwxyzabcdefghijklmn"
+        assert matches[0] == "abcdefghijklmnopabcdefghijklmnopabcdefghijklmnopabcdefgh"
 
     def test_pattern_v3_rejects_55_char(self):
         """Verify PATTERN_V3 rejects 55-char address (invalid length)."""
@@ -59,7 +59,6 @@ class TestValidateOnion:
         # Valid v2: 16 base32 chars + .onion
         valid_urls = [
             "abcdefghijklmnop.onion",
-            "abcdefghijklmnopqrstuvwxyz.onion",
             "3g2upl4pq6kufc4m.onion",  # DuckDuckGo v2 (real example)
         ]
         for url in valid_urls:
@@ -69,13 +68,8 @@ class TestValidateOnion:
     def test_validate_onion_v3_valid(self):
         """Verify validate_onion() accepts valid v3 addresses."""
         detector = OnionDetector()
-        # Valid v3: 56 base32 chars + .onion
-        valid_urls = [
-            "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmn.onion",
-            "duckduckgdd42k3r3.onion",  # Too short for v3
-        ]
         # Real v3 example pattern (56 chars)
-        valid_v3 = "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmn.onion"
+        valid_v3 = "abcdefghijklmnopabcdefghijklmnopabcdefghijklmnopabcdefgh.onion"
         result = detector.validate_onion(valid_v3)
         assert result is True
 
@@ -130,7 +124,7 @@ class TestDetectOnionURLs:
     def test_detect_onion_urls_single_v3(self):
         """Verify detect_onion_urls() extracts single v3 URL."""
         detector = OnionDetector()
-        valid_v3 = "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmn.onion"
+        valid_v3 = "abcdefghijklmnopabcdefghijklmnopabcdefghijklmnopabcdefgh.onion"
         text = f"Check out {valid_v3} for hidden services."
         urls = detector.detect_onion_urls(text)
         assert len(urls) == 1
@@ -139,10 +133,7 @@ class TestDetectOnionURLs:
     def test_detect_onion_urls_multiple(self):
         """Verify detect_onion_urls() extracts multiple URLs."""
         detector = OnionDetector()
-        text =("""
-            Links: site1.onion and site2.onion
-            Also check abcdefghijklmnop.onion and xyzuvwxyzuvwxyzuvwxyz.onion
-        """)
+        text = "Links: abcdefghijklmnop.onion and bcdefghijklmnopq.onion Also check cdefghijklmnopqr.onion and defghijklmnopqrs.onion"
         urls = detector.detect_onion_urls(text)
         assert len(urls) == 4
 
@@ -236,7 +227,7 @@ class TestIsDarknetURL:
     def test_is_darknet_url_v3(self):
         """Verify is_darknet_url() returns True for v3 URLs."""
         detector = OnionDetector()
-        valid_v3 = "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmn.onion"
+        valid_v3 = "abcdefghijklmnopabcdefghijklmnopabcdefghijklmnopabcdefgh.onion"
         assert detector.is_darknet_url(valid_v3) is True
 
     def test_is_darknet_url_clearweb(self):
@@ -269,7 +260,7 @@ class TestOnionDetectorEdgeCases:
     def test_detect_onion_urls_with_special_chars(self):
         """Verify detect_onion_urls() handles URL with punctuation."""
         detector = OnionDetector()
-        text = "Visit (site.onion), [other.onion]; or more.onion."
+        text = "Visit (abcdefghijklmnop.onion), [bcdefghijklmnopq.onion]; or cdefghijklmnopqr.onion."
         urls = detector.detect_onion_urls(text)
         assert len(urls) == 3
 
