@@ -85,101 +85,101 @@ interface AuditStore {
   status: "idle" | "connecting" | "running" | "complete" | "error";
 
   // Phase tracking
-  currentPhase: Phase | null;
-  phases: Record<Phase, PhaseState>;
-  pct: number;
+  currentPhase: Phase | null;  // POPULATED via phase_start/phase_complete events
+  phases: Record<Phase, PhaseState>;  // POPULATED via phase_start/phase_complete/phase_error
+  pct: number;  // POPULATED via phase_start/phase_complete
 
   // Data
-  findings: Finding[];
-  screenshots: Screenshot[];
-  stats: AuditStats;
-  logs: LogEntry[];
-  siteType: string | null;
-  siteTypeConfidence: number;
-  securityResults: SecurityResultItem[];
-  result: AuditResult | null;
-  error: string | null;
+  findings: Finding[];  // POPULATED via finding and vision_pass_findings events
+  screenshots: Screenshot[];  // POPULATED via screenshot events
+  stats: AuditStats;  // POPULATED via stats_update and page_scanned events
+  logs: LogEntry[];  // POPULATED via log_entry, phase_start, phase_complete, agent_personality
+  siteType: string | null;  // POPULATED via site_type event
+  siteTypeConfidence: number;  // POPULATED via site_type event
+  securityResults: SecurityResultItem[];  // POPULATED via security_result event
+  result: AuditResult | null;  // POPULATED via audit_result event
+  error: string | null;  // POPULATED via audit_error event
 
   // Advanced Vision Data
-  darkPatternFindings: DarkPatternFinding[];
-  temporalFindings: TemporalFinding[];
-  visionPasses: VisionPassSummary[];
+  darkPatternFindings: DarkPatternFinding[];  // POPULATED via dark_pattern_finding event
+  temporalFindings: TemporalFinding[];  // POPULATED via temporal_finding event
+  visionPasses: VisionPassSummary[];  // POPULATED via vision_pass_complete event
 
   // Advanced OSINT Data
-  osintResults: OSINTResult[];
-  marketplaceThreats: MarketplaceThreatData[];
-  iocIndicators: IOCIndicator[];
-  iocDetection: IOCDetectionResult | null;
+  osintResults: OSINTResult[];  // POPULATED via osint_result event
+  marketplaceThreats: MarketplaceThreatData[];  // POPULATED via darknet_threat event
+  iocIndicators: IOCIndicator[];  // POPULATED via ioc_indicator event
+  iocDetection: IOCDetectionResult | null;  // POPULATED via ioc_detection_complete event
 
   // Advanced Judge Data
-  dualVerdict: DualVerdict | null;
+  dualVerdict: DualVerdict | null;  // POPULATED via verdict_technical/verdict_nontechnical/dual_verdict_complete
 
   // Premium Darknet Analysis Data
-  darknetAnalysisResult: DarknetAnalysisResult | null;
-  marketplaceDetails: MarketplaceThreatData[];
-  tor2WebThreats: Tor2WebThreatData[];
+  darknetAnalysisResult: DarknetAnalysisResult | null;  // POPULATED via darknet_analysis_result event
+  marketplaceDetails: MarketplaceThreatData[];  // POPULATED via marketplace_threat event
+  tor2WebThreats: Tor2WebThreatData[];  // POPULATED via tor2web_anonymous_breach event
 
   // CVSS / CVE Technical Data
-  cveEntries: CVEEntry[];
-  cvssMetrics: CVSSMetric[];
-  cvssScore: number | null;
+  cveEntries: CVEEntry[];  // POPULATED via cve_detected event
+  cvssMetrics: CVSSMetric[];  // POPULATED via cvss_metrics/cvss_metric events
+  cvssScore: number | null;  // POPULATED via cvss_metrics event
 
   // MITRE ATT&CK Data
-  mitreTechniques: TechniqueMatch[];
-  threatAttribution: ThreatAttribution | null;
-  attackPatterns: string[];
+  mitreTechniques: TechniqueMatch[];  // POPULATED via mitre_technique_mapped event
+  threatAttribution: ThreatAttribution | null;  // POPULATED via threat_attribution event
+  attackPatterns: string[];  // POPULATED via attack_pattern_detected event
 
   // Exploitation Advisory & Scenarios
-  exploitationAdvisories: ExploitationAdvisory[];
-  attackScenarios: AttackScenario[];
+  exploitationAdvisories: ExploitationAdvisory[];  // POPULATED via exploitation_advisory event
+  attackScenarios: AttackScenario[];  // POPULATED via attack_scenario event
 
   // Security Module Results
-  securityModuleResults: SecurityModuleResult[];
-  owaspResults: OWASPModuleResult[];
+  securityModuleResults: SecurityModuleResult[];  // POPULATED via security_module_result event
+  owaspResults: OWASPModuleResult[];  // POPULATED via owasp_module_result event
 
   // Agent Performance Metrics
-  agentPerformance: AgentPerformance[];
-  taskMetrics: TaskMetric[];
+  agentPerformance: AgentPerformance[];  // POPULATED via agent_performance event
+  taskMetrics: TaskMetric[];  // NOT YET WIRED — defined but no backend event sends this
 
   // Knowledge Graph Data
-  knowledgeGraph: KnowledgeGraph | null;
-  graphAnalysis: GraphAnalysis | null;
+  knowledgeGraph: KnowledgeGraph | null;  // POPULATED via knowledge_graph event
+  graphAnalysis: GraphAnalysis | null;  // POPULATED via graph_analysis event
 
   // Site Classification & Business Entity
-  siteClassification: SiteClassification | null;
-  businessEntities: BusinessEntity[];
+  siteClassification: SiteClassification | null;  // POPULATED via site_classification event
+  businessEntities: BusinessEntity[];  // NOT YET WIRED — no backend event sends this
 
   // Complete Agent Results
-  scoutResult: ScoutResult | null;
-  pageMetadata: PageMetadata | null;
-  complete_vision_result: VisionResult | null;
-  complete_graph_result: GraphResult | null;
-  complete_security_result: SecurityResult | null;
+  scoutResult: ScoutResult | null;  // NOT YET WIRED — raw scout result not streamed directly
+  pageMetadata: PageMetadata | null;  // NOT YET WIRED — extracted from audit_result if available
+  complete_vision_result: VisionResult | null;  // NOT YET WIRED — full result not streamed
+  complete_graph_result: GraphResult | null;  // NOT YET WIRED — full result not streamed
+  complete_security_result: SecurityResult | null;  // NOT YET WIRED — full result not streamed
 
   // Judge Agent Data
-  judge_decision: JudgeDecision | null;
-  audit_evidence: AuditEvidence | null;
+  judge_decision: JudgeDecision | null;  // NOT YET WIRED — included in audit_result only
+  audit_evidence: AuditEvidence | null;  // NOT YET WIRED — not currently streamed
 
   // Graph Investigation Data
-  entityClaims: EntityClaim[];
-  verificationResults: VerificationResult[];
-  domainIntel: DomainIntel | null;
-  graphInconsistencies: GraphInconsistency[];
+  entityClaims: EntityClaim[];  // NOT YET WIRED — no backend event sends this directly
+  verificationResults: VerificationResult[];  // NOT YET WIRED — included in audit_result only
+  domainIntel: DomainIntel | null;  // NOT YET WIRED — included in audit_result.domain_info
+  graphInconsistencies: GraphInconsistency[];  // NOT YET WIRED — included in audit_result only
 
   // Consensus Results
-  consensusResults: ConsensusResult[];
+  consensusResults: ConsensusResult[];  // NOT YET WIRED — no backend event sends this
 
   // Scout Navigation Events
-  navigationEvents: Array<NavigationStartEvent | NavigationCompleteEvent | PageScannedEvent | ScrollEvent>;
-  explorationPath: ExplorationPath | null;
-  captchaResults: CaptchaResult[];
-  formDetections: FormDetection[];
+  navigationEvents: Array<NavigationStartEvent | NavigationCompleteEvent | PageScannedEvent | ScrollEvent>;  // POPULATED via navigation_start/complete/page_scanned/scroll_event
+  explorationPath: ExplorationPath | null;  // POPULATED via exploration_path event
+  captchaResults: CaptchaResult[];  // POPULATED via captcha_detected event
+  formDetections: FormDetection[];  // POPULATED via form_detected event
 
   // APT Group Data
-  aptGroupAttributions: APTGroupAttribution[];
+  aptGroupAttributions: APTGroupAttribution[];  // POPULATED via apt_group_attribution event
 
   // Trust Score Data
-  trustScoreResult: TrustScoreResult | null;
+  trustScoreResult: TrustScoreResult | null;  // NOT YET WIRED — included in audit_result.judge_decision.trust_score_result
 
   // Actions
   setAudit: (id: string, url: string, tier: string) => void;
@@ -1155,6 +1155,14 @@ function processSingleEvent(
           },
         },
       });
+      break;
+    }
+
+    default: {
+      // Unknown event type: log for debugging but don't throw
+      if (process.env.NODE_ENV === "development") {
+        console.debug(`[AuditStore] Unknown event type: ${type}`, event);
+      }
       break;
     }
   }

@@ -480,7 +480,29 @@ class AuditRunner:
         })
         for performance in self._calculate_agent_performance(result):
             await send({"type": "agent_performance", "performance": performance})
-        await send({"type": "audit_result", "result": summary})
+
+        # Build enriched audit_result with trust_score_result and dual_verdict included
+        enriched_summary = {
+            **summary,
+            # Include trust_score_result for direct access in frontend
+            "trust_score_result": trust if trust else None,
+            # Include dual_verdict for verdict display
+            "dual_verdict": judge.get("dual_verdict") or {
+                "verdict_technical": technical,
+                "verdict_nontechnical": nontechnical,
+            },
+            # Include judge_decision for full access
+            "judge_decision": {
+                "action": judge.get("action", "RENDER_VERDICT"),
+                "narrative": judge.get("narrative", ""),
+                "recommendations": judge.get("recommendations", []),
+                "trust_score_result": trust,
+                "dual_verdict": judge.get("dual_verdict"),
+            } if judge else None,
+            # Timing
+            "elapsed_ms": int(summary.get("elapsed_seconds", 0) * 1000),
+        }
+        await send({"type": "audit_result", "result": enriched_summary})
 
     def _calculate_agent_performance(self, result: dict) -> list:
         performances = []

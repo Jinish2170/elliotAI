@@ -658,7 +658,7 @@ export interface BusinessEntity {
 export interface AuditConfiguration {
   audit_id: string;
   url: string;
-  tier: "quick" | "standard_audit" | "deep_forensic";
+  tier: "quick_scan" | "standard_audit" | "deep_forensic" | "darknet_investigation";
   verdict_mode: "simple" | "expert";
   premium_features: PremiumFeatureConfig;
   security_modules: SecurityModuleConfig;
@@ -817,6 +817,10 @@ export interface AuditResult {
   errors: string[];
   verdict_mode: string;
   green_flags?: GreenFlag[]; // list of positive indicators
+  // TODO: Wire from backend — these fields exist in judge_decision but are not currently forwarded to audit_result event
+  dual_verdict?: DualVerdict;
+  trust_score_result?: TrustScoreResult;
+  judge_decision?: JudgeDecision;
 }
 
 export interface VisionPassStartEvent {
