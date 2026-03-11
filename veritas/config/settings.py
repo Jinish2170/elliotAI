@@ -52,9 +52,9 @@ NIM_VISION_FALLBACK: str = os.getenv("NIM_VISION_FALLBACK", "microsoft/phi-3.5-v
 NIM_LLM_MODEL: str = os.getenv("NIM_LLM_MODEL", "meta/llama-3.1-70b-instruct")
 
 # API tuning
-NIM_TIMEOUT: int = int(os.getenv("NIM_TIMEOUT", "30"))
+NIM_TIMEOUT: int = int(os.getenv("NIM_TIMEOUT", "60"))
 NIM_RETRY_COUNT: int = int(os.getenv("NIM_RETRY_COUNT", "2"))
-NIM_REQUESTS_PER_MINUTE: int = int(os.getenv("NIM_REQUESTS_PER_MINUTE", "10"))
+NIM_REQUESTS_PER_MINUTE: int = int(os.getenv("NIM_REQUESTS_PER_MINUTE", "30"))
 
 
 # ============================================================
@@ -82,12 +82,20 @@ ABUSEIPDB_REQUESTS_PER_MINUTE: int = int(os.getenv("ABUSEIPDB_REQUESTS_PER_MINUT
 GRAPH_PHASE_TIMEOUT_S: int = int(os.getenv("GRAPH_PHASE_TIMEOUT_S", "90"))
 GRAPH_WHOIS_TIMEOUT_S: int = int(os.getenv("GRAPH_WHOIS_TIMEOUT_S", "12"))
 GRAPH_DNS_TIMEOUT_S: int = int(os.getenv("GRAPH_DNS_TIMEOUT_S", "6"))
-GRAPH_SSL_TIMEOUT_S: int = int(os.getenv("GRAPH_SSL_TIMEOUT_S", "6"))
-GRAPH_META_TIMEOUT_S: int = int(os.getenv("GRAPH_META_TIMEOUT_S", "12"))
+GRAPH_SSL_TIMEOUT_S: int = int(os.getenv("GRAPH_SSL_TIMEOUT_S", "12"))
+GRAPH_META_TIMEOUT_S: int = int(os.getenv("GRAPH_META_TIMEOUT_S", "20"))
 GRAPH_VERIFY_TIMEOUT_S: int = int(os.getenv("GRAPH_VERIFY_TIMEOUT_S", "20"))
 GRAPH_SEARCH_TIMEOUT_S: int = int(os.getenv("GRAPH_SEARCH_TIMEOUT_S", "15"))
 GRAPH_VERIFY_CONCURRENCY: int = int(os.getenv("GRAPH_VERIFY_CONCURRENCY", "3"))
 GRAPH_SEARCH_FOLLOW_LINKS: bool = os.getenv("GRAPH_SEARCH_FOLLOW_LINKS", "false").lower() == "true"
+
+# ============================================================
+# Tesseract OCR (Level 3 fallback)
+# ============================================================
+TESSERACT_CMD: str = os.getenv(
+    "TESSERACT_CMD",
+    r"C:\Program Files\Tesseract-OCR\tesseract.exe" if os.name == "nt" else "tesseract",
+)
 
 
 # ============================================================
@@ -200,60 +208,80 @@ TOR_SOCKS_PORT: int = int(os.getenv("TOR_SOCKS_PORT", "9050"))
 # ============================================================
 # Audit Tiers — Budget per scan type
 # ============================================================
+DEFAULT_TIER: str = os.getenv("DEFAULT_AUDIT_TIER", "standard_audit")
+
+# NIM budget breakdown:
+#   - vision_nim: VLM calls for dark pattern detection (1 per screenshot per pass)
+#   - judge_nim:  LLM calls for narrative generation (always needs 2: expert + simple)
+#   - nim_calls:  Total budget (vision_nim + judge_nim), kept for backward compat
+#
+# Based on NVIDIA NIM API testing (Mar 2026):
+#   - Free tier: 1000 credits, ~1 credit/call
+#   - Average latency: ~1s per LLM call, ~2-3s per VLM call
+#   - Effective rate: ~60 calls/min (no hard rate limit hit at 10 RPM)
+
 AUDIT_TIERS: dict = {
     "quick_scan": {
         "description": "Homepage-only fast check",
         "pages": 1,
-        "screenshots": 2,
-        "nim_calls": 3,
-        "estimated_credits": 5,
-        "max_verifications": 0,
-        "enable_tavily": False,
-        "enable_osint": False,
-        "graph_timeout_s": 15,
+        "screenshots": 3,
+        "nim_calls": 8,
+        "vision_nim": 4,
+        "judge_nim": 4,
+        "estimated_credits": 10,
+        "max_verifications": 3,
+        "enable_tavily": True,
+        "enable_osint": True,
+        "graph_timeout_s": 120,
         "vision_passes": 1,
-        "target_duration_s": 30,
+        "target_duration_s": 180,
     },
     "standard_audit": {
         "description": "Default multi-page audit",
         "pages": 5,
         "screenshots": 10,
-        "nim_calls": 12,
-        "estimated_credits": 20,
+        "nim_calls": 25,
+        "vision_nim": 18,
+        "judge_nim": 7,
+        "estimated_credits": 30,
         "max_verifications": 10,
         "enable_tavily": True,
         "enable_osint": True,
-        "graph_timeout_s": 60,
+        "graph_timeout_s": 180,
         "vision_passes": 3,
-        "target_duration_s": 120,
+        "target_duration_s": 240,
     },
     "deep_forensic": {
         "description": "Full investigation with entity verification",
         "pages": 10,
         "screenshots": 20,
-        "nim_calls": 30,
-        "estimated_credits": 50,
+        "nim_calls": 50,
+        "vision_nim": 40,
+        "judge_nim": 10,
+        "estimated_credits": 60,
         "max_verifications": 15,
         "enable_tavily": True,
         "enable_osint": True,
         "enable_osint_deep": True,
-        "graph_timeout_s": 90,
+        "graph_timeout_s": 300,
         "vision_passes": 5,
-        "target_duration_s": 300,
+        "target_duration_s": 420,
     },
     "darknet_investigation": {
         "description": "Deep forensic + darknet threat intelligence and TOR routing",
         "pages": 15,
         "screenshots": 25,
-        "nim_calls": 40,
-        "estimated_credits": 80,
+        "nim_calls": 70,
+        "vision_nim": 55,
+        "judge_nim": 15,
+        "estimated_credits": 90,
         "max_verifications": 20,
         "enable_darknet": True,
         "enable_tor": True,
         "enable_osint_deep": True,
         "enable_tavily": True,
         "enable_osint": True,
-        "graph_timeout_s": 120,
+        "graph_timeout_s": 420,
         "vision_passes": 5,
         "target_duration_s": 600,
     },

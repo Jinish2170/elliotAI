@@ -7,7 +7,7 @@ comprehensive threat intelligence for analyzed URLs.
 from typing import Any, Dict, List, Optional
 
 from .attack_patterns import AttackPatternMapper
-from .ioc_detector import IOCDetector, Indicator
+from .ioc_detector import IOCDetector, IOCSeverity, IOCType, Indicator
 
 
 class CThreatIntelligence:
@@ -54,10 +54,18 @@ class CThreatIntelligence:
         # Combine and deduplicate indicators
         all_indicators = list(set(text_indicators + html_indicators + metadata_indicators))
 
+        # Filter out NONE-severity false positives before threat analysis
+        meaningful_indicators = [
+            ind for ind in all_indicators
+            if ind.severity != IOCSeverity.NONE or ind.ioc_type in (
+                IOCType.ONION_ADDRESS, IOCType.URL
+            )
+        ]
+
         # Classify threat level for each indicator
         indicators_list = []
         threat_level_map = {}
-        for indicator in all_indicators:
+        for indicator in meaningful_indicators:
             threat_level = self.ioc_detector.classify_threat_level(
                 indicator, osint_results
             )
@@ -69,7 +77,7 @@ class CThreatIntelligence:
 
         # Map indicators to MITRE ATT&CK techniques (use original Indicator objects)
         mitre_techniques = self.attack_mapper.map_indicators_to_techniques(
-            all_indicators,
+            meaningful_indicators,
             site_features,
         )
 

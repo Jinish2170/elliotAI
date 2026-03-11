@@ -50,6 +50,29 @@ veritas/data/evidence/
 veritas/data/reports/
 veritas/data/vectordb/
 
+# Evidence & screenshots (all locations)
+data/evidence/
+data/screenshots/
+backend/data/screenshots/
+testing/data/screenshots/
+veritas/screenshots/
+
+# Database files
+*.db
+*.sqlite3
+
+# Testing outputs
+testing/results/
+testing/data/
+
+# Image evidence files (global)
+*_fullpage.jpg
+*_fullpage.png
+*_section_*.jpg
+*_section_*.png
+*_t0.jpg
+*_t1.jpg
+
 # Ignore node_modules and frontend build artifacts
 node_modules/
 frontend/node_modules/
@@ -93,3 +116,16 @@ nim_test_output.txt
 
 # Ignore .DS_Store (macOS)
 .DS_Store
+
+# Temp testing/debug scripts
+_check_result.py
+_extract_*.py
+_inspect_*.py
+_run_audit_*.py
+_simulate_*.py
+_test_nim_*.py
+_compile_test.py
+_test_ws.py
+
+# Marketplace threat data
+veritas/data/*.json

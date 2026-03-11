@@ -415,7 +415,9 @@ class NIMClient:
         try:
             import pytesseract
             from PIL import Image
+            from veritas.config import settings
 
+            pytesseract.pytesseract.tesseract_cmd = settings.TESSERACT_CMD
             text = pytesseract.image_to_string(Image.open(image_path))
             analysis = self._heuristic_analysis(text)
             return {

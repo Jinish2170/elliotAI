@@ -433,6 +433,7 @@ class VisionAgent:
         site_type: str = "",
         use_5_pass_pipeline: bool = False,
         max_passes: int = 5,
+        nim_budget: Optional[int] = None,
     ) -> VisionResult:
         """
         Full visual forensics analysis on a set of screenshots.
@@ -453,9 +454,16 @@ class VisionAgent:
         # Use new 5-pass pipeline if requested
         if use_5_pass_pipeline:
             logger.info("Using 5-pass enhanced vision pipeline")
-            return await self.analyze_5_pass(screenshots, url, max_passes=max_passes)
+            return await self.analyze_5_pass(screenshots, url, max_passes=max_passes, nim_budget=nim_budget)
+
+        # Resolve budget from tier config if not explicitly passed
+        if nim_budget is None:
+            from veritas.config import settings as _s
+            _tier = _s.AUDIT_TIERS[_s.DEFAULT_TIER]
+            nim_budget = _tier.get("vision_nim", _tier["nim_calls"])
 
         # Original analysis path (backward compatible)
+        self._nim_budget = nim_budget  # Store for budget checking in sub-methods
         result = VisionResult()
 
         if not screenshots:
@@ -649,7 +657,8 @@ class VisionAgent:
         url: str = "",
         scout_result: Optional["ScoutResult"] = None,
         progress_emitter: Optional["ProgressEmitter"] = None,
-        max_passes: int = 5
+        max_passes: int = 5,
+        nim_budget: Optional[int] = None,
     ) -> VisionResult:
         """
         Perform 5-pass vision analysis on screenshots using the enhanced pipeline.
@@ -670,6 +679,12 @@ class VisionAgent:
         """
         # Use provided emitter or fall back to instance emitter
         emitter = progress_emitter or self.progress_emitter
+
+        # Resolve budget from tier config if not explicitly passed
+        if nim_budget is None:
+            from veritas.config import settings as _s
+            _tier = _s.AUDIT_TIERS[_s.DEFAULT_TIER]
+            nim_budget = _tier.get("vision_nim", _tier["nim_calls"])
 
         # Emit vision start event (both emitters for compatibility)
         await self.event_emitter.emit_vision_start(len(screenshots))
@@ -783,6 +798,10 @@ class VisionAgent:
                             except (TypeError, KeyError):
                                 logger.warning(f"Failed to restore cached finding: {f_data}")
                     else:
+                        # Budget guard: stop making NIM calls if budget exhausted
+                        if self._nim.call_count >= nim_budget:
+                            logger.warning(f"NIM budget exhausted ({nim_budget} calls) — skipping remaining VLM analysis")
+                            break
                         # Execute VLM analysis
                         try:
                             vlm_response = await self._nim.analyze_image(
@@ -927,6 +946,10 @@ class VisionAgent:
                 continue
 
             for prompt in category.vlm_prompts:
+                # Budget guard
+                if hasattr(self, '_nim_budget') and self._nim.call_count >= self._nim_budget:
+                    logger.warning(f"NIM budget exhausted ({self._nim_budget}) during static analysis")
+                    return
                 result.prompts_sent += 1
 
                 try:
@@ -973,6 +996,10 @@ class VisionAgent:
 
         for cat_id, category in temporal_tax.items():
             for prompt in category.vlm_prompts:
+                # Budget guard
+                if hasattr(self, '_nim_budget') and self._nim.call_count >= self._nim_budget:
+                    logger.warning(f"NIM budget exhausted ({self._nim_budget}) during temporal analysis")
+                    return
                 result.prompts_sent += 2  # One for each screenshot
 
                 try:

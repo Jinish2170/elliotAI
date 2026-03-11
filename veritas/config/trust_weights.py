@@ -1,12 +1,19 @@
 """
 Veritas — Trust Score Weights & Override Rules
 
-Implements the weighted multi-signal scoring formula:
+Implements the weighted multi-signal scoring formula with Bayesian
+prior interpolation:
 
-    TrustScore = Σ(wi × Si) for i in [visual, structural, temporal, graph, meta]
+    effective_i = Si × Ci + prior × (1 − Ci)    # prior = 0.5
+    TrustScore  = Σ(wi × effective_i) × 100
 
-With hard-stop override rules that can cap or force scores regardless of
-the weighted calculation.
+Theory: Each signal Si is a noisy observation of site trustworthiness.
+Confidence Ci represents how informative the observation is.  When Ci
+is low the posterior regresses toward the uninformative prior (0.5)
+rather than toward zero, which would wrongly penalise the site.
+
+Hard-stop override rules can then cap or force the score regardless
+of the weighted calculation.
 
 This module is the single source of truth for all scoring parameters.
 """
@@ -313,20 +320,32 @@ def compute_trust_score(
 
     weight_map = w.as_dict()
 
-    # Step 1: Weighted sum
+    # Step 1: Weighted sum with Bayesian prior interpolation
+    #
+    # Theory (Beta-posterior mean):
+    #   effective = raw × confidence + prior × (1 − confidence)
+    #
+    # When confidence → 1  →  effective ≈ raw  (evidence dominates)
+    # When confidence → 0  →  effective ≈ 0.5  (no information → neutral)
+    # This prevents low-confidence signals from dragging the score
+    # toward zero, which would be a false accusation.
+    PRIOR = 0.5  # maximally uninformative prior
+
     weighted_breakdown = {}
     raw_total = 0.0
     for signal_name, weight in weight_map.items():
         signal = signals.get(signal_name)
         if signal:
-            # Apply confidence weighting: low-confidence signals contribute less
-            effective_score = signal.raw_score * signal.confidence
+            effective_score = (
+                signal.raw_score * signal.confidence
+                + PRIOR * (1.0 - signal.confidence)
+            )
             contribution = weight * effective_score
             weighted_breakdown[signal_name] = round(contribution, 4)
             raw_total += contribution
         else:
-            # Missing signal: assume neutral (0.5) with low confidence
-            contribution = weight * 0.5 * 0.5
+            # Missing signal: use prior with zero confidence → pure prior
+            contribution = weight * PRIOR
             weighted_breakdown[signal_name] = round(contribution, 4)
             raw_total += contribution
 

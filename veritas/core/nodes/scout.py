@@ -82,6 +82,8 @@ async def scout_node(state: AuditState) -> dict:
             # Phase 13-01: Real page content and response headers
             "page_content": getattr(result, 'page_content', ''),
             "response_headers": getattr(result, 'response_headers', {}),
+            # Phase 17: Scroll & section screenshot metadata
+            "scroll_result": getattr(result, 'scroll_result', {}),
         }
 
         new_scout_results = scout_results + [result_dict]

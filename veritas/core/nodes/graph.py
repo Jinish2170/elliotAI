@@ -59,28 +59,21 @@ async def graph_node(state: AuditState) -> dict:
         agent = GraphInvestigator(nim_client=nim)
         graph_timeout_s = tier_config.get("graph_timeout_s", max(10, int(getattr(settings, "GRAPH_PHASE_TIMEOUT_S", 90))))
 
+        # Progress callback — logs sub-phase updates for frontend visibility
+        def _on_progress(step: str, detail: str):
+            logger.info(f"[GRAPH:{audit_tier}] {step} — {detail}")
+
         try:
-            if audit_tier == "quick_scan":
-                # Quick scan: run only basic DNS/SSL checks, skip entity verification and Tavily
-                async with asyncio.timeout(graph_timeout_s):
-                    result = await agent.investigate(
-                        url=url,
-                        page_metadata=metadata,
-                        page_text="",
-                        external_links=[],
-                        site_type=state.get("site_type", ""),
-                        form_validation=None,
-                    )
-            else:
-                async with asyncio.timeout(graph_timeout_s):
-                    result = await agent.investigate(
-                        url=url,
-                        page_metadata=metadata,
-                        page_text=page_text,
-                        external_links=external_links,
-                        site_type=state.get("site_type", ""),
-                        form_validation=primary.get("form_validation"),
-                    )
+            async with asyncio.timeout(graph_timeout_s):
+                result = await agent.investigate(
+                    url=url,
+                    page_metadata=metadata,
+                    page_text=page_text,
+                    external_links=external_links,
+                    site_type=state.get("site_type", ""),
+                    form_validation=primary.get("form_validation"),
+                    progress_callback=_on_progress,
+                )
         except TimeoutError:
             timeout_msg = f"Graph phase timeout after {graph_timeout_s}s"
             logger.error(timeout_msg)

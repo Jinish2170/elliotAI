@@ -198,15 +198,10 @@ class GraphInvestigator:
         self._verify_concurrency = max(1, int(getattr(settings, "GRAPH_VERIFY_CONCURRENCY", 3)))
         self._search_follow_links = bool(getattr(settings, "GRAPH_SEARCH_FOLLOW_LINKS", False))
 
-        # Initialize OSINT/CTI components if db session provided
-        if self._db_session:
-            self._osint_orchestrator = OSINTOrchestrator(self._db_session)
-            self._reputation_manager = ReputationManager()
-            self._consensus_engine = ConsensusEngine(min_sources=2)
-        else:
-            self._osint_orchestrator = None
-            self._reputation_manager = None
-            self._consensus_engine = None
+        # Initialize OSINT/CTI components (db_session optional for caching)
+        self._osint_orchestrator = OSINTOrchestrator(self._db_session)
+        self._reputation_manager = ReputationManager()
+        self._consensus_engine = ConsensusEngine(min_sources=2)
 
         # CThreatIntelligence doesn't require db session
         self._cti = CThreatIntelligence()
@@ -224,9 +219,15 @@ class GraphInvestigator:
         site_type: str = "",
         form_validation: Optional[dict] = None,
         page_html: Optional[str] = None,
+        progress_callback: Optional[Any] = None,
     ) -> GraphResult:
         """
         Full graph-based investigation of a URL.
+
+        Runs ALL phases regardless of audit tier — the Graph Investigator
+        always performs a thorough investigation with WHOIS, DNS, SSL,
+        entity extraction, web-search verification, OSINT, CTI, and
+        inconsistency detection.
 
         Args:
             url: Target URL
@@ -236,22 +237,34 @@ class GraphInvestigator:
             site_type: Site type classification
             form_validation: Form validation results
             page_html: HTML content of the page for OSINT/CTI analysis
+            progress_callback: Optional async callable(step: str, detail: str)
+                               for real-time investigation progress.
 
         Returns:
             GraphResult with knowledge graph, verifications, and scores
         """
         result = GraphResult()
         graph = nx.DiGraph()
+        _progress = progress_callback or (lambda step, detail: None)
 
         # Extract domain from URL
         domain = self._extract_domain(url)
-        logger.info(f"Starting graph investigation for {domain}")
+        logger.info(f"[GRAPH] Starting full investigation for {domain}")
 
         # -----------------------------------------------------------
-        # Phase 1: Domain Intelligence (WHOIS + DNS)
+        # Phase 1: Domain Intelligence + MetaAnalyzer + IP Geo
+        #          (WHOIS, DNS, SSL, MX, SPF, DMARC — all in parallel)
         # -----------------------------------------------------------
-        domain_intel = await self._gather_domain_intel(domain)
+        _progress("domain_intel", f"Running WHOIS + DNS + SSL + MetaAnalyzer for {domain}...")
+        domain_intel, meta_dict, ip_geo = await self._parallel_domain_intel(domain, url)
         result.domain_intel = domain_intel
+        if meta_dict:
+            result.meta_analysis = meta_dict
+        if ip_geo:
+            result.ip_geolocation = ip_geo
+            if ip_geo.get("country"):
+                domain_intel.ip_country = ip_geo["country"]
+        _progress("domain_intel_done", f"Domain age: {domain_intel.age_days}d, SSL: {domain_intel.ssl_issuer or 'none'}, IP: {domain_intel.ip_address}")
 
         # Add website node to graph
         graph.add_node(
@@ -263,12 +276,16 @@ class GraphInvestigator:
             domain_age_days=domain_intel.age_days,
             creation_date=str(domain_intel.creation_date) if domain_intel.creation_date else "",
         )
+        if domain_intel.ip_country:
+            graph.nodes[url]["ip_country"] = domain_intel.ip_country
 
         # -----------------------------------------------------------
         # Phase 2: Entity Extraction
         # -----------------------------------------------------------
+        _progress("entity_extraction", f"Extracting entities from metadata + page text ({len(page_text)} chars)...")
         claims = await self._extract_entities(url, page_metadata, page_text)
         result.claims_extracted = claims
+        _progress("entity_extraction_done", f"Extracted {len(claims)} entity claims")
 
         for claim in claims:
             # Add entity node
@@ -288,10 +305,16 @@ class GraphInvestigator:
             )
 
         # -----------------------------------------------------------
-        # Phase 3: Entity Verification via Tavily
+        # Phase 3: Entity Verification via Web Search
         # -----------------------------------------------------------
+        verifiable = [c for c in claims if c.entity_type in
+                      {"person", "company", "address", "phone", "partnership", "award"}]
+        _progress("entity_verification", f"Verifying {len(verifiable)} entities via web search...")
         verifications = await self._verify_entities(claims, domain)
         result.verifications = verifications
+        confirmed = sum(1 for v in verifications if v.status == "confirmed")
+        denied = sum(1 for v in verifications if v.status in ("denied", "contradicted"))
+        _progress("entity_verification_done", f"Verified: {confirmed} confirmed, {denied} contradicted, {len(verifications)-confirmed-denied} unverifiable")
 
         for v in verifications:
             # Add evidence node
@@ -330,9 +353,13 @@ class GraphInvestigator:
                 )
 
         # -----------------------------------------------------------
-        # Phase 4: External Link Analysis
+        # Phase 4: External Link Analysis + Social Engineering Detection
         # -----------------------------------------------------------
+        _progress("link_analysis", f"Analyzing {len(external_links or [])} external links...")
+        se_link_findings: list[GraphInconsistency] = []
         if external_links:
+            se_link_findings = self._analyze_social_engineering_links(external_links, domain)
+
             for ext_url in external_links[:10]:  # Limit to avoid graph bloat
                 ext_domain = self._extract_domain(ext_url)
                 if ext_domain and ext_domain != domain:
@@ -342,48 +369,17 @@ class GraphInvestigator:
                     graph.add_edge(url, ext_id, edge_type="LINKS_TO", link_type="outbound")
 
         # -----------------------------------------------------------
-        # Phase 4b: MetaAnalyzer (MX/SPF/DMARC, deep SSL)
+        # Phase 4b: MetaAnalyzer + IP geo already ran in Phase 1
+        #           (parallel _parallel_domain_intel handles both)
         # -----------------------------------------------------------
-        try:
-            from veritas.analysis.meta_analyzer import MetaAnalyzer
-            meta_az = MetaAnalyzer()
-            meta_result = await self._run_with_timeout(
-                meta_az.analyze(domain),
-                timeout_s=self._meta_timeout_s,
-                step=f"meta-analysis:{domain}",
-            )
-            result.meta_analysis = meta_az.to_dict(meta_result)
-            logger.info(
-                f"MetaAnalyzer: score={meta_result.meta_score:.2f}, "
-                f"signals={len(meta_result.risk_signals)}, "
-                f"MX={len(meta_result.dns_info.mx_records)}, "
-                f"SPF={meta_result.dns_info.has_spf}, "
-                f"DMARC={meta_result.dns_info.has_dmarc}"
-            )
-        except TimeoutError:
-            msg = f"MetaAnalyzer timed out after {self._meta_timeout_s}s"
-            logger.warning(msg)
-            result.errors.append(msg)
-        except Exception as e:
-            logger.warning(f"MetaAnalyzer failed (non-critical): {e}")
-            result.errors.append(f"MetaAnalyzer failed: {e}")
-
-        # -----------------------------------------------------------
-        # Phase 4c: IP Geolocation
-        # -----------------------------------------------------------
-        if domain_intel.ip_address:
-            geo = await self._ip_geolocation(domain_intel.ip_address)
-            result.ip_geolocation = geo
-            if geo.get("country"):
-                domain_intel.ip_country = geo["country"]
-                graph.nodes[url]["ip_country"] = geo["country"]
 
         # -----------------------------------------------------------
         # Phase 4d: OSINT Investigation
         # -----------------------------------------------------------
+        _progress("osint", f"Running OSINT investigation (DNS, WHOIS, SSL, Threat Intel)...")
         osint_results = {}
         if self._osint_orchestrator:
-            hostname = self._extract_hostname(url)
+            hostname = self._extract_domain(url)
             ip_address = domain_intel.ip_address if domain_intel else ""
             osint_results = await self._run_osint_investigation(domain, hostname, ip_address)
 
@@ -401,9 +397,17 @@ class GraphInvestigator:
                         "registrar", result.domain_intel.registrar
                     )
 
+        if osint_results:
+            src_count = len([k for k in osint_results if k != "_consensus"])
+            consensus = osint_results.get("_consensus", {}).get("consensus_status", "none")
+            _progress("osint_done", f"OSINT: {src_count} sources queried, consensus={consensus}")
+        else:
+            _progress("osint_done", "OSINT: no results (orchestrator unavailable or all sources failed)")
+
         # -----------------------------------------------------------
         # Phase 4e: CTI-Lite Analysis
         # -----------------------------------------------------------
+        _progress("cti", "Running Cyber Threat Intelligence analysis...")
         if page_html and self._cti and osint_results:
             try:
                 cti_result = await self._cti.analyze_threats(
@@ -419,13 +423,26 @@ class GraphInvestigator:
                 logger.warning(f"CTI analysis failed: {e}")
                 result.errors.append(f"CTI analysis failed: {e}")
 
+        # Derive osint_confidence from consensus agreement when CTI
+        # didn't provide one (common — CTI is optional / may fail).
+        if result.osint_confidence == 0.0 and result.osint_consensus:
+            agreement = result.osint_consensus.get("agreement_count", 0)
+            total = result.osint_consensus.get("total_sources", 0)
+            if total > 0:
+                result.osint_confidence = round(agreement / total, 3)
+
+        _progress("cti_done", f"CTI: threat_level={result.threat_level}, techniques={len(result.cti_techniques)}, indicators={len(result.osint_indicators)}")
+
         # -----------------------------------------------------------
         # Phase 5: Inconsistency Detection
         # -----------------------------------------------------------
+        _progress("inconsistency", "Detecting inconsistencies between claims and evidence...")
         inconsistencies = self._detect_inconsistencies(
             domain_intel, verifications, claims, site_type,
             form_validation=form_validation, ip_geo=result.ip_geolocation,
         )
+        # Merge social engineering link findings
+        inconsistencies.extend(se_link_findings)
         result.inconsistencies = inconsistencies
 
         # -----------------------------------------------------------
@@ -434,23 +451,28 @@ class GraphInvestigator:
         if osint_results:
             self._add_osint_nodes_to_graph(graph, domain, osint_results, result)
 
+        _progress("inconsistency_done", f"Found {len(inconsistencies)} inconsistencies")
+
         # -----------------------------------------------------------
         # Phase 6: Compute Scores
         # -----------------------------------------------------------
+        _progress("scoring", "Computing enhanced graph trust score...")
         result.graph = graph
         result.graph_node_count = graph.number_of_nodes()
         result.graph_edge_count = graph.number_of_edges()
-        result.graph_score = self._calculate_enhanced_graph_score(result, graph)
         result.meta_score = self._compute_meta_score(domain_intel)
+        result.graph_score = self._calculate_enhanced_graph_score(result, graph)
         result.tavily_searches = self._search_count
 
-        logger.info(
+        summary = (
             f"Graph investigation complete for {domain} | "
             f"claims={len(claims)} | verifications={len(verifications)} | "
             f"inconsistencies={len(inconsistencies)} | "
             f"graph_score={result.graph_score:.2f} | meta_score={result.meta_score:.2f} | "
             f"nodes={result.graph_node_count} | edges={result.graph_edge_count}"
         )
+        logger.info(f"[GRAPH] {summary}")
+        _progress("complete", summary)
 
         return result
 
@@ -458,32 +480,132 @@ class GraphInvestigator:
     # Private: Domain Intelligence
     # ================================================================
 
+    async def _parallel_domain_intel(self, domain: str, url: str) -> tuple:
+        """
+        Run WHOIS+DNS+SSL, MetaAnalyzer, and IP geo ALL in parallel.
+
+        Returns (DomainIntel, meta_dict or None, ip_geo or None).
+        Runs Phase 1 + MetaAnalyzer concurrently for efficiency without
+        sacrificing any data quality.
+        """
+        from veritas.analysis.meta_analyzer import MetaAnalyzer
+
+        async def _domain_intel_task():
+            return await self._gather_domain_intel(domain)
+
+        async def _meta_task():
+            try:
+                meta_az = MetaAnalyzer()
+                meta_result = await self._run_with_timeout(
+                    meta_az.analyze(domain),
+                    timeout_s=self._meta_timeout_s,
+                    step=f"meta-analysis:{domain}",
+                )
+                return meta_az.to_dict(meta_result), meta_result
+            except Exception as e:
+                logger.warning(f"MetaAnalyzer failed (parallel): {e}")
+                return None, None
+
+        # Run domain intel and MetaAnalyzer in parallel
+        (domain_intel, (meta_dict, meta_result)) = await asyncio.gather(
+            _domain_intel_task(), _meta_task(),
+        )
+
+        # Backfill domain_intel from MetaAnalyzer where direct lookups missed data
+        if meta_result:
+            if not domain_intel.ssl_issuer and meta_result.ssl_info.is_valid:
+                domain_intel.ssl_issuer = meta_result.ssl_info.issuer
+            if domain_intel.age_days < 0 and meta_result.domain_age.age_days >= 0:
+                domain_intel.age_days = meta_result.domain_age.age_days
+                domain_intel.creation_date = meta_result.domain_age.creation_date
+
+        # IP geolocation (fast, ~2s)
+        ip_geo = {}
+        if domain_intel.ip_address:
+            ip_geo = await self._ip_geolocation(domain_intel.ip_address)
+
+        logger.info(
+            f"[GRAPH] Domain intel for {domain}: "
+            f"age={domain_intel.age_days}d, ssl={'yes' if domain_intel.ssl_issuer else 'no'}, "
+            f"ip={domain_intel.ip_address}, meta={'ok' if meta_dict else 'failed'}"
+        )
+
+        return domain_intel, meta_dict, ip_geo
+
     async def _gather_domain_intel(self, domain: str) -> DomainIntel:
-        """Gather WHOIS + DNS intelligence about the domain."""
+        """Gather WHOIS + DNS + SSL intelligence about the domain in parallel."""
         intel = DomainIntel(domain=domain)
 
-        # WHOIS lookup
-        try:
-            w = await self._run_blocking(
-                self._whois_lookup_sync,
-                timeout_s=self._whois_timeout_s,
-                step=f"whois:{domain}",
-                domain=domain,
-            )
+        # Run WHOIS, DNS, and SSL lookups in parallel to save time
+        async def _whois_task():
+            try:
+                return await self._run_blocking(
+                    self._whois_lookup_sync,
+                    timeout_s=self._whois_timeout_s,
+                    step=f"whois:{domain}",
+                    domain=domain,
+                )
+            except TimeoutError as e:
+                logger.warning(f"WHOIS lookup timed out for {domain}: {e}")
+                intel.errors.append(f"WHOIS timeout after {self._whois_timeout_s}s")
+                return None
+            except Exception as e:
+                logger.warning(f"WHOIS lookup failed for {domain}: {e}")
+                intel.errors.append(f"WHOIS failed: {str(e)}")
+                return None
 
+        async def _dns_task():
+            try:
+                return await self._run_blocking(
+                    self._dns_lookup_sync,
+                    timeout_s=self._dns_timeout_s,
+                    step=f"dns:{domain}",
+                    domain=domain,
+                )
+            except TimeoutError:
+                logger.warning(f"DNS lookup timed out for {domain}")
+                intel.errors.append(f"DNS timeout after {self._dns_timeout_s}s")
+                return None
+            except (socket.gaierror, Exception) as e:
+                logger.warning(f"DNS lookup failed for {domain}: {e}")
+                intel.errors.append(f"DNS failed: {str(e)}")
+                return None
+
+        async def _ssl_task():
+            try:
+                return await self._run_blocking(
+                    self._ssl_issuer_lookup_sync,
+                    timeout_s=self._ssl_timeout_s,
+                    step=f"ssl:{domain}",
+                    domain=domain,
+                    ssl_timeout_s=self._ssl_timeout_s,
+                )
+            except TimeoutError:
+                logger.debug(f"SSL lookup timed out for {domain}")
+                return None
+            except Exception:
+                return None  # No SSL or unreachable
+
+        whois_result, dns_result, ssl_result = await asyncio.gather(
+            _whois_task(), _dns_task(), _ssl_task(),
+        )
+
+        # Process WHOIS result
+        if whois_result is not None:
+            w = whois_result
             intel.registrar = str(w.registrar or "")
             intel.registrant_org = str(w.org or "")
             intel.registrant_country = str(w.country or "")
             intel.raw_whois = str(w.text or "")[:2000]
 
-            # Parse creation date
             if w.creation_date:
                 cd = w.creation_date
                 if isinstance(cd, list):
                     cd = cd[0]
                 if isinstance(cd, datetime):
                     intel.creation_date = cd
-                    intel.age_days = (datetime.now(timezone.utc) - cd.replace(tzinfo=timezone.utc)).days
+                    cd_utc = cd if cd.tzinfo else cd.replace(tzinfo=timezone.utc)
+                    intel.age_days = (datetime.now(timezone.utc) - cd_utc).days
 
             if w.expiration_date:
                 ed = w.expiration_date
@@ -499,49 +621,17 @@ class GraphInvestigator:
                 else:
                     intel.name_servers = [str(ns)]
 
-            # Privacy protection detection
             privacy_keywords = ["privacy", "proxy", "redacted", "whoisguard", "domains by proxy"]
             whois_text_lower = intel.raw_whois.lower()
             intel.is_privacy_protected = any(kw in whois_text_lower for kw in privacy_keywords)
 
-        except TimeoutError as e:
-            logger.warning(f"WHOIS lookup timed out for {domain}: {e}")
-            intel.errors.append(f"WHOIS timeout after {self._whois_timeout_s}s")
-        except Exception as e:
-            logger.warning(f"WHOIS lookup failed for {domain}: {e}")
-            intel.errors.append(f"WHOIS failed: {str(e)}")
+        # Process DNS result
+        if dns_result is not None:
+            intel.ip_address = dns_result
 
-        # DNS lookup
-        try:
-            intel.ip_address = await self._run_blocking(
-                self._dns_lookup_sync,
-                timeout_s=self._dns_timeout_s,
-                step=f"dns:{domain}",
-                domain=domain,
-            )
-        except TimeoutError:
-            logger.warning(f"DNS lookup timed out for {domain}")
-            intel.errors.append(f"DNS timeout after {self._dns_timeout_s}s")
-        except socket.gaierror as e:
-            logger.warning(f"DNS lookup failed for {domain}: {e}")
-            intel.errors.append(f"DNS failed: {str(e)}")
-        except Exception as e:
-            logger.warning(f"DNS lookup failed for {domain}: {e}")
-            intel.errors.append(f"DNS failed: {str(e)}")
-
-        # SSL check
-        try:
-            intel.ssl_issuer = await self._run_blocking(
-                self._ssl_issuer_lookup_sync,
-                timeout_s=self._ssl_timeout_s,
-                step=f"ssl:{domain}",
-                domain=domain,
-                ssl_timeout_s=self._ssl_timeout_s,
-            )
-        except TimeoutError:
-            logger.debug(f"SSL lookup timed out for {domain}")
-        except Exception:
-            pass  # No SSL or unreachable — will be reflected in scoring
+        # Process SSL result
+        if ssl_result is not None:
+            intel.ssl_issuer = ssl_result
 
         return intel
 
@@ -685,34 +775,54 @@ class GraphInvestigator:
             extracted = await self._llm_extract_entities(url, page_text[:3000])
             claims.extend(extracted)
 
-        return claims
+        # Deduplicate claims by (entity_type, normalized entity_value)
+        seen = set()
+        unique_claims = []
+        for c in claims:
+            key = (c.entity_type, c.entity_value.strip().lower())
+            if key not in seen:
+                seen.add(key)
+                unique_claims.append(c)
+        return unique_claims
 
     async def _llm_extract_entities(
         self, url: str, text: str,
     ) -> list[EntityClaim]:
         """Use NIM LLM to extract verifiable entities from page text."""
+        # Truncate text to reduce token waste
+        text_trimmed = text[:3000] if len(text) > 3000 else text
+
         prompt = (
-            "Extract all verifiable real-world entities from this website text. "
-            "Focus on: company names, person names (CEO, founder, team), "
-            "physical addresses, phone numbers, email addresses, founding dates, "
-            "partnership claims, award claims, and certification claims.\n\n"
+            "Extract verifiable real-world entities from this website text.\n"
+            "EXTRACT ONLY:\n"
+            "- Company names (registered business names, not product names)\n"
+            "- Person names with titles (CEO, founder, director)\n"
+            "- Physical addresses (street, city, country)\n"
+            "- Phone numbers, email addresses\n"
+            "- Founding dates or years\n"
+            "- Partnership/award/certification claims (specific names only)\n\n"
+            "DO NOT extract: generic descriptions, marketing slogans, product features, "
+            "industry terms, or obvious truths.\n"
+            "Return 0-10 entities maximum. Quality over quantity.\n\n"
             "Respond ONLY in JSON:\n"
             '{"entities": [\n'
             '  {"type": "company|person|address|phone|email|founding_date|partnership|award|certification",\n'
-            '   "value": "the exact claimed value",\n'
-            '   "context": "brief surrounding context"}\n'
+            '   "value": "exact claimed value",\n'
+            '   "context": "10-word surrounding context"}\n'
             "]}\n\n"
-            f"Website text:\n{text}"
+            f"Website text:\n{text_trimmed}"
         )
 
         result = await self._nim.generate_text(
             prompt=prompt,
             system_prompt=(
-                "You are an entity extraction specialist. Extract only verifiable "
-                "real-world claims. Do not extract generic terms or obvious truths. "
-                "Focus on claims that can be cross-referenced against external databases."
+                "You are a forensic entity extraction specialist for website trust audits. "
+                "Extract ONLY specific, verifiable claims that can be cross-referenced against "
+                "company registries, LinkedIn, or public records. "
+                "Never extract marketing language, generic terms, or obvious truths. "
+                "If the text contains no verifiable entities, return {\"entities\": []}."
             ),
-            max_tokens=1024,
+            max_tokens=768,
             temperature=0.0,
         )
 
@@ -883,21 +993,22 @@ class GraphInvestigator:
             except Exception as e:
                 logger.warning(f"Tavily search failed, falling back to custom scraper: {e}")
 
-        # Fallback: custom Playwright-based DuckDuckGo scraper
+        # Fallback: multi-engine custom search (DuckDuckGo + Google + Bing)
         try:
             from veritas.core.web_searcher import web_search
             return await self._run_with_timeout(
                 web_search(
                     query=query,
-                    max_results=3,
+                    max_results=5,
                     follow_links=self._search_follow_links,
                     timeout_ms=self._search_timeout_s * 1000,
+                    parallel=True,
                 ),
-                timeout_s=self._search_timeout_s + 2,
-                step="duckduckgo-search",
+                timeout_s=self._search_timeout_s + 10,
+                step="multi-engine-search",
             )
         except Exception as e:
-            logger.warning(f"Custom web search also failed: {e}")
+            logger.warning(f"Multi-engine web search also failed: {e}")
             return []
 
     async def _llm_verify(
@@ -905,47 +1016,75 @@ class GraphInvestigator:
     ) -> VerificationResult:
         """Use NIM LLM to interpret search results against a claim."""
         results_text = "\n".join(
-            f"- [{r['title']}]({r['url']}): {r['content']}"
-            for r in search_results
+            f"- [{r['title']}]({r['url']}): {r['content'][:300]}"
+            for r in search_results[:5]
         )
 
         prompt = (
-            f"The website {domain} claims: {claim.entity_type} = \"{claim.entity_value}\"\n"
-            f"Context: {claim.context}\n\n"
-            f"Search results about this claim:\n{results_text}\n\n"
-            "Does the evidence CONFIRM, DENY, CONTRADICT, or is the claim UNVERIFIABLE "
-            "based on these search results?\n\n"
-            "Respond in JSON:\n"
+            f"Website {domain} claims: {claim.entity_type} = \"{claim.entity_value}\"\n"
+            f"Context: \"{claim.context[:150]}\"\n\n"
+            f"Search evidence:\n{results_text}\n\n"
+            "Verdict? Respond in JSON:\n"
             '{"status": "confirmed|denied|contradicted|unverifiable",\n'
-            ' "confidence": 0.8,\n'
-            ' "explanation": "brief explanation of your reasoning"}'
+            ' "confidence": 0.0-1.0,\n'
+            ' "explanation": "one sentence"}'
         )
 
         result = await self._nim.generate_text(
             prompt=prompt,
             system_prompt=(
-                "You are a senior OSINT analyst conducting forensic verification. "
-                "Compare the website's claim against the search evidence with extreme rigour. "
-                "Check for: exact name matches (not partial), date consistency, address plausibility, "
-                "known scam patterns, and source credibility (prefer official registries, LinkedIn, "
-                "government databases over random blogs). "
-                "Be conservative: if the evidence is ambiguous say 'unverifiable'. "
-                "Only say 'confirmed' if the evidence clearly supports the claim from a credible source. "
-                "Say 'contradicted' if the evidence directly conflicts."
+                "You are a forensic OSINT analyst. Compare the website claim against "
+                "search evidence with strict rules:\n\n"
+                "VERDICT RULES:\n"
+                "- 'confirmed': A credible source (gov registry, LinkedIn, press) explicitly "
+                " confirms the claim with matching details.\n"
+                "- 'contradicted': Search evidence contains SPECIFIC CONFLICTING FACTS "
+                " (e.g., different founding year, different address, explicit denial).\n"
+                "- 'denied': An official authority explicitly refutes the claim.\n"
+                "- 'unverifiable': DEFAULT. Use when search results don't mention the "
+                " entity, contain only irrelevant results, or information is simply absent.\n\n"
+                "CRITICAL: Absence of evidence is NOT contradiction. Small/regional companies "
+                "often have minimal online presence. If you cannot find the entity, "
+                "the verdict is 'unverifiable', NEVER 'contradicted'."
             ),
-            max_tokens=256,
+            max_tokens=200,
             temperature=0.0,
         )
 
         try:
             data = self._extract_json(result.get("response", ""))
             if data:
+                status = data.get("status", "unverifiable")
+                explanation = data.get("explanation", "").lower()
+                confidence = float(data.get("confidence", 0.5))
+
+                # Guardrail: downgrade false "contradicted" verdicts.
+                # If the explanation signals absence rather than
+                # actual conflicting evidence, treat as unverifiable.
+                if status == "contradicted":
+                    absence_phrases = [
+                        "no results", "not found", "no evidence",
+                        "could not find", "no mention", "no record",
+                        "no information", "unable to find", "lack of",
+                        "no credible", "no relevant", "does not appear",
+                        "couldn't find", "no specific", "no matching",
+                        "no direct", "limited online", "no data",
+                    ]
+                    if any(phrase in explanation for phrase in absence_phrases):
+                        logger.info(
+                            f"Downgraded 'contradicted' → 'unverifiable' for "
+                            f"{claim.entity_type}={claim.entity_value[:40]} "
+                            f"(reason: absence, not contradiction)"
+                        )
+                        status = "unverifiable"
+                        confidence = min(confidence, 0.4)
+
                 return VerificationResult(
                     claim=claim,
-                    status=data.get("status", "unverifiable"),
+                    status=status,
                     evidence_source="Web Search + NIM LLM",
                     evidence_detail=data.get("explanation", ""),
-                    confidence=float(data.get("confidence", 0.5)),
+                    confidence=confidence,
                 )
         except Exception:
             pass
@@ -1154,6 +1293,158 @@ class GraphInvestigator:
         return inconsistencies
 
     # ================================================================
+    # Private: Social Engineering Link Analysis
+    # ================================================================
+
+    def _analyze_social_engineering_links(
+        self, links: list[str], domain: str,
+    ) -> list[GraphInconsistency]:
+        """
+        Analyze external links for social engineering red flags.
+
+        Detects:
+        - Urgency/fear parameters in URLs (e.g., ?action=verify&urgent=true)
+        - Affiliate chain redirects (multiple redirect hops)
+        - URL shorteners hiding destinations
+        - Lookalike/typosquat domains
+        - Payment links disguised as legitimate redirects
+        """
+        findings: list[GraphInconsistency] = []
+        from urllib.parse import urlparse, parse_qs
+
+        # Known URL shorteners
+        shorteners = {
+            "bit.ly", "tinyurl.com", "t.co", "goo.gl", "ow.ly",
+            "is.gd", "buff.ly", "rebrand.ly", "cutt.ly", "shorturl.at",
+        }
+        # Urgency/phishing URL parameters
+        urgency_params = {
+            "urgent", "verify", "suspend", "locked", "alert", "action",
+            "confirm", "secure", "update", "expire", "deadline", "limited",
+        }
+        # Payment/financial domains (legitimate → suspicious if unexpected)
+        payment_domains = {
+            "paypal.com", "stripe.com", "square.com", "venmo.com",
+            "cashapp.com", "zelle.com", "wise.com",
+        }
+
+        shortener_count = 0
+        urgency_link_count = 0
+        affiliate_chain_count = 0
+
+        for link in links[:30]:  # Limit scan
+            try:
+                parsed = urlparse(link)
+                link_domain = (parsed.hostname or "").lower()
+                params = parse_qs(parsed.query)
+                path = parsed.path.lower()
+
+                # 1. URL shorteners hiding destinations
+                if link_domain in shorteners:
+                    shortener_count += 1
+
+                # 2. Urgency parameters in URLs
+                param_keys = {k.lower() for k in params.keys()}
+                found_urgency = param_keys & urgency_params
+                if found_urgency:
+                    urgency_link_count += 1
+
+                # 3. Affiliate/tracking chains (long redirect paths)
+                redirect_indicators = ["redirect", "goto", "forward", "click", "track", "out"]
+                if any(ri in path for ri in redirect_indicators) and len(path) > 20:
+                    affiliate_chain_count += 1
+
+                # 4. Payment domain links from non-financial site
+                if link_domain in payment_domains:
+                    # Direct payment links are suspicious on non-checkout pages
+                    findings.append(GraphInconsistency(
+                        claim_text=f"Link to payment service: {link_domain}",
+                        evidence_text=f"External link to {link[:100]}",
+                        inconsistency_type="suspicious_payment_link",
+                        severity="medium",
+                        confidence=0.6,
+                        explanation=(
+                            f"Page links directly to {link_domain}, which could be "
+                            f"a phishing redirect disguised as a payment flow."
+                        ),
+                    ))
+
+                # 5. Lookalike domain detection
+                domain_base = domain.split(".")[0].lower()
+                link_base = link_domain.split(".")[0].lower() if link_domain else ""
+                if (link_base and link_base != domain_base
+                        and self._is_lookalike(domain_base, link_base)):
+                    findings.append(GraphInconsistency(
+                        claim_text=f"Link to lookalike domain: {link_domain}",
+                        evidence_text=f"Main domain is {domain}, link goes to {link_domain}",
+                        inconsistency_type="lookalike_domain",
+                        severity="high",
+                        confidence=0.75,
+                        explanation=(
+                            f"External link to '{link_domain}' closely resembles "
+                            f"the main domain '{domain}' — possible typosquatting/phishing."
+                        ),
+                    ))
+
+            except Exception:
+                continue
+
+        # Aggregate findings for shorteners and urgency links
+        if shortener_count >= 3:
+            findings.append(GraphInconsistency(
+                claim_text="Multiple URL-shortened links",
+                evidence_text=f"{shortener_count} links use URL shorteners",
+                inconsistency_type="excessive_shorteners",
+                severity="medium",
+                confidence=0.65,
+                explanation=(
+                    f"Page has {shortener_count} URL-shortened links hiding their "
+                    f"true destinations — common social engineering tactic."
+                ),
+            ))
+
+        if urgency_link_count >= 2:
+            findings.append(GraphInconsistency(
+                claim_text="Links with urgency/fear parameters",
+                evidence_text=f"{urgency_link_count} links contain urgency parameters",
+                inconsistency_type="urgency_links",
+                severity="high",
+                confidence=0.7,
+                explanation=(
+                    f"Found {urgency_link_count} links with urgency-related URL parameters "
+                    f"(verify, suspend, urgent) — social engineering pressure tactic."
+                ),
+            ))
+
+        if affiliate_chain_count >= 3:
+            findings.append(GraphInconsistency(
+                claim_text="Redirect/tracking chains in links",
+                evidence_text=f"{affiliate_chain_count} links contain redirect paths",
+                inconsistency_type="affiliate_chains",
+                severity="medium",
+                confidence=0.6,
+                explanation=(
+                    f"Found {affiliate_chain_count} links with redirect/tracking paths — "
+                    f"may be obscuring true link destinations."
+                ),
+            ))
+
+        return findings
+
+    @staticmethod
+    def _is_lookalike(base: str, candidate: str) -> bool:
+        """Check if candidate is a lookalike/typosquat of base domain name."""
+        if len(base) < 4 or len(candidate) < 4:
+            return False
+        # Levenshtein distance ≤ 2 for similar-length strings
+        if abs(len(base) - len(candidate)) > 3:
+            return False
+        # Simple character-level similarity
+        common = sum(1 for a, b in zip(base, candidate) if a == b)
+        similarity = common / max(len(base), len(candidate))
+        return similarity >= 0.7 and base != candidate
+
+    # ================================================================
     # Private: OSINT Graph Nodes
     # ================================================================
 
@@ -1307,29 +1598,51 @@ class GraphInvestigator:
         """
         Calculate enhanced graph score incorporating OSINT and CTI signals.
 
-        Weighting:
-        - Existing graph signals (meta_score): 40%
-        - Entity verification signals: 30%
-        - OSINT consensus: 20%
-        - CTI threat indicators: 10%
+        Uses *evidence-aware dynamic weighting* (Dempster-Shafer principle):
+        sources that contribute no information ("vacuous evidence") have
+        their weight redistributed proportionally to informative sources.
+
+        Default allocation when ALL sources are informative:
+          meta_score  : 40%   (domain age, SSL, WHOIS — always available)
+          entity_score: 30%   (cross-referencing claims against the web)
+          osint_score : 20%   (multi-source consensus)
+          cti_score   : 10%   (threat-intel indicators)
+
+        When a source is vacuous (e.g. all entities "unverifiable"),
+        its weight is set to 0 and the surplus is spread to the
+        remaining sources in proportion to their original weights.
 
         Args:
             result: GraphResult with OSINT/CTI data
-            graph: Knowledge graph (for node/edge counts if needed)
+            graph: Knowledge graph
 
         Returns:
             Enhanced graph score (0.0 to 1.0)
         """
+        # ------ Sub-scores --------------------------------------------------
         meta_score = result.meta_score if result.meta_score else 0.5
 
         # Entity verification score
+        entity_score = 0.5
+        entity_is_vacuous = True  # assume vacuous until proven otherwise
         if result.verifications:
-            verified_count = sum(1 for v in result.verifications if v.status == "confirmed")
-            entity_score = verified_count / len(result.verifications)
-        else:
-            entity_score = 0.5
+            score_sum = 0.0
+            has_informative = False
+            for v in result.verifications:
+                if v.status == "confirmed":
+                    score_sum += 0.9 * v.confidence
+                    has_informative = True
+                elif v.status in ("denied", "contradicted"):
+                    score_sum += 0.1 * v.confidence
+                    has_informative = True
+                else:  # unverifiable → neutral
+                    score_sum += 0.5
+            entity_score = score_sum / len(result.verifications)
+            entity_is_vacuous = not has_informative
 
         # OSINT consensus score
+        osint_score = 0.5
+        osint_is_vacuous = True
         if result.osint_consensus:
             status_scores = {
                 "confirmed": 0.9,
@@ -1345,8 +1658,7 @@ class GraphInvestigator:
             verdict = result.osint_consensus.get("verdict", "")
             if verdict == "malicious":
                 osint_score = 1.0 - osint_score
-        else:
-            osint_score = 0.5
+            osint_is_vacuous = consensus_status in ("", "insufficient")
 
         # CTI threat score
         threat_scores = {
@@ -1358,17 +1670,61 @@ class GraphInvestigator:
         }
         cti_score = threat_scores.get(result.threat_level, 1.0)
 
-        # Blend with osint_confidence
-        if result.osint_confidence > 0:
+        # Only blend CTI with OSINT confidence when CTI itself
+        # provided the confidence (i.e. CTI actually executed and
+        # found meaningful indicators).  If osint_confidence was
+        # derived from consensus agreement (Fix 4 fallback), the
+        # semantics differ and blending would incorrectly pull the
+        # benign CTI score toward 0.5.
+        cti_provided_confidence = (
+            result.osint_confidence > 0
+            and len(result.osint_indicators) > 0
+        )
+        if cti_provided_confidence:
             cti_score = cti_score * (1 - result.osint_confidence) + 0.5 * result.osint_confidence
 
-        # Weighted combination
-        final_score = (
-            meta_score * 0.40
-            + entity_score * 0.30
-            + osint_score * 0.20
-            + cti_score * 0.10
-        )
+        # ------ Dynamic weight redistribution (Dempster-Shafer) ---------------
+        # Base weights
+        base_weights = {
+            "meta":   0.40,
+            "entity": 0.30,
+            "osint":  0.20,
+            "cti":    0.10,
+        }
+        # Mark vacuous sources
+        vacuous = set()
+        if entity_is_vacuous:
+            vacuous.add("entity")
+        if osint_is_vacuous:
+            vacuous.add("osint")
+        # meta & cti are never vacuous (always produce a score)
+
+        # Redistribute vacuous weight proportionally
+        if vacuous:
+            informative = {k: v for k, v in base_weights.items() if k not in vacuous}
+            surplus = sum(base_weights[k] for k in vacuous)
+            total_informative = sum(informative.values())
+            if total_informative > 0:
+                for k in informative:
+                    informative[k] += surplus * (informative[k] / total_informative)
+            # Zero out vacuous sources
+            weights = {k: (informative.get(k, 0.0)) for k in base_weights}
+        else:
+            weights = dict(base_weights)
+
+        # ------ Weighted combination -----------------------------------------
+        scores = {"meta": meta_score, "entity": entity_score, "osint": osint_score, "cti": cti_score}
+        final_score = sum(weights[k] * scores[k] for k in base_weights)
+
+        # Apply inconsistency penalties on top
+        for inc in result.inconsistencies:
+            penalty = {
+                "critical": 0.12,
+                "high": 0.08,
+                "medium": 0.04,
+                "low": 0.02,
+            }.get(inc.severity, 0.04)
+            final_score -= penalty * inc.confidence
 
         return max(0.0, min(1.0, final_score))
 

@@ -145,6 +145,8 @@ async def judge_node(state: AuditState) -> dict:
         graph_result=graph_result,
         iteration=iteration,
         max_iterations=max_iterations,
+        max_pages=state.get("max_pages", 5),
+        pages_investigated=len(state.get("investigated_urls", [])),
         site_type=state.get("site_type", ""),
         site_type_confidence=state.get("site_type_confidence", 0.0),
         verdict_mode=state.get("verdict_mode", "expert"),

@@ -103,6 +103,20 @@ _HEADER_DEFS: list[tuple[str, str, str]] = [
 # Weight per severity for score calculation
 _SEVERITY_WEIGHT = {"critical": 0.25, "high": 0.20, "medium": 0.12, "low": 0.05}
 
+# Site-type multipliers — e-commerce/financial sites are penalized harder
+_SITE_TYPE_MULTIPLIER = {
+    "e-commerce": 1.5,
+    "financial": 1.8,
+    "banking": 1.8,
+    "healthcare": 1.6,
+    "government": 1.4,
+    "social_media": 1.2,
+    "blog": 0.7,
+    "portfolio": 0.6,
+    "landing_page": 0.8,
+    "corporate": 1.0,
+}
+
 
 class SecurityHeaderAnalyzer(SecurityModule):
     """Analyze HTTP security headers of a URL."""
@@ -112,9 +126,18 @@ class SecurityHeaderAnalyzer(SecurityModule):
     category = "headers"
     requires_page = False
 
-    async def analyze(self, url: str, timeout: int = 15, page=None) -> SecurityHeadersResult:
-        """Fetch URL headers and evaluate security posture."""
+    async def analyze(self, url: str, timeout: int = 15, page=None, site_type: str = "") -> SecurityHeadersResult:
+        """Fetch URL headers and evaluate security posture.
+
+        Args:
+            url: Target URL to check
+            timeout: HTTP request timeout
+            page: Unused (compatibility with SecurityModule interface)
+            site_type: Site classification (e-commerce, blog, etc.) for
+                       contextual severity weighting
+        """
         result = SecurityHeadersResult(url=url)
+        multiplier = _SITE_TYPE_MULTIPLIER.get(site_type, 1.0)
         try:
             headers = await self._fetch_headers(url, timeout)
             if headers is None:
@@ -145,7 +168,7 @@ class SecurityHeaderAnalyzer(SecurityModule):
                 result.checks.append(check)
 
                 if status != "present":
-                    total_penalty += _SEVERITY_WEIGHT.get(severity, 0.1)
+                    total_penalty += _SEVERITY_WEIGHT.get(severity, 0.1) * multiplier
 
             result.score = max(0.0, 1.0 - total_penalty)
 
@@ -213,5 +236,12 @@ class SecurityHeaderAnalyzer(SecurityModule):
         if header == "X-Content-Type-Options":
             if val_lower != "nosniff":
                 return "weak"
+
+        if header == "Permissions-Policy":
+            # Empty or wildcard-allowing policies are weak
+            if val_lower in ("*", "") or "self" not in val_lower:
+                # Very permissive — gives all features to all origins
+                if "camera=*" in val_lower or "microphone=*" in val_lower:
+                    return "weak"
 
         return "present"

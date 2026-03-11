@@ -459,6 +459,7 @@ class VeritasOrchestrator:
                 quality_penalty = 0.7
                 self._accumulated_quality_penalty += quality_penalty
                 state["errors"].append(f"{agent_name}: {str(e)}")
+                result = {}
 
         # Record execution time for learning
         elapsed_ms = int((time.time() - start_time) * 1000)
@@ -711,7 +712,7 @@ class VeritasOrchestrator:
                         await self._progress_emitter.emit_agent_status("Vision", "failed", str(e))
 
                 # 3. Graph
-                self._emit("graph", "investigating", 60, "Graph agent running WHOIS, DNS & web verification...", iteration=state["iteration"])
+                self._emit("graph", "investigating", 60, "Graph agent: full investigation (WHOIS, DNS, SSL, MetaAnalyzer, Entity Verification, OSINT, CTI)...", iteration=state["iteration"])
                 try:
                     # Get timeout from adaptive config or use default
                     timeout = None
@@ -727,8 +728,16 @@ class VeritasOrchestrator:
                     gr = state.get("graph_result") or {}
                     age = gr.get("domain_age_days", "?")
                     n_nodes = gr.get("graph_node_count", 0)
+                    n_verify = len(gr.get("verifications", []))
+                    n_incon = len(gr.get("inconsistencies", []))
+                    n_osint = len([k for k in gr.get("osint_sources", {}) if k != "_consensus"])
                     degr_str = " (degraded)" if graph_penalty > 0 else ""
-                    self._emit("graph", "done", 75, f"Domain age: {age}d, {n_nodes} graph nodes{degr_str}", domain_age=age, nodes=n_nodes)
+                    detail = (
+                        f"Domain age: {age}d, {n_nodes} graph nodes, "
+                        f"{n_verify} verifications, {n_incon} inconsistencies, "
+                        f"{n_osint} OSINT sources{degr_str}"
+                    )
+                    self._emit("graph", "done", 75, detail, domain_age=age, nodes=n_nodes)
 
                     # Emit Graph completion via ProgressEmitter
                     if self.use_progress_streaming and self._progress_emitter:
@@ -875,9 +884,9 @@ class VeritasOrchestrator:
             return state
 
         except BaseException as e:
-            logger.error(f"Orchestrator exception: {e}", exc_info=True)
+            logger.error(f"Orchestrator exception: {type(e).__name__}: {e}", exc_info=True)
             state["status"] = "aborted"
-            state["errors"].append(f"Orchestrator exception: {str(e)}")
+            state["errors"].append(f"Orchestrator exception: {type(e).__name__}: {str(e) or 'no message'}")
             state["elapsed_seconds"] = time.time() - state["start_time"]
 
             # Emit error via ProgressEmitter

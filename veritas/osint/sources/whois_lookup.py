@@ -4,7 +4,7 @@ Provides domain WHOIS information with async wrapping to prevent blocking.
 Extracts and normalizes WHOIS fields including registrar, dates, and nameservers.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Optional
 
 import whois
@@ -141,9 +141,10 @@ class WHOISSource:
         expiry_date = getattr(whois_result, "expiration_date", None)
         normalized["expiry_date"] = self._extract_first_date_value(expiry_date)
 
-        # Calculate domain age
+        # Calculate domain age (normalise to UTC-aware to avoid naive/aware mismatch)
         if created_date and isinstance(created_date, datetime):
-            age_days = (datetime.utcnow() - created_date).days
+            created_utc = created_date if created_date.tzinfo else created_date.replace(tzinfo=timezone.utc)
+            age_days = (datetime.now(timezone.utc) - created_utc).days
             normalized["age_days"] = max(0, age_days)
 
         # Extract registrant organization

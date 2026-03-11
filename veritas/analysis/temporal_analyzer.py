@@ -155,7 +155,9 @@ class TemporalAnalyzer:
         try:
             import pytesseract
             from PIL import Image
+            from veritas.config import settings
 
+            pytesseract.pytesseract.tesseract_cmd = settings.TESSERACT_CMD
             text_a = pytesseract.image_to_string(Image.open(t0_path))
             text_b = pytesseract.image_to_string(Image.open(t_delay_path))
         except ImportError:
@@ -249,3 +251,96 @@ class TemporalAnalyzer:
             return None
         except (ValueError, IndexError):
             return None
+
+    def analyze_text_semantics(
+        self, text_a: str, text_b: str, delay_seconds: float = 10.0,
+    ) -> list[TemporalFinding]:
+        """
+        Semantic text analysis between two snapshots — detects price changes,
+        urgency language shifts, and dynamic counter manipulation.
+
+        Works on pre-extracted page text (no OCR needed).
+        """
+        findings = []
+
+        # 1. Price change detection — catch bait-and-switch
+        price_re = re.compile(r'[\$\£\€]\s*(\d[\d,]*\.?\d{0,2})')
+        prices_a = [(m.group(0), float(m.group(1).replace(',', ''))) for m in price_re.finditer(text_a)]
+        prices_b = [(m.group(0), float(m.group(1).replace(',', ''))) for m in price_re.finditer(text_b)]
+
+        if prices_a and prices_b:
+            for (txt_a, val_a), (txt_b, val_b) in zip(prices_a[:5], prices_b[:5]):
+                if val_a != val_b:
+                    direction = "increased" if val_b > val_a else "decreased"
+                    findings.append(TemporalFinding(
+                        finding_type="price_change",
+                        value_at_t0=txt_a,
+                        value_at_t_delay=txt_b,
+                        delta_seconds=delay_seconds,
+                        is_suspicious=True,
+                        explanation=(
+                            f"Price {direction} from {txt_a} to {txt_b} "
+                            f"within {delay_seconds}s — possible dynamic pricing."
+                        ),
+                        confidence=0.75,
+                    ))
+
+        # 2. Urgency language appearance/disappearance
+        urgency_phrases = [
+            r'limited\s+time', r'act\s+now', r'hurry', r'last\s+chance',
+            r'don.t\s+miss', r'ending\s+soon', r'expires?\s+today',
+            r'flash\s+sale', r'while\s+supplies\s+last', r'almost\s+gone',
+        ]
+        urgency_re = re.compile('|'.join(urgency_phrases), re.I)
+        urgency_a = set(m.group(0).lower().strip() for m in urgency_re.finditer(text_a))
+        urgency_b = set(m.group(0).lower().strip() for m in urgency_re.finditer(text_b))
+
+        new_urgency = urgency_b - urgency_a
+        if new_urgency:
+            findings.append(TemporalFinding(
+                finding_type="dynamic_urgency",
+                value_at_t0=str(urgency_a or "none"),
+                value_at_t_delay=str(urgency_b),
+                delta_seconds=delay_seconds,
+                is_suspicious=True,
+                explanation=(
+                    f"New urgency language appeared after {delay_seconds}s: "
+                    f"{', '.join(new_urgency)}. Dynamically injected pressure tactics."
+                ),
+                confidence=0.7,
+            ))
+
+        # 3. Social proof counter variation analysis
+        counter_re = re.compile(
+            r'(\d[\d,]*)\s*(?:people|users?|customers?|orders?|sold|'
+            r'bought|views?|downloads?|ratings?|reviews?)',
+            re.I,
+        )
+        counters_a = {m.group(0): int(m.group(1).replace(',', '')) for m in counter_re.finditer(text_a)}
+        counters_b = {m.group(0): int(m.group(1).replace(',', '')) for m in counter_re.finditer(text_b)}
+
+        for key_a, val_a in counters_a.items():
+            # Match by suffix — find the same counter in text_b
+            suffix = re.sub(r'^\d[\d,]*\s*', '', key_a).lower()
+            for key_b, val_b in counters_b.items():
+                suffix_b = re.sub(r'^\d[\d,]*\s*', '', key_b).lower()
+                if suffix == suffix_b and val_a != val_b:
+                    change_pct = abs(val_b - val_a) / max(val_a, 1) * 100
+                    # If counter changes by >50% in seconds, it's likely fabricated
+                    if change_pct > 50:
+                        findings.append(TemporalFinding(
+                            finding_type="fabricated_counter",
+                            value_at_t0=key_a,
+                            value_at_t_delay=key_b,
+                            delta_seconds=delay_seconds,
+                            is_suspicious=True,
+                            explanation=(
+                                f"Social proof counter changed {change_pct:.0f}% "
+                                f"({val_a}→{val_b}) in {delay_seconds}s — "
+                                f"likely fabricated dynamic counter."
+                            ),
+                            confidence=0.8,
+                        ))
+                    break
+
+        return findings

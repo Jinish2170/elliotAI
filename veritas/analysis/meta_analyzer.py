@@ -184,7 +184,9 @@ class MetaAnalyzer:
                     creation = creation[0]
                 if isinstance(creation, datetime):
                     age.creation_date = creation
-                    age.age_days = (datetime.now() - creation).days
+                    # Normalise to UTC-aware to avoid naive/aware mismatch
+                    creation_utc = creation if creation.tzinfo else creation.replace(tzinfo=timezone.utc)
+                    age.age_days = (datetime.now(timezone.utc) - creation_utc).days
 
             if w.expiration_date:
                 expiration = w.expiration_date

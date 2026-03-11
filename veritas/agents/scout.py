@@ -723,9 +723,13 @@ class StealthScout:
         url: str,
         viewport: str = "desktop",
         progress_emitter: Optional["ProgressEmitter"] = None,
+        enable_scrolling: bool = True,
     ) -> ScoutResult:
         """
-        Lightweight navigation for sub-pages (no temporal screenshots).
+        Enhanced navigation for sub-pages with intelligent scrolling and
+        section-aware screenshots. Captures key page regions (hero, pricing,
+        testimonials, forms, footer) for later analysis.
+
         Used when the Judge agent requests investigation of additional pages
         (e.g., /about, /contact, /terms, /cancel).
         """
@@ -775,6 +779,30 @@ class StealthScout:
             ss_full = await self._take_full_screenshot(page, audit_id)
             metadata = await self._extract_metadata(page)
 
+            # --- Intelligent Scrolling for subpages ---
+            scroll_result = None
+            section_screenshots = []
+            if enable_scrolling:
+                try:
+                    from veritas.agents.scout_nav.scroll_orchestrator import ScrollOrchestrator
+                    from veritas.agents.scout_nav.lazy_load_detector import LazyLoadDetector
+
+                    detector = LazyLoadDetector()
+                    orchestrator = ScrollOrchestrator(self._evidence_dir, detector)
+                    scroll_result = await orchestrator.scroll_page(page, audit_id)
+                    logger.debug(
+                        f"Subpage scroll: {scroll_result.total_cycles} cycles, "
+                        f"{scroll_result.screenshots_captured} screenshots"
+                    )
+                except Exception as e:
+                    logger.debug(f"Subpage scroll failed (non-critical): {e}")
+
+            # --- Section-aware screenshots ---
+            try:
+                section_screenshots = await self._capture_section_screenshots(page, audit_id)
+            except Exception as e:
+                logger.debug(f"Section screenshots failed (non-critical): {e}")
+
             # IOC Detection for subpages + capture real page_content (Plan 13-01)
             ioc_detected = False
             ioc_indicators = []
@@ -804,7 +832,7 @@ class StealthScout:
             except Exception as e:
                 logger.warning(f"Subpage IOC detection failed (non-critical): {e}")
 
-            screenshots = [p for p in [ss, ss_full] if p]
+            screenshots = [p for p in [ss, ss_full] if p] + section_screenshots
 
             # Emit screenshots
             if emitter:
@@ -818,12 +846,16 @@ class StealthScout:
                 await emitter.emit_agent_status("Scout", "completed")
                 await emitter.emit_progress("Scout", "subpage_complete", 100, f"Subpage captured: {len(screenshots)} screenshots")
 
+            # Build labels list
+            screenshot_labels = ["subpage", "subpage_full"][:min(2, len([p for p in [ss, ss_full] if p]))]
+            screenshot_labels += [f"section_{i}" for i in range(len(section_screenshots))]
+
             return ScoutResult(
                 url=url,
                 status="SUCCESS",
                 screenshots=screenshots,
                 screenshot_timestamps=[time.time()] * len(screenshots),
-                screenshot_labels=["subpage", "subpage_full"][:len(screenshots)],
+                screenshot_labels=screenshot_labels,
                 page_title=metadata.title,
                 page_metadata={
                     "forms_count": len(metadata.forms),
@@ -842,6 +874,7 @@ class StealthScout:
                 navigation_time_ms=nav_time,
                 page_content=subpage_content,
                 response_headers=_subpage_response_headers,
+                scroll_result=scroll_result,
             )
         except Exception as e:
             if emitter:
@@ -1135,6 +1168,92 @@ class StealthScout:
         except Exception as e:
             logger.warning(f"Full-page screenshot failed: {e}")
             return None
+
+    async def _capture_section_screenshots(
+        self, page: Page, audit_id: str, max_sections: int = 5
+    ) -> List[str]:
+        """Capture screenshots of important page sections.
+
+        Identifies key regions (pricing, testimonials, forms, trust badges,
+        footer) by scanning the DOM for semantic landmarks and captures
+        viewport-clipped screenshots of each.
+
+        Args:
+            page: Playwright Page object (already navigated)
+            audit_id: Unique audit identifier for filenames
+            max_sections: Maximum sections to capture
+
+        Returns:
+            List of screenshot file paths
+        """
+        section_paths: List[str] = []
+        try:
+            # JS to identify important section bounding boxes
+            sections = await page.evaluate("""
+                () => {
+                    const results = [];
+                    const vw = window.innerWidth;
+                    const vh = window.innerHeight;
+
+                    // Selectors for important sections, ordered by forensic priority
+                    const selectors = [
+                        { name: 'pricing', sel: '[class*="pricing" i], [id*="pricing" i], [data-section="pricing"]' },
+                        { name: 'testimonial', sel: '[class*="testimonial" i], [class*="review" i], [id*="testimonial" i], [id*="review" i]' },
+                        { name: 'form', sel: 'form:not([role="search"]), [class*="contact-form" i], [class*="signup" i]' },
+                        { name: 'trust', sel: '[class*="trust" i], [class*="partner" i], [class*="client" i], [class*="badge" i]' },
+                        { name: 'cta', sel: '[class*="cta" i], [class*="call-to-action" i], [class*="hero" i]' },
+                        { name: 'footer', sel: 'footer, [role="contentinfo"]' },
+                    ];
+
+                    for (const { name, sel } of selectors) {
+                        try {
+                            const el = document.querySelector(sel);
+                            if (el) {
+                                const rect = el.getBoundingClientRect();
+                                if (rect.height > 50 && rect.width > 100) {
+                                    results.push({
+                                        name: name,
+                                        y: Math.max(0, rect.top + window.scrollY),
+                                        height: Math.min(rect.height, vh * 2),
+                                    });
+                                }
+                            }
+                        } catch(e) {}
+                    }
+                    return results;
+                }
+            """)
+
+            if not sections:
+                return []
+
+            # Capture up to max_sections, deduplicating overlapping regions
+            captured_y = set()
+            for section in sections[:max_sections]:
+                y = int(section["y"])
+                # Skip if too close to an already-captured region
+                if any(abs(y - cy) < 200 for cy in captured_y):
+                    continue
+                captured_y.add(y)
+
+                try:
+                    # Scroll to section and capture viewport
+                    await page.evaluate(f"window.scrollTo(0, {y})")
+                    await asyncio.sleep(0.3)
+                    label = f"section_{section['name']}"
+                    path = await self._take_screenshot(page, audit_id, label)
+                    if path:
+                        section_paths.append(path)
+                except Exception as e:
+                    logger.debug(f"Section screenshot '{section['name']}' failed: {e}")
+
+            # Scroll back to top
+            await page.evaluate("window.scrollTo(0, 0)")
+
+        except Exception as e:
+            logger.debug(f"Section screenshot capture failed: {e}")
+
+        return section_paths
 
     # ================================================================
     # Private: CAPTCHA Detection

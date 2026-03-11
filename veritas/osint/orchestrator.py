@@ -296,6 +296,51 @@ class OSINTOrchestrator:
             except Exception as e:
                 logger.warning(f"OSINTOrchestrator: Could not register {class_name}: {e}")
 
+        # Register Tavily-powered sources for categories with no dedicated APIs
+        if hasattr(settings, "TAVILY_API_KEY") and settings.TAVILY_API_KEY:
+            try:
+                from veritas.osint.sources.tavily_source import (
+                    TavilyReputationSource,
+                    TavilyThreatIntelSource,
+                    TavilySocialSource,
+                )
+
+                self._register_source(
+                    TavilyThreatIntelSource(settings.TAVILY_API_KEY),
+                    SourceConfig(
+                        enabled=True,
+                        priority=2,
+                        requires_api_key=True,
+                        rate_limit_rpm=20,
+                        rate_limit_rph=200,
+                    )
+                )
+                self._register_source(
+                    TavilyReputationSource(settings.TAVILY_API_KEY),
+                    SourceConfig(
+                        enabled=True,
+                        priority=2,
+                        requires_api_key=True,
+                        rate_limit_rpm=20,
+                        rate_limit_rph=200,
+                    )
+                )
+                self._register_source(
+                    TavilySocialSource(settings.TAVILY_API_KEY),
+                    SourceConfig(
+                        enabled=True,
+                        priority=2,
+                        requires_api_key=True,
+                        rate_limit_rpm=20,
+                        rate_limit_rph=200,
+                    )
+                )
+                logger.info("OSINTOrchestrator: Registered Tavily sources (threat_intel, reputation, social)")
+            except Exception as e:
+                logger.warning(f"OSINTOrchestrator: Could not register Tavily sources: {e}")
+        else:
+            logger.info("OSINTOrchestrator: Tavily not registered (no TAVILY_API_KEY)")
+
         logger.info(f"OSINTOrchestrator: Discovered and registered {len(self._sources)} sources")
 
     def _register_source(self, source: object, config: SourceConfig) -> None:
@@ -391,6 +436,17 @@ class OSINTOrchestrator:
             "ssl": OSINTCategory.SSL,
             "abuseipdb": OSINTCategory.THREAT_INTEL,
             "urlvoid": OSINTCategory.REPUTATION,
+            # Tavily-powered sources
+            "tavilythreatintel": OSINTCategory.THREAT_INTEL,
+            "tavilyreputation": OSINTCategory.REPUTATION,
+            "tavilysocial": OSINTCategory.SOCIAL,
+            # Darknet sources → THREAT_INTEL
+            "alphabaymarketplace": OSINTCategory.THREAT_INTEL,
+            "hansamarketplace": OSINTCategory.THREAT_INTEL,
+            "empiremarketplace": OSINTCategory.THREAT_INTEL,
+            "dreammarketplace": OSINTCategory.THREAT_INTEL,
+            "wallstreetmarketplace": OSINTCategory.THREAT_INTEL,
+            "tor2webdeanon": OSINTCategory.THREAT_INTEL,
         }
 
         return category_mapping.get(source_name)

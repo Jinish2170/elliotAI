@@ -56,10 +56,11 @@ async def vision_node(state: AuditState) -> dict:
         nim = NIMClient()
         agent = VisionAgent(nim_client=nim)
 
-        # Tier-aware pass count: read from AUDIT_TIERS config
+        # Tier-aware pass count and NIM budget
         audit_tier = state.get("audit_tier", "standard_audit")
         tier_config = settings.AUDIT_TIERS.get(audit_tier, settings.AUDIT_TIERS["standard_audit"])
         max_passes = tier_config.get("vision_passes", 3)
+        nim_budget = tier_config.get("vision_nim", tier_config.get("nim_calls", 8)) - state.get("nim_calls_used", 0)
         use_5_pass = max_passes >= 5
 
         result = await agent.analyze(
@@ -69,6 +70,7 @@ async def vision_node(state: AuditState) -> dict:
             site_type=state.get("site_type", ""),
             use_5_pass_pipeline=use_5_pass,
             max_passes=max_passes,
+            nim_budget=max(nim_budget, 1),
         )
 
         # Serialize VisionResult

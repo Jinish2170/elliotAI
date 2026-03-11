@@ -78,8 +78,10 @@ class EvidenceStore:
 
             self._embedder = SentenceTransformer(settings.EMBEDDING_MODEL)
             logger.info(f"Embedding model loaded: {settings.EMBEDDING_MODEL}")
-        except (ImportError, Exception) as e:
-            logger.warning(f"sentence-transformers failed to load ({e}) — embeddings disabled")
+        except BaseException as e:
+            # Catch BaseException because torch on Windows can trigger
+            # SystemExit / OSError / access violation during DLL loading.
+            logger.warning(f"sentence-transformers failed to load ({type(e).__name__}: {e}) — embeddings disabled")
             self._embedder = None
 
         self._initialized = True

@@ -142,6 +142,11 @@ class JSObfuscationDetector(SecurityModule):
             result.score = 0.0
             return result
 
+        # Extract base domain for same-origin CDN detection
+        from urllib.parse import urlparse
+        parsed = urlparse(url)
+        base_domain = parsed.netloc
+
         try:
             scripts = await page.evaluate(_SCRIPT_EXTRACTION_JS)
             result.total_scripts = len(scripts)
@@ -149,7 +154,7 @@ class JSObfuscationDetector(SecurityModule):
             result.external_scripts = result.total_scripts - result.inline_scripts
 
             for script in scripts:
-                self._analyze_script(script, result)
+                self._analyze_script(script, result, base_domain)
 
             # Check for dynamic WebSocket connections
             try:
@@ -187,7 +192,7 @@ class JSObfuscationDetector(SecurityModule):
 
         return result
 
-    def _analyze_script(self, script: dict, result: JSAnalysisResult) -> None:
+    def _analyze_script(self, script: dict, result: JSAnalysisResult, base_domain: str = "") -> None:
         """Analyze a single script element."""
         content = script.get("content", "")
         src = script.get("src", "")
@@ -209,6 +214,18 @@ class JSObfuscationDetector(SecurityModule):
 
         if not content or len(content) < 50:
             return
+
+        # Detect if this is a known bundler/framework script (skip false-positive entropy)
+        is_bundler = bool(re.search(
+            r'__webpack_require__|__NEXT_DATA__|__next|__nuxt|webpackChunk|'
+            r'_next/static|_nuxt/|createReactApp|__REMIX|__GATSBY',
+            combined, re.IGNORECASE
+        ))
+        # Also detect if script is loaded from same-origin framework paths
+        _FRAMEWORK_PATHS = ('/_next/', '/_nuxt/', '/static/chunks/', '/assets/', '/__vite/')
+        is_framework_src = any(p in src for p in _FRAMEWORK_PATHS) if src else False
+        # Same-origin CDN: script src contains the page's domain
+        is_same_origin = base_domain and base_domain in src if src else False
 
         # 2. Check for eval() usage
         eval_matches = re.findall(r'\beval\s*\(', content)
@@ -251,15 +268,17 @@ class JSObfuscationDetector(SecurityModule):
             ))
 
         # 5. Check for high-entropy variable names (obfuscation indicator)
-        entropy = self._compute_identifier_entropy(content)
-        if entropy > 4.0 and len(content) > 500:
-            result.flags.append(JSFlag(
-                category="obfuscation",
-                severity="medium",
-                description=f"High identifier entropy ({entropy:.1f}) suggests code obfuscation",
-                script_index=idx,
-                evidence=f"Entropy: {entropy:.1f}/6.0",
-            ))
+        # Skip for known bundler/framework scripts — minified code has natural entropy ~4.0-4.5
+        if not (is_bundler or is_framework_src or is_same_origin):
+            entropy = self._compute_identifier_entropy(content)
+            if entropy > 4.8 and len(content) > 500:
+                result.flags.append(JSFlag(
+                    category="obfuscation",
+                    severity="high" if entropy > 5.5 else "medium",
+                    description=f"High identifier entropy ({entropy:.1f}) suggests code obfuscation",
+                    script_index=idx,
+                    evidence=f"Entropy: {entropy:.1f}/6.0",
+                ))
 
         # 6. Check for document.write with external sources
         doc_writes = re.findall(
@@ -274,6 +293,46 @@ class JSObfuscationDetector(SecurityModule):
                 script_index=idx,
                 evidence="document.write(unescape/decode...)",
             ))
+
+        # 7. Fingerprinting script detection
+        fingerprint_patterns = [
+            (r'fingerprint(?:js|2|pro)?\b', "FingerprintJS library"),
+            (r'canvas\.toDataURL\s*\(', "Canvas fingerprinting"),
+            (r'webgl.*(?:getParameter|getExtension)', "WebGL fingerprinting"),
+            (r'AudioContext.*(?:createOscillator|createAnalyser)', "Audio fingerprinting"),
+        ]
+        for fp_pattern, fp_name in fingerprint_patterns:
+            if re.search(fp_pattern, content, re.IGNORECASE):
+                result.flags.append(JSFlag(
+                    category="fingerprinting",
+                    severity="medium",
+                    description=f"Browser fingerprinting detected: {fp_name}",
+                    script_index=idx,
+                    evidence=fp_name,
+                ))
+                break  # One fingerprint flag per script is enough
+
+        # 8. Keylogger pattern detection
+        if (re.search(r'addEventListener\s*\(\s*[\'"]key(?:down|press|up)[\'"]', content)
+                and re.search(r'XMLHttpRequest|fetch\s*\(|navigator\.sendBeacon', content)):
+            result.flags.append(JSFlag(
+                category="keylogger",
+                severity="critical",
+                description="Potential keylogger: keystroke capture with network exfiltration",
+                script_index=idx,
+                evidence="keydown/keypress listener + XHR/fetch",
+            ))
+
+        # 9. Clipboard hijacking detection
+        if re.search(r'(?:execCommand\s*\(\s*[\'"]copy|clipboard\.writeText)', content):
+            if re.search(r'addEventListener\s*\(\s*[\'"](?:copy|paste)[\'"]', content):
+                result.flags.append(JSFlag(
+                    category="clipboard_hijack",
+                    severity="high",
+                    description="Clipboard hijacking: intercepts copy/paste events",
+                    script_index=idx,
+                    evidence="copy/paste event handler + clipboard write",
+                ))
 
     @staticmethod
     def _compute_identifier_entropy(code: str) -> float:

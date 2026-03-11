@@ -258,6 +258,19 @@ class IOCDetector:
         "www.example.com", "mail.example.com", "ftp.example.com",
     }
 
+    # Web asset file extensions — NOT real domains
+    SAFE_ASSET_EXTENSIONS = {
+        ".js", ".css", ".woff", ".woff2", ".png", ".jpg", ".jpeg", ".gif",
+        ".svg", ".ico", ".map", ".json", ".webp", ".avif", ".ttf", ".eot",
+        ".mp3", ".mp4", ".webm", ".pdf", ".xml", ".txt", ".html", ".htm",
+        ".wasm", ".mjs", ".cjs", ".ts", ".tsx", ".jsx", ".scss", ".less",
+    }
+
+    # Regex for build-tool hashed filenames (e.g. "4bd1b696-602635ee57868870.js")
+    _BUILD_HASH_RE = re.compile(
+        r'^(?:[a-f0-9]{6,}-)?[a-f0-9]{8,}\.(?:js|css|woff2?|map)$', re.IGNORECASE
+    )
+
     # Suspicious TLDs often used in malicious domains
     SUSPICIOUS_TLDS = {".xyz", ".top", ".tk", ".ml", ".cf", ".gq", ".cc", ".pw"}
 
@@ -491,6 +504,23 @@ class IOCDetector:
             # Check for common test words
             lower_value = value.lower()
             if 'example' in lower_value or 'test' in lower_value:
+                return False
+            # Reject web asset filenames (e.g. "webpack-231d2036d0a94b4a.js" → not a domain)
+            last_dot = lower_value.rfind('.')
+            if last_dot > 0:
+                ext = lower_value[last_dot:]
+                if ext in self.SAFE_ASSET_EXTENSIONS:
+                    return False
+            # Reject build-tool hashed filenames (8+ hex chars before .js/.css)
+            if self._BUILD_HASH_RE.match(lower_value):
+                return False
+            # Reject URL-encoded path segments (e.g. "2Favrut-dark.svg")
+            if lower_value.startswith(('2f', '%2f')):
+                return False
+            # Reject if value looks like a bare filename with no real subdomain
+            # (single segment before extension like "layout-6e98cbecc9fa4eaa.js")
+            parts = lower_value.split('.')
+            if len(parts) == 2 and re.match(r'^[a-f0-9-]{8,}$', parts[0]):
                 return False
 
         # URL validation

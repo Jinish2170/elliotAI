@@ -85,6 +85,9 @@ class DOMAnalyzer:
             result.findings.extend(self._check_tracking(dom_data))
             result.findings.extend(self._check_missing_pages(dom_data))
             result.findings.extend(self._check_dark_patterns_css(dom_data))
+            result.findings.extend(self._check_cookie_consent(dom_data))
+            result.findings.extend(self._check_popup_modals(dom_data))
+            result.findings.extend(self._check_subscription_traps(dom_data))
 
             # Page health metrics
             result.page_health = {
@@ -237,6 +240,99 @@ class DOMAnalyzer:
                     has_privacy_link: hasPrivacy,
                     has_terms_link: hasTerms,
                     has_contact_link: hasContact,
+
+                    // Phase 17: Cookie consent analysis
+                    cookieConsent: (() => {
+                        const bannerSels = [
+                            '[class*="cookie" i]', '[id*="cookie" i]',
+                            '[class*="consent" i]', '[id*="consent" i]',
+                            '[class*="gdpr" i]', '[id*="gdpr" i]',
+                            '[class*="onetrust" i]', '#CybotCookiebotDialog',
+                        ];
+                        let banner = null;
+                        for (const s of bannerSels) {
+                            try { banner = document.querySelector(s); if (banner) break; } catch(e) {}
+                        }
+                        if (!banner) return { found: false };
+
+                        const buttons = Array.from(banner.querySelectorAll('button, a[role="button"], [class*="btn" i]'));
+                        const acceptBtn = buttons.find(b => /accept|agree|allow|got it|ok/i.test(b.textContent));
+                        const rejectBtn = buttons.find(b => /reject|decline|deny|refuse|necessary only|essential/i.test(b.textContent));
+                        const manageBtn = buttons.find(b => /manage|settings|preferences|customize|options/i.test(b.textContent));
+
+                        const btnInfo = (el) => {
+                            if (!el) return null;
+                            const r = el.getBoundingClientRect();
+                            return {
+                                text: (el.textContent || '').trim().substring(0, 60),
+                                width: r.width, height: r.height,
+                                fontSize: parseFloat(getStyle(el, 'fontSize')) || 14,
+                                bgColor: getStyle(el, 'backgroundColor'),
+                                color: getStyle(el, 'color'),
+                                tag: el.tagName,
+                            };
+                        };
+                        return {
+                            found: true,
+                            acceptButton: btnInfo(acceptBtn),
+                            rejectButton: btnInfo(rejectBtn),
+                            manageButton: btnInfo(manageBtn),
+                            totalButtons: buttons.length,
+                        };
+                    })(),
+
+                    // Phase 17: Popup / modal analysis
+                    popups: (() => {
+                        const modalSels = [
+                            '[class*="modal" i]', '[class*="popup" i]', '[class*="overlay" i]',
+                            '[role="dialog"]', '[aria-modal="true"]',
+                        ];
+                        const results = [];
+                        for (const s of modalSels) {
+                            try {
+                                document.querySelectorAll(s).forEach(el => {
+                                    const display = getStyle(el, 'display');
+                                    const visibility = getStyle(el, 'visibility');
+                                    if (display === 'none' || visibility === 'hidden') return;
+                                    const rect = el.getBoundingClientRect();
+                                    if (rect.width < 100 || rect.height < 50) return;
+
+                                    const closeBtn = el.querySelector('[class*="close" i], [aria-label*="close" i], button:has(svg)');
+                                    const closeSize = closeBtn ? closeBtn.getBoundingClientRect() : null;
+                                    results.push({
+                                        selector: s,
+                                        coversViewport: rect.width > window.innerWidth * 0.7 && rect.height > window.innerHeight * 0.5,
+                                        hasCloseButton: !!closeBtn,
+                                        closeButtonTiny: closeSize ? (closeSize.width < 20 || closeSize.height < 20) : false,
+                                        hasEmailInput: !!el.querySelector('input[type="email"]'),
+                                        text: (el.textContent || '').trim().substring(0, 200),
+                                    });
+                                });
+                            } catch(e) {}
+                        }
+                        return results;
+                    })(),
+
+                    // Phase 17: Subscription / auto-renewal traps
+                    subscriptionTraps: (() => {
+                        const body = document.body.innerText || '';
+                        const patterns = {
+                            autoRenew: /auto[- ]?renew|automatically\s+(?:renew|charge|bill)/i.test(body),
+                            freeTrialBilling: /free\s+trial.*(?:credit\s+card|billing|payment)|(?:credit\s+card|payment).*free\s+trial/i.test(body),
+                            hiddenRecurring: /recurring\s+charge|billed\s+(?:monthly|annually|weekly)|subscription\s+fee/i.test(body),
+                            cancelAnytime: /cancel\s+(?:any\s*time|at\s+any)/i.test(body),
+                        };
+                        // Check if recurring/billing text is in fine print
+                        const finePrintEls = document.querySelectorAll('.fine-print, .terms, .disclaimer, [class*="small-text" i], [class*="legal" i]');
+                        let billingInFinePrint = false;
+                        finePrintEls.forEach(el => {
+                            if (/billed|charged|renew|recurring/i.test(el.textContent || '')) {
+                                billingInFinePrint = true;
+                            }
+                        });
+                        patterns.billingInFinePrint = billingInFinePrint;
+                        return patterns;
+                    })(),
                 };
             }
         """)
@@ -339,13 +435,176 @@ class DOMAnalyzer:
         return findings
 
     def _check_dark_patterns_css(self, data: dict) -> list[DOMFinding]:
-        """Additional CSS-based dark pattern checks."""
-        # This is a placeholder for additional structural checks
-        # that can be expanded as more patterns are identified
-        raise NotImplementedError(
-            "_check_dark_patterns_css(): Additional CSS-based dark pattern checks not yet implemented. "
-            "This method is a placeholder for future structural checks."
-        )
+        """Additional CSS-based dark pattern checks beyond hidden-element scanning."""
+        findings = []
+
+        # Check for suspiciously low-contrast links that aren't already caught
+        # by _check_hidden_elements (which focuses on action keywords).
+        for link in data.get("suspiciousLinks", []):
+            # Extremely low contrast (< 1.5:1) on non-hidden elements is a
+            # strong dark pattern signal — text blends into background.
+            if (link.get("contrast", 4.5) < 1.5
+                    and not link.get("isHidden")
+                    and not link.get("isTiny")):
+                findings.append(DOMFinding(
+                    finding_type="near_invisible_text",
+                    category="visual_interference",
+                    severity="high",
+                    confidence=0.8,
+                    evidence=(
+                        f"Link '{link.get('text', '')}' has near-invisible "
+                        f"contrast ratio {link.get('contrast')}:1 (WCAG minimum 4.5:1)"
+                    ),
+                ))
+
+        # Check for excessive hidden form inputs (data harvesting signal)
+        for form in data.get("forms", []):
+            hidden_count = form.get("hiddenInputCount", 0)
+            if hidden_count > 5:
+                findings.append(DOMFinding(
+                    finding_type="excessive_hidden_inputs",
+                    category="data_harvesting",
+                    severity="medium",
+                    confidence=0.6,
+                    evidence=(
+                        f"Form with action='{form.get('action', '')}' contains "
+                        f"{hidden_count} hidden inputs (possible tracking/fingerprinting)"
+                    ),
+                ))
+
+        return findings
+
+    def _check_cookie_consent(self, data: dict) -> list[DOMFinding]:
+        """Check cookie consent banners for manipulative dark patterns."""
+        findings = []
+        consent = data.get("cookieConsent", {})
+        if not consent.get("found"):
+            return findings
+
+        accept = consent.get("acceptButton")
+        reject = consent.get("rejectButton")
+        manage = consent.get("manageButton")
+
+        # No reject/decline option at all — forced consent
+        if accept and not reject:
+            # "Manage" alone doesn't count as easy rejection
+            findings.append(DOMFinding(
+                finding_type="forced_cookie_consent",
+                category="sneaking",
+                severity="high",
+                confidence=0.8,
+                evidence=(
+                    "Cookie banner has an 'Accept' button but no 'Reject' or 'Decline' option. "
+                    "Users are forced to accept all cookies or dig into settings."
+                ),
+            ))
+
+        # Accept button visually dominant over reject
+        if accept and reject:
+            a_area = (accept.get("width", 0) or 0) * (accept.get("height", 0) or 0)
+            r_area = (reject.get("width", 0) or 0) * (reject.get("height", 0) or 0)
+            a_font = accept.get("fontSize", 14) or 14
+            r_font = reject.get("fontSize", 14) or 14
+
+            if a_area > 0 and r_area > 0 and a_area > r_area * 2:
+                findings.append(DOMFinding(
+                    finding_type="cookie_accept_dominant",
+                    category="visual_interference",
+                    severity="medium",
+                    confidence=0.7,
+                    evidence=(
+                        f"'Accept' button ({accept.get('text', '')}) is {a_area / r_area:.1f}x "
+                        f"larger than 'Reject' button ({reject.get('text', '')})"
+                    ),
+                ))
+            elif a_font > r_font * 1.3:
+                findings.append(DOMFinding(
+                    finding_type="cookie_accept_dominant",
+                    category="visual_interference",
+                    severity="medium",
+                    confidence=0.65,
+                    evidence=(
+                        f"'Accept' button font ({a_font}px) is larger than "
+                        f"'Reject' button font ({r_font}px)"
+                    ),
+                ))
+
+        return findings
+
+    def _check_popup_modals(self, data: dict) -> list[DOMFinding]:
+        """Check for aggressive popup/modal patterns."""
+        findings = []
+        popups = data.get("popups", [])
+        for popup in popups:
+            # Full-viewport overlay blocking content
+            if popup.get("coversViewport"):
+                severity = "high"
+                issues = ["covers most of the viewport"]
+
+                if popup.get("hasEmailInput"):
+                    issues.append("requests email address")
+
+                if not popup.get("hasCloseButton"):
+                    severity = "critical"
+                    issues.append("no visible close button")
+                elif popup.get("closeButtonTiny"):
+                    issues.append("close button is very small")
+
+                findings.append(DOMFinding(
+                    finding_type="aggressive_popup",
+                    category="forced_continuity",
+                    severity=severity,
+                    confidence=0.7,
+                    evidence=f"Popup/modal detected: {', '.join(issues)}",
+                    element_data=popup,
+                ))
+
+        return findings
+
+    def _check_subscription_traps(self, data: dict) -> list[DOMFinding]:
+        """Check for hidden subscription/auto-renewal traps."""
+        findings = []
+        traps = data.get("subscriptionTraps", {})
+
+        if traps.get("freeTrialBilling"):
+            findings.append(DOMFinding(
+                finding_type="free_trial_billing",
+                category="sneaking",
+                severity="high",
+                confidence=0.75,
+                evidence=(
+                    "Page mentions free trial alongside payment/billing requirements. "
+                    "Users may be charged without clear opt-in."
+                ),
+            ))
+
+        if traps.get("billingInFinePrint") and traps.get("hiddenRecurring"):
+            findings.append(DOMFinding(
+                finding_type="hidden_recurring_charge",
+                category="sneaking",
+                severity="high",
+                confidence=0.7,
+                evidence=(
+                    "Recurring billing terms are buried in fine print or legal text, "
+                    "not prominently displayed with the pricing."
+                ),
+            ))
+
+        if traps.get("autoRenew") and not traps.get("cancelAnytime"):
+            findings.append(DOMFinding(
+                finding_type="auto_renew_no_cancel",
+                category="forced_continuity",
+                severity="medium",
+                confidence=0.6,
+                evidence=(
+                    "Page mentions auto-renewal but does not clearly state "
+                    "that users can cancel at any time."
+                ),
+            ))
+
+        return findings
+
+        return findings
 
     def _compute_score(self, findings: list[DOMFinding]) -> float:
         """Compute structural score from DOM findings."""

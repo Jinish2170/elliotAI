@@ -432,66 +432,105 @@ def get_all_sub_types() -> list[DarkPatternSubType]:
 
 VISION_PASS_PROMPTS: dict[int, str] = {
     1: """
-    ANNOTATE ALL DARK PATTERN REGIONS you detect.
+    QUICK THREAT SCAN: Identify visually obvious deceptive patterns.
 
-    For each region, return:
-    - bbox: [x, y, width, height] coordinates (0-100 scale)
-    - type: countdown_timer, fake_urgency, forced_comparison, social_proof, confirmshaming
-    - severity: low/medium/high based on prominence
+    Look ONLY for patterns you can see with high confidence:
+    - Countdown timers (any digits counting down, HH:MM:SS or similar)
+    - "Only X left" / "X people viewing" urgency banners
+    - Large modal popups blocking content
 
-    Focus on HIGH-PRIORITY patterns: countdowns, fake urgency countdowns, countdown banners.
+    For each pattern found, return:
+    - bbox: [x, y, width, height] in 0-100 scale
+    - type: countdown_timer | fake_urgency | scarcity_banner | blocking_modal
+    - severity: low | medium | high
+    - text: the EXACT text you can read (do NOT paraphrase)
 
-    Be QUICK and PRECISE. Mark obvious patterns only.
+    IMPORTANT: If you see NO dark patterns, return {"findings": []}. Do NOT fabricate findings.
+    Only report what is VISUALLY PRESENT in the screenshot.
+    Respond ONLY in JSON: {"findings": [...]}
     """,
 
     2: """
-    Perform SOPHISTICATED DARK PATTERN DETECTION.
+    DETAILED DARK PATTERN ANALYSIS of this screenshot.
 
-    DARK PATTERN TAXONOMY:
-    - Urgency: fake countdowns, limited time offers, "only X left"
-    - Scarcity: fake low inventory, "selling fast", "almost gone"
-    - Social Proof: fake reviews, fabricated testimonials, inflated counts
-    - Misdirection: deceptive action buttons, hidden terms, confusing layouts
-    - Obstruction: difficult cancellation, confirmshaming, hard-to-close modals
+    Check for these specific patterns:
+    1. Misdirection: Is there an "Accept" button much larger/brighter than a "Decline" button?
+    2. Confirmshaming: Does any button use guilt language? ("No thanks, I hate saving money")
+    3. Hidden costs: Is a price shown prominently but fees/taxes are in smaller text below?
+    4. Pre-selected checkboxes: Are any add-ons or subscriptions pre-checked?
+    5. Disguised ads: Are ads styled to look like content or navigation?
 
-    Return bbox, type, technique, confidence for each region.
-    Be THOROUGH and NUANCED.
+    For each finding, return:
+    - bbox: [x, y, width, height] in 0-100 scale
+    - type: misdirection | confirmshaming | hidden_costs | pre_selected | disguised_ad
+    - technique: brief description of the specific technique
+    - confidence: 0.0-1.0
+
+    IMPORTANT: Only report patterns you are CONFIDENT about (>0.6 confidence).
+    If the page looks clean, return {"findings": []}. Do NOT invent issues.
+    Respond ONLY in JSON: {"findings": [...]}
     """,
 
     3: """
-    Detect TEMPORAL DYNAMIC CONTENT changes.
+    TEMPORAL COMPARISON: Compare this screenshot against the previous one.
 
-    Compare this screenshot to previous screenshot context.
+    Identify regions that CHANGED between captures:
+    - Timer values that changed (did they go up, down, or reset?)
+    - Stock/availability numbers that changed
+    - Price values that changed
+    - New elements that appeared (popups, banners, notifications)
+    - Elements that disappeared
 
-    Return regions that CHANGED between screenshots:
-    - bbox: [x, y, width, height]
-    - change_type: content_update, timer_change, element_appear, element_disappear
-    - severity: low/medium/high
+    For each change, return:
+    - bbox: [x, y, width, height] in 0-100 scale
+    - change_type: timer_change | price_change | element_appear | element_disappear | counter_change
+    - value_before: what the text said before (if readable)
+    - value_after: what the text says now (if readable)
+    - severity: low | medium | high
 
-    Focus on SUSPICIOUS temporal changes: timers that reset, price changes, element appearances.
+    If the screenshots look IDENTICAL, return {"findings": [], "pages_identical": true}.
+    Respond ONLY in JSON.
     """,
 
     4: """
-    Cross-reference VISUAL FINDINGS with ENTITY VERIFICATION.
+    TRUST SIGNAL VERIFICATION: Identify elements that need external fact-checking.
 
-    Identify visual elements requiring EXTERNAL VERIFICATION:
-    - Company logos/brand names, trust badges, certifications
-    - Social media handles, third-party endorsements
+    Look for:
+    - Trust badges/seals (Norton, McAfee, BBB, TRUSTe, SSL shields)
+    - "As seen on" media logos (CNN, Forbes, BBC, etc.)
+    - Award/certification claims
+    - Testimonial photos (do they look like stock photos or AI-generated?)
+    - Social proof numbers ("1M+ customers", "4.9/5 stars")
 
-    Return bbox, entity_type, visual_text, verification_needed=true.
-    These will be cross-referenced in Phase 8 OSINT.
+    For each element found, return:
+    - bbox: [x, y, width, height] in 0-100 scale
+    - entity_type: trust_badge | media_claim | award | testimonial_photo | social_counter
+    - visual_text: EXACT text you can read
+    - appears_clickable: true/false (is it a link or just an image?)
+    - verification_needed: true
+
+    Only report elements you can ACTUALLY SEE. Do NOT guess or assume.
+    Respond ONLY in JSON: {"findings": [...]}
     """,
 
     5: """
-    Synthesize ALL PASSES into final confidence scoring.
+    FINAL SYNTHESIS: Review all previous findings and produce a verdict.
 
-    Review findings from all previous passes.
+    Given the cumulative findings from passes 1-4, determine:
+    1. Which findings are GENUINE dark patterns (confirmed)?
+    2. Which findings might be FALSE POSITIVES (legitimate countdown for a real event,
+       genuine limited stock, real trust badges)?
+    3. Overall severity assessment.
 
-    For each finding: confidence (0-100), justification, risk level, evidence.
+    For each finding, return:
+    - original_type: the pattern type from earlier passes
+    - final_verdict: confirmed | false_positive | uncertain
+    - confidence: 0-100
+    - justification: one sentence explaining your reasoning
+    - risk_level: low | medium | high | critical
 
-    Identify FALSE POSITIVES: legitimate countdowns, genuine scarcity, real social proof.
-
-    Return final adjudicated findings.
+    Be CONSERVATIVE: if unsure, mark as "uncertain" rather than "confirmed".
+    Respond ONLY in JSON: {"findings": [...], "overall_risk": "low|medium|high|critical"}
     """
 }
 

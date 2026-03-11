@@ -118,6 +118,8 @@ class AuditEvidence:
     graph_result: Optional[GraphResult] = None
     iteration: int = 0
     max_iterations: int = 5
+    max_pages: int = 5                 # Page budget from tier config
+    pages_investigated: int = 0       # Pages already visited
 
     # Extended fields for v2
     site_type: str = ""                # From scout classification
@@ -242,7 +244,15 @@ class JudgeAgent:
         """
         # Budget exhausted — must judge now
         if evidence.iteration >= evidence.max_iterations:
-            logger.info("Budget exhausted — forcing verdict")
+            logger.info("Iteration budget exhausted — rendering verdict")
+            return False
+
+        # Page budget exhausted — no more pages to investigate
+        if evidence.pages_investigated >= evidence.max_pages:
+            logger.info(
+                f"Page budget exhausted ({evidence.pages_investigated}/{evidence.max_pages}) — "
+                f"rendering verdict with available evidence"
+            )
             return False
 
         # No vision data yet — can't judge without eyes
@@ -266,8 +276,8 @@ class JudgeAgent:
                 )
                 return True
 
-        # Only checked 1 page — should check more for standard/deep audits
-        if len(evidence.scout_results) == 1 and evidence.iteration < 2:
+        # Only checked 1 page — should check more if page budget allows
+        if len(evidence.scout_results) == 1 and evidence.iteration < 2 and evidence.pages_investigated < evidence.max_pages:
             # Check if there are important subpages to investigate
             scout = evidence.scout_results[0]
             if scout.status == "SUCCESS" and scout.page_metadata:
@@ -860,10 +870,20 @@ class JudgeAgent:
         # --- Graph Signal ---
         if evidence.graph_result:
             gr = evidence.graph_result
+            # Confidence grows with evidence volume:
+            #   base 0.5 + 0.1 per verification + 0.05 per OSINT source
+            osint_src_count = len(gr.osint_sources) if gr.osint_sources else 0
+            # Don't count the _consensus meta-key as a real source
+            if isinstance(gr.osint_sources, dict):
+                osint_src_count = len([k for k in gr.osint_sources if k != "_consensus"])
+            graph_confidence = min(
+                0.95,
+                0.5 + len(gr.verifications) * 0.1 + osint_src_count * 0.05,
+            )
             signals["graph"] = SubSignal(
                 name="graph",
                 raw_score=gr.graph_score,
-                confidence=min(0.9, 0.5 + len(gr.verifications) * 0.1),
+                confidence=graph_confidence,
                 evidence_count=len(gr.verifications) + len(gr.inconsistencies),
                 details={
                     "verifications": len(gr.verifications),
@@ -950,7 +970,7 @@ class JudgeAgent:
             signals["security"] = SubSignal(
                 name="security",
                 raw_score=round(max(0.0, min(1.0, sec_score)), 3),
-                confidence=0.8 if sec_evidence_count >= 2 else 0.5,
+                confidence=0.8 if sec_evidence_count >= 2 else max(0.6, 0.4 + sec_evidence_count * 0.2),
                 evidence_count=sec_evidence_count,
                 details=sec_details,
             )
@@ -1053,28 +1073,30 @@ class JudgeAgent:
         evidence_summary = self._build_evidence_summary_text(evidence, trust_result)
 
         prompt = (
-            "Write a professional forensic audit narrative for this website investigation. "
-            "Use a neutral, evidence-based tone like a financial auditor's report. "
-            "Cite specific findings. Do NOT speculate beyond the evidence.\n\n"
-            "Structure:\n"
-            "1. Opening statement (1-2 sentences: what was audited and final verdict)\n"
-            "2. Visual Analysis findings (dark patterns found/not found)\n"
-            "3. Entity Verification findings (what was confirmed/denied)\n"
-            "4. Domain Intelligence findings (age, SSL, WHOIS)\n"
-            "5. Conclusion and risk assessment\n\n"
-            f"Evidence:\n{evidence_summary}\n\n"
-            "Write 200-400 words. Be precise and factual."
+            "Write a forensic audit narrative (200-400 words) for this website investigation.\n\n"
+            "STRUCTURE:\n"
+            "1. Opening: What was audited + final trust score + risk verdict\n"
+            "2. Visual Analysis: Dark patterns found (cite specific types + confidence)\n"
+            "3. Entity Verification: Claims confirmed/denied/unverifiable (cite evidence)\n"
+            "4. Domain Intelligence: Age, SSL, WHOIS anomalies\n"
+            "5. Conclusion: Overall risk assessment + key recommendation\n\n"
+            "RULES:\n"
+            "- Cite specific scores and confidence values from the evidence\n"
+            "- Use numbers: 'found 3 dark patterns (2 high-severity)' not 'found some issues'\n"
+            "- Every claim must reference evidence below. Do NOT add information not in evidence.\n"
+            "- Neutral, professional tone. No speculation, no emotional language.\n\n"
+            f"Evidence:\n{evidence_summary}"
         )
 
         result = await self._nim.generate_text(
             prompt=prompt,
             system_prompt=(
-                "You are a digital forensic auditor writing an official audit report. "
-                "Your language is precise, professional, and evidence-based. "
-                "You reference specific findings with confidence scores. "
-                "You never speculate or use emotional language."
+                "You are a digital forensic auditor. Write precise, evidence-based audit reports. "
+                "Always cite specific findings with their confidence scores. "
+                "Never fabricate findings or speculate beyond the provided evidence. "
+                "If evidence is limited, say so explicitly rather than filling gaps."
             ),
-            max_tokens=1024,
+            max_tokens=800,
             temperature=0.2,
         )
 
@@ -1219,29 +1241,29 @@ class JudgeAgent:
         evidence_summary = self._build_evidence_summary_text(evidence, trust_result)
 
         prompt = (
-            "Rewrite the following technical website audit findings into a simple, "
-            "friendly explanation that anyone can understand. "
-            "Use everyday language. Instead of 'SSL certificate', say 'secure connection'. "
-            "Instead of 'WHOIS', say 'website registration records'. "
-            "Instead of 'dark patterns', say 'tricks to mislead you'. "
-            "Instead of 'domain age', say 'how long this website has existed'. "
-            "Instead of 'DNS', say 'website address records'. "
-            "Keep it warm but honest. Use 100-200 words.\n\n"
-            "Explain:\n"
-            "- Is this website safe to use?\n"
-            "- What should I watch out for?\n"
-            "- What did we find that was good or bad?\n\n"
+            "Rewrite these technical findings into a simple, friendly explanation (100-200 words).\n\n"
+            "TRANSLATION GUIDE:\n"
+            "- SSL certificate → secure connection padlock\n"
+            "- WHOIS → website registration records\n"
+            "- Dark patterns → tricks to mislead you\n"
+            "- Domain age → how long this website has existed\n"
+            "- CSP/HSTS → security settings\n\n"
+            "ANSWER THREE QUESTIONS:\n"
+            "1. Is this website safe to use? (clear yes/maybe/no)\n"
+            "2. What should I watch out for?\n"
+            "3. What did we find that was good or bad?\n\n"
+            "Use everyday language. Be warm but honest. No jargon.\n\n"
             f"Technical findings:\n{evidence_summary}"
         )
 
         result = await self._nim.generate_text(
             prompt=prompt,
             system_prompt=(
-                "You are a friendly security advisor explaining website safety to "
-                "someone who is not technical. Speak clearly and simply. "
-                "Use analogies where helpful. Never use technical jargon."
+                "You are a friendly security advisor explaining website safety to a non-technical person. "
+                "Use simple words, short sentences, and analogies. Never use technical jargon. "
+                "Be honest — don't sugarcoat real risks, but don't be alarmist about minor issues."
             ),
-            max_tokens=512,
+            max_tokens=400,
             temperature=0.3,
         )
 
