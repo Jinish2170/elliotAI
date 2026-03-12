@@ -25,7 +25,9 @@ else:
     load_dotenv()
 
 # Add parent directories to sys.path for imports
-# Project root (for backend module imports)
+# Project root (for "from backend.xxx" style imports)
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+# Backend dir (for "from services.xxx" / "from routes.xxx" style imports)
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 # Veritas module root (for veritas package imports)
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "veritas"))

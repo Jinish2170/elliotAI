@@ -86,9 +86,9 @@ export default function ReportPage({ params }: { params: Promise<{ id: string }>
   const activeSections = useMemo(() => {
     if (!result) return REPORT_SECTIONS;
     return REPORT_SECTIONS.filter((s) => {
-      if (s.id === "findings" && result.findings.length === 0) return false;
-      if (s.id === "recommendations" && result.recommendations.length === 0) return false;
-      if (s.id === "evidence" && storeScreenshots.length === 0) return false;
+      if (s.id === "findings" && (!result.findings || result.findings.length === 0)) return false;
+      if (s.id === "recommendations" && (!result.recommendations || result.recommendations.length === 0)) return false;
+      if (s.id === "evidence" && (!storeScreenshots || storeScreenshots.length === 0)) return false;
       return true;
     });
   }, [result, storeScreenshots]);
@@ -208,9 +208,9 @@ export default function ReportPage({ params }: { params: Promise<{ id: string }>
                 narrative={result.narrative}
                 url={result.url}
                 siteType={result.site_type}
-                findingsCount={result.findings.length}
-                screenshotsCount={result.screenshots_count}
-                elapsedSeconds={result.elapsed_seconds}
+                findingsCount={result.findings?.length ?? 0}
+                screenshotsCount={result.screenshots_count ?? 0}
+                elapsedSeconds={result.elapsed_seconds ?? 0}
               />
             </section>
 
@@ -222,15 +222,15 @@ export default function ReportPage({ params }: { params: Promise<{ id: string }>
             )}
 
             {/* Findings */}
-            {result.findings.length > 0 && (
+            {(result.findings?.length ?? 0) > 0 && (
               <section id="findings">
-                <FindingsPanel findings={result.findings} mode={mode} />
+                <FindingsPanel findings={result.findings ?? []} mode={mode} />
               </section>
             )}
 
             {/* Security Posture */}
             <section id="security">
-              <SecurityMatrix securityResults={result.security_results} />
+              <SecurityMatrix securityResults={result.security_results ?? {}} />
             </section>
 
             {/* Entity Intelligence */}
@@ -239,19 +239,19 @@ export default function ReportPage({ params }: { params: Promise<{ id: string }>
             </section>
 
             {/* Evidence Gallery */}
-            {storeScreenshots.length > 0 && (
+            {(storeScreenshots?.length ?? 0) > 0 && (
               <section id="evidence">
                 <EvidenceGallery
-                  screenshots={storeScreenshots}
-                  findings={result.findings}
+                  screenshots={storeScreenshots ?? []}
+                  findings={result.findings ?? []}
                 />
               </section>
             )}
 
             {/* Recommendations */}
-            {result.recommendations.length > 0 && (
+            {(result.recommendations?.length ?? 0) > 0 && (
               <section id="recommendations">
-                <RecommendationsPanel recommendations={result.recommendations} />
+                <RecommendationsPanel recommendations={result.recommendations ?? []} />
               </section>
             )}
 

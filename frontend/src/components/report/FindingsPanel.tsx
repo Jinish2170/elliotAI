@@ -19,7 +19,8 @@ interface FindingsPanelProps {
   className?: string;
 }
 
-export function FindingsPanel({ findings, mode = "expert", className }: FindingsPanelProps) {
+export function FindingsPanel({ findings: rawFindings, mode = "expert", className }: FindingsPanelProps) {
+  const findings = rawFindings ?? [];
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
 
   // Categories with counts

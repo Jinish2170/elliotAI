@@ -20,7 +20,8 @@ interface EvidenceGalleryProps {
   className?: string;
 }
 
-export function EvidenceGallery({ screenshots, findings, className }: EvidenceGalleryProps) {
+export function EvidenceGallery({ screenshots, findings: rawFindings, className }: EvidenceGalleryProps) {
+  const findings = rawFindings ?? [];
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
 
   const close = useCallback(() => setExpandedIndex(null), []);

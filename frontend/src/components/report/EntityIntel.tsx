@@ -24,7 +24,7 @@ import {
 } from "lucide-react";
 
 interface EntityIntelProps {
-  domainInfo: DomainInfo;
+  domainInfo?: DomainInfo | null;
   url: string;
   className?: string;
 }
@@ -35,6 +35,16 @@ export function EntityIntel({ domainInfo, url, className }: EntityIntelProps) {
     hostname = new URL(url).hostname;
   } catch {
     hostname = url;
+  }
+
+  if (!domainInfo || Object.keys(domainInfo).length === 0) {
+    return (
+      <PanelChrome title="Entity Intelligence" elevation={2} className={className}>
+        <p className="text-[12px] text-[var(--v-text-tertiary)] text-center py-8">
+          Domain intelligence data not available for this audit.
+        </p>
+      </PanelChrome>
+    );
   }
 
   const ageYears = domainInfo.age_days

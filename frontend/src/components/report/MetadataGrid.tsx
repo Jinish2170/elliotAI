@@ -22,16 +22,20 @@ export function MetadataGrid({ result, auditId, className }: MetadataGridProps) 
     { label: "Tier", value: tierLabel },
     {
       label: "Duration",
-      value: `${Math.floor(result.elapsed_seconds / 60)}m ${result.elapsed_seconds % 60}s`,
+      value: result.elapsed_seconds != null
+        ? `${Math.floor(result.elapsed_seconds / 60)}m ${Math.round(result.elapsed_seconds % 60)}s`
+        : "—",
     },
-    { label: "Pages", value: String(result.pages_scanned) },
-    { label: "Screenshots", value: String(result.screenshots_count) },
+    { label: "Pages", value: String(result.pages_scanned ?? 0) },
+    { label: "Screenshots", value: String(result.screenshots_count ?? 0) },
     {
       label: "Site Type",
-      value: `${result.site_type} (${Math.round(result.site_type_confidence * 100)}%)`,
+      value: result.site_type
+        ? `${result.site_type} (${Math.round((result.site_type_confidence ?? 0) * 100)}%)`
+        : "—",
     },
-    { label: "Findings", value: String(result.findings.length) },
-    { label: "Verdict", value: result.verdict_mode },
+    { label: "Findings", value: String(result.findings?.length ?? 0) },
+    { label: "Verdict", value: result.verdict_mode || "standard" },
   ];
 
   return (
