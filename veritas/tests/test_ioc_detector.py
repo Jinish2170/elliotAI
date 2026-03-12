@@ -438,6 +438,99 @@ class TestEdgeCases:
 # Integration Tests
 # ============================================================
 
+# ============================================================
+# P17 — Asset/Build-Hash False Positive Filtering
+# ============================================================
+
+class TestAssetFiltering:
+    """Tests for P17 false-positive suppression in _is_valid_ioc.
+
+    Phase 17 added:
+    - SAFE_ASSET_EXTENSIONS filtering (e.g. 'styles.css' is not a domain)
+    - _BUILD_HASH_RE filtering (e.g. '4bd1b696-602635ee57868870.js')
+    - URL-encoded path rejection (e.g. '2Favrut-dark.svg')
+    - Bare filename hash rejection (e.g. 'layout-6e98cbecc9fa4eaa.js')
+    """
+
+    def test_safe_asset_extension_js(self, detector):
+        """JavaScript asset filenames should NOT be detected as domains."""
+        result = detector._is_valid_ioc(IOCType.DOMAIN, "webpack-231d2036d0a94b4a.js")
+        assert result is False
+
+    def test_safe_asset_extension_css(self, detector):
+        """CSS asset filenames should NOT be detected as domains."""
+        result = detector._is_valid_ioc(IOCType.DOMAIN, "styles.css")
+        assert result is False
+
+    def test_safe_asset_extension_woff2(self, detector):
+        """Font files should NOT be detected as domains."""
+        result = detector._is_valid_ioc(IOCType.DOMAIN, "inter-regular.woff2")
+        assert result is False
+
+    def test_safe_asset_extension_svg(self, detector):
+        """SVG files should NOT be detected as domains."""
+        result = detector._is_valid_ioc(IOCType.DOMAIN, "logo.svg")
+        assert result is False
+
+    def test_safe_asset_extension_png(self, detector):
+        """PNG image files should NOT be detected as domains."""
+        result = detector._is_valid_ioc(IOCType.DOMAIN, "hero-banner.png")
+        assert result is False
+
+    def test_build_hash_filename_rejected(self, detector):
+        """Build-tool hashed filenames should be filtered out."""
+        result = detector._is_valid_ioc(IOCType.DOMAIN, "4bd1b696-602635ee57868870.js")
+        assert result is False
+
+    def test_build_hash_css_rejected(self, detector):
+        """Build-tool hashed CSS filenames should be filtered out."""
+        result = detector._is_valid_ioc(IOCType.DOMAIN, "ab12cd34ef567890.css")
+        assert result is False
+
+    def test_url_encoded_path_rejected(self, detector):
+        """URL-encoded path segments should NOT be detected as domains."""
+        result = detector._is_valid_ioc(IOCType.DOMAIN, "2Favrut-dark.svg")
+        assert result is False
+
+    def test_url_encoded_percent_rejected(self, detector):
+        """Percent-encoded path segments should NOT be detected as domains."""
+        result = detector._is_valid_ioc(IOCType.DOMAIN, "%2Ficons%2Flogo.png")
+        assert result is False
+
+    def test_bare_hex_hash_filename_rejected(self, detector):
+        """Bare hex-hash filename like 'layout-6e98cbecc9fa4eaa.js' → not a domain."""
+        result = detector._is_valid_ioc(IOCType.DOMAIN, "layout-6e98cbecc9fa4eaa.js")
+        assert result is False
+
+    def test_real_domain_still_accepted(self, detector):
+        """Real domains must still pass validation."""
+        result = detector._is_valid_ioc(IOCType.DOMAIN, "malicious-site.xyz")
+        assert result is True
+
+    def test_real_domain_com(self, detector):
+        """Standard .com domains must still pass validation."""
+        result = detector._is_valid_ioc(IOCType.DOMAIN, "phishing.com")
+        assert result is True
+
+    def test_extract_from_text_skips_assets(self, detector):
+        """extract_from_text should not return asset filenames as domains."""
+        text = "Loading styles.css and main.js from CDN at cdn.fastly.net"
+        indicators = detector.extract_from_text(text)
+        domain_values = [i.value for i in indicators if i.ioc_type == IOCType.DOMAIN]
+        assert "styles.css" not in domain_values
+        assert "main.js" not in domain_values
+        assert "cdn.fastly.net" in domain_values
+
+    def test_safe_asset_extensions_constant_exists(self, detector):
+        """Verify SAFE_ASSET_EXTENSIONS constant is non-empty."""
+        assert len(detector.SAFE_ASSET_EXTENSIONS) >= 20
+
+    def test_build_hash_regex_compiled(self, detector):
+        """Verify _BUILD_HASH_RE is a compiled regex pattern."""
+        import re
+        assert isinstance(detector._BUILD_HASH_RE, re.Pattern)
+
+
 class TestIOCDetectorIntegration:
     """Integration tests for IOC detection."""
 

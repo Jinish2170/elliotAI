@@ -1171,7 +1171,7 @@ class StealthScout:
 
     async def _capture_section_screenshots(
         self, page: Page, audit_id: str, max_sections: int = 5
-    ) -> List[str]:
+    ) -> list[str]:
         """Capture screenshots of important page sections.
 
         Identifies key regions (pricing, testimonials, forms, trust badges,

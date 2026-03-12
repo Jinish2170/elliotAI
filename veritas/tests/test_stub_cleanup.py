@@ -299,18 +299,45 @@ class TestJudgeStubs:
 # ============================================================
 
 class TestDOMAnalyzerStubs:
-    """Tests for DOMAnalyzer stub cleanup exceptions."""
+    """Tests for DOMAnalyzer dark patterns CSS implementation."""
 
-    def test_check_dark_patterns_css_not_implemented(self):
-        """Test that _check_dark_patterns_css raises NotImplementedError (placeholder)."""
+    def test_check_dark_patterns_css_empty_input(self):
+        """Test that _check_dark_patterns_css returns empty list for empty data."""
         from veritas.analysis.dom_analyzer import DOMAnalyzer
 
         analyzer = DOMAnalyzer()
+        result = analyzer._check_dark_patterns_css({})
+        assert result == []
 
-        with pytest.raises(NotImplementedError) as exc_info:
-            analyzer._check_dark_patterns_css({})
+    def test_check_dark_patterns_css_near_invisible_text(self):
+        """Test detection of near-invisible contrast links."""
+        from veritas.analysis.dom_analyzer import DOMAnalyzer
 
-        assert "not implemented" in str(exc_info.value).lower() or "placeholder" in str(exc_info.value).lower()
+        analyzer = DOMAnalyzer()
+        data = {
+            "suspiciousLinks": [
+                {"text": "unsubscribe", "contrast": 1.1, "isHidden": False, "isTiny": False}
+            ]
+        }
+        findings = analyzer._check_dark_patterns_css(data)
+        assert len(findings) == 1
+        assert findings[0].finding_type == "near_invisible_text"
+        assert findings[0].severity == "high"
+
+    def test_check_dark_patterns_css_excessive_hidden_inputs(self):
+        """Test detection of excessive hidden form inputs."""
+        from veritas.analysis.dom_analyzer import DOMAnalyzer
+
+        analyzer = DOMAnalyzer()
+        data = {
+            "forms": [
+                {"action": "/track", "hiddenInputCount": 8}
+            ]
+        }
+        findings = analyzer._check_dark_patterns_css(data)
+        assert len(findings) == 1
+        assert findings[0].finding_type == "excessive_hidden_inputs"
+        assert findings[0].category == "data_harvesting"
 
 
 # ============================================================

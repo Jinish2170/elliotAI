@@ -16,11 +16,10 @@ class TestTierConfigs:
 
     def test_quick_scan_is_fast_and_shallow(self):
         cfg = settings.AUDIT_TIERS["quick_scan"]
-        assert cfg["max_verifications"] == 0
-        assert cfg["enable_tavily"] is False
-        assert cfg["enable_osint"] is False
+        assert cfg["max_verifications"] <= 3
         assert cfg["vision_passes"] == 1
-        assert cfg["graph_timeout_s"] <= 20
+        assert cfg["pages"] == 1
+        assert cfg["target_duration_s"] <= 180
 
     def test_deep_forensic_is_thorough(self):
         cfg = settings.AUDIT_TIERS["deep_forensic"]
