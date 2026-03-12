@@ -529,9 +529,16 @@ function processSingleEvent(
           }
           return ss;
         });
-        set({ findings: updatedFindings, screenshots: updatedScreenshots });
+        set({
+          findings: updatedFindings,
+          screenshots: updatedScreenshots,
+          stats: { ...state.stats, findings: updatedFindings.length },
+        });
       } else {
-        set({ findings: updatedFindings });
+        set({
+          findings: updatedFindings,
+          stats: { ...state.stats, findings: updatedFindings.length },
+        });
       }
       break;
     }
@@ -561,12 +568,14 @@ function processSingleEvent(
           opacity: f.confidence * 0.3,
         }));
 
+      const newScreenshots = [...state.screenshots, {
+        ...s,
+        findings: associatedFindings.length > 0 ? associatedFindings : undefined,
+        overlays: overlays.length > 0 ? overlays : undefined
+      }];
       set({
-        screenshots: [...state.screenshots, {
-          ...s,
-          findings: associatedFindings.length > 0 ? associatedFindings : undefined,
-          overlays: overlays.length > 0 ? overlays : undefined
-        }]
+        screenshots: newScreenshots,
+        stats: { ...state.stats, screenshots: newScreenshots.length },
       });
       break;
     }
@@ -713,7 +722,11 @@ function processSingleEvent(
 
     case "vision_pass_findings": {
       const findings = event.findings as Finding[];
-      set({ findings: [...state.findings, ...findings] });
+      const merged = [...state.findings, ...findings];
+      set({
+        findings: merged,
+        stats: { ...state.stats, findings: merged.length },
+      });
       break;
     }
 

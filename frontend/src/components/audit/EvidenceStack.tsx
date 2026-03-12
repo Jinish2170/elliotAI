@@ -18,6 +18,7 @@ interface EvidenceStackProps {
   findings: Finding[];
   stats: AuditStats;
   osintResults?: OSINTResult[];
+  trustScore?: number | null;
   domainInfo?: {
     domain?: string;
     registrar?: string;
@@ -36,6 +37,7 @@ export function EvidenceStack({
   findings,
   stats,
   osintResults = [],
+  trustScore,
   domainInfo,
   className,
 }: EvidenceStackProps) {
@@ -73,14 +75,10 @@ export function EvidenceStack({
         collapsible
       >
         <div className="p-2 space-y-1.5">
-          <MetricRow label="Trust Score" value="--" status="pending" />
+          <MetricRow label="Trust Score" value={trustScore != null ? trustScore.toString() : "—"} status={trustScore != null ? (trustScore >= 70 ? "pass" : trustScore >= 40 ? "warn" : "fail") : "pending"} />
           <MetricRow
             label="Pages Analyzed"
             value={stats.pages_scanned.toString()}
-          />
-          <MetricRow
-            label="Links Discovered"
-            value={(stats.pages_scanned * 5).toString()}
           />
           <MetricRow
             label="Unique Findings"

@@ -49,18 +49,18 @@ function AuditPageContent({ id }: { id: string }) {
     return store.currentPhase as AgentId;
   }, [store.currentPhase]);
 
-  // Build ticker metrics from store stats
+  // Build ticker metrics from store stats + live arrays for real-time counts
   const tickerMetrics: TickerMetric[] = useMemo(
     () => [
+      { label: "TRUST", value: store.result?.trust_score ?? "—" },
       { label: "PAGES", value: store.stats.pages_scanned },
-      { label: "LINKS", value: store.stats.pages_scanned * 5 },
-      { label: "FINDINGS", value: store.stats.findings },
-      { label: "SCREENSHOTS", value: store.stats.screenshots },
+      { label: "FINDINGS", value: Math.max(store.findings.length, store.stats.findings) },
+      { label: "SCREENSHOTS", value: Math.max(store.screenshots.length, store.stats.screenshots) },
       { label: "HEADERS", value: store.stats.security_checks > 0 ? "✓" : "—", status: store.stats.security_checks > 0 ? "pass" as const : undefined },
       { label: "AI CALLS", value: store.stats.ai_calls },
       { label: "SEC CHECKS", value: store.stats.security_checks },
     ],
-    [store.stats]
+    [store.stats, store.findings.length, store.screenshots.length, store.result]
   );
 
   return (
@@ -103,7 +103,7 @@ function AuditPageContent({ id }: { id: string }) {
                           : agentId === "security"
                           ? `${store.stats.security_checks} checks`
                           : agentId === "vision"
-                          ? `${store.stats.screenshots} screenshots`
+                          ? `${Math.max(store.screenshots.length, store.stats.screenshots)} screenshots`
                           : agentId === "graph"
                           ? `${store.osintResults.length} sources`
                           : agentId === "judge"
@@ -165,6 +165,7 @@ function AuditPageContent({ id }: { id: string }) {
               findings={store.findings}
               stats={store.stats}
               osintResults={store.osintResults}
+              trustScore={store.result?.trust_score}
               className="h-full"
             />
           </div>
@@ -185,6 +186,7 @@ function AuditPageContent({ id }: { id: string }) {
             findings={store.findings}
             stats={store.stats}
             osintResults={store.osintResults}
+            trustScore={store.result?.trust_score}
           />
         </div>
 

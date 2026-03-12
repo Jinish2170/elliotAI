@@ -12,6 +12,48 @@ import { AGENT_CONFIGS, type AgentId } from "@/config/agents";
 import type { Finding, Phase, LogEntry, Screenshot } from "@/lib/types";
 import { useMemo, useRef, useEffect } from "react";
 
+/** Strip markdown bold/italic/heading markers for plain text display */
+function stripMarkdown(text: string | undefined): string {
+  if (!text) return "";
+  return text
+    .replace(/#{1,6}\s*/g, "")      // headings
+    .replace(/\*\*(.+?)\*\*/g, "$1") // bold
+    .replace(/\*(.+?)\*/g, "$1")     // italic
+    .replace(/__(.+?)__/g, "$1")     // bold alt
+    .replace(/_(.+?)_/g, "$1")       // italic alt
+    .replace(/`(.+?)`/g, "$1")       // inline code
+    .replace(/\n{2,}/g, " ")         // collapse newlines
+    .trim();
+}
+
+/** Convert snake_case category/pattern to human-readable title */
+function formatCategory(raw: string | undefined): string {
+  if (!raw) return "";
+  return raw.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+/** Derive a meaningful finding title.
+ *  Falls back to category when pattern_type is a pass reference like "pass_3".
+ */
+function formatFindingTitle(f: Finding): string {
+  const pt = f.pattern_type || "";
+  // If pattern_type is just a pass reference, use category instead
+  if (/^pass_?\d+$/i.test(pt) || !pt || pt === "unknown") {
+    const cat = f.category || "";
+    if (cat && !/^pass_?\d+$/i.test(cat) && cat !== "unknown") {
+      return formatCategory(cat);
+    }
+    // Last resort: extract first sentence from description
+    const desc = f.plain_english || f.description || "";
+    if (desc) {
+      const firstSentence = desc.split(/[.!?\n]/)[0].trim();
+      return firstSentence.length > 80 ? firstSentence.slice(0, 77) + "..." : firstSentence || "Finding";
+    }
+    return "Finding";
+  }
+  return formatCategory(pt);
+}
+
 interface DataFeedProps {
   currentPhase: Phase | null;
   findings: Finding[];
@@ -103,10 +145,10 @@ export function DataFeed({
                 <FindingRow
                   key={entry.data.id || `finding-${i}`}
                   severity={entry.data.severity === "critical" ? "critical" : entry.data.severity === "high" ? "high" : entry.data.severity === "medium" ? "medium" : "low"}
-                  title={entry.data.pattern_type.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
-                  description={entry.data.plain_english || entry.data.description}
-                  agent={entry.data.category}
-                  checkType={entry.data.pattern_type}
+                  title={formatFindingTitle(entry.data)}
+                  description={stripMarkdown(entry.data.plain_english || entry.data.description)}
+                  agent={formatCategory(entry.data.category)}
+                  checkType={formatCategory(entry.data.pattern_type)}
                   index={i}
                 />
               );

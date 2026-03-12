@@ -13,6 +13,44 @@ import type { SeverityLevel } from "@/config/agents";
 import type { Finding } from "@/lib/types";
 import { useState, useMemo } from "react";
 
+/** Convert snake_case to Title Case */
+function formatCategory(raw: string | undefined): string {
+  if (!raw) return "";
+  return raw.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+/** Derive a meaningful finding title, falling back to category when pattern_type is a pass reference. */
+function formatFindingTitle(f: Finding): string {
+  const pt = f.pattern_type || "";
+  if (/^pass_?\d+$/i.test(pt) || !pt || pt === "unknown") {
+    const cat = f.category || "";
+    if (cat && !/^pass_?\d+$/i.test(cat) && cat !== "unknown") {
+      return formatCategory(cat);
+    }
+    const desc = f.plain_english || f.description || "";
+    if (desc) {
+      const firstSentence = desc.split(/[.!?\n]/)[0].trim();
+      return firstSentence.length > 80 ? firstSentence.slice(0, 77) + "..." : firstSentence || "Finding";
+    }
+    return "Finding";
+  }
+  return formatCategory(pt);
+}
+
+/** Strip markdown bold/italic/heading markers */
+function stripMarkdown(text: string | undefined): string {
+  if (!text) return "";
+  return text
+    .replace(/#{1,6}\s*/g, "")
+    .replace(/\*\*(.+?)\*\*/g, "$1")
+    .replace(/\*(.+?)\*/g, "$1")
+    .replace(/__(.+?)__/g, "$1")
+    .replace(/_(.+?)_/g, "$1")
+    .replace(/`(.+?)`/g, "$1")
+    .replace(/\n{2,}/g, " ")
+    .trim();
+}
+
 interface FindingsPanelProps {
   findings: Finding[];
   mode?: "simple" | "expert";
@@ -102,13 +140,12 @@ export function FindingsPanel({ findings: rawFindings, mode = "expert", classNam
           </p>
         ) : (
           sorted.map((finding, i) => {
-            const title = (finding.pattern_type || "unknown")
-              .replace(/_/g, " ")
-              .replace(/\b\w/g, (c) => c.toUpperCase());
-            const desc =
+            const title = formatFindingTitle(finding);
+            const desc = stripMarkdown(
               mode === "simple" && finding.plain_english
                 ? finding.plain_english
-                : finding.description;
+                : finding.description
+            );
 
             return (
               <FindingRow
@@ -116,8 +153,8 @@ export function FindingsPanel({ findings: rawFindings, mode = "expert", classNam
                 severity={finding.severity as SeverityLevel}
                 title={title}
                 description={desc}
-                agent={finding.category}
-                checkType={finding.pattern_type}
+                agent={formatCategory(finding.category)}
+                checkType={formatCategory(finding.pattern_type)}
                 index={i}
               />
             );
