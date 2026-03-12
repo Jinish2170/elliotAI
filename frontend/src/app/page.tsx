@@ -1,30 +1,43 @@
+"use client";
+
+import { CommandInput } from "@/components/landing/CommandInput";
+import { AgentStatus } from "@/components/landing/AgentStatus";
+import { CapabilitiesGrid } from "@/components/landing/CapabilitiesGrid";
+import { RecentAudits } from "@/components/landing/RecentAudits";
 import { ParticleField } from "@/components/ambient/ParticleField";
-import { DarkPatternCarousel } from "@/components/landing/DarkPatternCarousel";
-import { HeroSection } from "@/components/landing/HeroSection";
-import { HowItWorks } from "@/components/landing/HowItWorks";
-import { SignalShowcase } from "@/components/landing/SignalShowcase";
-import { SiteTypeGrid } from "@/components/landing/SiteTypeGrid";
 
 export default function Home() {
   return (
     <div className="relative min-h-screen bg-[var(--v-deep)]">
-      {/* Ambient particle background */}
-      <ParticleField color="cyan" particleCount={60} />
+      {/* Subtle ambient background — reduced particle count */}
+      <ParticleField color="cyan" particleCount={20} />
 
-      <main className="relative z-10">
-        <HeroSection />
-        <SignalShowcase />
-        <DarkPatternCarousel />
-        <HowItWorks />
-        <SiteTypeGrid />
+      <main className="relative z-10 pt-20 pb-16 px-4 lg:px-8 max-w-6xl mx-auto">
+        {/* Input Hero */}
+        <CommandInput />
 
-        {/* Footer */}
-        <footer className="py-16 text-center border-t border-white/5">
-          <p className="text-sm text-[var(--v-text-tertiary)]">
-            Veritas — Trust, Verified.
-          </p>
-        </footer>
+        {/* Agent Status + Capabilities */}
+        <div className="mt-10 grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2">
+            <CapabilitiesGrid />
+          </div>
+          <div>
+            <AgentStatus />
+          </div>
+        </div>
+
+        {/* Recent Audits */}
+        <div className="mt-8">
+          <RecentAudits />
+        </div>
       </main>
+
+      {/* Footer */}
+      <footer className="border-t border-[rgba(255,255,255,0.04)] py-8 text-center">
+        <p className="text-[10px] font-mono text-[var(--v-text-tertiary)]">
+          VERITAS · AUTONOMOUS FORENSIC WEB AUDITOR · Trust, Verified
+        </p>
+      </footer>
     </div>
   );
 }

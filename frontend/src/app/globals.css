@@ -40,7 +40,9 @@
 :root {
   --radius: 0.625rem;
 
+  /* Core palette */
   --v-deep: #050810;
+  --v-substrate: #080A0F;
   --v-surface: #0A0F1E;
   --v-elevated: #111827;
   --v-hover: #1F2937;
@@ -56,6 +58,31 @@
   --v-text-secondary: #9CA3AF;
   --v-text-tertiary: #6B7280;
 
+  /* Elevation tokens */
+  --elev-1: #080A0F;
+  --elev-2: rgba(10, 15, 30, 0.85);
+  --elev-3: rgba(15, 20, 40, 0.9);
+  --elev-4: rgba(20, 25, 50, 0.95);
+  --elev-5: rgba(8, 10, 20, 0.98);
+
+  /* Agent chromatic shift (defaults — overridden by ChromaticProvider) */
+  --agent-primary: rgba(255, 255, 255, 0.15);
+  --agent-glow: none;
+  --agent-tint: none;
+  --agent-border: rgba(255, 255, 255, 0.06);
+  --agent-text: rgba(255, 255, 255, 0.6);
+  --agent-bg-subtle: rgba(255, 255, 255, 0.04);
+  --agent-border-subtle: rgba(255, 255, 255, 0.08);
+
+  /* Panel chrome */
+  --panel-title-bg: rgba(5, 8, 18, 0.9);
+  --panel-title-text: rgba(255, 255, 255, 0.5);
+  --panel-title-height: 28px;
+
+  /* Terminal */
+  --terminal-bg: #0D0D0D;
+
+  /* shadcn tokens */
   --background: var(--v-deep);
   --foreground: var(--v-text);
   --card: var(--v-surface);
@@ -91,6 +118,102 @@
     font-feature-settings: "rlig" 1, "calt" 1;
   }
 }
+
+/* ========== ELEVATION SYSTEM ========== */
+.elev-1 { background: var(--elev-1); }
+.elev-2 { background: var(--elev-2); backdrop-filter: blur(4px); border: 0.5px solid rgba(255,255,255,0.06); }
+.elev-3 { background: var(--elev-3); backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.10); box-shadow: 0 2px 8px rgba(0,0,0,0.3); }
+.elev-4 { background: var(--elev-4); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.15); box-shadow: 0 4px 16px rgba(0,0,0,0.5); }
+.elev-5 { background: var(--elev-5); backdrop-filter: blur(24px); border: 2px solid var(--agent-primary, rgba(255,255,255,0.15)); box-shadow: 0 8px 32px rgba(0,0,0,0.7); }
+
+/* ========== TYPOGRAPHY HELPERS ========== */
+/* Data values: any number, score, timestamp, code — JetBrains Mono */
+.font-data { font-family: var(--font-geist-mono), 'JetBrains Mono', monospace; }
+.font-body { font-family: var(--font-geist-sans), 'Inter', sans-serif; }
+
+/* Panel title: 10px ALL CAPS JetBrains Mono semibold */
+.text-panel-title {
+  font-family: var(--font-geist-mono), 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--panel-title-text);
+}
+
+/* Data label: 11px monospace  */
+.text-data-label {
+  font-family: var(--font-geist-mono), 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* Data value: 14px monospace bold */
+.text-data-value {
+  font-family: var(--font-geist-mono), 'JetBrains Mono', monospace;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  color: var(--v-text);
+}
+
+/* Ticker number: 12px monospace bold — for metric ticker strip */
+.text-ticker {
+  font-family: var(--font-geist-mono), 'JetBrains Mono', monospace;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+/* Log entry: 11px monospace — for event log */
+.text-log {
+  font-family: var(--font-geist-mono), 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.6;
+}
+
+/* Badge/tag: 9px monospace medium */
+.text-badge {
+  font-family: var(--font-geist-mono), 'JetBrains Mono', monospace;
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* ========== SEVERITY STRIPES ========== */
+.severity-stripe-critical { border-left: 3px solid #EF4444; }
+.severity-stripe-high { border-left: 3px solid #F59E0B; }
+.severity-stripe-medium { border-left: 2px solid #3B82F6; }
+.severity-stripe-low { border-left: 1px solid #6B7280; }
+.severity-stripe-pass { border-left: 2px solid #10B981; }
+
+/* Critical finding — structural outlier (Von Restorff) */
+.finding-critical {
+  background: rgba(239, 68, 68, 0.06);
+  border: 1px solid rgba(239, 68, 68, 0.15);
+  border-left: 3px solid #EF4444;
+}
+
+/* ========== TERMINAL STYLES ========== */
+.terminal-bg { background: var(--terminal-bg); }
+
+/* Agent log prompt colors */
+.log-agent-scout { color: #06D6A0; }
+.log-agent-security { color: #10B981; }
+.log-agent-vision { color: #8B5CF6; }
+.log-agent-graph { color: #F59E0B; }
+.log-agent-judge { color: #EF4444; }
+
+/* ========== CHROMATIC SHIFT UTILITIES ========== */
+.chromatic-border { border-color: var(--agent-border, rgba(255,255,255,0.06)); }
+.chromatic-border-active { border-color: var(--agent-primary, rgba(255,255,255,0.15)); }
+.chromatic-text { color: var(--agent-text, rgba(255,255,255,0.6)); }
+.chromatic-glow { box-shadow: var(--agent-glow, none); }
+.chromatic-bg-subtle { background: var(--agent-bg-subtle, rgba(255,255,255,0.04)); }
 
 /* ========== CUSTOM ANIMATIONS ========== */
 @keyframes shimmer {
