@@ -11,6 +11,9 @@ import whois
 
 from veritas.osint.types import OSINTCategory, OSINTResult, SourceStatus
 import asyncio
+import logging
+
+logger = logging.getLogger("veritas.osint.sources.whois")
 
 
 class WHOISSource:
@@ -19,10 +22,11 @@ class WHOISSource:
     Queries WHOIS data for domains with blocking operations
     wrapped in thread pool executor to prevent blocking async context.
     Normalizes WHOIS fields for consistent consumption.
+    Includes timeout + exponential backoff retry.
     """
 
     async def query(self, domain: str) -> OSINTResult:
-        """Query WHOIS data for a domain.
+        """Query WHOIS data for a domain with timeout and exponential backoff retry.
 
         Args:
             domain: Domain name to query
@@ -34,58 +38,74 @@ class WHOISSource:
         query_type = "whois"
         query_value = domain
 
-        # Run blocking WHOIS query in thread pool executor
-        try:
-            whois_result = await asyncio.to_thread(
-                whois.whois,
-                domain
-            )
+        max_attempts = 3
+        last_error = None
 
-            # whois.whois() returns None for invalid domains or errors
-            if whois_result is None:
+        for attempt in range(max_attempts):
+            try:
+                whois_result = await asyncio.wait_for(
+                    asyncio.to_thread(whois.whois, domain),
+                    timeout=20.0,  # 20s wall-clock timeout
+                )
+
+                if whois_result is None:
+                    return OSINTResult(
+                        source="whois",
+                        category=OSINTCategory.WHOIS,
+                        query_type=query_type,
+                        query_value=query_value,
+                        status=SourceStatus.ERROR,
+                        data=None,
+                        confidence_score=0.0,
+                        cached_at=None,
+                        error_message="No WHOIS data returned (invalid domain or not registered)",
+                    )
+
+                normalized = self._normalize_whois_data(domain, whois_result)
+                age_days = normalized.get("age_days", -1)
+                confidence = 0.9 if age_days > 0 else 0.5
+
                 return OSINTResult(
                     source="whois",
                     category=OSINTCategory.WHOIS,
                     query_type=query_type,
                     query_value=query_value,
-                    status=SourceStatus.ERROR,
-                    data=None,
-                    confidence_score=0.0,
+                    status=SourceStatus.SUCCESS,
+                    data=normalized,
+                    confidence_score=confidence,
                     cached_at=None,
-                    error_message="No WHOIS data returned (invalid domain or not registered)",
+                    error_message=None,
                 )
 
-            # Normalize WHOIS fields
-            normalized = self._normalize_whois_data(domain, whois_result)
+            except asyncio.TimeoutError:
+                wait = 2 ** attempt
+                last_error = f"WHOIS timeout (attempt {attempt + 1}/{max_attempts})"
+                logger.warning(f"{last_error} for {domain}, retrying in {wait}s")
+                if attempt < max_attempts - 1:
+                    await asyncio.sleep(wait)
+                continue
 
-            # Calculate age-based confidence
-            age_days = normalized.get("age_days", -1)
-            confidence = 0.9 if age_days > 0 else 0.5
+            except Exception as e:
+                wait = 2 ** attempt
+                last_error = f"WHOIS error: {str(e)}"
+                logger.warning(f"{last_error} (attempt {attempt + 1}/{max_attempts}), retrying in {wait}s")
+                if attempt < max_attempts - 1:
+                    await asyncio.sleep(wait)
+                continue
 
-            return OSINTResult(
-                source="whois",
-                category=OSINTCategory.WHOIS,
-                query_type=query_type,
-                query_value=query_value,
-                status=SourceStatus.SUCCESS,
-                data=normalized,
-                confidence_score=confidence,
-                cached_at=None,
-                error_message=None,
-            )
-
-        except Exception as e:
-            return OSINTResult(
-                source="whois",
-                category=OSINTCategory.WHOIS,
-                query_type=query_type,
-                query_value=query_value,
-                status=SourceStatus.ERROR,
-                data=None,
-                confidence_score=0.0,
-                cached_at=None,
-                error_message=f"WHOIS error: {str(e)}",
-            )
+        # All retries exhausted — return degraded result
+        logger.error(f"WHOIS query for {domain} failed after {max_attempts} attempts: {last_error}")
+        return OSINTResult(
+            source="whois",
+            category=OSINTCategory.WHOIS,
+            query_type=query_type,
+            query_value=query_value,
+            status=SourceStatus.ERROR,
+            data=None,
+            confidence_score=0.0,
+            cached_at=None,
+            error_message=last_error,
+        )
 
     def _normalize_whois_data(
         self,

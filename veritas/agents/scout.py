@@ -1136,17 +1136,23 @@ class StealthScout:
     async def _take_screenshot(
         self, page: Page, audit_id: str, label: str
     ) -> Optional[str]:
-        """Capture a viewport-sized screenshot."""
+        """Capture a viewport-sized screenshot with timeout protection."""
         try:
             filename = f"{audit_id}_{label}.jpg"
             filepath = self._evidence_dir / filename
-            await page.screenshot(
-                path=str(filepath),
-                type="jpeg",
-                quality=85,
-                full_page=False,
+            await asyncio.wait_for(
+                page.screenshot(
+                    path=str(filepath),
+                    type="jpeg",
+                    quality=85,
+                    full_page=False,
+                ),
+                timeout=25.0,
             )
             return str(filepath)
+        except asyncio.TimeoutError:
+            logger.warning(f"Screenshot timed out ({label})")
+            return None
         except Exception as e:
             logger.warning(f"Screenshot failed ({label}): {e}")
             return None
@@ -1154,17 +1160,23 @@ class StealthScout:
     async def _take_full_screenshot(
         self, page: Page, audit_id: str
     ) -> Optional[str]:
-        """Capture a full-page (scrolled) screenshot."""
+        """Capture a full-page (scrolled) screenshot with timeout protection."""
         try:
             filename = f"{audit_id}_fullpage.jpg"
             filepath = self._evidence_dir / filename
-            await page.screenshot(
-                path=str(filepath),
-                type="jpeg",
-                quality=80,
-                full_page=True,
+            await asyncio.wait_for(
+                page.screenshot(
+                    path=str(filepath),
+                    type="jpeg",
+                    quality=80,
+                    full_page=True,
+                ),
+                timeout=30.0,
             )
             return str(filepath)
+        except asyncio.TimeoutError:
+            logger.warning("Full-page screenshot timed out")
+            return None
         except Exception as e:
             logger.warning(f"Full-page screenshot failed: {e}")
             return None

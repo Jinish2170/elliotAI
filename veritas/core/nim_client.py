@@ -87,6 +87,13 @@ class NIMClient:
         self._fallback_count = 0
         self._errors: list[str] = []
 
+        # Circuit breaker: skip NIM API entirely after N consecutive failures
+        self._consecutive_failures = 0
+        self._circuit_open = False
+        self._circuit_failure_threshold = 8  # open after 8 consecutive failures
+        self._circuit_opened_at: Optional[float] = None
+        self._circuit_cooldown_s = 120  # try again after 2 minutes
+
         # Lazy-init the client (allows creation without API key for testing)
         self._initialized = False
 
@@ -100,6 +107,36 @@ class NIMClient:
                 api_key=settings.NIM_API_KEY or "dummy-key-for-fallback",
             )
             self._initialized = True
+
+    def _is_circuit_open(self) -> bool:
+        """Check if NIM circuit breaker is open (skip API calls)."""
+        if not self._circuit_open:
+            return False
+        # Check if cooldown has elapsed → half-open (allow one attempt)
+        elapsed = time.time() - (self._circuit_opened_at or 0)
+        if elapsed >= self._circuit_cooldown_s:
+            logger.info("NIM circuit breaker: cooldown elapsed, switching to half-open")
+            self._circuit_open = False
+            return False
+        return True
+
+    def _record_nim_success(self) -> None:
+        """Record a successful NIM call — reset circuit breaker."""
+        if self._consecutive_failures > 0:
+            logger.info(f"NIM circuit breaker: reset after {self._consecutive_failures} failures")
+        self._consecutive_failures = 0
+        self._circuit_open = False
+
+    def _record_nim_failure(self) -> None:
+        """Record a failed NIM call — may open circuit."""
+        self._consecutive_failures += 1
+        if self._consecutive_failures >= self._circuit_failure_threshold and not self._circuit_open:
+            self._circuit_open = True
+            self._circuit_opened_at = time.time()
+            logger.error(
+                f"NIM circuit breaker: OPEN after {self._consecutive_failures} consecutive failures. "
+                f"Skipping NIM for {self._circuit_cooldown_s}s."
+            )
 
     # ================================================================
     # Public API
@@ -166,11 +203,19 @@ class NIMClient:
             logger.debug(f"Cache hit for vision analysis: {cache_key[:8]}...")
             return {**cached, "cached": True}
 
+        # Check circuit breaker — skip to Tesseract if NIM is down
+        if self._is_circuit_open():
+            logger.warning("NIM circuit breaker open — skipping VLM, falling back to Tesseract")
+            self._fallback_count += 1
+            result = self._tesseract_fallback(image_path)
+            return {**result, "cached": False}
+
         # Level 1: Primary NIM VLM
         result = await self._try_vision_model(
             settings.NIM_VISION_MODEL, image_path, prompt
         )
         if result:
+            self._record_nim_success()
             self._write_cache(cache_key, result)
             return {**result, "cached": False}
 
@@ -180,9 +225,13 @@ class NIMClient:
             settings.NIM_VISION_FALLBACK, image_path, prompt
         )
         if result:
+            self._record_nim_success()
             self._fallback_count += 1
             self._write_cache(cache_key, result)
             return {**result, "cached": False}
+
+        # Both NIM models failed — record failure for circuit breaker
+        self._record_nim_failure()
 
         # Level 3: Tesseract OCR + heuristic rules
         logger.warning("Both NIM VLM endpoints failed — falling back to Tesseract OCR")
@@ -228,6 +277,16 @@ class NIMClient:
             messages.append({"role": "system", "content": system_prompt})
         messages.append({"role": "user", "content": prompt})
 
+        # Check circuit breaker
+        if self._is_circuit_open():
+            logger.warning("NIM circuit breaker open — skipping LLM call")
+            return {
+                "response": "[NIM_CIRCUIT_OPEN] NIM API temporarily unavailable. Manual review required.",
+                "model": "none",
+                "fallback_mode": True,
+                "cached": False,
+            }
+
         try:
             result = await self._rate_limited_call(
                 model=settings.NIM_LLM_MODEL,
@@ -235,6 +294,7 @@ class NIMClient:
                 max_tokens=max_tokens,
                 temperature=temperature,
             )
+            self._record_nim_success()
             output = {
                 "response": result.choices[0].message.content,
                 "model": settings.NIM_LLM_MODEL,
@@ -247,6 +307,7 @@ class NIMClient:
             error_msg = f"NIM LLM call failed: {type(e).__name__}: {str(e)}"
             logger.error(error_msg)
             self._errors.append(error_msg)
+            self._record_nim_failure()
             return {
                 "response": f"[NIM_UNAVAILABLE] {error_msg}",
                 "model": "none",

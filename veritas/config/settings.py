@@ -52,9 +52,9 @@ NIM_VISION_FALLBACK: str = os.getenv("NIM_VISION_FALLBACK", "microsoft/phi-3.5-v
 NIM_LLM_MODEL: str = os.getenv("NIM_LLM_MODEL", "meta/llama-3.1-70b-instruct")
 
 # API tuning
-NIM_TIMEOUT: int = int(os.getenv("NIM_TIMEOUT", "60"))
-NIM_RETRY_COUNT: int = int(os.getenv("NIM_RETRY_COUNT", "2"))
-NIM_REQUESTS_PER_MINUTE: int = int(os.getenv("NIM_REQUESTS_PER_MINUTE", "30"))
+NIM_TIMEOUT: int = int(os.getenv("NIM_TIMEOUT", "90"))
+NIM_RETRY_COUNT: int = int(os.getenv("NIM_RETRY_COUNT", "4"))
+NIM_REQUESTS_PER_MINUTE: int = int(os.getenv("NIM_REQUESTS_PER_MINUTE", "40"))
 
 
 # ============================================================
@@ -79,14 +79,14 @@ ABUSEIPDB_REQUESTS_PER_MINUTE: int = int(os.getenv("ABUSEIPDB_REQUESTS_PER_MINUT
 # ============================================================
 # Graph Intelligence Timeouts / Concurrency
 # ============================================================
-GRAPH_PHASE_TIMEOUT_S: int = int(os.getenv("GRAPH_PHASE_TIMEOUT_S", "90"))
-GRAPH_WHOIS_TIMEOUT_S: int = int(os.getenv("GRAPH_WHOIS_TIMEOUT_S", "12"))
-GRAPH_DNS_TIMEOUT_S: int = int(os.getenv("GRAPH_DNS_TIMEOUT_S", "6"))
-GRAPH_SSL_TIMEOUT_S: int = int(os.getenv("GRAPH_SSL_TIMEOUT_S", "12"))
-GRAPH_META_TIMEOUT_S: int = int(os.getenv("GRAPH_META_TIMEOUT_S", "20"))
-GRAPH_VERIFY_TIMEOUT_S: int = int(os.getenv("GRAPH_VERIFY_TIMEOUT_S", "20"))
-GRAPH_SEARCH_TIMEOUT_S: int = int(os.getenv("GRAPH_SEARCH_TIMEOUT_S", "15"))
-GRAPH_VERIFY_CONCURRENCY: int = int(os.getenv("GRAPH_VERIFY_CONCURRENCY", "3"))
+GRAPH_PHASE_TIMEOUT_S: int = int(os.getenv("GRAPH_PHASE_TIMEOUT_S", "150"))
+GRAPH_WHOIS_TIMEOUT_S: int = int(os.getenv("GRAPH_WHOIS_TIMEOUT_S", "20"))
+GRAPH_DNS_TIMEOUT_S: int = int(os.getenv("GRAPH_DNS_TIMEOUT_S", "12"))
+GRAPH_SSL_TIMEOUT_S: int = int(os.getenv("GRAPH_SSL_TIMEOUT_S", "20"))
+GRAPH_META_TIMEOUT_S: int = int(os.getenv("GRAPH_META_TIMEOUT_S", "30"))
+GRAPH_VERIFY_TIMEOUT_S: int = int(os.getenv("GRAPH_VERIFY_TIMEOUT_S", "30"))
+GRAPH_SEARCH_TIMEOUT_S: int = int(os.getenv("GRAPH_SEARCH_TIMEOUT_S", "25"))
+GRAPH_VERIFY_CONCURRENCY: int = int(os.getenv("GRAPH_VERIFY_CONCURRENCY", "5"))
 GRAPH_SEARCH_FOLLOW_LINKS: bool = os.getenv("GRAPH_SEARCH_FOLLOW_LINKS", "false").lower() == "true"
 
 # ============================================================
@@ -103,8 +103,8 @@ TESSERACT_CMD: str = os.getenv(
 # ============================================================
 # OSINT integration feature flags
 GRAPH_ENABLE_OSINT: bool = os.getenv("GRAPH_ENABLE_OSINT", "true").lower() == "true"
-GRAPH_OSINT_TIMEOUT_S: int = int(os.getenv("GRAPH_OSINT_TIMEOUT_S", "30"))
-GRAPH_OSINT_MAX_PARALLEL: int = int(os.getenv("GRAPH_OSINT_MAX_PARALLEL", "3"))
+GRAPH_OSINT_TIMEOUT_S: int = int(os.getenv("GRAPH_OSINT_TIMEOUT_S", "45"))
+GRAPH_OSINT_MAX_PARALLEL: int = int(os.getenv("GRAPH_OSINT_MAX_PARALLEL", "5"))
 
 # CTI integration feature flags
 GRAPH_ENABLE_CTI: bool = os.getenv("GRAPH_ENABLE_CTI", "true").lower() == "true"
@@ -116,7 +116,7 @@ GRAPH_CTI_MIN_CONFIDENCE: float = float(os.getenv("GRAPH_CTI_MIN_CONFIDENCE", "0
 # ============================================================
 MAX_ITERATIONS: int = int(os.getenv("MAX_ITERATIONS", "5"))
 MAX_PAGES_PER_AUDIT: int = int(os.getenv("MAX_PAGES_PER_AUDIT", "10"))
-SCREENSHOT_TIMEOUT: int = int(os.getenv("SCREENSHOT_TIMEOUT", "15"))
+SCREENSHOT_TIMEOUT: int = int(os.getenv("SCREENSHOT_TIMEOUT", "25"))
 TEMPORAL_DELAY: int = int(os.getenv("TEMPORAL_DELAY", "10"))
 CONFIDENCE_THRESHOLD: float = float(os.getenv("CONFIDENCE_THRESHOLD", "0.6"))
 MIN_EVIDENCE_COUNT: int = int(os.getenv("MIN_EVIDENCE_COUNT", "3"))
@@ -223,67 +223,67 @@ DEFAULT_TIER: str = os.getenv("DEFAULT_AUDIT_TIER", "standard_audit")
 AUDIT_TIERS: dict = {
     "quick_scan": {
         "description": "Homepage-only fast check",
-        "pages": 1,
-        "screenshots": 3,
-        "nim_calls": 8,
-        "vision_nim": 4,
-        "judge_nim": 4,
-        "estimated_credits": 10,
-        "max_verifications": 3,
-        "enable_tavily": True,
-        "enable_osint": True,
-        "graph_timeout_s": 120,
-        "vision_passes": 1,
-        "target_duration_s": 180,
-    },
-    "standard_audit": {
-        "description": "Default multi-page audit",
-        "pages": 5,
-        "screenshots": 10,
-        "nim_calls": 25,
-        "vision_nim": 18,
-        "judge_nim": 7,
-        "estimated_credits": 30,
-        "max_verifications": 10,
+        "pages": 2,
+        "screenshots": 6,
+        "nim_calls": 16,
+        "vision_nim": 10,
+        "judge_nim": 6,
+        "estimated_credits": 20,
+        "max_verifications": 5,
         "enable_tavily": True,
         "enable_osint": True,
         "graph_timeout_s": 180,
-        "vision_passes": 3,
-        "target_duration_s": 240,
+        "vision_passes": 2,
+        "target_duration_s": 300,
     },
-    "deep_forensic": {
-        "description": "Full investigation with entity verification",
-        "pages": 10,
+    "standard_audit": {
+        "description": "Default multi-page audit",
+        "pages": 8,
         "screenshots": 20,
         "nim_calls": 50,
-        "vision_nim": 40,
-        "judge_nim": 10,
+        "vision_nim": 35,
+        "judge_nim": 15,
         "estimated_credits": 60,
         "max_verifications": 15,
         "enable_tavily": True,
         "enable_osint": True,
-        "enable_osint_deep": True,
         "graph_timeout_s": 300,
-        "vision_passes": 5,
-        "target_duration_s": 420,
+        "vision_passes": 4,
+        "target_duration_s": 480,
+    },
+    "deep_forensic": {
+        "description": "Full investigation with entity verification",
+        "pages": 15,
+        "screenshots": 40,
+        "nim_calls": 100,
+        "vision_nim": 75,
+        "judge_nim": 25,
+        "estimated_credits": 120,
+        "max_verifications": 25,
+        "enable_tavily": True,
+        "enable_osint": True,
+        "enable_osint_deep": True,
+        "graph_timeout_s": 480,
+        "vision_passes": 6,
+        "target_duration_s": 720,
     },
     "darknet_investigation": {
         "description": "Deep forensic + darknet threat intelligence and TOR routing",
-        "pages": 15,
-        "screenshots": 25,
-        "nim_calls": 70,
-        "vision_nim": 55,
-        "judge_nim": 15,
-        "estimated_credits": 90,
-        "max_verifications": 20,
+        "pages": 20,
+        "screenshots": 50,
+        "nim_calls": 140,
+        "vision_nim": 105,
+        "judge_nim": 35,
+        "estimated_credits": 180,
+        "max_verifications": 30,
         "enable_darknet": True,
         "enable_tor": True,
         "enable_osint_deep": True,
         "enable_tavily": True,
         "enable_osint": True,
-        "graph_timeout_s": 420,
-        "vision_passes": 5,
-        "target_duration_s": 600,
+        "graph_timeout_s": 600,
+        "vision_passes": 8,
+        "target_duration_s": 900,
     },
 }
 

@@ -4,6 +4,7 @@ Provides SSL/TLS certificate information with async wrapping to prevent blocking
 Extracts certificate details including issuer, validity periods, and subject.
 """
 
+import logging
 import socket
 import ssl
 from datetime import datetime
@@ -12,6 +13,8 @@ from typing import Dict, List, Optional
 from veritas.osint.types import OSINTCategory, OSINTResult, SourceStatus
 import asyncio
 
+logger = logging.getLogger("veritas.osint.sources.ssl")
+
 
 class SSLSource:
     """Async SSL certificate validation source.
@@ -19,6 +22,7 @@ class SSLSource:
     Retrieves SSL/TLS certificates for hosts with blocking operations
     wrapped in thread pool executor to prevent blocking async context.
     Provides certificate details, validity checking, and issuer information.
+    Includes timeout + exponential backoff retry.
     """
 
     async def query(
@@ -26,7 +30,7 @@ class SSLSource:
         hostname: str,
         port: int = 443
     ) -> OSINTResult:
-        """Query SSL certificate for a hostname.
+        """Query SSL certificate for a hostname with timeout and exponential backoff retry.
 
         Args:
             hostname: Hostname to query (domain or IP)
@@ -39,55 +43,74 @@ class SSLSource:
         query_type = "certificate"
         query_value = f"{hostname}:{port}"
 
-        # Run blocking SSL operations in thread pool executor
-        try:
-            cert_data = await asyncio.to_thread(
-                self._get_certificate,
-                hostname,
-                port
-            )
+        max_attempts = 3
+        last_error = None
 
-            certificate = cert_data.get("certificate")
-            if not certificate:
+        for attempt in range(max_attempts):
+            try:
+                cert_data = await asyncio.wait_for(
+                    asyncio.to_thread(self._get_certificate, hostname, port),
+                    timeout=20.0,
+                )
+
+                certificate = cert_data.get("certificate")
+                if not certificate:
+                    # Non-recoverable: host doesn't support SSL or DNS failed
+                    return OSINTResult(
+                        source="ssl",
+                        category=OSINTCategory.SSL,
+                        query_type=query_type,
+                        query_value=query_value,
+                        status=SourceStatus.ERROR,
+                        data=None,
+                        confidence_score=0.0,
+                        cached_at=None,
+                        error_message=cert_data.get("error", "Unknown error"),
+                    )
+
+                parsed = self._parse_certificate(certificate, hostname)
+
                 return OSINTResult(
                     source="ssl",
                     category=OSINTCategory.SSL,
                     query_type=query_type,
                     query_value=query_value,
-                    status=SourceStatus.ERROR,
-                    data=None,
-                    confidence_score=0.0,
+                    status=SourceStatus.SUCCESS,
+                    data=parsed,
+                    confidence_score=parsed["confidence_score"],
                     cached_at=None,
-                    error_message=cert_data.get("error", "Unknown error"),
+                    error_message=None,
                 )
 
-            # Parse certificate fields
-            parsed = self._parse_certificate(certificate, hostname)
+            except asyncio.TimeoutError:
+                wait = 2 ** attempt
+                last_error = f"SSL timeout (attempt {attempt + 1}/{max_attempts})"
+                logger.warning(f"{last_error} for {hostname}:{port}, retrying in {wait}s")
+                if attempt < max_attempts - 1:
+                    await asyncio.sleep(wait)
+                continue
 
-            return OSINTResult(
-                source="ssl",
-                category=OSINTCategory.SSL,
-                query_type=query_type,
-                query_value=query_value,
-                status=SourceStatus.SUCCESS,
-                data=parsed,
-                confidence_score=parsed["confidence_score"],
-                cached_at=None,
-                error_message=None,
-            )
+            except Exception as e:
+                wait = 2 ** attempt
+                last_error = f"SSL error: {str(e)}"
+                logger.warning(f"{last_error} (attempt {attempt + 1}/{max_attempts}), retrying in {wait}s")
+                if attempt < max_attempts - 1:
+                    await asyncio.sleep(wait)
+                continue
 
-        except Exception as e:
-            return OSINTResult(
-                source="ssl",
-                category=OSINTCategory.SSL,
-                query_type=query_type,
-                query_value=query_value,
-                status=SourceStatus.ERROR,
-                data=None,
-                confidence_score=0.0,
-                cached_at=None,
-                error_message=f"SSL error: {str(e)}",
-            )
+        # All retries exhausted — return degraded result
+        logger.error(f"SSL query for {hostname}:{port} failed after {max_attempts} attempts: {last_error}")
+        return OSINTResult(
+            source="ssl",
+            category=OSINTCategory.SSL,
+            query_type=query_type,
+            query_value=query_value,
+            status=SourceStatus.ERROR,
+            data=None,
+            confidence_score=0.0,
+            cached_at=None,
+            error_message=last_error,
+        )
 
     def _get_certificate(
         self,

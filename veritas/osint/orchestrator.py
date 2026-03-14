@@ -42,10 +42,17 @@ class CircuitBreaker:
             source: Name of the OSINT source
         """
         self._failures[source].append(datetime.utcnow())
+        # Cap stored failures to prevent unbounded memory growth
+        if len(self._failures[source]) > self.failure_threshold * 3:
+            self._failures[source] = self._failures[source][-self.failure_threshold:]
         logger.warning(
             f"CircuitBreaker: Recorded failure for {source}, "
             f"{len(self._failures[source])} total"
         )
+        # Evict sources with zero recent failures to keep dict bounded
+        stale = [s for s, flist in self._failures.items() if not flist]
+        for s in stale:
+            del self._failures[s]
 
     def is_open(self, source: str) -> bool:
         """Check if circuit is open for a source.
@@ -154,6 +161,13 @@ class RateLimiter:
             source: Name of the OSINT source
         """
         self._requests[source].append(datetime.utcnow())
+        # Cap stored timestamps to prevent unbounded memory growth
+        if len(self._requests[source]) > 500:
+            now = datetime.utcnow()
+            self._requests[source] = [
+                ts for ts in self._requests[source]
+                if (now - ts).total_seconds() < 3600
+            ]
         logger.debug(f"RateLimiter: Recorded request for {source}")
 
 
@@ -506,14 +520,12 @@ class OSINTOrchestrator:
             )
             return None
 
-        # Try query with retries
+        # Try query with retries + exponential backoff
         for attempt in range(max_retries + 1):
             try:
-                # Get the method dynamically
                 method_func = getattr(source, method)
                 result = await method_func(*args, **kwargs)
 
-                # Success - record request and return result
                 if result is not None:
                     self._rate_limiter.record_request(source_name)
                     logger.info(
@@ -530,10 +542,13 @@ class OSINTOrchestrator:
             except TimeoutError as e:
                 logger.warning(
                     f"query_with_retry: Timeout on '{source_name}' "
-                    f"(attempt {attempt + 1}): { str(e)}"
+                    f"(attempt {attempt + 1}): {str(e)}"
                 )
                 if attempt == max_retries:
                     self._circuit_breaker.record_failure(source_name)
+                else:
+                    wait = 2 ** attempt  # exponential backoff: 1s, 2s, 4s
+                    await asyncio.sleep(wait)
 
             except Exception as e:
                 logger.warning(
@@ -542,6 +557,9 @@ class OSINTOrchestrator:
                 )
                 if attempt == max_retries:
                     self._circuit_breaker.record_failure(source_name)
+                else:
+                    wait = 2 ** attempt  # exponential backoff: 1s, 2s, 4s
+                    await asyncio.sleep(wait)
 
         # All retries failed - try alternatives
         logger.warning(

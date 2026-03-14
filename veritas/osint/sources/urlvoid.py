@@ -49,7 +49,7 @@ class URLVoidSource:
         return self.session
 
     async def query(self, domain: str) -> OSINTResult:
-        """Query URLVoid for domain reputation.
+        """Query URLVoid for domain reputation with exponential backoff retry.
 
         Makes GET request to URLVoid API, parses XML response,
         and returns detection counts with risk assessment.
@@ -63,100 +63,113 @@ class URLVoidSource:
         query_type = "reputation"
         query_value = domain
 
-        try:
-            session = await self._get_session()
+        max_attempts = 3
+        last_error = None
 
-            # Make API request
-            params = {
-                "host": domain,
-                "key": self.api_key
-            }
+        for attempt in range(max_attempts):
+            try:
+                session = await self._get_session()
 
-            async with session.get(
-                self.API_ENDPOINT,
-                params=params,
-                timeout=aiohttp.ClientTimeout(total=10)
-            ) as response:
-                if response.status != 200:
-                    return OSINTResult(
-                        source="urlvoid",
-                        category=OSINTCategory.REPUTATION,
-                        query_type=query_type,
-                        query_value=query_value,
-                        status=SourceStatus.ERROR,
-                        data=None,
-                        confidence_score=0.0,
-                        cached_at=None,
-                        error_message=f"HTTP {response.status}: {await response.text()}",
-                    )
+                params = {
+                    "host": domain,
+                    "key": self.api_key
+                }
 
-                content = await response.text()
+                async with session.get(
+                    self.API_ENDPOINT,
+                    params=params,
+                    timeout=aiohttp.ClientTimeout(total=15)
+                ) as response:
+                    if response.status == 429:  # Rate limit — retry with backoff
+                        wait = 2 ** attempt
+                        last_error = f"URLVoid rate limited (HTTP 429, attempt {attempt + 1}/{max_attempts})"
+                        logger.warning(f"{last_error} for {domain}, retrying in {wait}s")
+                        if attempt < max_attempts - 1:
+                            await asyncio.sleep(wait)
+                        continue
 
-            # Parse XML response
-            detections, engines_count = self._parse_xml(content)
+                    if response.status != 200:
+                        # Non-recoverable HTTP error
+                        return OSINTResult(
+                            source="urlvoid",
+                            category=OSINTCategory.REPUTATION,
+                            query_type=query_type,
+                            query_value=query_value,
+                            status=SourceStatus.ERROR,
+                            data=None,
+                            confidence_score=0.0,
+                            cached_at=None,
+                            error_message=f"HTTP {response.status}: {await response.text()}",
+                        )
 
-            # Calculate metrics
-            engine_blacklist_count = engines_count - detections
-            is_clean = detections == 0
-            risk_level, confidence = self._calculate_risk_level(
-                detections,
-                engines_count
-            )
+                    content = await response.text()
 
-            result_data = {
-                "domain": domain,
-                "detections": detections,
-                "engines_count": engines_count,
-                "engine_blacklist_count": engine_blacklist_count,
-                "is_clean": is_clean,
-                "risk_level": risk_level,
-                "queried_at": datetime.utcnow().isoformat(),
-            }
+                # Parse XML response
+                detections, engines_count = self._parse_xml(content)
 
-            logger.info(
-                f"URLVoid: {domain} - {detections}/{engines_count} detections, "
-                f"risk_level={risk_level}"
-            )
+                engine_blacklist_count = engines_count - detections
+                is_clean = detections == 0
+                risk_level, confidence = self._calculate_risk_level(
+                    detections,
+                    engines_count
+                )
 
-            return OSINTResult(
-                source="urlvoid",
-                category=OSINTCategory.REPUTATION,
-                query_type=query_type,
-                query_value=query_value,
-                status=SourceStatus.SUCCESS,
-                data=result_data,
-                confidence_score=confidence,
-                cached_at=None,
-                error_message=None,
-            )
+                result_data = {
+                    "domain": domain,
+                    "detections": detections,
+                    "engines_count": engines_count,
+                    "engine_blacklist_count": engine_blacklist_count,
+                    "is_clean": is_clean,
+                    "risk_level": risk_level,
+                    "queried_at": datetime.utcnow().isoformat(),
+                }
 
-        except aiohttp.ClientTimeout:
-            logger.warning(f"URLVoid: Timeout querying {domain}")
-            return OSINTResult(
-                source="urlvoid",
-                category=OSINTCategory.REPUTATION,
-                query_type=query_type,
-                query_value=query_value,
-                status=SourceStatus.TIMEOUT,
-                data=None,
-                confidence_score=0.0,
-                cached_at=None,
-                error_message="Request timeout",
-            )
+                logger.info(
+                    f"URLVoid: {domain} - {detections}/{engines_count} detections, "
+                    f"risk_level={risk_level}"
+                )
 
-        except Exception as e:
-            logger.warning(f"URLVoid: Error querying {domain}: {str(e)}")
-            return OSINTResult(
-                source="urlvoid",
-                category=OSINTCategory.REPUTATION,
-                query_type=query_type,
-                query_value=query_value,
-                status=SourceStatus.ERROR,
-                data=None,
-                confidence_score=0.0,
-                cached_at=None,
-                error_message=f"Request error: {str(e)}",
-            )
+                return OSINTResult(
+                    source="urlvoid",
+                    category=OSINTCategory.REPUTATION,
+                    query_type=query_type,
+                    query_value=query_value,
+                    status=SourceStatus.SUCCESS,
+                    data=result_data,
+                    confidence_score=confidence,
+                    cached_at=None,
+                    error_message=None,
+                )
+
+            except (aiohttp.ClientTimeout, asyncio.TimeoutError):
+                wait = 2 ** attempt
+                last_error = f"URLVoid timeout (attempt {attempt + 1}/{max_attempts})"
+                logger.warning(f"{last_error} for {domain}, retrying in {wait}s")
+                if attempt < max_attempts - 1:
+                    await asyncio.sleep(wait)
+                continue
+
+            except Exception as e:
+                wait = 2 ** attempt
+                last_error = f"URLVoid error: {str(e)}"
+                logger.warning(f"{last_error} (attempt {attempt + 1}/{max_attempts}), retrying in {wait}s")
+                if attempt < max_attempts - 1:
+                    await asyncio.sleep(wait)
+                continue
+
+        # All retries exhausted — return degraded result
+        logger.error(f"URLVoid query for {domain} failed after {max_attempts} attempts: {last_error}")
+        return OSINTResult(
+            source="urlvoid",
+            category=OSINTCategory.REPUTATION,
+            query_type=query_type,
+            query_value=query_value,
+            status=SourceStatus.ERROR,
+            data=None,
+            confidence_score=0.0,
+            cached_at=None,
+            error_message=last_error,
+        )
 
     def _parse_xml(self, xml_content: str) -> tuple[int, int]:
         """Parse URLVoid XML response to extract detections and engine count.

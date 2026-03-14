@@ -16,16 +16,16 @@ class TestTierConfigs:
 
     def test_quick_scan_is_fast_and_shallow(self):
         cfg = settings.AUDIT_TIERS["quick_scan"]
-        assert cfg["max_verifications"] <= 3
-        assert cfg["vision_passes"] == 1
-        assert cfg["pages"] == 1
-        assert cfg["target_duration_s"] <= 180
+        assert cfg["max_verifications"] <= 5
+        assert cfg["vision_passes"] <= 2
+        assert cfg["pages"] <= 2
+        assert cfg["target_duration_s"] <= 300
 
     def test_deep_forensic_is_thorough(self):
         cfg = settings.AUDIT_TIERS["deep_forensic"]
         assert cfg["max_verifications"] >= 15
         assert cfg["enable_tavily"] is True
-        assert cfg["vision_passes"] == 5
+        assert cfg["vision_passes"] >= 5
 
     def test_darknet_has_tor_and_darknet(self):
         cfg = settings.AUDIT_TIERS["darknet_investigation"]

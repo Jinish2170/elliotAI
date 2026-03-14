@@ -4,6 +4,7 @@ Uses Tavily search API to provide intelligent web search as a fallback
 for OSINT categories that lack dedicated API sources (THREAT_INTEL, REPUTATION, SOCIAL).
 """
 
+import asyncio
 import logging
 from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse
@@ -71,28 +72,42 @@ class TavilyReputationSource:
 
             for query_template in queries:
                 query = query_template.format(domain=clean_domain)
-                try:
-                    response = await self._client.search(
-                        query=query,
-                        max_results=3,
-                        search_depth="basic",
-                    )
-                    results = response.get("results", [])
-                    for r in results:
-                        entry = {
-                            "title": r.get("title", ""),
-                            "url": r.get("url", ""),
-                            "snippet": r.get("content", "")[:300],
-                            "score": r.get("score", 0.0),
-                            "query_used": query,
-                        }
-                        all_results.append(entry)
-                        # Extract reputation signals
-                        signal = self._extract_signal(entry, category)
-                        if signal:
-                            signals.append(signal)
-                except Exception as e:
-                    logger.warning(f"Tavily query failed for '{query}': {e}")
+                # Per-query retry with exponential backoff + timeout
+                max_attempts = 3
+                for attempt in range(max_attempts):
+                    try:
+                        response = await asyncio.wait_for(
+                            self._client.search(
+                                query=query,
+                                max_results=3,
+                                search_depth="basic",
+                            ),
+                            timeout=20.0,
+                        )
+                        results = response.get("results", [])
+                        for r in results:
+                            entry = {
+                                "title": r.get("title", ""),
+                                "url": r.get("url", ""),
+                                "snippet": r.get("content", "")[:300],
+                                "score": r.get("score", 0.0),
+                                "query_used": query,
+                            }
+                            all_results.append(entry)
+                            signal = self._extract_signal(entry, category)
+                            if signal:
+                                signals.append(signal)
+                        break  # success, move to next query
+                    except asyncio.TimeoutError:
+                        wait = 2 ** attempt
+                        logger.warning(f"Tavily timeout for '{query}' (attempt {attempt + 1}/{max_attempts}), retrying in {wait}s")
+                        if attempt < max_attempts - 1:
+                            await asyncio.sleep(wait)
+                    except Exception as e:
+                        wait = 2 ** attempt
+                        logger.warning(f"Tavily query failed for '{query}': {e} (attempt {attempt + 1}/{max_attempts})")
+                        if attempt < max_attempts - 1:
+                            await asyncio.sleep(wait)
 
             if not all_results:
                 return OSINTResult(

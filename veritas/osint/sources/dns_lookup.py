@@ -4,6 +4,7 @@ Provides DNS record querying with async wrapping to prevent blocking.
 Supports multiple record types including A, AAAA, MX, TXT, NS, SOA, CNAME.
 """
 
+import logging
 from typing import Dict, List, Optional
 
 import dns.resolver
@@ -11,6 +12,8 @@ from dns.exception import DNSException
 
 from veritas.osint.types import OSINTCategory, OSINTResult, SourceStatus
 import asyncio
+
+logger = logging.getLogger("veritas.osint.sources.dns")
 
 
 class DNSSource:
@@ -44,73 +47,100 @@ class DNSSource:
         if record_types is None:
             record_types = self.RECORD_TYPES
 
-        # Run blocking DNS queries in thread pool executor
-        try:
-            results_dict = await asyncio.to_thread(
-                self._query_all_types,
-                domain,
-                record_types
-            )
+        # Run blocking DNS queries in thread pool executor with timeout + retry
+        max_attempts = 3
+        last_error = None
+        for attempt in range(max_attempts):
+            try:
+                results_dict = await asyncio.wait_for(
+                    asyncio.to_thread(
+                        self._query_all_types,
+                        domain,
+                        record_types
+                    ),
+                    timeout=15.0,  # 15s wall-clock timeout
+                )
 
-            # Determine success based on having at least some successful queries
-            has_success = any(
-                r.get("status") == "success" for r in results_dict.values()
-            )
-            status = SourceStatus.SUCCESS if has_success else SourceStatus.ERROR
+                # Determine success based on having at least some successful queries
+                has_success = any(
+                    r.get("status") == "success" for r in results_dict.values()
+                )
+                status = SourceStatus.SUCCESS if has_success else SourceStatus.ERROR
 
-            return OSINTResult(
-                source="dns",
-                category=OSINTCategory.DNS,
-                query_type=query_type,
-                query_value=query_value,
-                status=status,
-                data=results_dict,
-                confidence_score=0.95 if has_success else 0.0,
-                cached_at=None,
-                error_message=None,
-            )
+                return OSINTResult(
+                    source="dns",
+                    category=OSINTCategory.DNS,
+                    query_type=query_type,
+                    query_value=query_value,
+                    status=status,
+                    data=results_dict,
+                    confidence_score=0.95 if has_success else 0.0,
+                    cached_at=None,
+                    error_message=None,
+                )
 
-        except dns.resolver.NXDOMAIN as e:
-            # Non-existent domain - return error with specific message
-            return OSINTResult(
-                source="dns",
-                category=OSINTCategory.DNS,
-                query_type=query_type,
-                query_value=query_value,
-                status=SourceStatus.ERROR,
-                data={"status": "error", "error": "NXDOMAIN - domain does not exist"},
-                confidence_score=0.0,
-                cached_at=None,
-                error_message=f"NXDOMAIN: {str(e)}",
-            )
+            except asyncio.TimeoutError:
+                wait = 2 ** attempt  # 1s, 2s, 4s
+                last_error = f"DNS query timeout (attempt {attempt + 1}/{max_attempts})"
+                logger.warning(f"{last_error} for {domain}, retrying in {wait}s")
+                if attempt < max_attempts - 1:
+                    await asyncio.sleep(wait)
+                continue
 
-        except DNSException as e:
-            # Other DNS errors
-            return OSINTResult(
-                source="dns",
-                category=OSINTCategory.DNS,
-                query_type=query_type,
-                query_value=query_value,
-                status=SourceStatus.ERROR,
-                data={"status": "error", "error": str(e)},
-                confidence_score=0.0,
-                cached_at=None,
-                error_message=f"DNS Exception: {str(e)}",
-            )
+            except dns.resolver.NXDOMAIN as e:
+                # Non-recoverable — don't retry
+                return OSINTResult(
+                    source="dns",
+                    category=OSINTCategory.DNS,
+                    query_type=query_type,
+                    query_value=query_value,
+                    status=SourceStatus.ERROR,
+                    data={"status": "error", "error": "NXDOMAIN - domain does not exist"},
+                    confidence_score=0.0,
+                    cached_at=None,
+                    error_message=f"NXDOMAIN: {str(e)}",
+                )
 
-        except Exception as e:
-            # Unexpected errors
-            return OSINTResult(
-                source="dns",
-                category=OSINTCategory.DNS,
-                query_type=query_type,
-                query_value=query_value,
-                status=SourceStatus.ERROR,
-                data={"status": "error", "error": str(e)},
-                confidence_score=0.0,
-                cached_at=None,
-                error_message=f"Unexpected error: {str(e)}",
-            )
+            except DNSException as e:
+                wait = 2 ** attempt
+                last_error = f"DNS Exception: {str(e)}"
+                logger.warning(f"{last_error} (attempt {attempt + 1}/{max_attempts}), retrying in {wait}s")
+                if attempt < max_attempts - 1:
+                    await asyncio.sleep(wait)
+                continue
+
+            except Exception as e:
+                wait = 2 ** attempt
+                last_error = f"Unexpected error: {str(e)}"
+                logger.warning(f"{last_error} (attempt {attempt + 1}/{max_attempts}), retrying in {wait}s")
+                if attempt < max_attempts - 1:
+                    await asyncio.sleep(wait)
+                continue
+
+        # All retries exhausted — return degraded result, never crash
+        logger.error(f"DNS query for {domain} failed after {max_attempts} attempts: {last_error}")
+        return OSINTResult(
+            source="dns",
+            category=OSINTCategory.DNS,
+            query_type=query_type,
+            query_value=query_value,
+            status=SourceStatus.ERROR,
+            data={"status": "error", "error": last_error or "All retries exhausted"},
+            confidence_score=0.0,
+            cached_at=None,
+            error_message=last_error,
+        )
+
+        # Dead code below kept for reference — original exception handlers
+        if False:  # pragma: no cover
+          try:
+            pass
+            except dns.resolver.NXDOMAIN as e:
+            pass
+          except DNSException as e:
+            pass
+          except Exception as e:
+            pass
 
     def _query_all_types(
         self,
