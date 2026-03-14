@@ -1,19 +1,14 @@
 "use client";
 
-/* ========================================
-   AgentStatus — Agent System Status Panel
-   Shows all 5 agents with online/offline
-   status indicators. Internal-tool style.
-   ======================================== */
-
-import { PanelChrome } from "@/components/layout/PanelChrome";
-import { AgentIcon } from "@/components/ui/AgentIcon";
 import { AGENT_CONFIGS, AGENT_ORDER, type AgentId } from "@/config/agents";
 
 export function AgentStatus() {
   return (
-    <PanelChrome title="Agent Fleet" elevation={2}>
-      <div className="space-y-1">
+    <div className="flex flex-col h-full">
+      <div className="text-[10px] font-mono text-[var(--t-dim)] uppercase tracking-widest border-b border-[var(--t-border)] pb-2 mb-4">
+         SYS.AGENT_FLEET_STATUS
+      </div>
+      <div className="space-y-2 flex-1">
         {AGENT_ORDER.map((agentId) => {
           const agent = AGENT_CONFIGS[agentId as AgentId];
           if (!agent) return null;
@@ -21,29 +16,27 @@ export function AgentStatus() {
           return (
             <div
               key={agentId}
-              className="flex items-center justify-between px-3 py-2 rounded hover:bg-[rgba(255,255,255,0.02)] transition-colors"
+              className="flex items-center justify-between border-l-2 border-[#00FF41] pl-3 py-1 bg-[#111]"
             >
               <div className="flex items-center gap-2.5">
-                <AgentIcon agent={agentId as AgentId} size="sm" state="idle" />
                 <div>
-                  <span className="text-[12px] font-semibold text-[var(--v-text)]">
+                  <div className="text-[11px] font-mono font-bold text-[#00FF41] uppercase tracking-wider">
                     {agent.label}
-                  </span>
-                  <span className="block text-[9px] font-mono text-[var(--v-text-tertiary)]">
-                    {agent.logPrompt}
-                  </span>
+                  </div>
+                  <div className="text-[9px] font-mono text-[var(--t-dim)] leading-tight">
+                    {agent.label + " Protocol"}
+                  </div>
                 </div>
               </div>
-              <div className="flex items-center gap-1.5">
-                <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                <span className="text-[9px] font-mono text-emerald-400 uppercase">
-                  READY
-                </span>
+              
+              <div className="flex items-center gap-2 pr-2">
+                <span className="text-[9px] font-mono text-[#00FF41] uppercase">ONLINE</span>
+                <div className="w-1.5 h-1.5 rounded-full bg-[#00FF41] animate-pulse" />
               </div>
             </div>
           );
         })}
       </div>
-    </PanelChrome>
+    </div>
   );
 }

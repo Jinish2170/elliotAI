@@ -96,7 +96,7 @@ function AuditPageContent({ id }: { id: string }) {
               <SysLogStream logs={store.logs} />
             </TerminalPanel>
             <TerminalPanel title="AGENT.PROC.STATE" className="h-[35%]">
-               <AgentProcState phases={store.phases} activePhase={store.currentPhase || undefined} />
+               <AgentProcState phases={store.phases} activePhase={store.currentPhase || undefined} status={store.status} />
             </TerminalPanel>
           </div>
 
@@ -106,12 +106,13 @@ function AuditPageContent({ id }: { id: string }) {
             <TerminalPanel title="VERDICT.MATRIX" className="h-[25%] flex justify-center items-center">
               <VerdictPanel 
                 verdict={store.result ? { 
-                  status: store.status, 
                   risk_level: store.result.risk_level, 
                   narrative: store.result.narrative,
                   signal_scores: store.result.signal_scores
                 } : null}
                 trustScore={store.result?.trust_score}
+                status={store.status}
+                error={store.error}
               />
             </TerminalPanel>
 

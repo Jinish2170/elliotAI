@@ -32,18 +32,7 @@ export function ScoutImagery({
       </div>
 
       <div className="relative w-full h-full flex items-center justify-center group overflow-hidden bg-black/50">
-        {/* Placeholder for real Base64 image */}
-        {/*
-          <Image
-            src={`data:image/png;base64,${currentImg}`}
-            alt={`Recon Frame ${imgIndex}`}
-            fill
-            className="object-contain"
-          /> 
-        */}
-        <div className="text-gray-500 font-mono text-xs opacity-50 glitch-text break-all w-[90%] line-clamp-3">
-            [ENCODED_PAYLOAD_CHUNK^{(currentImg.data || currentImg.url).substring(0,25)}...]
-        </div>
+        <div className="relative w-[90%] h-[90%]"><Image src={`data:image/jpeg;base64,${currentImg.data || currentImg.url}`} alt={`Recon Frame ${imgIndex}`} fill className="object-contain opacity-80" /></div>
         
         {/* Overlay hover controls */}
         <div className="absolute inset-0 flex justify-between items-center opacity-0 group-hover:opacity-100 transition-opacity">
@@ -66,3 +55,4 @@ export function ScoutImagery({
     </div>
   );
 }
+

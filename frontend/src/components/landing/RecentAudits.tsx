@@ -1,15 +1,6 @@
 "use client";
 
-/* ========================================
-   RecentAudits — Recent Audit History Table
-   Shows last few audits if available in
-   localStorage. Table layout with inline
-   score indicators.
-   ======================================== */
-
-import { PanelChrome } from "@/components/layout/PanelChrome";
 import { getVerdictLevel, VERDICT_COLORS } from "@/config/agents";
-import { ExternalLink } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -24,6 +15,18 @@ interface AuditRecord {
 
 const STORAGE_KEY = "veritas_recent_audits";
 
+export function saveAuditToHistory(record: AuditRecord) {
+  if (typeof window === "undefined") return;
+  try {
+    const existing = localStorage.getItem(STORAGE_KEY);
+    let audits: AuditRecord[] = existing ? JSON.parse(existing) : [];
+    audits = [record, ...audits.filter((a) => a.id !== record.id)].slice(0, 10);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(audits));
+  } catch (err) {
+    console.error("Failed to save audit history", err);
+  }
+}
+
 export function RecentAudits() {
   const [audits, setAudits] = useState<AuditRecord[]>([]);
 
@@ -31,117 +34,70 @@ export function RecentAudits() {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
-        setAudits(JSON.parse(stored));
+        let parsed = JSON.parse(stored);
+        parsed = parsed.map((a: AuditRecord) => ({
+          ...a,
+          date: new Date(a.date).toLocaleDateString(),
+        }));
+        setAudits(parsed);
       }
     } catch {
-      // silently handle
+      // ignore
     }
   }, []);
 
   if (audits.length === 0) {
     return (
-      <PanelChrome title="Recent Audits" elevation={2}>
-        <div className="text-center py-8">
-          <p className="text-[12px] text-[var(--v-text-tertiary)]">
-            No recent audits. Start one above.
-          </p>
-        </div>
-      </PanelChrome>
+      <div className="flex flex-col items-center justify-center h-full text-[10px] text-[var(--t-dim)] font-mono uppercase tracking-widest">
+        <span className="animate-pulse">LOCAL_HISTORY_EMPTY</span>
+        <span className="opacity-50 mt-2">AWAITING_FIRST_AUDIT</span>
+      </div>
     );
   }
 
   return (
-    <PanelChrome title="Recent Audits" count={audits.length} elevation={2}>
-      <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-[rgba(255,255,255,0.06)]">
-              <th className="text-left px-3 py-2 text-data-label">URL</th>
-              <th className="text-right px-3 py-2 text-data-label w-[70px]">SCORE</th>
-              <th className="text-left px-3 py-2 text-data-label w-[90px]">RISK</th>
-              <th className="text-left px-3 py-2 text-data-label w-[80px]">TIER</th>
-              <th className="text-left px-3 py-2 text-data-label w-[120px]">DATE</th>
-              <th className="w-[40px]" />
-            </tr>
-          </thead>
-          <tbody>
-            {audits.map((audit) => {
-              const level = getVerdictLevel(audit.score);
-              const colors = VERDICT_COLORS[level];
-
-              return (
-                <tr
-                  key={audit.id}
-                  className="border-b border-[rgba(255,255,255,0.03)] hover:bg-[rgba(255,255,255,0.02)] transition-colors"
-                >
-                  <td className="px-3 py-2">
-                    <span className="text-[13px] font-mono text-[var(--v-text)] truncate block max-w-[300px]">
-                      {audit.url}
-                    </span>
-                  </td>
-                  <td className="px-3 py-2 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      {/* Mini score bar */}
-                      <div className="w-10 h-1.5 rounded-full bg-[rgba(255,255,255,0.06)] overflow-hidden">
-                        <div
-                          className="h-full rounded-full"
-                          style={{
-                            width: `${Math.min(audit.score, 100)}%`,
-                            background: colors.text,
-                          }}
-                        />
-                      </div>
-                      <span
-                        className="text-[13px] font-mono font-bold tabular-nums w-6 text-right"
-                        style={{ color: colors.text }}
-                      >
-                        {audit.score}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-3 py-2">
-                    <span
-                      className="text-[10px] font-mono font-bold uppercase"
-                      style={{ color: colors.text }}
-                    >
-                      {audit.riskLevel}
-                    </span>
-                  </td>
-                  <td className="px-3 py-2 text-[11px] font-mono text-[var(--v-text-tertiary)]">
-                    {audit.tier.replace(/_/g, " ")}
-                  </td>
-                  <td className="px-3 py-2 text-[11px] font-mono text-[var(--v-text-tertiary)]">
-                    {audit.date}
-                  </td>
-                  <td className="px-3 py-2">
-                    <Link
-                      href={`/report/${audit.id}`}
-                      className="p-1 rounded hover:bg-[rgba(255,255,255,0.05)] text-[var(--v-text-tertiary)] hover:text-[var(--v-text)] transition-colors"
-                    >
-                      <ExternalLink className="w-3.5 h-3.5" />
-                    </Link>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+    <div className="flex flex-col h-full overflow-hidden">
+       <div className="text-[10px] font-mono text-[var(--t-dim)] uppercase tracking-widest border-b border-[var(--t-border)] pb-2 mb-2 flex justify-between">
+         <span>LOCAL.AUDIT_HISTORY</span>
+         <span className="text-[var(--t-text)]">[{audits.length}]</span>
       </div>
-    </PanelChrome>
-  );
-}
+      
+      <div className="flex-1 overflow-y-auto pr-1 flex flex-col gap-2">
+        {audits.map((audit) => {
+          const isCritical = audit.score < 40;
+          const isWarning = audit.score >= 40 && audit.score < 70;
+          const barColor = isCritical ? "bg-[#FF003C]" : isWarning ? "bg-[#FFB000]" : "bg-[#00FF41]";
+          const textColor = isCritical ? "text-[#FF003C]" : isWarning ? "text-[#FFB000]" : "text-[#00FF41]";
 
-/** Call this to save an audit record after completion */
-export function saveAuditToHistory(record: AuditRecord) {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    const existing: AuditRecord[] = stored ? JSON.parse(stored) : [];
-    // Dedupe by id
-    const filtered = existing.filter((a) => a.id !== record.id);
-    // Prepend (newest first), keep max 20
-    const updated = [record, ...filtered].slice(0, 20);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-  } catch {
-    // silently handle
-  }
+          return (
+            <Link
+              key={audit.id}
+              href={"/audit/"}
+              className={"block border border-[var(--t-border)] bg-[#111] p-2 hover:border-[#00FF41] transition-colors cursor-pointer group"}
+            >
+              <div className="flex justify-between items-center mb-1">
+                <span className="text-[11px] font-bold font-mono text-[var(--t-text)] truncate max-w-[200px] group-hover:text-[#00FF41] transition-colors">
+                  {audit.url}
+                </span>
+                <span className={"text-[10px] font-bold font-mono "}>
+                  V-SCORE: {audit.score}
+                </span>
+              </div>
+              
+              <div className="flex justify-between items-center text-[9px] font-mono text-[var(--t-dim)] uppercase">
+                 <span>{audit.date}</span>
+                 <span>{audit.tier.replace(/_/g, " ")}</span>
+                 <span className={textColor}>{audit.riskLevel}</span>
+              </div>
+
+               {/* Score Bar */}
+              <div className="mt-2 w-full h-[2px] bg-[#222]">
+                <div className={`h-full ${barColor} opacity-70`} style={{ width: `${Math.min(audit.score, 100)}%` }} />
+              </div>
+            </Link>
+          );
+        })}
+      </div>
+    </div>
+  );
 }

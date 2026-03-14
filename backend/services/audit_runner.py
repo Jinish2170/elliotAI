@@ -68,6 +68,31 @@ class AuditRunner:
                 logger.error("[%s] queue read error: %s", self.audit_id, exc)
 
     async def run(self, send: Callable):
+        # --- PRE-FLIGHT REACHABILITY CHECK ---
+        import urllib.request
+        from urllib.error import URLError
+        
+        await send({"type": "phase_start", "phase": "scout", "message": "Pre-flight verification..."})
+        try:
+            # 5-second DNS/HEAD check to fail fast for garbage URLs
+            req = urllib.request.Request(self.url, method="HEAD", headers={'User-Agent': 'Veritas/(+https://github.com)'})
+            await asyncio.to_thread(urllib.request.urlopen, req, timeout=5.0)
+        except URLError as e:
+            # Revert to standard GET in case HEAD is blocked
+            try:
+                if "HTTP Error" in str(e) or "HTTP Error 405" in str(e) or "HTTP Error 403" in str(e):
+                    pass # We reached the server, let Playwright handle the heavy lifting
+                else:
+                    req = urllib.request.Request(self.url, headers={'User-Agent': 'Veritas/(+https://github.com)'})
+                    await asyncio.to_thread(urllib.request.urlopen, req, timeout=5.0)
+            except Exception as e2:
+                err_msg = f"FATAL PRE-FLIGHT: Target {self.url} is unreachable or invalid. ({str(e2)})"
+                logger.error(f"[{self.audit_id}] {err_msg}")
+                await send({"type": "phase_error", "phase": "scout", "error": err_msg})
+                # Critical: Emit audit_error immediately so Frontend Terminals abort
+                await send({"type": "audit_error", "audit_id": self.audit_id, "error": err_msg})
+                return
+
         cmd = [
             _find_venv_python(),
             "-m",

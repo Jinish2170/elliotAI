@@ -5,10 +5,27 @@ import { GhostPanel } from "./TerminalPanel";
 export function VerdictPanel({
   verdict,
   trustScore,
+  status,
+  error
 }: {
   verdict: Record<string, any> | null;
   trustScore: number | undefined;
+  status?: string;
+  error?: string | null;
 }) {
+  if (status === "error") {
+    return (
+      <div className="flex flex-col items-center justify-center p-4 text-center w-full h-full border border-[var(--t-red)] bg-[#1a0505]">
+        <div className="text-[var(--t-red)] font-bold text-lg mb-2 glitch-text animate-pulse">
+           [!] FATAL INITIATION ERROR
+        </div>
+        <div className="text-[var(--t-red)] text-xs font-mono uppercase tracking-widest break-words whitespace-pre-wrap max-w-full">
+           {error || "TARGET UNREACHABLE OR OFFLINE. NO VERDICT CAN BE RENDERED."}
+        </div>
+      </div>
+    );
+  }
+
   if (!verdict && trustScore === undefined) {
     return <GhostPanel message="AWAITING VERDICT STREAM..." />;
   }

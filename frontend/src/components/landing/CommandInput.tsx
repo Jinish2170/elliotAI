@@ -37,8 +37,21 @@ export function CommandInput() {
     setLoading(true);
     setError("");
 
+    const targetUrl = url.startsWith("http") ? url : `https://${url}`;
+    
+    // Strict pre-flight browser URL validation
     try {
-      const targetUrl = url.startsWith("http") ? url : `https://${url}`;
+      const parsed = new URL(targetUrl);
+      if (!parsed.hostname.includes(".")) {
+         throw new Error("Invalid TLD");
+      }
+    } catch (err) {
+      setError("[SYS.ERR] INSUFFICIENT TARGET: Provide a valid FQDN or IP");
+      setLoading(false);
+      return;
+    }
+
+    try {
       const res = await fetch(`${API_URL}/api/audit/start`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -56,58 +69,63 @@ export function CommandInput() {
   };
 
   return (
-    <div className="max-w-3xl mx-auto">
+    <div className="max-w-3xl mx-auto w-full">
       {/* Brand mark */}
-      <div className="text-center mb-6">
-        <h1 className="text-[28px] font-bold tracking-tight text-[var(--v-text)]">
+      <div className="text-center mb-8">
+        <h1 className="text-[32px] font-bold tracking-widest text-[#00FF41] glitch-text relative inline-block">
           VERITAS
         </h1>
-        <p className="text-[12px] font-mono text-[var(--v-text-tertiary)] uppercase tracking-[0.2em]">
+        <p className="text-[12px] font-mono text-[var(--t-dim)] uppercase tracking-[0.3em] mt-2">
           Autonomous Forensic Web Auditor
         </p>
       </div>
 
       {/* Input bar */}
-      <form onSubmit={handleSubmit}>
-        <div className="relative group">
-          <div className="absolute -inset-[1px] bg-gradient-to-r from-cyan-500/20 to-purple-600/20 rounded-lg opacity-0 group-focus-within:opacity-100 blur-sm transition-opacity" />
-          <div className="relative flex items-center bg-[var(--elev-2,var(--v-surface))] rounded-lg border border-[rgba(255,255,255,0.08)] focus-within:border-cyan-500/40 transition-colors">
-            <Search className="ml-4 w-4 h-4 text-[var(--v-text-tertiary)]" />
+      <form onSubmit={handleSubmit} className="border border-[var(--t-border)] p-4 bg-[#050505] relative shadow-[0_0_15px_rgba(0,255,65,0.05)]">
+        {/* Corner Accents */}
+        <div className="absolute top-0 left-0 w-2 h-2 border-t border-l border-[#00FF41]" />
+        <div className="absolute top-0 right-0 w-2 h-2 border-t border-r border-[#00FF41]" />
+        <div className="absolute bottom-0 left-0 w-2 h-2 border-b border-l border-[#00FF41]" />
+        <div className="absolute bottom-0 right-0 w-2 h-2 border-b border-r border-[#00FF41]" />
+        
+        <div className="relative group flex items-center bg-[#0a0a0a] border border-[#222] focus-within:border-[#00FF41] transition-colors h-14">
+            <span className="text-[#00FF41] font-mono pl-4 animate-pulse select-none">{'>'}</span>
             <input
               type="text"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
-              placeholder="Enter URL to audit..."
-              className="flex-1 bg-transparent px-3 py-3.5 text-[14px] font-mono text-[var(--v-text)] placeholder:text-[var(--v-text-tertiary)] focus:outline-none"
+              placeholder="TARGET_URI_STREAM..."
+              className="flex-1 bg-transparent px-3 py-3.5 text-[14px] font-mono text-[var(--t-text)] placeholder:text-[var(--t-dim)] focus:outline-none placeholder:opacity-50"
               disabled={loading}
+              autoFocus
             />
             <button
               type="submit"
               disabled={loading || !url.trim()}
-              className="mr-2 px-4 py-2 rounded-md bg-cyan-500 text-[var(--v-deep)] font-mono font-bold text-[11px] uppercase tracking-wider flex items-center gap-1.5 hover:bg-cyan-400 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              className="h-full px-6 bg-[var(--t-border)] text-[var(--t-text)] font-mono font-bold text-[11px] uppercase tracking-widest flex items-center gap-2 hover:bg-[#00FF41] hover:text-[#050505] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
             >
               {loading ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              ) : (
                 <>
-                  ANALYZE
-                  <ArrowRight className="w-3.5 h-3.5" />
+                  <span className="animate-pulse">BOOTING</span>
                 </>
+              ) : (
+                "INITIATE_AUDIT"
               )}
             </button>
-          </div>
         </div>
 
         {error && (
-          <p className="mt-2 text-[11px] font-mono text-red-400">{error}</p>
+          <div className="mt-3 p-2 border border-[var(--t-red)] bg-[#1a0505] text-[11px] font-mono text-[var(--t-red)] glitch-text">
+            {error}
+          </div>
         )}
 
         {/* Tier + Verdict selectors */}
-        <div className="mt-4 flex flex-col sm:flex-row items-start sm:items-center gap-4">
+        <div className="mt-4 flex flex-col sm:flex-row items-start sm:items-center gap-6 justify-between border-t border-[var(--t-border)] pt-4">
           {/* Tier pills */}
-          <div className="flex items-center gap-1">
-            <span className="text-[9px] font-mono uppercase tracking-wider text-[var(--v-text-tertiary)] mr-2">
-              TIER
+          <div className="flex items-center gap-1 w-full justify-between sm:w-auto sm:justify-start">
+            <span className="text-[10px] font-mono uppercase tracking-widest text-[var(--t-dim)] mr-2">
+              TIER.SELECT:
             </span>
             {TIERS.map((t) => (
               <button
@@ -115,22 +133,21 @@ export function CommandInput() {
                 type="button"
                 onClick={() => setTier(t.id)}
                 className={cn(
-                  "px-2.5 py-1.5 rounded text-[10px] font-mono border transition-colors",
+                  "px-3 py-1 text-[10px] font-mono border transition-colors uppercase tracking-wider",
                   tier === t.id
-                    ? "border-cyan-500/40 text-cyan-400 bg-cyan-500/10"
-                    : "border-[rgba(255,255,255,0.06)] text-[var(--v-text-tertiary)] hover:text-[var(--v-text-secondary)] hover:border-[rgba(255,255,255,0.1)]"
+                    ? "border-[#00FF41] text-[#00FF41] bg-[#00FF41]/10 shadow-[0_0_8px_rgba(0,255,65,0.2)]"
+                    : "border-[#333] text-[var(--t-dim)] hover:text-[var(--t-text)] hover:border-[#555]"
                 )}
               >
-                {t.label}
-                <span className="ml-1 opacity-60">{t.time}</span>
+                {t.label} 
               </button>
             ))}
           </div>
 
           {/* Verdict mode */}
-          <div className="flex items-center gap-1">
-            <span className="text-[9px] font-mono uppercase tracking-wider text-[var(--v-text-tertiary)] mr-2">
-              VERDICT
+          <div className="flex items-center gap-1 w-full justify-between sm:w-auto sm:justify-start">
+            <span className="text-[10px] font-mono uppercase tracking-widest text-[var(--t-dim)] mr-2">
+              VERDICT.MODE:
             </span>
             {(["simple", "expert"] as const).map((m) => (
               <button
@@ -138,10 +155,10 @@ export function CommandInput() {
                 type="button"
                 onClick={() => setVerdictMode(m)}
                 className={cn(
-                  "px-2.5 py-1.5 rounded text-[10px] font-mono border transition-colors",
+                  "px-3 py-1 text-[10px] font-mono border transition-colors uppercase tracking-wider",
                   verdictMode === m
-                    ? "border-purple-500/40 text-purple-400 bg-purple-500/10"
-                    : "border-[rgba(255,255,255,0.06)] text-[var(--v-text-tertiary)] hover:text-[var(--v-text-secondary)]"
+                    ? "border-[#FF003C] text-[#FF003C] bg-[#FF003C]/10 shadow-[0_0_8px_rgba(255,0,60,0.2)]"
+                    : "border-[#333] text-[var(--t-dim)] hover:text-[var(--t-text)] hover:border-[#555]"
                 )}
               >
                 {m.toUpperCase()}

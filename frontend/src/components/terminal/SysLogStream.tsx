@@ -28,14 +28,14 @@ export function SysLogStream({ logs }: { logs: LogEntry[] }) {
             "text-[var(--t-text)] opacity-80";
             
           return (
-            <div key={i} className={`flex gap-2 mb-1 text-[10px] font-mono leading-relaxed ${levelColor} break-words`}>
-              <span className="text-[var(--t-dim)] flex-shrink-0 w-16 select-none leading-relaxed">
+            <div key={i} className={`grid grid-cols-[60px_80px_1fr] gap-3 mb-1 text-[11px] font-mono leading-tight hover:bg-[#111] p-1 rounded-sm transition-colors ${levelColor}`}>
+              <span className="text-[var(--t-dim)] opacity-50 whitespace-nowrap select-none">
                 {log.timestamp}
               </span>
-              <span className="text-[var(--t-dim)] flex-shrink-0 w-16 truncate select-none leading-relaxed uppercase">
-                [{log.agent?.substring(0, 7)}]
+              <span className="text-[var(--t-dim)] uppercase font-semibold tracking-wider select-none truncate">
+                [{log.agent || "SYS"}]
               </span>
-              <span className="flex-1 min-w-0 pr-2 leading-relaxed">
+              <span className="break-words">
                 {log.message}
               </span>
             </div>

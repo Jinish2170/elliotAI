@@ -6,10 +6,12 @@ import { GhostPanel } from "./TerminalPanel";
 
 export function AgentProcState({ 
   phases, 
-  activePhase 
+  activePhase,
+  status
 }: { 
   phases: Record<Phase, PhaseState>;
   activePhase: string | undefined;
+  status?: string;
 }) {
   if (!phases || Object.keys(phases).length === 0) {
     return <GhostPanel message="AGENT_SCHEDULER_INIT" />;
@@ -27,10 +29,17 @@ export function AgentProcState({
         let statusText = "STANDBY";
         let barColor = "bg-transparent";
 
-        if (isActive) {
+        if (status === "error" && (!isComplete && !isError)) {
+          headerColor = "text-[var(--t-dim)] border-[var(--t-red)] border-opacity-50";
+          statusText = "ABORTED";
+          barColor = "bg-transparent";
+        } else if (isActive) {
           headerColor = "text-[var(--t-base)] bg-[var(--t-green)] border-[var(--t-green)]";
-          statusText = "ACTIVE";
+          statusText = status === "error" ? "ERR" : "ACTIVE";
           barColor = "bg-[#111]";
+          if (status === "error") {
+             headerColor = "text-[var(--t-base)] bg-[var(--t-red)] border-[var(--t-red)]";
+          }
         } else if (isComplete) {
           headerColor = "text-[var(--t-green)] border-[var(--t-green)]";
           statusText = "DONE";
