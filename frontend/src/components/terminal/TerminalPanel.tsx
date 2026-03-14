@@ -14,7 +14,7 @@ interface ErrorBoundaryState {
   error?: Error;
 }
 
-class PanelErrorBoundary extends React.Component<{ children: React.ReactNode }, ErrorBoundaryState> {
+export class PanelErrorBoundary extends React.Component<{ children: React.ReactNode }, ErrorBoundaryState> {
   constructor(props: { children: React.ReactNode }) {
     super(props);
     this.state = { hasError: false };
