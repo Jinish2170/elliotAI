@@ -52,7 +52,7 @@ function AuditPageContent({ id }: { id: string }) {
   // Build ticker metrics from store stats + live arrays for real-time counts
   const tickerMetrics: TickerMetric[] = useMemo(
     () => [
-      { label: "TRUST", value: store.result?.trust_score ?? "—" },
+      { label: "TRUST", value: store.dualVerdict?.trust_score ?? store.result?.trust_score ?? "—" },
       { label: "PAGES", value: store.stats.pages_scanned },
       { label: "FINDINGS", value: Math.max(store.findings.length, store.stats.findings) },
       { label: "SCREENSHOTS", value: Math.max(store.screenshots.length, store.stats.screenshots) },
@@ -107,8 +107,8 @@ function AuditPageContent({ id }: { id: string }) {
                           : agentId === "graph"
                           ? `${store.osintResults.length} sources`
                           : agentId === "judge"
-                          ? store.result
-                            ? `Score: ${store.result.trust_score}`
+                          ? (store.dualVerdict?.trust_score ?? store.result?.trust_score)
+                            ? `Score: ${store.dualVerdict?.trust_score ?? store.result?.trust_score}`
                             : "Waiting..."
                           : ""
                       }

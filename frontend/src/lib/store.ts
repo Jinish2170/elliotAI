@@ -482,17 +482,47 @@ function processSingleEvent(
 
     case "phase_complete": {
       const phase = event.phase as Phase;
+      const summary = (event.summary as Record<string, unknown>) || {};
+      
+      // Attempt to extract live stats updates from phase completion summaries
+      let updatedAiCalls = state.stats.ai_calls;
+      let updatedSecChecks = state.stats.security_checks;
+      
+      if (phase === "vision" && typeof summary.nim_calls === "number") {
+        updatedAiCalls = Math.max(state.stats.ai_calls, summary.nim_calls);
+      }
+      if (phase === "security" && Array.isArray(summary.modules)) {
+        updatedSecChecks = Math.max(state.stats.security_checks, summary.modules.length);
+      }
+      
+      let updatedVerdict = state.dualVerdict;
+      if (phase === "judge" && typeof summary.trust_score === "number") {
+        updatedVerdict = {
+          ...state.dualVerdict,
+          trust_score: summary.trust_score,
+          risk_level: typeof summary.risk_level === "string" ? summary.risk_level : "unknown",
+          confidence: "High",
+          flags: [],
+        } as AuditStore["dualVerdict"];
+      }
+
       set({
         pct: (event.pct as number) || state.pct,
+        dualVerdict: updatedVerdict,
         phases: {
           ...state.phases,
           [phase]: {
             status: "complete",
             message: (event.message as string) || "",
             pct: (event.pct as number) || 0,
-            summary: (event.summary as Record<string, unknown>) || {},
+            summary,
           },
         },
+        stats: {
+          ...state.stats,
+          ai_calls: updatedAiCalls,
+          security_checks: updatedSecChecks,
+        }
       });
       break;
     }

@@ -174,6 +174,11 @@ class AuditRunner:
 
     async def _handle_progress(self, data: dict, send: Callable):
         if data.get("type") and data.get("type") != "progress":
+            # Track live-emitted findings so we don't duplicate them at the end
+            if data.get("type") == "vision_pass_findings":
+                for f in data.get("findings", []):
+                    if isinstance(f, dict) and "id" in f:
+                        self._findings_sent.add(f["id"])
             await send(data)
             return
         phase = data.get("phase", "")
@@ -186,7 +191,13 @@ class AuditRunner:
             await send({"type": "agent_personality", "agent": phase, "context": "working", "timestamp": time.strftime("%H:%M:%S"), "params": {"phase": phase, "step": step, "detail": detail}})
             await send({"type": "log_entry", "timestamp": time.strftime("%H:%M:%S"), "agent": label, "message": detail, "level": "info"})
         elif step == "done":
-            await send({"type": "phase_complete", "phase": phase, "message": detail, "pct": pct, "label": label, "summary": data.get("summary", {}) or {}})
+            summary_data = data.get("summary", {})
+            # Pack any extra keys into summary so frontend state gets them
+            for k, v in data.items():
+                if k not in ["type", "phase", "step", "pct", "detail", "summary"]:
+                    summary_data[k] = v
+
+            await send({"type": "phase_complete", "phase": phase, "message": detail, "pct": pct, "label": label, "summary": summary_data or {}})
             await send({"type": "agent_personality", "agent": phase, "context": "complete", "timestamp": time.strftime("%H:%M:%S"), "params": {"phase": phase, "success": True, "summary": detail}})
             await send({"type": "log_entry", "timestamp": time.strftime("%H:%M:%S"), "agent": label, "message": f"Complete - {detail}", "level": "info"})
         elif step == "error":
@@ -328,6 +339,7 @@ class AuditRunner:
             scout_url = scout_result.get("url") or summary["url"]
             visited_urls.append(scout_url)
             await send({"type": "navigation_start", "url": scout_url, "timestamp": timestamp})
+            await send({"type": "log_entry", "timestamp": time.strftime("%H:%M:%S"), "agent": "Browser Reconnaissance", "message": f"Navigating to {scout_url}", "level": "info"})
             await send({
                 "type": "page_scanned",
                 "url": scout_url,
@@ -358,6 +370,7 @@ class AuditRunner:
                         "forms": normalized_forms,
                         "timestamp": timestamp,
                     })
+                    await send({"type": "log_entry", "timestamp": time.strftime("%H:%M:%S"), "agent": "Browser Reconnaissance", "message": f"Detected {len(normalized_forms)} forms", "level": "info"})
 
             captcha_detected = bool(scout_result.get("captcha_detected"))
             await send({
@@ -367,6 +380,9 @@ class AuditRunner:
                 "confidence": 1.0 if captcha_detected else 0.0,
                 "timestamp": timestamp,
             })
+            if captcha_detected:
+                await send({"type": "log_entry", "timestamp": time.strftime("%H:%M:%S"), "agent": "Browser Reconnaissance", "message": f"CAPTCHA detected", "level": "warning"})
+
             await send({
                 "type": "navigation_complete",
                 "url": scout_url,
@@ -375,6 +391,7 @@ class AuditRunner:
                 "screenshots_count": len(scout_result.get("screenshots", []) or []),
                 "timestamp": timestamp,
             })
+            await send({"type": "log_entry", "timestamp": time.strftime("%H:%M:%S"), "agent": "Browser Reconnaissance", "message": f"Navigation complete in {scout_result.get('navigation_time_ms', 0)}ms", "level": "info"})
 
         if visited_urls:
             await send({
@@ -433,8 +450,29 @@ class AuditRunner:
         for finding in findings:
             if finding["id"] not in self._findings_sent:
                 self._findings_sent.add(finding["id"])
-                await send({"type": "finding", "finding": {"id": finding["id"], "category": finding["category"], "pattern_type": finding["pattern_type"], "severity": finding.get("severity", "medium"), "confidence": finding.get("confidence", 0.0), "description": finding["description"], "plain_english": finding["plain_english"]}})
-            await send({"type": "dark_pattern_finding", "finding": {"category": finding["category"], "pattern_type": finding["pattern_type"], "severity": finding.get("severity", "medium"), "confidence": finding.get("confidence", 0.0), "description": finding["description"], "plain_english": finding["plain_english"], "screenshot_path": finding.get("screenshot_path", "")}})
+                # Pack cvss_score and cwe_id if available (Phase 10)
+                await send({"type": "finding", "finding": {
+                    "id": finding["id"], 
+                    "category": finding["category"], 
+                    "pattern_type": finding["pattern_type"], 
+                    "severity": finding.get("severity", "medium"), 
+                    "confidence": finding.get("confidence", 0.0), 
+                    "description": finding["description"], 
+                    "plain_english": finding.get("plain_english", finding["description"]),
+                    "cwe_id": finding.get("cwe_id"),
+                    "cvss_score": finding.get("cvss_score")
+                }})
+            await send({"type": "dark_pattern_finding", "finding": {
+                "category": finding["category"], 
+                "pattern_type": finding["pattern_type"], 
+                "severity": finding.get("severity", "medium"), 
+                "confidence": finding.get("confidence", 0.0), 
+                "description": finding["description"], 
+                "plain_english": finding.get("plain_english", finding["description"]), 
+                "screenshot_path": finding.get("screenshot_path", ""),
+                "cwe_id": finding.get("cwe_id"),
+                "cvss_score": finding.get("cvss_score")
+            }})
 
         for temporal in (result.get("vision_result") or {}).get("temporal_findings", []) or []:
             if isinstance(temporal, dict):
@@ -450,6 +488,20 @@ class AuditRunner:
 
         for indicator in graph.get("osint_indicators", []) or []:
             await send({"type": "ioc_indicator", "indicator": indicator})
+            
+        for technique in graph.get("cti_techniques", []) or []:
+            await send({"type": "mitre_technique_mapped", "technique": technique})
+
+        if graph.get("threat_attribution"):
+            await send({"type": "threat_attribution", "attribution": graph.get("threat_attribution")})
+
+        for verification in graph.get("verifications", []) or []:
+            if isinstance(verification, dict):
+                await send({"type": "verification_result", "verification": verification})
+
+        for inconsistency in graph.get("inconsistencies", []) or []:
+            if isinstance(inconsistency, dict):
+                await send({"type": "graph_inconsistency", "inconsistency": inconsistency})
 
         if self._has_graph_data(result):
             knowledge_graph = await self._construct_knowledge_graph(result, trust.get("final_score", 0) or 0)
@@ -458,6 +510,28 @@ class AuditRunner:
 
         technical = judge.get("technical_verdict") or {"risk_level": trust.get("risk_level", "unknown"), "trust_score": trust.get("final_score", 0), "summary": judge.get("narrative", judge.get("reason", "")), "recommendations": judge.get("recommendations", [])}
         nontechnical = judge.get("non_technical_verdict") or {"risk_level": trust.get("risk_level", "unknown"), "summary": judge.get("simple_narrative") or judge.get("narrative", ""), "actionable_advice": judge.get("simple_recommendations") or judge.get("recommendations", []), "green_flags": judge.get("green_flags", [])}
+        
+        # Explicit Phase 9 CWE/CVSS parsing for frontend UI states
+        for cwe in technical.get("cwe_entries", []) or []:
+            if isinstance(cwe, dict):
+                cve_payload = {
+                    "cve_id": f"CWE-{cwe.get('cwe_id', 'Unknown')}",
+                    "name": cwe.get("name", "Unknown CWE"),
+                    "description": f"Common Weakness Enumeration: {cwe.get('name', 'Unknown')}",
+                    "severity": "HIGH" if cwe.get("score", 0) > 7 else "MEDIUM",
+                    "cwe_id": str(cwe.get("cwe_id", ""))
+                }
+                await send({"type": "cve_detected", "cve": cve_payload})
+
+        cvss_metrics = technical.get("cvss_metrics")
+        if isinstance(cvss_metrics, dict):
+            mapped_metrics = [{"name": k, "value": str(v), "severity": "HIGH"} for k, v in cvss_metrics.items() if k != "base_score"]
+            await send({
+                "type": "cvss_metrics", 
+                "metrics": mapped_metrics, 
+                "base_score": cvss_metrics.get("base_score", technical.get("cvss_score", 0.0))
+            })
+
         await send({"type": "verdict_technical", "verdict": technical})
         await send({"type": "verdict_nontechnical", "verdict": nontechnical})
         await send({"type": "dual_verdict_complete", "dual_verdict": {"verdict_technical": technical, "verdict_nontechnical": nontechnical, "metadata": {"timestamp": datetime.now().isoformat(), "audit_id": self.audit_id}}})
