@@ -1069,6 +1069,20 @@ function processSingleEvent(
       break;
     }
 
+    case "verification_result": {
+      set({
+        verificationResults: [...state.verificationResults, event.verification as VerificationResult],
+      });
+      break;
+    }
+
+    case "graph_inconsistency": {
+      set({
+        graphInconsistencies: [...state.graphInconsistencies, event.inconsistency as GraphInconsistency],
+      });
+      break;
+    }
+
     // ============================================================
     // Site Classification Events
     // ============================================================
