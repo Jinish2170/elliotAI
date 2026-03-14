@@ -397,3 +397,73 @@
 .tier-moderate { animation: tier-glow-amber; }
 .tier-low { animation: tier-glow-red; }
 .tier-very-low { animation: tier-glow-red; }
+/* ========== EXPERT TERMINAL TOKENS (SPRINT 1) ========== */
+:root {
+  --t-base: #050505;
+  --t-panel: #0A0A0A;
+  --t-border: #333333;
+  --t-text: #A0A0A0;
+  --t-green: #00FF41;
+  --t-amber: #FFB000;
+  --t-red: #FF003C;
+  --t-dim: #444444;
+}
+
+/* Hard reset for the terminal layout to prevent Tailwind from rounding things */
+.veritas-terminal {
+  box-sizing: border-box !important;
+  font-family: var(--font-geist-mono) !important;
+  color: var(--t-text) !important;
+  background-color: var(--t-base) !important;
+  /* Hard Viewport Lock to prevent responsive wrapping */
+  min-width: 1280px;
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.veritas-terminal * {
+  border-radius: 0px !important;
+  scrollbar-width: none; /* Firefox */
+}
+.veritas-terminal *::-webkit-scrollbar {
+  display: none; /* Chrome/Safari */
+}
+
+/* Zone Structure */
+.veritas-terminal-grid {
+  display: grid;
+  flex: 1;
+  height: calc(100vh - 5vh); /* Remaining viewport under the ticker */
+  grid-template-columns: 20fr 55fr 25fr; /* Left Rail | Center Matrix | Right Rail */
+  grid-template-rows: 100%;
+  gap: 2px;
+  background-color: var(--t-border); /* Will bleed through gaps as borders */
+  padding: 2px; /* Outer border */
+}
+
+/* Panel Containers */
+.t-panel {
+  background-color: var(--t-panel);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Title bars for panels */
+.t-panel-header {
+  background-color: #111;
+  color: var(--t-dim);
+  font-size: 10px;
+  text-transform: uppercase;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--t-border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.glow-text-green { text-shadow: 0 0 5px var(--t-green); color: var(--t-green); }
+.glow-text-red { text-shadow: 0 0 5px var(--t-red); color: var(--t-red); }
+.glow-text-amber { text-shadow: 0 0 5px var(--t-amber); color: var(--t-amber); }
