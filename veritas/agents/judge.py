@@ -515,7 +515,23 @@ class JudgeAgent:
             cvss_score = 3.5
 
         if cvss_score > 0:
-            cvss_metrics = {"base_score": cvss_score, "metric_level": "simplified"}
+            try:
+                from veritas.config.security_rules import get_recommended_cvss_metrics
+                severity_str = "high" if cvss_score > 7 else "medium" if cvss_score > 4 else "low"
+                cvss_obj = get_recommended_cvss_metrics(severity_str)
+                cvss_metrics = {
+                    "base_score": cvss_score,
+                    "attack_vector": getattr(cvss_obj.attack_vector, "name", str(cvss_obj.attack_vector)),
+                    "attack_complexity": getattr(cvss_obj.attack_complexity, "name", str(cvss_obj.attack_complexity)),
+                    "privileges_required": getattr(cvss_obj.privileges_required, "name", str(cvss_obj.privileges_required)),
+                    "user_interaction": getattr(cvss_obj.user_interaction, "name", str(cvss_obj.user_interaction)),
+                    "scope": getattr(cvss_obj.scope, "name", str(cvss_obj.scope)),
+                    "confidentiality": getattr(cvss_obj.confidentiality, "name", str(cvss_obj.confidentiality)),
+                    "integrity": getattr(cvss_obj.integrity, "name", str(cvss_obj.integrity)),
+                    "availability": getattr(cvss_obj.availability, "name", str(cvss_obj.availability))
+                }
+            except Exception:
+                cvss_metrics = {"base_score": cvss_score, "metric_level": "simplified"}
 
         verdict_technical = VerdictTechnical(
             cwe_entries=cwe_entries,
@@ -1428,3 +1444,5 @@ class JudgeAgent:
         })
 
         return timeline
+
+

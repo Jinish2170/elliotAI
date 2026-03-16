@@ -223,6 +223,27 @@ class AuditRunner:
                     summary_data[k] = v
 
             await send({"type": "phase_complete", "phase": phase, "message": detail, "pct": pct, "label": label, "summary": summary_data or {}})
+            
+            # EARLY STREAM INJECTION
+            if phase == "security" and "security_results" in summary_data:
+                res = {"security_results": summary_data["security_results"]}
+                await send({
+                    "type": "cvss_metrics",
+                    "metrics": [{"name": k, "value": str(v), "severity": "HIGH"} for k, v in res["security_results"].get("cvss_metrics", {}).items() if k != "base_score"],
+                    "base_score": 0.0
+                })
+                for map_entry in res["security_results"].get("mitre_mappings", []):
+                    await send({"type": "mitre_technique_mapped", "technique": map_entry.get("technique") if isinstance(map_entry, dict) else map_entry})
+                    
+            if phase == "graph" and "graph_result" in summary_data:
+                g_data = summary_data["graph_result"].get("graph_data")
+                if g_data and isinstance(g_data, dict):
+                    nodes = g_data.get("nodes", []) or []
+                    edges = g_data.get("edges", []) or []
+                    density = len(edges) / (len(nodes) * (len(nodes) - 1)) if len(nodes) > 1 else 0.0
+                    kg = {"nodes": nodes, "edges": edges, "node_count": len(nodes), "edge_count": len(edges), "graph_density": density, "avg_clustering": 0.0, "largest_component_size": len(nodes), "isolated_nodes": 0 if edges else max(0, len(nodes) - 1)}
+                    await send({"type": "knowledge_graph", "graph": kg})
+
             await send({"type": "agent_personality", "agent": phase, "context": "complete", "timestamp": time.strftime("%H:%M:%S"), "params": {"phase": phase, "success": True, "summary": detail}})
             await send({"type": "log_entry", "timestamp": time.strftime("%H:%M:%S"), "agent": label, "message": f"Complete - {detail}", "level": "info"})
         elif step == "error":
@@ -533,8 +554,21 @@ class AuditRunner:
             await send({"type": "knowledge_graph", "graph": knowledge_graph})
             await send({"type": "graph_analysis", "analysis": self._calculate_graph_analysis(knowledge_graph)})
 
-        technical = judge.get("technical_verdict") or {"risk_level": trust.get("risk_level", "unknown"), "trust_score": trust.get("final_score", 0), "summary": judge.get("narrative", judge.get("reason", "")), "recommendations": judge.get("recommendations", [])}
-        nontechnical = judge.get("non_technical_verdict") or {"risk_level": trust.get("risk_level", "unknown"), "summary": judge.get("simple_narrative") or judge.get("narrative", ""), "actionable_advice": judge.get("simple_recommendations") or judge.get("recommendations", []), "green_flags": judge.get("green_flags", [])}
+        # Handle Phase 9 Dual Verdict extraction
+        dual = judge.get("dual_verdict")
+        if dual:
+            if hasattr(dual, 'technical'):
+                technical = dual.technical.to_dict() if hasattr(dual.technical, 'to_dict') else dual.technical
+                nontechnical = dual.non_technical.to_dict() if hasattr(dual.non_technical, 'to_dict') else dual.non_technical
+            elif isinstance(dual, dict):
+                technical = dual.get("technical", {})
+                nontechnical = dual.get("non_technical", {})
+            else:
+                technical = judge.get("technical_verdict") or {}
+                nontechnical = judge.get("non_technical_verdict") or {}
+        else:
+            technical = judge.get("technical_verdict") or {"risk_level": trust.get("risk_level", "unknown"), "trust_score": trust.get("final_score", 0), "summary": judge.get("narrative", judge.get("reason", "")), "recommendations": judge.get("recommendations", [])}
+            nontechnical = judge.get("non_technical_verdict") or {"risk_level": trust.get("risk_level", "unknown"), "summary": judge.get("simple_narrative") or judge.get("narrative", ""), "actionable_advice": judge.get("simple_recommendations") or judge.get("recommendations", []), "green_flags": judge.get("green_flags", [])}
         
         # Explicit Phase 9 CWE/CVSS parsing for frontend UI states
         for cwe in technical.get("cwe_entries", []) or []:
@@ -700,3 +734,4 @@ class AuditRunner:
 
 def generate_audit_id() -> str:
     return f"vrts_{uuid.uuid4().hex[:8]}"
+

@@ -149,14 +149,7 @@ MOBILE_VIEWPORT_HEIGHT: int = int(os.getenv("MOBILE_VIEWPORT_HEIGHT", "844"))
 # ============================================================
 # Security Modules — toggleable checks
 # ============================================================
-ENABLED_SECURITY_MODULES: list[str] = [
-    m.strip()
-    for m in os.getenv(
-        "ENABLED_SECURITY_MODULES",
-        "security_headers,phishing_db",
-    ).split(",")
-    if m.strip()
-]
+ENABLED_SECURITY_MODULES: list[str] = os.getenv("ENABLED_SECURITY_MODULES", "security_headers,phishing_db,tls_ssl,csp,gdpr,pci_dss,cookies,dom_analyzer,js_analysis,redirect_chain").split(",")
 
 # Google Safe Browsing API key (optional, free tier = 10K lookups/day)
 SAFE_BROWSING_API_KEY: str = os.getenv("GOOGLE_SAFE_BROWSING_KEY", "")
@@ -397,3 +390,4 @@ def should_use_db_persistence() -> bool:
 logger.info(
     f"Database Persistence: USE_DB_PERSISTENCE={USE_DB_PERSISTENCE}"
 )
+

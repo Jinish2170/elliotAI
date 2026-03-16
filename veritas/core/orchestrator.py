@@ -671,7 +671,7 @@ class VeritasOrchestrator:
                     sec_modules = list((state.get("security_results") or {}).keys())
                     security_mode = sec_update.get("security_mode", "unknown")
                     degr_str = " (degraded)" if sec_penalty > 0 else ""
-                    self._emit("security", "done", 30, f"Security modules: {', '.join(sec_modules)} (mode={security_mode}){degr_str}", modules=sec_modules, security_mode=security_mode)
+                    self._emit("security", "done", 30, f"Security modules: {', '.join(sec_modules)} (mode={security_mode}){degr_str}", modules=sec_modules, security_mode=security_mode, security_results=state.get("security_results", {}))
                 except Exception as e:
                     logger.error(f"Security node failed: {e}")
                     state["errors"].append(f"Security: {e}")
@@ -737,7 +737,7 @@ class VeritasOrchestrator:
                         f"{n_verify} verifications, {n_incon} inconsistencies, "
                         f"{n_osint} OSINT sources{degr_str}"
                     )
-                    self._emit("graph", "done", 75, detail, domain_age=age, nodes=n_nodes)
+                    self._emit("graph", "done", 75, detail, domain_age=age, nodes=n_nodes, graph_result=state.get("graph_result", {}))
 
                     # Emit Graph completion via ProgressEmitter
                     if self.use_progress_streaming and self._progress_emitter:
@@ -895,3 +895,4 @@ class VeritasOrchestrator:
                 await self._progress_emitter.emit_agent_status("Orchestrator", "failed", str(e))
 
             return state
+

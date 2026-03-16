@@ -842,6 +842,18 @@ class GraphInvestigator:
         except Exception as e:
             logger.warning(f"LLM entity extraction failed: {e}")
 
+        if not claims:
+            import re
+            emails = re.findall(r'[\w\.-]+@[\w\.-]+\.\w+', text_trimmed)
+            for e in set(emails):
+                claims.append(EntityClaim(entity_type="email", entity_value=e, source_page=url, context="Extracted via regex"))
+            phones = re.findall(r'\+?\d{1,3}[-.\s]?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}', text_trimmed)
+            for p in set(phones):
+                claims.append(EntityClaim(entity_type="phone", entity_value=p, source_page=url, context="Extracted via regex"))
+            corps = re.findall(r'[A-Z][a-zA-Z0-9-]*\s+(?:LLC|Inc\.|Ltd\.|Corporation|Corp\.)', text_trimmed)
+            for c in set(corps):
+                claims.append(EntityClaim(entity_type="company", entity_value=c, source_page=url, context="Extracted via regex"))
+
         return claims
 
     # ================================================================
@@ -1887,3 +1899,4 @@ class GraphInvestigator:
             except json.JSONDecodeError:
                 pass
         return None
+

@@ -119,10 +119,10 @@ function AuditPageContent({ id }: { id: string }) {
             {/* Zone 3: Investigative Matrix */}
             <div className="flex-1 grid grid-cols-2 gap-[2px] bg-[var(--t-border)]">
                <TerminalPanel title="CVSS.RADAR" className="h-full">
-                 <CvssRadar metrics={(store.result?.security_results?.cvss_metrics as any[]) || []} />
+                 <CvssRadar metrics={store.cvssMetrics?.length ? store.cvssMetrics : ((store.result as any)?.security_results?.cvss_metrics as any[]) || []} />
                </TerminalPanel>
                <TerminalPanel title="MITRE.ATTACK.GRID" className="h-full">
-                 <MitreGrid techniques={(store.result?.security_results?.mitre_mappings as any[]) || []} />
+                 <MitreGrid techniques={store.mitreTechniques?.length ? store.mitreTechniques : ((store.result as any)?.security_results?.mitre_mappings as any[]) || []} />
                </TerminalPanel>
                <TerminalPanel title="DARKNET.OSINT" className="col-span-2 h-full">
                  <DarknetOsintGrid 
@@ -140,7 +140,7 @@ function AuditPageContent({ id }: { id: string }) {
                <ScoutImagery screenshots={store.screenshots} />
             </TerminalPanel>
             <TerminalPanel title="KNOWLEDGE.GRAPH" className="flex-1">
-               <KnowledgeGraph findings={store.findings || []} />
+               <KnowledgeGraph findings={store.findings || []} knowledgeGraph={store.knowledgeGraph} />
             </TerminalPanel>
           </div>
 
@@ -169,3 +169,8 @@ export default function AuditPage({ params }: { params: Promise<{ id: string }> 
     </Suspense>
   );
 }
+
+
+
+
+
