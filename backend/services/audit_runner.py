@@ -70,10 +70,11 @@ class AuditRunner:
     async def run(self, send: Callable):
         # Wrap send to add sequence numbers
         sequence_counter = {"cnt": 0}
+        original_send = send  # Capture BEFORE reassignment
         async def seq_send(event: dict):
             sequence_counter["cnt"] += 1
             event["sequence"] = sequence_counter["cnt"]
-            await send(event)
+            await original_send(event)  # Use original to avoid recursion
         send = seq_send
         # --- PRE-FLIGHT REACHABILITY CHECK ---
         import urllib.request
