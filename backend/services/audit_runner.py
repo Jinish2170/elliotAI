@@ -68,6 +68,13 @@ class AuditRunner:
                 logger.error("[%s] queue read error: %s", self.audit_id, exc)
 
     async def run(self, send: Callable):
+        # Wrap send to add sequence numbers
+        sequence_counter = {"cnt": 0}
+        async def seq_send(event: dict):
+            sequence_counter["cnt"] += 1
+            event["sequence"] = sequence_counter["cnt"]
+            await send(event)
+        send = seq_send
         # --- PRE-FLIGHT REACHABILITY CHECK ---
         import urllib.request
         from urllib.error import URLError
