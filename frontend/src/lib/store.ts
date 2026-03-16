@@ -114,6 +114,7 @@ interface AuditStore {
   // Advanced Judge Data
   dualVerdict: DualVerdict | null;  // POPULATED via verdict_technical/verdict_nontechnical/dual_verdict_complete
 
+  green_flags: GreenFlag[]; // POPULATED via green_flags event or verdict events
   // Premium Darknet Analysis Data
   darknetAnalysisResult: DarknetAnalysisResult | null;  // POPULATED via darknet_analysis_result event
   marketplaceDetails: MarketplaceThreatData[];  // POPULATED via marketplace_threat event
@@ -234,6 +235,7 @@ export const useAuditStore = create<AuditStore>((set, get) => ({
   iocDetection: null,
   dualVerdict: null,
 
+  green_flags: [],
   // Premium Darknet Analysis Data
   darknetAnalysisResult: null,
   marketplaceDetails: [],

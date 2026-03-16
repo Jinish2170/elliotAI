@@ -2,19 +2,19 @@
 
 import { use, useEffect, useMemo, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { 
-  TerminalPanel, 
-  GhostPanel, 
-  VerdictPanel, 
-  CvssRadar, 
-  MitreGrid, 
+import {
+  TerminalPanel,
+  GhostPanel,
+  VerdictPanel,
+  CvssRadar,
+  MitreGrid,
   DarknetOsintGrid,
   SysLogStream,
   AgentProcState,
   ScoutImagery,
   KnowledgeGraph
 } from "@/components/terminal";
-import { ChromaticProvider } from "@/components/providers/ChromaticProvider";   
+import { ChromaticProvider } from "@/components/providers/ChromaticProvider";
 import { useAuditStream } from "@/hooks/useAuditStream";
 import type { AgentId } from "@/config/agents";
 import { saveAuditToHistory } from "@/components/landing/RecentAudits";
@@ -48,7 +48,7 @@ function MobileBlocker() {
       <div className="border border-[var(--t-red)] p-6 bg-[var(--t-panel)] max-w-sm">
         <div className="text-[var(--t-red)] font-mono text-sm mb-4">[SYS.ERR] INSUFFICIENT VIEWPORT</div>
         <p className="text-[var(--t-text)] text-xs font-mono">
-          VERITAS requires a full operator terminal display (min-width: 1280px). 
+          VERITAS requires a full operator terminal display (min-width: 1280px).
           Please maximize your window or switch to a workstation to proceed with the audit overview.
         </p>
       </div>
@@ -76,7 +76,7 @@ function AuditPageContent({ id }: { id: string }) {
   }, [store.status, store.result, id, tier]);
 
   const activeAgent: AgentId | undefined = useMemo(() => {
-    if (!store.currentPhase || store.currentPhase === "init") return undefined; 
+    if (!store.currentPhase || store.currentPhase === "init") return undefined;
     return store.currentPhase as AgentId;
   }, [store.currentPhase]);
 
@@ -89,14 +89,14 @@ function AuditPageContent({ id }: { id: string }) {
 
         {/* ZONE 4 (Rails) & ZONES 2/3 (Center) contained in grid */}
         <div className="veritas-terminal-grid">
-          
+
           {/* Left Rail (Log Stream, Tasks) */}
           <div className="flex flex-col gap-[2px]">
             <TerminalPanel title="SYS.LOG.STREAM" className="h-[65%]">
               <SysLogStream logs={store.logs} />
             </TerminalPanel>
             <TerminalPanel title="AGENT.PROC.STATE" className="h-[35%]">
-               <AgentProcState phases={store.phases} activePhase={store.currentPhase || undefined} status={store.status} />
+              <AgentProcState phases={store.phases} activePhase={store.currentPhase || undefined} status={store.status} />
             </TerminalPanel>
           </div>
 
@@ -104,47 +104,62 @@ function AuditPageContent({ id }: { id: string }) {
           <div className="flex flex-col gap-[2px]">
             {/* Zone 2: Verdict */}
             <TerminalPanel title="VERDICT.MATRIX" className="h-[25%] flex justify-center items-center">
-              <VerdictPanel 
- verdict={store.dualVerdict ? {
- verdict_technical: {
- trust_score: store.dualVerdict?.trust_score,
- risk_level: store.dualVerdict?.non_technical?.risk_level || store.result?.risk_level || 'unknown'
- },
- verdict_nontechnical: {
- summary: store.dualVerdict?.non_technical?.summary || store.result?.narrative || ''
- }
- } : null}
- trustScore={store.dualVerdict?.trust_score ?? store.result?.trust_score}
+              <VerdictPanel
+                verdict={store.dualVerdict ? {
+                  verdict_technical: {
+                    trust_score: store.dualVerdict?.trust_score,
+                    risk_level: store.dualVerdict?.non_technical?.risk_level || store.result?.risk_level || 'unknown'
+                  },
+                  verdict_nontechnical: {
+                    summary: store.dualVerdict?.non_technical?.summary || store.result?.narrative || ''
+                  }
+                } : null}
+                trustScore={store.dualVerdict?.trust_score ?? store.result?.trust_score}
                 status={store.status}
                 error={store.error}
               />
             </TerminalPanel>
 
+            {/* GREEN FLAGS - Positive Indicators */}
+            <TerminalPanel title="GREEN.FLAGS" className="h-auto min-h-[60px]">
+              <div className="flex flex-wrap gap-2 p-2">
+                {store.green_flags?.length ? (
+                  store.green_flags.slice(0, 5).map((flag: any) => (
+                    <span key={flag.id || flag.label} className="text-[var(--t-green)] text-xs bg-[var(--t-green)]/10 px-2 py-1 rounded">
+                      {flag.icon || "✓"} {flag.label}
+                    </span>
+                  ))
+                ) : (
+                  <span className="text-[var(--t-dim)] text-xs italic">No positive indicators detected</span>
+                )}
+              </div>
+            </TerminalPanel>
+
             {/* Zone 3: Investigative Matrix */}
             <div className="flex-1 grid grid-cols-2 gap-[2px] bg-[var(--t-border)]">
-               <TerminalPanel title="CVSS.RADAR" className="h-full">
-                 <CvssRadar metrics={store.cvssMetrics?.length ? store.cvssMetrics : ((store.result as any)?.security_results?.cvss_metrics as any[]) || []} />
-               </TerminalPanel>
-               <TerminalPanel title="MITRE.ATTACK.GRID" className="h-full">
-                 <MitreGrid techniques={store.mitreTechniques?.length ? store.mitreTechniques : ((store.result as any)?.security_results?.mitre_mappings as any[]) || []} />
-               </TerminalPanel>
-               <TerminalPanel title="DARKNET.OSINT" className="col-span-2 h-full">
-                 <DarknetOsintGrid 
-                   cves={(store.result?.security_results?.cve_detected as any[]) || []} 
-                   tor={store.tor2WebThreats || []}
-                   marketplace={store.marketplaceDetails || []}
-                 />
-               </TerminalPanel>
+              <TerminalPanel title="CVSS.RADAR" className="h-full">
+                <CvssRadar metrics={store.cvssMetrics?.length ? store.cvssMetrics : ((store.result as any)?.security_results?.cvss_metrics as any[]) || []} />
+              </TerminalPanel>
+              <TerminalPanel title="MITRE.ATTACK.GRID" className="h-full">
+                <MitreGrid techniques={store.mitreTechniques?.length ? store.mitreTechniques : ((store.result as any)?.security_results?.mitre_mappings as any[]) || []} />
+              </TerminalPanel>
+              <TerminalPanel title="DARKNET.OSINT" className="col-span-2 h-full">
+                <DarknetOsintGrid
+                  cves={(store.result?.security_results?.cve_detected as any[]) || []}
+                  tor={store.tor2WebThreats || []}
+                  marketplace={store.marketplaceDetails || []}
+                />
+              </TerminalPanel>
             </div>
           </div>
 
           {/* Right Rail (Evidence, Graphs) */}
           <div className="flex flex-col gap-[2px]">
             <TerminalPanel title="SCOUT.IMAGERY" className="h-1/2">
-               <ScoutImagery screenshots={store.screenshots} />
+              <ScoutImagery screenshots={store.screenshots} />
             </TerminalPanel>
             <TerminalPanel title="KNOWLEDGE.GRAPH" className="flex-1">
-               <KnowledgeGraph findings={store.findings || []} knowledgeGraph={store.knowledgeGraph} />
+              <KnowledgeGraph findings={store.findings || []} knowledgeGraph={store.knowledgeGraph} />
             </TerminalPanel>
           </div>
 
@@ -173,8 +188,3 @@ export default function AuditPage({ params }: { params: Promise<{ id: string }> 
     </Suspense>
   );
 }
-
-
-
-
-
