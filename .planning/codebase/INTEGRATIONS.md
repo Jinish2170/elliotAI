@@ -1,1 +1,172 @@
-# External Integrations **Analysis Date:** 2026-03-16 ## APIs & External Services **[AI/LLM]:** - **NVIDIA NIM** - Multi-purpose AI inference API - Purpose: Vision model for dark pattern detection + LLM for Judge agent reasoning - SDK/Client: `openai` Python library with custom NVIDIA endpoint - Auth: `NVIDIA_NIM_API_KEY` environment variable - Endpoint: `https://integrate.api.nvidia.com/v1` - Models: `meta/llama-3.1-70b-instruct` (LLM), `nvidia/neva-22b` (vision), fallback to `microsoft/phi-3-vision-128k-instruct` - Timeout: 90 seconds, 4 retries, 40 requests/minute - Implementation: `veritas/core/nim_client.py` **[Search]:** - **Tavily** - External search API for Graph Investigator - Purpose: Entity verification and search-based OSINT - SDK/Client: `tavily-python` library - Auth: `TAVILY_API_KEY` environment variable - Rate limit: 5 requests/minute - Implementation: `veritas/agents/graph_investigator.py` **[Threat Intelligence]:** - **URLVoid** - Domain reputation and blacklisting - Purpose: Check domain against blacklists for OSINT - Free tier: 500 requests/day - SDK/Client: Custom HTTP requests - Auth: `URLVOID_API_KEY` environment variable - Rate limit: 20 requests/minute - Implementation: `veritas/osint/sources/urlvoid.py` - **AbuseIPDB** - IP reputation and abuse reporting - Purpose: IP address threat intelligence - Free tier: 1000 requests/day - SDK/Client: Custom HTTP requests - Auth: `ABUSEIPDB_API_KEY` environment variable - Rate limit: 15 requests/minute - Implementation: `veritas/osint/sources/abuseipdb.py` ## Data Storage **Databases:** - **SQLite** (local) - Type: Relational database with async support - Connection: `sqlite+aiosqlite:///./data/veritas_audits.db` - Location: `backend/data/veritas_audits.db` - Mode: WAL (Write-Ahead Logging) for concurrent access - Client: SQLAlchemy with aiosqlite async driver - Implementation: `veritas/db/config.py`, `veritas/db/models.py`, `veritas/db/repositories.py` **File Storage:** - **Local filesystem** - Screenshots: `veritas/data/evidence/` - Reports: `veritas/data/reports/` - Cache: `veritas/data/cache/` - Vector DB: `veritas/data/vectordb/` (LanceDB-based) - Implementation: `veritas/screenshots/storage.py` **Caching:** - **LanceDB** - Vector database for semantic embeddings - Purpose: RAG and semantic search - Model: `sentence-transformers` (all-MiniLM-L6-v2, ~90MB) - Implementation: `veritas/analysis/dom_analyzer.py` for semantic retrieval - **File-based cache** - JSON cache for API responses and OSINT data: `veritas/data/cache/` - Implementation: `veritas/osint/cache.py` - **In-memory** - Python dictionary/cache for browser page state, rate limiting - Implementation: `veritas/core/progress/emitter.py`, `veritas/core/rate_limiter.py` ## Authentication & Identity **Auth Provider:** - **Custom** - No external auth provider detected - Backend uses internal JWT or token-based auth - Frontend communication via WebSocket with audit ID tokens - Implementation: `backend/routes/audit.py`, frontend hooks in `frontend/src/hooks/` ## Monitoring & Observability **Error Tracking:** - **Console logging** - Python logging via `logging` module - Logging targets: `veritas.config`, handlers in various modules - Implementation: `veritas/config/settings.py` (logger config) **Logs:** - **Stdout/Stderr** - Python logs to console (Uvicorn) - Frontend logs to browser console - Log levels configurable via Python logging - Output format: Structured JSON via progress emitters (for UI streaming) - Implementation: `veritas/core/progress/emitter.py` streams events to frontend ## CI/CD & Deployment **Hosting:** - **Not specified** - No detected CI/CD platforms (no Jenkins, GitHub Actions config, etc.) - Self-hosted deployment capable **CI Pipeline:** - **None detected** - No formal CI/CD pipeline files found - Manual deployment process - Testing: Local pytest execution ## Environment Configuration **Required env vars:** ``` NVIDIA_NIM_API_KEY=NVIDIA inference API key (REQUIRED) TAVILY_API_KEY=Tavily search API key (REQUIRED) URLVOID_API_KEY=URLVoid API key (OPTIONAL) ABUSEIPDB_API_KEY=AbuseIPDB API key (OPTIONAL) NEXT_PUBLIC_WS_URL=WebSocket URL for frontend (OPTIONAL, defaults to ws://localhost:8000) ``` **Secrets location:** - `veritas/.env` - Primary environment configuration - `backend/.env` - Backend-specific environment (loads from veritas/.env) - `.env.template` - Documentation of required variables - Files marked as sensitive in `.gitignore` (not read, but existence noted) ## Webhooks & Callbacks **Incoming:** - **Not applicable** - No incoming webhooks detected **Outgoing:** - **WebSocket streaming** - Bidirectional communication between backend and frontend - Endpoint: `/api/audit/stream/{audit_id}` - Purpose: Real-time audit event streaming - Implementation: `backend/routes/audit.py`, frontend hook `frontend/src/hooks/useAuditStream.ts` - **Direct API endpoints** (for future integrations): - `POST /api/audit/start` - Start new audit - `GET /api/health` - Health check - WebSocket: `/api/audit/stream/{id}` - Stream events - Client: Frontend WebSocket connection to backend --- *Integration audit: 2026-03-16*
+# External Integrations
+**Analysis Date:** 2026-03-16
+
+## AI & LLM APIs
+
+### NVIDIA NIM (Primary Inference Provider)
+- **Purpose:** Vision Language Models for Agent 2 (Visual Forensics) + LLM for Agent 4 (Judge)
+- **SDK/Client:** `openai>=1.0.0` Python library (OpenAI-compatible API)
+- **Auth:** `NVIDIA_NIM_API_KEY` environment variable
+- **Endpoint:** `NVIDIA_NIM_ENDPOINT` (default: https://integrate.api.nvidia.com/v1)
+- **Models:**
+  - Vision: `meta/llama-3.2-90b-vision-instruct` (primary), `microsoft/phi-3.5-vision-instruct` (fallback)
+  - LLM: `meta/llama-3.1-70b-instruct`
+- **Rate Limits:** Configurable via `NIM_REQUESTS_PER_MINUTE` (default: 40)
+- **Timeout:** 90 seconds per request
+- **Retry Logic:** Tenacity with exponential backoff (4 retries default)
+
+### Tavily (External Search)
+- **Purpose:** Search API for entity verification and OSINT
+- **SDK/Client:** `tavily-python>=0.3.0`
+- **Auth:** `TAVILY_API_KEY` environment variable
+- **Features:** External search with rate limiting (5 requests/minute default)
+
+## Data Storage
+
+### SQLite Database
+- **Type:** Local relational database (veritas_audits.db)
+- **Connection:** `veritas.db` module with async SQLAlchemy
+- **Mode:** WAL (Write-Ahead Logging) enabled
+- **ORM:** SQLAlchemy 2.x (async)
+- **Path:** `backend/data/veritas_audits.db`
+- **Models:** Audit, AuditFinding, AuditScreenshot, AuditEvent
+
+### Vector Database
+- **Product:** LanceDB 0.4.0+
+- **Purpose:** Disk-based vector store for embeddings (NOT in-memory)
+- **Path:** `veritas/data/vectordb/`
+- **Embedding Model:** all-MiniLM-L6-v2 (~90MB local model)
+
+### File Storage
+- **Screenshots:** `veritas/data/evidence/`
+- **Reports:** `veritas/data/reports/`
+- **Cache:** `veritas/data/cache/`
+- **Implementation:** Custom ScreenshotStorage class
+
+### Caching
+- **Type:** Local disk cache
+- **Location:** `veritas/data/cache/`
+- **Purpose:** OSINT responses, domain analysis results
+
+## Security & Threat Intelligence APIs
+
+### URLVoid
+- **Purpose:** Domain reputation and phishing detection
+- **Auth:** `URLVOID_API_KEY` environment variable
+- **Rate Limit:** 20 requests/minute (free tier: 500/day)
+- **Usage:** Security module - phishing database checks
+
+### AbuseIPDB
+- **Purpose:** IP reputation and threat intelligence
+- **Auth:** `ABUSEIPDB_API_KEY` environment variable
+- **Rate Limit:** 15 requests/minute (free tier: 1000/day)
+- **Usage:** OSINT/ CTI integration for malicious IP detection
+
+### Google Safe Browsing
+- **Purpose:** Phishing and malware URL checking
+- **Auth:** `GOOGLE_SAFE_BROWSING_KEY` environment variable
+- **Rate Limit:** 10,000 lookups/day (free tier)
+- **Usage:** Security module toggle (disabled by default if not configured)
+
+## Browser Automation
+
+### Playwright
+- **Version:** 1.40.0+
+- **Purpose:** Headless browser for website scraping and screenshots
+- **Configuration:**
+  - Headless: `BROWSER_HEADLESS` (default: true)
+  - Viewport: 1920x1080 (desktop), 390x844 (mobile)
+  - Browser context per audit with custom settings
+- **Timeouts:** Screenshot timeout (25s), page load timeout configurable
+
+### Tesseract OCR (Optional Fallback)
+- **Purpose:** Extract text from images if other methods fail
+- **Binary:** Path from `TESSERACT_CMD` env var
+- **Usage:** Level 3 fallback in vision analysis pipeline
+
+## Authentication & Identity
+
+**Auth Provider:** Custom/Future
+- Current: No authentication on API endpoints (CORS enabled for all origins)
+- Plan: Veritas authentication system (future)
+- Implementation: CORS middleware allows all origins (`allow_origins=["*"]`)
+
+## WebSocket & Real-Time Communication
+
+### Backend WebSocket Server
+- **Endpoint:** `ws://localhost:8000/api/audit/stream/{audit_id}`
+- **Protocol:** JSON messages over WebSocket
+- **Library:** FastAPI WebSocket + websockets 12.0
+- **Usage:** Stream real-time audit progress, findings, and events to frontend
+
+### Frontend WebSocket Client
+- **Implementation:** Native WebSocket API in React hooks
+- **Base URL:** `NEXT_PUBLIC_WS_URL` or `ws://localhost:8000`
+- **Hooks:** `useAuditStream.ts` - manages connection lifecycle
+- **State Management:** Zustand store for audit state
+
+## Monitoring & Observability
+
+**Error Tracking:** Not currently integrated
+- Backend logs: Python logging (veritas config modules)
+- Frontend logs: console.* - No external error tracking service
+
+**Logs:**
+- Python: Standard logging module with `__name__` loggers
+- Location: Console output (uvicorn server logs)
+- Frontend: Browser console
+
+## CI/CD & Deployment
+
+**Hosting:**
+- Backend: FastAPI on uvicorn (local development)
+- Frontend: Next.js 16 (local development)
+- Production: Ready for containerization (Docker not configured)
+
+**CI Pipeline:**
+- Not currently configured
+- Tests: pytest framework in `veritas/tests/` directory
+- Frontend: ESLint for code quality
+
+## Environment Configuration
+
+### Required ENV Keys (Backend/Veritas)
+- `NVIDIA_NIM_API_KEY` - AI inference (NVIDIA NIM credits)
+- `TAVILY_API_KEY` - External search
+- `URLVOID_API_KEY` - Domain reputation
+- `ABUSEIPDB_API_KEY` - IP threat intel
+- `GOOGLE_SAFE_BROWSING_KEY` - Phishing checks (optional)
+- `TOR_ENABLED` - Enable TOR routing (default: false)
+- `TOR_SOCKS_HOST`, `TOR_SOCKS_PORT` - TOR proxy config
+
+### Derived from Backend
+- `NEXT_PUBLIC_WS_URL` - Frontend WebSocket endpoint
+
+### Configuration Hierarchy
+1. Environment variables from `.env` (veritas/)
+2. Defaults in `veritas/config/settings.py`
+3. Runtime overrides in audit tiers
+
+## Webhooks & Callbacks
+
+**Incoming:**
+- None currently configured
+
+**Outgoing:**
+- WebSocket streaming events to frontend during audit execution
+- JSON events: audit progress, findings, screenshots, final report
+
+## Inter-Process Communication
+
+**Architecture:**
+- Backend (FastAPI) → Veritas agents (Python) via direct imports
+- Frontend (React) ↔ Backend via REST + WebSocket
+- Agent orchestration: LangGraph state machine from `veritas/core/orchestrator.py`
+
+**Key Files:**
+- `backend/services/audit_runner.py` - Audit lifecycle management
+- `veritas/core/orchestrator.py` - LangGraph workflow
+- `backend/routes/audit.py` - REST + WebSocket endpoints
+
+---
+*Integration audit: 2026-03-16*

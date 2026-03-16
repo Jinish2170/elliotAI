@@ -2,412 +2,218 @@
 **Analysis Date:** 2026-03-16
 
 ## Directory Layout
-
 ```
-[project-root]/
-├── backend/                          # FastAPI backend application
-│   ├── __init__.py
+C:\files\coding dev era\elliot\elliotAI/
+├── backend/                          # FastAPI backend
 │   ├── main.py                       # FastAPI app entry point
+│   ├── __init__.py                   # Package marker
+│   ├── routes/
+│   │   ├── audit.py                  # Audit start & WebSocket endpoints
+│   │   └── health.py                 # Health check
+│   ├── services/
+│   │   ├── audit_runner.py           # Orchestration bridging to veritas
+│   │   └── (other services if any)
+│   ├── data/
+│   │   └── veritas_audits.db*        # SQLite database (WAL mode)
 │   ├── requirements.txt              # Python dependencies
-│   ├── services/                     # Business logic services
-│   │   ├── audit_runner.py           # Audit execution coordinator
-│   │   └── __init__.py
-│   ├── routes/                       # API route handlers
-│   │   ├── __init__.py
-│   │   ├── audit.py                  # Audit endpoints (REST + WebSocket)
-│   │   ├── health.py                 # Health check endpoint
-│   │   └── __pycache__/
-│   ├── tests/                        # Backend tests
-│   │   ├── __init__.py
-│   │   ├── test_imports.py
-│   │   ├── test_audit_persistence.py
-│   │   ├── test_audit_route_contract.py
-│   │   └── test_audit_runner_queue.py
-│   └── data/                         # Database files
-│       ├── veritas_audits.db         # SQLite database (WAL mode)
-│       ├── veritas_audits.db-shm
-│       └── veritas_audits.db-wal
+│   └── tests/                        # Backend unit tests
 │
-├── frontend/                         # Next.js frontend application
-│   ├── src/
-│   │   ├── app/                      # Next.js App Router pages
-│   │   │   ├── layout.tsx            # Root layout (Navbar + children)
-│   │   │   ├── page.tsx              # Landing/home page
-│   │   │   ├── globals.css           # Global Tailwind styles
-│   │   │   ├── audit/
-│   │   │   │   └── [id]/             # Dynamic audit run page
-│   │   │   │       └── page.tsx      # Real-time audit page
-│   │   │   ├── report/
-│   │   │   │   └── [id]/             # Dynamic report page
-│   │   │   │       └── page.tsx      # Findings/report page
-│   │   │   ├── history/
-│   │   │   │   └── page.tsx          # Audit history page
-│   │   │   ├── compare/
-│   │   │   │   ├── page.tsx          # Compare selection page
-│   │   │   │   └── [ids]/
-│   │   │   │       └── page.tsx      # Audit comparison page
-│   │   │   └── v2/
-│   │   │       └── page.tsx          # Experimental V2 UI
-│   │   ├── components/               # React components
-│   │   │   ├── ambient/
-│   │   │   │   └── ParticleField.tsx # Background particles
-│   │   │   ├── audit/
-│   │   │   │   ├── AuditHeader.tsx
-│   │   │   │   ├── AgentCard.tsx
-│   │   │   │   ├── AgentTile.tsx
-│   │   │   │   ├── DataFeed.tsx
-│   │   │   │   ├── EventLog.tsx
-│   │   │   │   ├── MetricTicker.tsx
-│   │   │   │   ├── ActiveIntel.tsx
-│   │   │   │   ├── EvidenceStack.tsx
-│   │   │   │   ├── FindingRow.tsx
-│   │   │   │   ├── VerdictReveal.tsx
-│   │   │   │   └── ScreenshotCarousel.tsx
-│   │   │   ├── data-display/         # Visualization components
-│   │   │   │   ├── RiskBadge.tsx
-│   │   │   │   ├── SeverityBadge.tsx
-│   │   │   │   ├── SignalBar.tsx
-│   │   │   │   ├── SignalRadarChart.tsx
-│   │   │   │   ├── StatCounter.tsx
-│   │   │   │   ├── TrustGauge.tsx
-│   │   │   │   ├── DataTable.tsx
-│   │   │   │   ├── InlineSparkline.tsx
-│   │   │   │   ├── JsonTreeViewer.tsx
-│   │   │   │   └── TerminalBlock.tsx
-│   │   │   ├── layout/
-│   │   │   │   ├── Navbar.tsx
-│   │   │   │   └── PanelChrome.tsx   # Panel container component
-│   │   │   ├── landing/              # Homepage components
-│   │   │   │   ├── CommandInput.tsx  # URL input form
-│   │   │   │   ├── AgentStatus.tsx  # Agent status display
-│   │   │   │   ├── RecentAudits.tsx # Recent audits widget
-│   │   │   │   └── CapabilitiesGrid.tsx
-│   │   │   ├── report/               # Report page components
-│   │   │   │   ├── EntityIntel.tsx
-│   │   │   │   ├── EvidenceGallery.tsx
-│   │   │   │   ├── ExecSummary.tsx
-│   │   │   │   ├── FindingsPanel.tsx
-│   │   │   │   ├── MetadataGrid.tsx
-│   │   │   │   ├── RecommendationsPanel.tsx
-│   │   │   │   ├── SectionNav.tsx
-│   │   │   │   ├── SecurityMatrix.tsx
-│   │   │   │   └── SignalTable.tsx
-│   │   │   ├── terminal/             # Terminal-style components
-│   │   │   │   ├── TerminalPanel.tsx
-│   │   │   │   ├── KnowledgeGraph.tsx
-│   │   │   │   ├── DarknetOsintGrid.tsx
-│   │   │   │   ├── MitreGrid.tsx
-│   │   │   │   ├── VerdictPanel.tsx
-│   │   │   │   ├── ScoutImagery.tsx
-│   │   │   │   ├── SysLogStream.tsx
-│   │   │   │   ├── CvssRadar.tsx
-│   │   │   │   └── AgentProcState.tsx
-│   │   │   ├── ui/                   # Low-level UI primitives
-│   │   │   │   ├── AgentIcon.tsx
-│   │   │   │   └── SeverityBadge.tsx
-│   │   │   └── providers/            # React context providers
-│   │   │       └── ChromaticProvider.tsx
-│   │   ├── hooks/                    # Custom React hooks
-│   │   │   └── useAuditStream.ts     # WebSocket stream handler
-│   │   ├── lib/                      # Utility libraries
-│   │   │   ├── store.ts              # Zustand state store
-│   │   │   ├── utils.ts              # Helper functions
-│   │   │   └── education.ts          # Educational content
-│   │   └── .next/                    # Generated build output
-│   ├── public/                       # Static assets
-│   ├── package.json
-│   ├── tsconfig.json
-│   ├── next.config.ts
-│   ├── tailwind.config.ts
-│   ├── postcss.config.mjs
-│   ├── eslint.config.mjs
-│   └── README.md
+├── frontend/                         # Next.js frontend
+│   └── src/
+│       └── app/
+│           ├── layout.tsx            # Root layout
+│           ├── page.tsx              # Home dashboard
+│           ├── v2/page.tsx           # V2 interface
+│           ├── audit/
+│           │   └── [id]/page.tsx     # Live audit terminal
+│           ├── history/page.tsx      # Audit history list
+│           ├── report/[id]/page.tsx  # Audit detail report
+│           ├── compare/
+│           │   ├── page.tsx          # Comparison list
+│           │   └── [ids]/page.tsx    # Side-by-side view
+│           └── globals.css           # Tailwind + terminal styles
 │
-├── veritas/                          # Core AI/orchestration module
-│   ├── __init__.py
-│   ├── agents/                       # AI agent implementations
-│   │   ├── __init__.py
-│   │   ├── scout.py                  # Scout agent (URL discovery)
-│   │   ├── vision.py                 # Vision agent (screenshots)
-│   │   ├── graph_investigator.py    # Graph investigator (relationships)
-│   │   ├── judge.py                  # Judge agent (verdict/scoring)
-│   │   ├── security_agent.py         # Security scanning agent
-│   │   ├── scout_nav/                # Scout navigation submodule
-│   │   ├── vision/                   # Vision processing submodule
-│   │   └── judge/                    # Judge reasoning submodule
-│   ├── core/                         # Core orchestration
-│   │   ├── __init__.py
-│   │   ├── orchestrator.py           # LangGraph state machine
-│   │   ├── nodes/                    # Graph node definitions
-│   │   ├── progress/                 # Progress tracking
-│   │   ├── nim_client.py             # NVIDIA NIM API client
-│   │   ├── timeout_manager.py        # Timeout management
-│   │   ├── complexity_analyzer.py    # Complexity scoring
-│   │   ├── degradation.py            # Graceful degradation
-│   │   └── ipc.py                    # Inter-process communication
-│   ├── config/                       # Configuration
-│   │   ├── __init__.py
-│   │   ├── settings.py               # Main settings
-│   │   ├── trust_weights.py          # Trust score weights
-│   │   ├── site_types.py             # Site classification
-│   │   └── constants.py              # Constants
-│   ├── db/                           # Database layer
-│   │   ├── __init__.py
-│   │   ├── models.py                 # SQLAlchemy models
-│   │   ├── repositories.py           # Repository classes
-│   │   └── storage.py                # Screenshot storage
-│   ├── data/                         # Data files
-│   │   ├── cache/                    # LLM response cache (JSON files)
-│   │   ├── screenshots/              # Screenshot storage directory
-│   │   ├── userdata/                 # User-specific data
-│   │   └── logs/                     # Log files
-│   ├── analysis/                     # Analysis modules
-│   │   ├── security/                 # Security analysis
-│   │   └── __pycache__/
-│   ├── osint/                        # OSINT tools
-│   │   ├── orchestrator.py
-│   │   └── __pycache__/
-│   ├── cwe/                          # CWE definitions
-│   ├── darknet/                      # Dark web intelligence
-│   ├── screenshots/                  # Screenshot generation
-│   └── __pycache__/                  # Python cache
+├── veritas/                          # Core audit engine
+│   ├── __main__.py                   # CLI entry point
+│   ├── .env                          # Environment configuration
+│   ├── config/
+│   │   ├── settings.py               # Global settings + audit tiers
+│   │   ├── trust_weights.py          # Trust score calculation
+│   │   └── site_types.py             # Site classification
+│   ├── core/
+│   │   ├── orchestrator.py           # LangGraph orchestrator
+│   │   ├── nodes/                    # LangGraph node functions
+│   │   │   ├── __init__.py
+│   │   │   ├── scout_node.py
+│   │   │   ├── vision_node.py
+│   │   │   ├── graph_node.py
+│   │   │   ├── judge_node.py
+│   │   │   └── security.py
+│   │   ├── ipc.py                    # Inter-process communication
+│   │   ├── progress.py               # ProgressEmitter for WebSocket
+│   │   ├── nim_client.py             # NIM API client
+│   │   ├── timeout_manager.py        # Adaptive timeouts
+│   │   ├── complexity_analyzer.py    # Page complexity scoring
+│   │   └── degradation.py            # FallbackManager, circuit breaker
+│   ├── agents/                       # 5 forensic agents
+│   │   ├── scout.py                  # Browser automation (screenshots)
+│   │   ├── vision.py                 # NIM-based visual analysis
+│   │   ├── graph_investigator.py     # OSINT + entity verification
+│   │   ├── judge.py                  # Verdict synthesis
+│   │   └── security_agent.py         # Security scanning
+│   ├── db/
+│   │   └── veritas.db                # SQLite audit storage
+│   ├── osint/                        # OSINT integrations
+│   │   ├── ioc_detector.py           # IOC analysis
+│   │   ├── virus_total.py            # VirusTotal client
+│   │   ├── abuseipdb.py              # AbuseIPDB client
+│   │   └── (other OSINT sources)
+│   ├── darknet/                      # Darknet intelligence
+│   ├── cwe/                          # CWE vulnerability database
+│   ├── analysis/                     # Analysis utilities
+│   ├── quality/                      # Quality metrics
+│   ├── reporting/                    # Report generation
+│   └── requirements.txt              # Python dependencies
 │
-├── .planning/                        # GSD planning output
-├── .venv/                            # Python virtual environment
-├── .vscode/                          # VS Code settings
-├── .git/                             # Git repository
-├── .env                              # Environment variables (DO NOT COMMIT)
-├── README.md                         # Main documentation
-├── USER_GUIDE.md                     # User guide
-├── VERITAS_IMPLEMENTATION.md         # Implementation details
-├── _compile_test.py                  # Test utilities
-├── _test_ws.py                       # WebSocket test utility
-├── test_output.json                  # Test data
-└── patch_graph.py                    # Graph utility script
+├── .planning/                        # GSD planning (generated)
+│   ├── codebase/                     # Codebase mapping docs
+│   │   ├── ARCHITECTURE.md
+│   │   ├── STRUCTURE.md
+│   │   ├── CONCERNS.md (if concerns focus)
+│   │   └── (other focus docs)
+│   └── phases/                       # GSD phase planning
+│
+└── package.json                      # Frontend dependencies
 ```
-
----
 
 ## Directory Purposes
 
 ### Backend (`backend/`)
-**Purpose:** FastAPI web server and audit coordination
-
-**Contains:**
-- REST/WebSocket API endpoints
-- Service layer (AuditRunner)
-- Test suite
-
-**Key Files:**
-- `backend/main.py` - FastAPI app startup
-- `backend/routes/audit.py` - Audit endpoints
-- `backend/services/audit_runner.py` - Audit execution
-- `backend/data/veritas_audits.db` - SQLite database
-
----
+- **Purpose:** FastAPI REST + WebSocket server for frontend
+- **Contains:**
+  - FastAPI application setup with CORS middleware
+  - Audit API routes (start, stream, status)
+  - Services bridging HTTP to veritas orchestration
+  - SQLite database with WAL mode for concurrency
 
 ### Frontend (`frontend/`)
-**Purpose:** Next.js web application
+- **Purpose:** Next.js 14 web application with Bloomberg Terminal UI
+- **Contains:**
+  - Real-time audit terminal with WebSocket streaming
+  - History, reporting, and comparison features
+  - Darkmode terminal-styled interface
+  - Dark pattern visualization components
 
-**Contains:**
-- Pages (using App Router)
-- React components (organized by feature)
-- Hooks for state management and streaming
-- Configuration files (Tailwind, ESLint, PostCSS)
+### Core Engine (`veritas/`)
+- **Purpose:** Autonomous forensic web auditor engine
+- **Contains:**
+  - LangGraph orchestration with state machine
+  - 5 specialized agents (Scout, Vision, Graph, Judge, Security)
+  - OSINT, CWE, and darknet integrations
+  - Trust score calculation and verdict generation
 
-**Key Files:**
-- `frontend/src/app/layout.tsx` - Root layout
-- `frontend/src/app/audit/[id]/page.tsx` - Real-time audit view
-- `frontend/src/app/report/[id]/page.tsx` - Report view
-- `frontend/src/hooks/useAuditStream.ts` - WebSocket handler
-
----
-
-### Veritas Core (`veritas/`)
-**Purpose:** AI orchestration and agent framework
-
-**Contains:**
-- Multi-agent LangGraph implementation
-- Database models and repositories
-- Configuration and settings
-- Caching and utilities
-
-**Key Files:**
-- `veritas/core/orchestrator.py` - State machine definition
-- `veritas/agents/*.py` - Agent implementations
-- `veritas/db/models.py` - Database schema
-- `veritas/config/settings.py` - Feature flags
-
----
+### Planning (`.planning/`)
+- **Purpose:** GSD methodology planning documents
+- **Contains:** Architecture, structure, concerns, and implementation plans
 
 ## Key File Locations
 
 ### Entry Points
-- `backend/main.py` - FastAPI server start (run: `python backend/main.py`)
-- `frontend/src/app/layout.tsx` - Frontend root (served via `npm run dev`)
-- `frontend/src/app/page.tsx` - Home page route (`/`)
-- `frontend/src/app/audit/[id]/page.tsx` - Audit run page (`/audit/:id`)
-- `frontend/src/app/report/[id]/page.tsx` - Audit report (`/report/:id`)
+- `backend/main.py` — FastAPI server (uvicorn)
+- `veritas/__main__.py` — CLI entry (`python -m veritas`)
+- `backend/routes/audit.py` — Audit API endpoints
+- `frontend/src/app/page.tsx` — Frontend home
 
 ### Core Logic
-- `veritas/core/orchestrator.py` - LangGraph orchestration (lines 500+)
-- `backend/services/audit_runner.py` - Audit entry point
-- `backend/routes/audit.py` - API route definitions and handlers
-- `veritas/agents/judge.py` - Verdict generation logic
+- `veritas/core/orchestrator.py` — LangGraph orchestration (897 lines)
+- `backend/services/audit_runner.py` — Process execution bridge (737 lines)
+- `veritas/agents/judge.py` — Verdict computation
+- `veritas/config/trust_weights.py` — Trust score algorithm
 
-### Data & State
-- `backend/data/veritas_audits.db` - SQLite database (use SQLite viewer)
-- `veritas/data/cache/` - LLM response cache (JSON files)
-- `frontend/src/lib/store.ts` - Zustand audit state store
+### Agent Implementations
+- `veritas/agents/scout.py` — Browser automation (+300 lines)
+- `veritas/agents/vision.py` — Visual analysis with NIM
+- `veritas/agents/graph_investigator.py` — Entity/OSINT analysis
+- `veritas/agents/judge.py` — Evidence synthesis + scoring
+- `veritas/agents/security_agent.py` — Security module orchestration
+
+### Frontend Components
+- `frontend/src/app/audit/[id]/page.tsx` — Live audit terminal
+- `frontend/src/app/report/[id]/page.tsx` — Report display
+- `frontend/src/components/terminal/` — Terminal UI components
 
 ### Configuration
-- `veritas/.env` - Environment variables (not committed)
-- `veritas/config/settings.py` - Feature flags and configs
-- `frontend/next.config.ts` - Next.js configuration
-- `frontend/tailwind.config.ts` - Tailwind theme configuration
-
-### Testing
-- `backend/tests/` - Backend unit tests
-- `frontend/` - Frontend tested via Playwright or manual testing
-
----
+- `veritas/config/settings.py` — Settings + audit tier configs
+- `veritas/.env` — Environment variables
+- `backend/.env` — Backend environment variables
+- `package.json` — Frontend dependencies
 
 ## Naming Conventions
 
 ### Files
-- **Python:** `snake_case.py` (e.g., `audit_runner.py`, `orchestrator.py`)
-- **TypeScript/React:** `PascalCase.tsx` (e.g., `AuditHeader.tsx`, `AgentCard.tsx`)
-- **TypeScript utilities:** `camelCase.ts` (e.g., `useAuditStream.ts`, `utils.ts`)
-- **Config:** `snake_case.json` or `kebab-case.config.ts`
+- **Python:** snake_case (e.g., `orchestrator.py`, `audit_runner.py`)
+- **TypeScript/TSX:** kebab-case (e.g., `audit-page.tsx`)
+- **Config:** snake_case (e.g., `settings.py`, `trust_weights.py`)
 
 ### Directories
-- **Python modules:** `snake_case/` (e.g., `backend/routes/`, `veritas/agents/`)
-- **React component dirs:** `kebab-case/` (e.g., `components/audit/`)
-- **Pages:** `camelCase.ts` or `[slug]/page.tsx` for dynamic routes
+- **Python packages:** snake_case (e.g., `veritas/core/`, `veritas/agents/`)
+- **Frontend routes:** kebab-case matching URL pattern (e.g., `audit/[id]/`)
 
-### TypeScript/React
-- **Components:** `PascalCase` (e.g., `CommandInput`, `EventLog`)
-- **Hooks:** `camelCase` starting with `use` (e.g., `useAuditStream`)
-- **Utilities:** `camelCase` (e.g., `formatDate`, `calculateScore`)
-- **Constants:** `UPPER_SNAKE_CASE` (e.g., `MAX_PAGES`, `DEFAULT_TIER`)
+### Classes/Functions
+- **Classes:** PascalCase (e.g., `VeritasOrchestrator`, `AuditRunner`, `StealthScout`)
+- **Functions:** snake_case (e.g., `build_audit_graph()`, `_execute_agent_smart()`)
+- **Async functions:** Prefix with `_` for internal (e.g., `_handle_result()`)
 
-### Python
-- **Classes:** `PascalCase` (e.g., `AuditRunner`, `AuditState`)
-- **Functions/methods:** `snake_case` (e.g., `get_by_id`, `run_audit`)
-- **Constants:** `UPPER_SNAKE_CASE` (e.g., `MAX_ITERATIONS`, `DEFAULT_TIMEOUT`)
-- **Modules:** `snake_case` (e.g., `orchestrator`, `audit_runner`)
-
-### Database Models
-- **Table names:** `PascalCase` (e.g., `Audit`, `AuditFinding`)
-- **Columns:** `snake_case` (e.g., `audit_id`, `trust_score`)
-- **Enums:** `PascalCase` (e.g., `AuditStatus.COMPLETED`)
-
----
+### TypedDict/State Fields
+- **AuditState:** camelCase for fields (e.g., `audit_tier`, `scout_failures`, `nim_calls_used`)
 
 ## Where to Add New Code
 
-### New Feature (Full Stack)
-- **Backend API route**: `backend/routes/audit.py` (add new endpoint)
-- **Backend service**: `backend/services/` (create new service if needed)
-- **Frontend page**: `frontend/src/app/feature/` (new directory)
-- **Frontend components**: `frontend/src/components/feature/` (new directory)
-- **State management**: `frontend/src/lib/store.ts` or new hook
+### New Feature
+- **Primary code:** Add to corresponding agent in `veritas/agents/`, or new module in `veritas/core/`
+- **Tests:** Add to agent's test file or create `veritas/tests/test_feature.py`
+- **Integration:** If needs orchestrator update → modify node in `veritas/core/nodes/`
 
-### New Agent (AI Layer)
-- **Agent file**: `veritas/agents/new_agent.py` (implement agent logic)
-- **Orchestrator node**: Add to `veritas/core/orchestrator.py` (add graph node)
-- **Result types**: Define dataclass for agent output
-- **Integration**: Update `veritas/agents/__init__.py` to export
+### New Agent
+- **Implementation:** Create new file in `veritas/agents/` (e.g., `new_agent.py`)
+- **Orchestrator:** Add node to `veritas/core/nodes/` and update `orchestrator.py`'s graph
+- **Tests:** Create `veritas/tests/test_new_agent.py`
 
-### New Page (Frontend)
-- **Route**: `frontend/src/app/page-name/page.tsx` (App Router file-based)
-- **Components**: `frontend/src/components/page-name/` (colocate components)
-- **State**: Use existing store or create new hook (`usePageName.ts`)
-- **Type definitions**: Add to `frontend/src/types/` if needed
+### New Frontend Page/Feature
+- **Implementation:** Create route in `frontend/src/app/` (e.g., `dashboard/`)
+- **Components:** Create in `frontend/src/components/` or co-locate
+- **API Integration:** Add WebSocket or REST call in page component
 
-### New Component (UI)
-- **Location**: `frontend/src/components/[category]/ComponentName.tsx`
-- **Category choices**: `audit/`, `data-display/`, `terminal/`, `report/`, `layout/`, `ui/`
-- **Testing**: Add `ComponentName.test.tsx` or test in page
+### Utilities
+- **Backend:** Add to `backend/services/` or `veritas/analysis/`
+- **Frontend:** Add to `frontend/src/lib/` or `frontend/src/utils/`
 
-### New Utility Function
-- **Location**: `frontend/src/lib/utils.ts` (general), `frontend/src/lib/education.ts` (content)
-- **Pattern**: Export named functions, use TypeScript
-- **Backend utilities**: `backend/utils/` or appropriate service module
-
-### Database Changes
-- **Models**: Add to `veritas/db/models.py` (SQLAlchemy models)
-- **Repository**: Add to `veritas/db/repositories.py` (add methods)
-- **Migration**: Not required for SQLite (schema managed by code)
-- **Seed data**: Add to test fixtures or verification scripts
-
-### Configuration Changes
-- **Feature flags**: `veritas/config/settings.py` (add to Settings class)
-- **Frontend config**: `frontend/next.config.ts` or `tailwind.config.ts`
-- **Environment**: Add to `veritas/.env` (NEVER commit these)
-
----
+### Configuration
+- **Global settings:** Edit `veritas/config/settings.py`
+- **Trust weights:** Edit `veritas/config/trust_weights.py`
+- **Environment:** Update `veritas/.env` (DO NOT commit secrets)
 
 ## Special Directories
 
-### `.planning/`
-- **Purpose**: GSD planning documents and phase definitions
-- **Generated**: Yes
-- **Committed**: Yes (to share planning context)
+### `.planning/` (Created by GSD)
+- **Purpose:** Store architecture, structure, and implementation planning
+- **Generated:** Yes
+- **Committed:** Yes (tracked in git)
 
-### `.venv/`
-- **Purpose**: Python virtual environment with dependencies
-- **Generated**: Yes (by `python -m venv .venv`)
-- **Committed**: No (in `.gitignore`)
+### `.venv/` (Virtual Environment)
+- **Purpose:** Python virtual environment for dependencies
+- **Generated:** Yes (during setup)
+- **Committed:** No (ignored in .gitignore)
 
-### `frontend/.next/`
-- **Purpose**: Next.js build output (transpiled and optimized)
-- **Generated**: Yes (by `npm run build`)
-- **Committed**: No
+### `veritas/screenshots/` (Artifacts)
+- **Purpose:** Store captured screenshots during audits
+- **Generated:** Yes (during execution)
+- **Committed:** No (ignored)
 
-### `veritas/data/cache/`
-- **Purpose**: LLM response cache (JSON files keyed by hash)
-- **Generated**: Yes (at runtime)
-- **Committed**: Yes (persist across restarts)
-
-### `veritas/data/screenshots/`
-- **Purpose**: Audit screenshot storage
-- **Generated**: Yes (by Vision agent)
-- **Committed**: Yes (persisted to disk)
-
-### `__pycache__/`
-- **Purpose**: Python bytecode cache
-- **Generated**: Yes (automatic)
-- **Committed**: No
-
----
-
-## Project-Specific Patterns
-
-### API Pattern (REST + WebSocket)
-- REST for initial request/response cycle
-- WebSocket for streaming events during audit
-- Two-way communication via event types
-
-### Agent Pattern (LangGraph)
-- State machine with typed state (AuditState)
-- Nodes return partial state updates
-- Conditional edges for control flow
-
-### Component Pattern (React)
-- Feature-based organization (audit, report, terminal)
-- Colocation of related files
-- Composition over inheritance
-
-### State Pattern (Zustand)
-- Single store for audit state (`useAuditStore`)
-- Actions for state mutations
-- Persist partial state across page navigations
-
-### Database Pattern (Repository)
-- Async session management
-- Repository classes per entity
-- Cascade deletes for related entities (e.g., findings, screenshots)
+### `backend/data/` (Database)
+- **Purpose:** SQLite database files with WAL mode
+- **Generated:** Yes (during init)
+- **Committed:** No (though .db-wal and .db-shm are in git status)
 
 ---
 

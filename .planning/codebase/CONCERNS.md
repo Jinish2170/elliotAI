@@ -3,214 +3,62 @@
 
 ## Tech Debt
 
-### Data Forwarding Issue in Frontend
-**Issue:** Backend fields not forwarded to audit result event
-**Files:** `frontend/src/lib/types.ts` (line 820)
-**Impact:** Frontend cannot display dual_verdict and trust_score_result fields from judge_decision
-**Fix approach:** Wire the missing fields from backend `judge_decision` to the `audit_result` WebSocket event emission in `backend/services/audit_runner.py`
+**Frontend-Backend Event Wiring Incomplete:**
+- Issue: `audit_result` event lacks fields that exist in backend `judge_decision`
+- Files: `frontend/src/lib/types.ts:820-823` (TODO markers)
+- Impact: UI cannot display `trust_score_result`, `dual_verdict`, `judge_decision` data
+- Fix approach: Extend WebSocket event forward in `backend/routes/audit.py` to include these fields
 
-### MarketPlace Feed Test Failures
-**Issue:** Pytest fixture configuration errors for marketplace feed tests
-**Files:** `veritas/tests/unit/test_marketplace_feeds.py`
-**Impact:** 8+ marketplace and Tor2Web test failures due to "fixture 'mock_open' not found" - the `@patch("builtins.open", MagicMock())` decorator is not properly injected into pytest's fixture scope
-**Fix approach:** Convert the patch decorator to a pytest fixture or use dependency injection in the test setup
+**Empty Return Patterns (Stub Implementations):**
+- Files: `veritas/agents/graph_investigator.py:109,507,551,555,568,572,585-587,649,1024`, `veritas/analysis/pattern_matcher.py:192,203,228,423,430,434,438`, `backend/services/audit_runner.py:269`
+- Issue: Silent fallback to empty results instead of raising errors
+- Impact: Failures mask as "no findings" rather than surfacing issues
+- Fix approach: Replace `return None`/`return []` with proper error propagation
 
-### Database State Concurrency Issues
-**Issue:** SQLite shared memory and write-ahead log files modified
-**Files:** `backend/data/veritas_audits.db-shm`, `backend/data/veritas_audits.db-wal`
-**Impact:** Database may have uncommitted transactions or corruption from concurrent access. These are binary artifacts that should not be tracked in git
-**Fix approach:**
-- Add `*.db-shm` and `*.db-wal` to `.gitignore`
-- Implement proper database connection pooling or WAL mode handling
-- Ensure all database operations use context managers or proper session lifecycle
+**OSINT Sources Incomplete:**
+- Files: `.planning/phases/08-osint-cti-integration/FUTURE_EXPANSION.md` (lines 11-179)
+- Issue: 9 external sources stubbed as TODO (alienvault, spamhaus, virustotal, etc.)
+- Impact: Limited threat intelligence - only darknet sources active
+- Fix approach: Implement source adapters per phase plan
 
-## Known Bugs
+## Known Issues
 
-### Tor2Web De-Anonymization Detection Failures
-**Symptoms:** Multiple test failures in `test_marketplace_feeds.py` for Tor2Web detection:
-- `test_is_tor2web_url_detects_gateway` - FAILED
-- `test_query_detects_gateway` - FAILED
-- `test_query_multiple_gateways` - FAILED
-- `test_check_headers_with_referrer_gateway` - FAILED
-- `test_check_headers_with_forwarded_for` - FAILED
-**Files:** `veritas/tests/unit/test_marketplace_feeds.py`, `veritas/osint/sources/tor2web.py`, `veritas/osint/sources/tor2web_deanon.py`
-**Trigger:** Running marketplace feed tests
-**Workaround:** None identified - detection logic needs review
+**Database Persistence Not Fully Operational:**
+- Issue: Phase 05 implementation incomplete - audit results may not persist
+- Files: `.planning/phases/05-persistent-audit-storage/05-02-PLAN.md:148-154`
+- Impact: Audit history lost on restart; no audit history for re-judging
+- Fix approach: Enable `should_use_db_persistence()` and complete repository wiring
 
-### Marketplace Threat Data Query Failures
-**Symptoms:** Tests return ERROR for:
-- `test_queries_known_onion` for AlphaBay, Hansa, Empire, Dream, WallStreet
-- `test_marketplace_threat_data_creation` - FAILED
-- `test_to_dict_conversion` - FAILED
-**Files:** `veritas/tests/unit/test_marketplace_feeds.py`, `veritas/osint/sources/marketplace_feeds.py`
-**Trigger:** Querying marketplace threat data sources
-**Workaround:** Tests are failing at setup phase due to fixture issues
+**Graph Investigator Error Handling:**
+- Issue: Broad `except Exception` handlers returning empty dicts
+- Files: `veritas/agents/graph_investigator.py:412-422,497-505,541-555`
+- Impact: Network/API errors silently fail; no retry or fallback paths visible
+- Fix approach: Add circuit breaker and error categorization
 
-## Security Considerations
+## Security Concerns
 
-### Hardcoded API Key Handling
-**Risk:** API keys potentially loaded from environment variables but no validation
-**Files:** `veritas/config/settings.py`, `veritas/agents/graph_investigator.py`
-**Current mitigation:** Uses settings module that loads from environment
-**Recommendations:**
-- Add runtime validation for required API keys (Tavily, OpenAI, etc.)
-- Implement API key presence checks before attempting to use clients
-- Add secrets rotation mechanism documentation
-- Consider using a secrets manager service
+**Input Validation on Audit Endpoint:**
+- Files: `backend/routes/audit.py:40-44` (AuditStartRequest)
+- Issue: Minimal validation on `url` and `tier` parameters
+- Current: Uses Pydantic but allows any string for tier
+- Recommendation: Add enum validation and URL sanitization before passing to agents
 
-### Network Requests to Third-Party Services
-**Risk:** Multiple external API integrations (AbuseIPDB, Tavily, darknet marketplaces)
-**Files:** `veritas/osint/sources/`, `veritas/agents/graph_investigator.py`
-**Current mitigation:** Rate limiting implemented with exponential backoff in most sources
-**Recommendations:**
-- Add request validation/sanitization to prevent injection attacks
-- Implement timeouts (some async timeouts configured, but not comprehensive)
-- Add request logging for audit trail
-- Consider implementing certificate pinning for known APIs
-
-### Sensitive Form Detection
-**Risk:** Agent detects and flags forms posting sensitive data (passwords, credit cards)
-**Files:** `veritas/agents/graph_investigator.py` (lines 1254-1262)
-**Current mitigation:** Detection logic exists but evidence storage may need encryption
-**Recommendations:** Ensure evidence store uses encrypted file storage for sensitive indicators
-
-## Performance Bottlenecks
-
-### Multi-Agent Orchestration Overhead
-**Problem:** LangGraph orchestration may have significant overhead for parallel agent execution
-**Files:** `veritas/core/orchestrator.py`, `veritas/agents/graph_investigator.py`
-**Cause:** Sequential agent execution with complex state management; no parallel execution optimization observed
-**Improvement path:**
-- Evaluate parallel agent execution where agents are independent
-- Profile orchestrator overhead vs agent execution time
-- Implement agent result caching to avoid redundant calls
-
-### Vector Database Operations
-**Problem:** LanceDB with sentence-transformers model loading (MiniLM-L6-v2 ~90MB)
-**Files:** `veritas/agents/graph_investigator.py` (RAG implementation)
-**Cause:** Loading large embedding model per request without caching
-**Improvement path:**
-- Implement persistent vector DB client pooling
-- Add embedding result caching at query level
-- Consider using GPU acceleration if available
-
-### Adaptive Timeout Calculation
-**Problem:** Complexity analyzer extracts 15 metrics per analysis - may add latency
-**Files:** `veritas/core/complexity_analyzer.py`, `veritas/core/timeout_manager.py`
-**Cause:** Running complexity analysis on every audit adds computational overhead
-**Improvement path:**
-- Cache complexity analysis results for repeated audits
-- Implement lazy complexity evaluation (only when timeout issues occur)
+**Environment Secrets Management:**
+- Note: `.env` file present at `veritas/.env` (loaded via `load_dotenv`)
+- Risk: If `.env` committed to git, secrets exposed
+- Current: `.gitignore` checked - ensure it excludes `.env`
+- Recommendation: Verify no secrets in committed files
 
 ## Fragile Areas
 
-### Marketplace Feed Data Files
-**Files:** `veritas/data/marketplace_threat_data.json`, `veritas/data/*.json`
-**Why fragile:** JSON data files loaded at runtime; file not found or malformed JSON causes failures
-**Safe modification:** Add error handling with fallback to empty result on file read failures; add JSON schema validation on load
-**Test coverage:** Current tests mock the file I/O but don't test malformed JSON handling
+**IPC Layer State Consistency:**
+- Files: `veritas/core/ipc.py`, `backend/services/audit_runner.py`
+- Risk: In-memory audit state (`_audits` dict in audit.py) not persisted
+- Trigger: Server restart loses all audit metadata
+- Test coverage: Low - only basic IPC tests exist
 
-### Tor2Web Detection Logic
-**Files:** `veritas/osint/sources/tor2web_deanon.py`, `veritas/analysis/security/tor2web.py`
-**Why fragile:** Relies on HTTP header patterns that change frequently (referrer, forwarded-for headers)
-**Safe modification:** Make detection pattern matching configurable; add version tracking for pattern updates
-**Test coverage:** Test failures indicate logic may need updates
-
-### Darknet Marketplace Integration
-**Files:** `veritas/osint/sources/darknet_alpha.py`, `veritas/osint/sources/darknet_hansa.py`, etc.
-**Why fragile:** Direct HTTP requests to onion services without proxy rotation or error recovery
-**Safe modification:** Implement persistent Tor proxy with circuit rotation; add retry with different guards
-**Test coverage:** Tests currently use mock data; no real endpoint testing
-
-## Scaling Limits
-
-### WebSocket Progress Streaming
-**Current capacity:** Based on token-bucket rate limiting in `ProgressEmitter`
-**Limit:** Single broadcast to all connected clients; no per-client control demonstrated
-**Scaling path:** Implement per-client subscription management with backpressure handling; add message batching for high-frequency updates
-
-### Agent Result Storage
-**Current capacity:** SQLite database for audit persistence; evidence in filesystem
-**Limit:** Single-file SQLite will have write contention under concurrent audits; filesystem storage not designed for multi-node deployment
-**Scaling path:** Implement PostgreSQL with connection pooling; use cloud object storage (S3) for evidence
-
-## Dependencies at Risk
-
-### LangChain/LangGraph
-**Risk:** Both at >=0.3.0/0.2.0 respectively; these are fast-moving libraries with frequent breaking changes
-**Impact:** Upgrades may break existing orchestrator or agent patterns
-**Migration plan:**
-- Pin to specific minor versions in requirements.txt
-- Implement comprehensive integration tests to catch breaking changes early
-- Monitor LangChain changelog for security patches
-
-### Playwright
-**Risk:** Browser automation library at >=1.40.0
-**Impact:** Browser compatibility issues may cause test failures or security vulnerabilities
-**Migration plan:**
-- Regularly update to latest stable versions
-- Implement browser binary caching strategy
-- Monitor CVE notifications
-
-### Sentence-Transformers
-**Risk:** Model loading from cloud (HuggingFace); network dependency
-**Impact:** If HuggingFace is unavailable, all RAG operations fail
-**Migration plan:**
-- Download and cache models locally
-- Implement fallback to simpler embeddings if model unavailable
-
-## Missing Critical Features
-
-### Error Recovery for Partial Agent Failures
-**Problem:** Full audit fails if single agent fails; no graceful degradation
-**Files:** `veritas/core/orchestrator.py`
-**Blocks:** Production use where resilience is critical
-
-### Audit Result Diff/Calculation Logic
-**Problem:** Audit delta calculation assumes valid data and proper sorting
-**Files:** `backend/routes/audit.py` (lines 323-326)
-**Blocks:** Historical audit comparison and trend analysis
-
-### Comprehensive Health Checks
-**Problem:** No health endpoint for verifying dependencies (DB, VectorDB, APIs)
-**Blocks:** Production deployment monitoring and deployment automation
-
-## Test Coverage Gaps
-
-### MarketPlace Feed Integration Tests
-**What's not tested:**
-- Real marketplace endpoint connectivity
-- Malformed JSON handling in data files
-- Rate limiting behavior under load
-**Files:** `veritas/tests/unit/test_marketplace_feeds.py`
-**Risk:** Integration failures won't be caught until production
-**Priority:** High
-
-### Security Analysis Module Tests
-**What's not tested:**
-- Cross-site scripting (XSS) detection in JavaScript analyzer
-- Form analysis validation
-- OWASP-specific rule coverage
-**Files:** `veritas/analysis/security/owasp/*.py`, `veritas/analysis/js_analyzer.py`
-**Risk:** Security vulnerabilities may be undetected
-**Priority:** High
-
-### End-to-End Orchestration Tests
-**What's not tested:**
-- Full audit lifecycle without mocked components
-- Database rollback on failure scenarios
-- Concurrent audit execution
-**Files:** `veritas/tests/`
-**Risk:** Integration bugs causing audit failures in production
-**Priority:** High
-
-### Frontend Type Safety
-**What's not tested:**
-- Missing type wiring (the TODO at line 820)
-- Type validation on WebSocket event payloads
-**Files:** `frontend/src/lib/types.ts`
-**Risk:** Runtime errors or silent data loss
-**Priority:** Medium
-
----
-*Concerns audit: 2026-03-16*
+**Orchestrator Complexity:**
+- Files: `veritas/core/orchestrator.py` (200+ lines, multi-agent coordination)
+- Issue: Max iterations/cycles could exhaust resources on malicious targets
+- Current mitigation: Budget controls exist but not tested
+- Safe modification: Requires extensive integration testing
