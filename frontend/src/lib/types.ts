@@ -891,6 +891,7 @@ export const RISK_COLORS: Record<string, string> = {
   suspicious: "#F59E0B",
   high_risk: "#F97316",
   likely_fraudulent: "#EF4444",
+  dangerous: "#DC2626",
 };
 
 export const RISK_LABELS: Record<string, string> = {

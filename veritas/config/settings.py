@@ -391,3 +391,31 @@ logger.info(
     f"Database Persistence: USE_DB_PERSISTENCE={USE_DB_PERSISTENCE}"
 )
 
+
+# ============================================================
+# Startup Validation (Critical Environment Variables)
+# ============================================================
+def _validate_environment() -> list[str]:
+    """Validate required environment variables at startup.
+
+    Returns:
+        List of missing required variable names (empty if all present).
+    """
+    missing: list[str] = []
+
+    # Critical API keys that must be set for functionality
+    if not NIM_API_KEY:
+        missing.append("NVIDIA_NIM_API_KEY")
+        logger.warning("Missing required environment variable: NVIDIA_NIM_API_KEY")
+
+    return missing
+
+
+# Run validation at module import time
+_missing_vars = _validate_environment()
+if _missing_vars:
+    logger.warning(
+        f"VERITAS started with {len(_missing_vars)} missing required environment variables. "
+        f"Some features may not work correctly. Missing: {_missing_vars}"
+    )
+

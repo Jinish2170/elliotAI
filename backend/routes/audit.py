@@ -5,11 +5,12 @@ Audit routes — Start + WebSocket stream.
 import asyncio
 import json
 import logging
+import re
 from datetime import datetime
 from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, WebSocket, WebSocketDisconnect
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -25,9 +26,6 @@ logger = logging.getLogger("veritas.routes.audit")
 # Screenshot storage instance
 screenshot_storage = ScreenshotStorage()
 
-# Lazy-initialized repository (per-request via DbSession)
-_repo_cache: dict[str, AuditRepository] = {}
-
 router = APIRouter(tags=["audit"])
 
 # Dependency injection type for database sessions
@@ -37,11 +35,47 @@ DbSession = Annotated[AsyncSession, Depends(get_db)]
 _audits: dict[str, dict] = {}
 
 
+# URL validation regex pattern
+_URL_PATTERN = re.compile(
+    r'^https?://'  # http:// or https://
+    r'(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+[A-Z]{2,6}\.?|'
+    r'localhost|'
+    r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})'
+    r'(?::\d+)?'
+    r'(?:/?|[/?]\S+)$',
+    re.IGNORECASE
+)
+
+_VALID_TIERS = {"quick_scan", "standard_audit", "deep_forensic", "darknet_investigation"}
+_VALID_VERDICT_MODES = {"simple", "expert"}
+
+
 class AuditStartRequest(BaseModel):
     url: str
     tier: str = "standard_audit"
     verdict_mode: str = "expert"
     security_modules: Optional[list[str]] = None
+
+    @field_validator('url')
+    @classmethod
+    def validate_url(cls, v: str) -> str:
+        if not v or not _URL_PATTERN.match(v):
+            raise ValueError('Invalid URL format. Must be a valid HTTP/HTTPS URL.')
+        return v
+
+    @field_validator('tier')
+    @classmethod
+    def validate_tier(cls, v: str) -> str:
+        if v not in _VALID_TIERS:
+            raise ValueError(f'Invalid tier. Must be one of: {", ".join(_VALID_TIERS)}')
+        return v
+
+    @field_validator('verdict_mode')
+    @classmethod
+    def validate_verdict_mode(cls, v: str) -> str:
+        if v not in _VALID_VERDICT_MODES:
+            raise ValueError(f'Invalid verdict_mode. Must be one of: {", ".join(_VALID_VERDICT_MODES)}')
+        return v
 
 
 class AuditStartResponse(BaseModel):

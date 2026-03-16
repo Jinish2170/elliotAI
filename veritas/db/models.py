@@ -96,6 +96,7 @@ class Audit(Base):
         Index("idx_audits_status", "status"),
         Index("idx_audits_created_at", "created_at"),
         Index("idx_audits_trust_score", "trust_score"),
+        Index("idx_audits_risk_level", "risk_level"),
         Index("idx_audits_url", "url"),
     )
 

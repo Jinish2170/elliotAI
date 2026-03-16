@@ -42,7 +42,11 @@ build/
 
 # Ignore environment files
 .env
-.env.*
+.env.local
+.env.development
+.env.production
+# But allow .env.example for documentation
+!.env.example
 
 # Ignore data folders (veritas)
 veritas/data/cache/
