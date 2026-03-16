@@ -95,7 +95,7 @@ class ProgressEmitter:
         event = {
             "type": event_type,
             "priority": priority,
-            "seq": self.sequence_number,
+            "sequence": self.sequence_number,
             "timestamp": time.time(),
             **kwargs,
         }

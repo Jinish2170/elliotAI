@@ -17,10 +17,10 @@ export function VerdictPanel({
     return (
       <div className="flex flex-col items-center justify-center p-4 text-center w-full h-full border border-[var(--t-red)] bg-[#1a0505]">
         <div className="text-[var(--t-red)] font-bold text-lg mb-2 glitch-text animate-pulse">
-           [!] FATAL INITIATION ERROR
+          [!] FATAL INITIATION ERROR
         </div>
         <div className="text-[var(--t-red)] text-xs font-mono uppercase tracking-widest break-words whitespace-pre-wrap max-w-full">
-           {error || "TARGET UNREACHABLE OR OFFLINE. NO VERDICT CAN BE RENDERED."}
+          {error || "TARGET UNREACHABLE OR OFFLINE. NO VERDICT CAN BE RENDERED."}
         </div>
       </div>
     );
@@ -30,7 +30,7 @@ export function VerdictPanel({
     return <GhostPanel message="AWAITING VERDICT STREAM..." />;
   }
 
-  const score = trustScore ?? (verdict?.verdict_technical?.trust_score || 0);
+  const score = Number(trustScore ?? verdict?.verdict_technical?.trust_score ?? 0);
   const isHighRisk = score < 40;
   const isMedium = score >= 40 && score < 70;
   const colorClass = isHighRisk
@@ -39,11 +39,11 @@ export function VerdictPanel({
     ? "text-[var(--t-amber)] glow-text-amber"
     : "text-[var(--t-green)] glow-text-green";
 
-  const riskLevel =
-    verdict?.verdict_technical?.risk_level?.toUpperCase() ||
+  const riskLevel = verdict?.verdict_technical?.risk_level?.toUpperCase() ||
     (isHighRisk ? "CRITICAL RISK" : isMedium ? "MODERATE RISK" : "NOMINAL");
 
   const summaryStr =
+    verdict?.verdict_nontechnical?.summary ||
     verdict?.verdict_nontechnical?.executive_summary ||
     "Awaiting continuous synthesis...";
 
@@ -55,7 +55,7 @@ export function VerdictPanel({
           [ TRUST_IDX ]
         </div>
         <div className={`text-[72px] font-bold leading-none ${colorClass}`}>
-          {score.toFixed(1)}
+          {isNaN(score) ? "0.0" : score.toFixed(1)}
         </div>
         <div className={`text-[12px] font-bold mt-1 ${colorClass} tracking-widest`}>
           {riskLevel}

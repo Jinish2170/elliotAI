@@ -24,11 +24,11 @@ export function KnowledgeGraph({ findings = [], knowledgeGraph = null }: Advance
       // Use real generated graph
       rawNodes = knowledgeGraph.nodes.map((n: any, idx: number) => ({
         id: n.id || 'node-'+idx,
-        label: n.type || n.label || "NODE",
+        label: n.label || n.node_type || n.type || "NODE",
         isRoot: n.id === "root" || idx === 0,
-        color: ["threat", "IOCNode", "MITRETacticNode", "ClaimNode"].includes(n.node_type || n.type) ? "var(--t-red)" : ["agent_result", "EvidenceNode", "EntityNode", "OSINTSourceNode"].includes(n.node_type || n.type) ? "var(--t-amber)" : "var(--t-cyan)", label: n.label || n.node_type || n.type || "NODE" 
+        color: ["threat", "IOCNode", "MITRETacticNode", "ClaimNode"].includes(n.node_type || n.type) ? "var(--t-red)" : ["agent_result", "EvidenceNode", "EntityNode", "OSINTSourceNode"].includes(n.node_type || n.type) ? "var(--t-amber)" : "var(--t-cyan)"
       }));
-      
+
       const nodeMap = new Map(rawNodes.map(n => [n.id, n]));
       rawEdges = (knowledgeGraph.edges || []).map((e: any) => ({
         source: nodeMap.get(e.source) || rawNodes[0],
@@ -141,7 +141,8 @@ export function KnowledgeGraph({ findings = [], knowledgeGraph = null }: Advance
       ctx.lineWidth = 1.5;
       for (const link of simLinks) {
         if (!link.target || !link.source) continue;
-        if (!Number.isFinite(link.source.x) || !Number.isFinite(link.target.x) || !Number.isFinite(link.source.y) || !Number.isFinite(link.target.y)) continue; const grad = ctx.createLinearGradient(link.source.x, link.source.y, link.target.x, link.target.y);
+        if (!Number.isFinite(link.source.x) || !Number.isFinite(link.target.x) || !Number.isFinite(link.source.y) || !Number.isFinite(link.target.y)) continue;
+        const grad = ctx.createLinearGradient(link.source.x, link.source.y, link.target.x, link.target.y);
         grad.addColorStop(0, "rgba(0,255,65,0.4)");
         grad.addColorStop(1, "rgba(0,255,65,0.1)");
         ctx.strokeStyle = grad;
@@ -149,7 +150,7 @@ export function KnowledgeGraph({ findings = [], knowledgeGraph = null }: Advance
         ctx.moveTo(link.source.x, link.source.y);
         ctx.lineTo(link.target.x, link.target.y);
         ctx.stroke();
-        
+
         // Flow dots
         const flowPos = (time * 0.5 + Math.random()*0.1) % 1;
         const dotX = link.source.x + (link.target.x - link.source.x) * flowPos;
@@ -172,14 +173,14 @@ export function KnowledgeGraph({ findings = [], knowledgeGraph = null }: Advance
         }
 
         const colorStr = getComputedStyle(document.documentElement).getPropertyValue(n.color.replace('var(', '').replace(')', '')) || "#00FF41";
-        
+
         ctx.shadowColor = colorStr;
         ctx.shadowBlur = n.isRoot ? 15 : 5;
-        
+
         ctx.fillStyle = colorStr;
         ctx.beginPath();
         if (!Number.isFinite(n.x) || !Number.isFinite(n.y)) continue;
-          ctx.arc(n.x, n.y, n.isRoot ? 7 : 3, 0, Math.PI * 2);
+        ctx.arc(n.x, n.y, n.isRoot ? 7 : 3, 0, Math.PI * 2);
         ctx.fill();
 
         ctx.shadowBlur = 0; // reset for text
@@ -212,7 +213,3 @@ export function KnowledgeGraph({ findings = [], knowledgeGraph = null }: Advance
     </div>
   );
 }
-
-
-
-
