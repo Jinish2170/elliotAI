@@ -105,12 +105,16 @@ function AuditPageContent({ id }: { id: string }) {
             {/* Zone 2: Verdict */}
             <TerminalPanel title="VERDICT.MATRIX" className="h-[25%] flex justify-center items-center">
               <VerdictPanel 
-                verdict={store.result ? { 
-                  risk_level: store.result.risk_level, 
-                  narrative: store.result.narrative,
-                  signal_scores: store.result.signal_scores
-                } : null}
-                trustScore={store.result?.trust_score}
+ verdict={store.dualVerdict ? {
+ verdict_technical: {
+ trust_score: store.dualVerdict?.trust_score,
+ risk_level: store.dualVerdict?.non_technical?.risk_level || store.result?.risk_level || 'unknown'
+ },
+ verdict_nontechnical: {
+ summary: store.dualVerdict?.non_technical?.summary || store.result?.narrative || ''
+ }
+ } : null}
+ trustScore={store.dualVerdict?.trust_score ?? store.result?.trust_score}
                 status={store.status}
                 error={store.error}
               />
