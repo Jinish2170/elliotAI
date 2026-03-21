@@ -287,10 +287,10 @@
   border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: var(--t-base); border-left: 1px solid var(--t-border); }
+::-webkit-scrollbar-thumb { background: var(--t-dim); border-radius: 0; }
+::-webkit-scrollbar-thumb:hover { background: var(--t-text); }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
@@ -418,34 +418,29 @@
   /* Hard Viewport Lock to prevent responsive wrapping */
   min-width: 1280px;
   height: 100vh;
+  padding-top: 48px; /* Height of the floating Navbar */
   overflow: hidden;
   display: flex;
   flex-direction: column;
 }
 
-.veritas-terminal * {
-  border-radius: 0px !important;
-  scrollbar-width: none; /* Firefox */
-}
 .veritas-terminal *::-webkit-scrollbar {
   display: none; /* Chrome/Safari */
 }
 
 /* Zone Structure */
 .veritas-terminal-grid {
-  display: grid;
+  display: flex;
   flex: 1;
-  height: calc(100vh - 5vh); /* Remaining viewport under the ticker */
-  grid-template-columns: 20fr 55fr 25fr; /* Left Rail | Center Matrix | Right Rail */
-  grid-template-rows: 100%;
+  min-height: 0;
   gap: 2px;
-  background-color: var(--t-border); /* Will bleed through gaps as borders */
-  padding: 2px; /* Outer border */
+  background-color: var(--t-border); /* Bleeds through as borders */
+  padding: 2px; /* Outer padding */
 }
 
 /* Panel Containers */
 .t-panel {
-  background-color: var(--t-panel);
+  background: var(--t-panel);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -453,15 +448,18 @@
 
 /* Title bars for panels */
 .t-panel-header {
-  background-color: #111;
-  color: var(--t-dim);
-  font-size: 10px;
+  background-color: #1a1a1a;
+  color: var(--t-amber);
+  font-family: var(--font-geist-mono);
+  font-size: 11px;
+  font-weight: bold;
   text-transform: uppercase;
   padding: 4px 8px;
   border-bottom: 1px solid var(--t-border);
   display: flex;
   justify-content: space-between;
   align-items: center;
+  letter-spacing: 0.05em;
 }
 
 .glow-text-green { text-shadow: 0 0 5px var(--t-green); color: var(--t-green); }

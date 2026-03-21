@@ -72,7 +72,7 @@ export function RecentAudits() {
           return (
             <Link
               key={audit.id}
-              href={"/audit/"}
+              href={`/audit/${audit.id}`}
               className={"block border border-[var(--t-border)] bg-[#111] p-2 hover:border-[#00FF41] transition-colors cursor-pointer group"}
             >
               <div className="flex justify-between items-center mb-1">

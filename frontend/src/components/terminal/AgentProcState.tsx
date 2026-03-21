@@ -21,8 +21,8 @@ export function AgentProcState({
     <div className="w-full h-full p-2 overflow-y-auto flex flex-col gap-[2px]">
       {AGENT_ORDER.map((agentId) => {
         const pState = phases[agentId as Phase];
-        const isActive = activePhase === agentId;
-        const isComplete = pState?.status === "complete";
+        const isComplete = pState?.status === "complete" || status === "complete";
+        const isActive = activePhase === agentId && status !== "complete";
         const isError = pState?.status === "error";
         
         let headerColor = "text-[var(--t-dim)] border-[var(--t-border)]";

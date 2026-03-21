@@ -4,8 +4,17 @@ import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Responsi
 import { GhostPanel } from "./TerminalPanel";
 import type { CVSSMetric } from "@/lib/types";
 
-export function CvssRadar({ metrics }: { metrics: CVSSMetric[] }) {
-  if (!metrics || metrics.length === 0) return <GhostPanel message="AWAITING VECTOR CALCULATION" />;
+export function CvssRadar({ metrics, status }: { metrics: CVSSMetric[], status?: string }) {
+  if (!metrics || metrics.length === 0) {
+    if (status === "complete") {
+      return (
+        <div className="w-full h-full flex flex-col items-center justify-center p-4 text-center bg-[var(--t-green)]/5">
+          <span className="text-[var(--t-green)]/50 font-mono text-[10px] uppercase tracking-widest">[ NO CVEs DETECTED ]</span>
+        </div>
+      );
+    }
+    return <GhostPanel message="AWAITING VECTOR CALCULATION" />;
+  }
   
   // Transform metrics
   const sevMap: Record<string, number> = { CRITICAL: 4, HIGH: 3, MEDIUM: 2, LOW: 1, NONE: 0 };

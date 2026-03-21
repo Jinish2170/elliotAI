@@ -82,17 +82,24 @@ class AuditRunner:
         
         await send({"type": "phase_start", "phase": "scout", "message": "Pre-flight verification..."})
         try:
-            # 5-second DNS/HEAD check to fail fast for garbage URLs
+            # 15-second DNS/HEAD check to fail fast for garbage URLs
             req = urllib.request.Request(self.url, method="HEAD", headers={'User-Agent': 'Veritas/(+https://github.com)'})
-            await asyncio.to_thread(urllib.request.urlopen, req, timeout=5.0)
-        except URLError as e:
+            await asyncio.to_thread(urllib.request.urlopen, req, timeout=15.0)
+        except (URLError, TimeoutError, OSError) as e:
             # Revert to standard GET in case HEAD is blocked
             try:
-                if "HTTP Error" in str(e) or "HTTP Error 405" in str(e) or "HTTP Error 403" in str(e):
-                    pass # We reached the server, let Playwright handle the heavy lifting
+                err_str = str(e)
+                if any(code in err_str for code in ("HTTP Error 405", "HTTP Error 403", "HTTP Error 301", "HTTP Error 302", "HTTP Error")):
+                    pass  # We reached the server, let Playwright handle the heavy lifting
+                elif isinstance(e, TimeoutError):
+                    # Server is slow but might be reachable — let Playwright try
+                    logger.warning(f"[{self.audit_id}] Pre-flight HEAD timed out for {self.url}, proceeding anyway")
                 else:
                     req = urllib.request.Request(self.url, headers={'User-Agent': 'Veritas/(+https://github.com)'})
-                    await asyncio.to_thread(urllib.request.urlopen, req, timeout=5.0)
+                    await asyncio.to_thread(urllib.request.urlopen, req, timeout=15.0)
+            except TimeoutError:
+                # Timeout on GET fallback — still let Playwright try
+                logger.warning(f"[{self.audit_id}] Pre-flight GET also timed out for {self.url}, proceeding anyway")
             except Exception as e2:
                 err_msg = f"FATAL PRE-FLIGHT: Target {self.url} is unreachable or invalid. ({str(e2)})"
                 logger.error(f"[{self.audit_id}] {err_msg}")

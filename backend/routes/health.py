@@ -4,6 +4,7 @@ import logging
 from typing import Any
 
 from fastapi import APIRouter
+from sqlalchemy import text
 
 logger = logging.getLogger("veritas.routes.health")
 
@@ -31,7 +32,7 @@ async def health_check() -> dict[str, Any]:
         if should_use_db_persistence():
             from veritas.db import get_db
             async for db in get_db():
-                await db.execute("SELECT 1")
+                await db.execute(text("SELECT 1"))
                 health["database"] = "connected"
                 break
     except Exception as e:

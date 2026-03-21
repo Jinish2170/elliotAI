@@ -1,4 +1,3 @@
-// Export all components from one index for clean page.tsx imports
 export { TerminalPanel, GhostPanel, PanelErrorBoundary } from "./TerminalPanel";
 export { VerdictPanel } from "./VerdictPanel";
 export { CvssRadar } from "./CvssRadar";
@@ -8,3 +7,7 @@ export { SysLogStream } from "./SysLogStream";
 export { AgentProcState } from "./AgentProcState";
 export { ScoutImagery } from "./ScoutImagery";
 export { KnowledgeGraph } from "./KnowledgeGraph";
+export { VisionIntelligence } from "./VisionIntelligence";
+export { ThreatIntelligenceMatrix } from "./ThreatIntelligenceMatrix";
+export { ScoutTelemetry } from "./ScoutTelemetry";
+export { FinalAuditReport } from "./FinalAuditReport";

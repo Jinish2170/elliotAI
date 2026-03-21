@@ -687,7 +687,18 @@ function processSingleEvent(
     }
 
     case "audit_complete": {
-      set({ status: "complete" });
+      // Finalize all phases: mark any still-active phases as complete
+      const finalizedPhases = { ...state.phases };
+      for (const key of Object.keys(finalizedPhases) as Phase[]) {
+        if (finalizedPhases[key].status === "active") {
+          finalizedPhases[key] = {
+            ...finalizedPhases[key],
+            status: "complete",
+            message: finalizedPhases[key].message || "Done",
+          };
+        }
+      }
+      set({ status: "complete", currentPhase: null, phases: finalizedPhases });
       break;
     }
 
@@ -1115,31 +1126,26 @@ function processSingleEvent(
 
     case "navigation_start": {
       const navigation = event as unknown as NavigationStartEvent;
+      // Only update scout status if scout isn't already complete
+      const scoutNav = state.phases.scout.status === "complete"
+        ? state.phases.scout
+        : { ...state.phases.scout, status: "active" as const, message: `Navigating to: ${navigation.url}` };
       set({
         navigationEvents: [...state.navigationEvents, navigation],
-        phases: {
-          ...state.phases,
-          scout: {
-            ...state.phases.scout,
-            status: "active",
-            message: `Navigating to: ${navigation.url}`,
-          },
-        },
+        phases: { ...state.phases, scout: scoutNav },
       });
       break;
     }
 
     case "navigation_complete": {
       const navigation = event as unknown as NavigationCompleteEvent;
+      // Only update scout message if scout isn't already complete
+      const scoutNavComplete = state.phases.scout.status === "complete"
+        ? state.phases.scout
+        : { ...state.phases.scout, message: `Navigation ${navigation.status}: ${navigation.duration_ms}ms` };
       set({
         navigationEvents: [...state.navigationEvents, navigation],
-        phases: {
-          ...state.phases,
-          scout: {
-            ...state.phases.scout,
-            message: `Navigation ${navigation.status}: ${navigation.duration_ms}ms`,
-          },
-        },
+        phases: { ...state.phases, scout: scoutNavComplete },
       });
       break;
     }
@@ -1157,15 +1163,12 @@ function processSingleEvent(
 
     case "scroll_event": {
       const scrollEvent = event as unknown as ScrollEvent;
+      const scoutScroll = state.phases.scout.status === "complete"
+        ? state.phases.scout
+        : { ...state.phases.scout, message: `Scroll cycle ${scrollEvent.cycle}: lazy_load=${scrollEvent.has_lazy_load}, stabilized=${scrollEvent.stabilized}` };
       set({
         navigationEvents: [...state.navigationEvents, scrollEvent],
-        phases: {
-          ...state.phases,
-          scout: {
-            ...state.phases.scout,
-            message: `Scroll cycle ${scrollEvent.cycle}: lazy_load=${scrollEvent.has_lazy_load}, stabilized=${scrollEvent.stabilized}`,
-          },
-        },
+        phases: { ...state.phases, scout: scoutScroll },
       });
       break;
     }

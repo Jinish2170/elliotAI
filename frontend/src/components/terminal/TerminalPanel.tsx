@@ -58,10 +58,12 @@ export function TerminalPanel({ title, status, children, className = "" }: Termi
 
 export function GhostPanel({ message = "AWAITING STREAM..." }: { message?: string }) {
   return (
-    <div className="flex-1 flex items-center justify-center p-4">
-      <span className="text-[var(--t-dim)] font-mono text-[10px] uppercase tracking-widest animate-pulse">
-        [ {message} ]
-      </span>
+    <div className="flex-1 flex flex-col items-center justify-center p-4 overflow-hidden relative" style={{ minHeight: '100px' }}>
+      <div className="relative z-10 w-full flex items-center justify-center">
+        <span className="bg-black/80 px-2 py-1 text-[var(--t-amber)] font-mono text-[10px] uppercase tracking-widest border border-[var(--t-amber)]/20 shadow-[0_0_10px_rgba(255,170,0,0.1)]">
+          <span className="animate-pulse mr-2">▶</span> {message}
+        </span>
+      </div>
     </div>
   );
 }

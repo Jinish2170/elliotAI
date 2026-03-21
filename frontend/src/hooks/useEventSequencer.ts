@@ -24,7 +24,7 @@ export class EventSequencer {
 
   constructor() {
     this.store = new Map();
-    this.nextSequence = 0;
+    this.nextSequence = 1;
   }
 
   /**
@@ -72,7 +72,7 @@ export class EventSequencer {
    */
   reset(): void {
     this.store.clear();
-    this.nextSequence = 0;
+    this.nextSequence = 1;
   }
 
   /**

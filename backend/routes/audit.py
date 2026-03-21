@@ -132,8 +132,11 @@ async def stream_audit(ws: WebSocket, audit_id: str, db: DbSession):
         security_modules=audit_info.get("security_modules"),
     )
 
+    _ws_closed = False
+
     async def send_event(data: dict):
         """Send a JSON event to the WebSocket client."""
+        nonlocal _ws_closed
         event_type = data.get("type")
         if event_type == "audit_result":
             audit_info["result"] = data.get("result")
@@ -143,10 +146,14 @@ async def stream_audit(ws: WebSocket, audit_id: str, db: DbSession):
             # Handle screenshot persistence (Plan 05-04)
             await _handle_screenshot_event(audit_id, data, db)
 
+        # Guard: don't attempt to send on a closed/closing WebSocket
+        if _ws_closed:
+            return
         try:
             await ws.send_json(data)
         except Exception as e:
-            logger.warning(f"[{audit_id}] Failed to send WS event: {e}")
+            _ws_closed = True
+            logger.warning(f"[{audit_id}] Failed to send WS event (marking closed): {e}")
 
     try:
         await runner.run(send_event)
@@ -158,14 +165,19 @@ async def stream_audit(ws: WebSocket, audit_id: str, db: DbSession):
         logger.info(f"[{audit_id}] Client disconnected")
         audit_info["status"] = "disconnected"
     except Exception as e:
-        logger.error(f"[{audit_id}] Audit failed: {e}", exc_info=True)
+        error_msg = str(e)
+        # Provide a friendlier message for common timeout errors
+        if isinstance(e, TimeoutError) or "timed out" in error_msg.lower():
+            error_msg = f"Audit timed out while scanning {audit_info.get('url', 'target')}. The site may be too slow or blocking automated requests."
+        logger.error(f"[{audit_id}] Audit failed: {error_msg}", exc_info=True)
         audit_info["status"] = "error"
         # Save error to database when audit fails (implementation in Plan 05-04)
-        await on_audit_error(audit_id, str(e), db)
-        try:
-            await ws.send_json({"type": "audit_error", "error": str(e)})
-        except Exception:
-            pass
+        await on_audit_error(audit_id, error_msg, db)
+        if not _ws_closed:
+            try:
+                await ws.send_json({"type": "audit_error", "error": error_msg})
+            except Exception:
+                pass
     finally:
         try:
             await ws.close()

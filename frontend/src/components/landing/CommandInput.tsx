@@ -13,7 +13,7 @@ import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 import { cn } from "@/lib/utils";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
 const TIERS = [
   { id: "quick_scan", label: "QUICK", time: "~60s", pages: "1-3 pages" },
