@@ -509,12 +509,14 @@ class VeritasOrchestrator:
         # Reset quality penalty for each audit
         self._accumulated_quality_penalty = 0.0
 
+        max_iters_for_tier = max(settings.MAX_ITERATIONS, tier_config["pages"] + 1)
+        
         # Add complexity tracking fields to state
         state_with_complexity = {
             "url": url,
             "audit_tier": tier,
             "iteration": 0,
-            "max_iterations": settings.MAX_ITERATIONS,
+            "max_iterations": max_iters_for_tier,
             "max_pages": tier_config["pages"],
             "status": "running",
             "scout_results": [],
@@ -555,7 +557,7 @@ class VeritasOrchestrator:
             await self._progress_emitter.emit_agent_status("Orchestrator", "running", f"Starting audit: {url}")
 
         try:
-            for iteration in range(settings.MAX_ITERATIONS):
+            for iteration in range(state["max_iterations"]):
                 state["iteration"] = iteration + 1
                 logger.info(f"--- Iteration {state['iteration']} ---")
                 self._emit("iteration", "start", 5, f"Iteration {state['iteration']}", iteration=state["iteration"])

@@ -190,7 +190,9 @@ class PageMetadata:
     images_count: int = 0
     has_ssl: bool = False
     cookies_count: int = 0
-
+    page_text: str = ""
+    local_storage_keys: list[str] = field(default_factory=list)
+    session_storage_keys: list[str] = field(default_factory=list)
 
 @dataclass
 class ScoutResult:
@@ -410,6 +412,25 @@ class StealthScout:
                     viewport_used=viewport,
                     user_agent_used=user_agent,
                 )
+
+            # --- Deep OSINT / Interaction Mode ---
+            try:
+                await page.evaluate("""
+                    () => {
+                        const bannerSelectors = [
+                            '#cookie-banner', '#cookie-notice', '.cookie-consent',
+                            '[id*="cookie"]', '[class*="cookie"]', '[id*="consent"]',
+                            '#CybotCookiebotDialog'
+                        ];
+                        for (let sel of bannerSelectors) {
+                            try {
+                                document.querySelectorAll(sel).forEach(el => el.remove());
+                            } catch(e) {}
+                        }
+                    }
+                """)
+            except Exception:
+                pass
 
             # --- CAPTCHA Check ---
             if await self._detect_captcha(page):
@@ -676,6 +697,9 @@ class StealthScout:
                     "images_count": metadata.images_count,
                     "has_ssl": metadata.has_ssl,
                     "cookies_count": metadata.cookies_count,
+                    "page_text": metadata.page_text,
+                    "local_storage_keys": metadata.local_storage_keys,
+                    "session_storage_keys": metadata.session_storage_keys,
                 },
                 links=metadata.links_external[:50],
                 forms_detected=len(metadata.forms),
@@ -863,6 +887,9 @@ class StealthScout:
                     "has_ssl": metadata.has_ssl,
                     "internal_links_count": len(metadata.links_internal),
                     "external_links_count": len(metadata.links_external),
+                    "page_text": metadata.page_text,
+                    "local_storage_keys": metadata.local_storage_keys,
+                    "session_storage_keys": metadata.session_storage_keys,
                 },
                 forms_detected=len(metadata.forms),
                 ioc_detected=ioc_detected,
@@ -1374,6 +1401,9 @@ class StealthScout:
                         externalLinks: [...externalLinks],
                         imagesCount: document.querySelectorAll('img').length,
                         hasSSL: window.location.protocol === 'https:',
+                        pageText: document.body ? document.body.innerText : '',
+                        lsKeys: Object.keys(window.localStorage || {}),
+                        ssKeys: Object.keys(window.sessionStorage || {})
                     };
                 }
             """)
@@ -1396,6 +1426,9 @@ class StealthScout:
                 images_count=meta.get("imagesCount", 0),
                 has_ssl=meta.get("hasSSL", False),
                 cookies_count=len(cookies),
+                page_text=meta.get("pageText", ""),
+                local_storage_keys=meta.get("lsKeys", []),
+                session_storage_keys=meta.get("ssKeys", [])
             )
         except Exception as e:
             logger.warning(f"Metadata extraction failed: {e}")

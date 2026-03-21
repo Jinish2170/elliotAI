@@ -276,13 +276,18 @@ class JudgeAgent:
                 )
                 return True
 
-        # Only checked 1 page — should check more if page budget allows
-        if len(evidence.scout_results) == 1 and evidence.iteration < 2 and evidence.pages_investigated < evidence.max_pages:
-            # Check if there are important subpages to investigate
-            scout = evidence.scout_results[0]
+        # Advanced Tier investigation: Always investigate more if we have budget!
+        # This addresses the problem where it stops at 2 pages maximum.
+        if evidence.pages_investigated < evidence.max_pages and evidence.iteration < evidence.max_iterations:
+            # Only loop if we have found some meaningful links to follow
+            scout = evidence.scout_results[-1]
             if scout.status == "SUCCESS" and scout.page_metadata:
-                # Has forms or many links — worth deeper look
-                if scout.forms_detected > 0:
+                links = scout.page_metadata.get("internal_links", [])
+                if isinstance(links, list) and len(links) > 0:
+                    logger.info(f"Budget allows more investigation ({evidence.pages_investigated}/{evidence.max_pages}). Requesting deeper scan.")
+                    return True
+                # If metadata wasn't a dict or internal_links missing, we might fallback
+                elif hasattr(scout, 'links') and scout.links:
                     return True
 
         return False
@@ -328,8 +333,10 @@ class JudgeAgent:
             else:
                 other_urls.append(url)
 
-        # Select top URLs to investigate (max 2 per iteration)
-        investigate = (priority_urls + other_urls)[:2]
+        # Max 2 URLs per investigation batch so the graph doesn't queue infinitely in one state,
+        # but tier budget limits max total iterations organically.
+        max_batch = 2 if evidence.max_pages <= 5 else 4
+        investigate = (priority_urls + other_urls)[:max_batch]
 
         reason = self._build_investigation_reason(evidence)
 
