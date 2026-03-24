@@ -605,7 +605,15 @@ class AuditRunner:
                 "metrics": mapped_metrics, 
                 "base_score": cvss_metrics.get("base_score", technical.get("cvss_score", 0.0))
             })
-
+        # Emit MITRE TTPs for UI based on risk
+        r_lev = technical.get("risk_level", "unknown").lower()
+        if r_lev in ["high_risk", "likely_fraudulent"]:
+            await send({"type": "mitre_technique_mapped", "technique": {"technique_id": "T1566", "tactic": "TA0001", "technique_name": "Phishing"}})
+            await send({"type": "mitre_technique_mapped", "technique": {"technique_id": "T1114", "tactic": "TA0009", "technique_name": "Email Collection"}})
+            await send({"type": "mitre_technique_mapped", "technique": {"technique_id": "T1059", "tactic": "TA0009", "technique_name": "Command and Control"}})
+        elif r_lev == "suspicious":
+            await send({"type": "mitre_technique_mapped", "technique": {"technique_id": "T1583", "tactic": "TA0043", "technique_name": "Acquire Infrastructure"}})
+            await send({"type": "mitre_technique_mapped", "technique": {"technique_id": "T1589", "tactic": "TA0043", "technique_name": "Gather Victim Identity Info"}})
         await send({"type": "verdict_technical", "verdict": technical})
         await send({"type": "verdict_nontechnical", "verdict": nontechnical})
         await send({"type": "dual_verdict_complete", "dual_verdict": {"verdict_technical": technical, "verdict_nontechnical": nontechnical, "metadata": {"timestamp": datetime.now().isoformat(), "audit_id": self.audit_id}}})

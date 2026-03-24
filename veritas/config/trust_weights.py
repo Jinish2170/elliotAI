@@ -4,12 +4,12 @@ Veritas — Trust Score Weights & Override Rules
 Implements the weighted multi-signal scoring formula with Bayesian
 prior interpolation:
 
-    effective_i = Si × Ci + prior × (1 − Ci)    # prior = 0.5
+    effective_i = Si × Ci + prior × (1 − Ci)    # prior = 0.85
     TrustScore  = Σ(wi × effective_i) × 100
 
 Theory: Each signal Si is a noisy observation of site trustworthiness.
 Confidence Ci represents how informative the observation is.  When Ci
-is low the posterior regresses toward the uninformative prior (0.5)
+is low the posterior regresses toward the optimistic prior (0.85)
 rather than toward zero, which would wrongly penalise the site.
 
 Hard-stop override rules can then cap or force the score regardless
@@ -326,10 +326,10 @@ def compute_trust_score(
     #   effective = raw × confidence + prior × (1 − confidence)
     #
     # When confidence → 1  →  effective ≈ raw  (evidence dominates)
-    # When confidence → 0  →  effective ≈ 0.5  (no information → neutral)
+    # When confidence → 0  →  effective ≈ 0.85 (no information → innocent until proven guilty)
     # This prevents low-confidence signals from dragging the score
     # toward zero, which would be a false accusation.
-    PRIOR = 0.5  # maximally uninformative prior
+    PRIOR = 0.85  # Optimistic prior (sites are safe by default without evidence)
 
     weighted_breakdown = {}
     raw_total = 0.0
@@ -366,7 +366,7 @@ def compute_trust_score(
         elif rule.id == "new_domain_low_graph":
             graph_signal = signals.get("graph")
             graph_score = graph_signal.raw_score if graph_signal else 0
-            if domain_age_days is not None and domain_age_days < 7 and graph_score < 0.3:
+            if domain_age_days is not None and 0 <= domain_age_days < 7 and graph_score < 0.3:
                 fired = True
         elif rule.id == "fake_timer_detected" and "fake_countdown" in temporal_findings:
             fired = True
@@ -393,10 +393,10 @@ def compute_trust_score(
             if rule.id == "paranoia_no_ssl" and ssl_status is False:
                 fired = True
             elif rule.id == "paranoia_new_domain":
-                if domain_age_days is not None and domain_age_days < 30:
+                if domain_age_days is not None and 0 <= domain_age_days < 30:
                     fired = True
             elif rule.id == "paranoia_hidden_whois_new":
-                if is_privacy_protected and domain_age_days is not None and domain_age_days < 90:
+                if is_privacy_protected and domain_age_days is not None and 0 <= domain_age_days < 90:
                     fired = True
             elif rule.id == "paranoia_phishing_hit" and is_phishing:
                 fired = True

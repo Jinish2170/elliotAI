@@ -74,7 +74,7 @@ export function VerdictPanel({
     <div className="flex w-full h-full p-0">
       {/* 1) SCORE BLOCK (Left) */}
       <div className="flex flex-col items-center justify-center min-w-[140px] px-4 border-r border-[var(--t-border)]">
-        <div className="text-[var(--t-dim)] text-[10px] uppercase mb-1 tracking-widest">
+        <div className="text-[var(--t-dim)] text-[11px] uppercase mb-1 tracking-widest">
           [ TRUST_SCORE ]
         </div>
         <div className={`text-[64px] font-bold leading-none ${colorClass}`}>
@@ -89,7 +89,7 @@ export function VerdictPanel({
       <div className="flex-1 flex flex-row h-full overflow-hidden">
         {/* Technical Persona */}
         <div className="flex-1 flex flex-col p-4 border-r border-[var(--t-border)] overflow-y-auto">
-          <div className="text-[var(--t-cyan)] text-[10px] uppercase mb-2 tracking-widest shrink-0 border-b border-[var(--t-cyan)] pb-1 w-full opacity-80">
+          <div className="text-[var(--t-cyan)] text-[11px] uppercase mb-2 tracking-widest shrink-0 border-b border-[var(--t-cyan)] pb-1 w-full opacity-80">
             [ FORENSIC ANALYSIS ]
           </div>
           <div className="text-[12px] leading-relaxed text-[var(--t-text)] opacity-90 whitespace-pre-wrap font-mono pr-2">
@@ -97,9 +97,9 @@ export function VerdictPanel({
           </div>
           {verdict?.recommendations && verdict.recommendations.length > 0 && (
             <div className="mt-4 flex flex-col gap-1">
-              <div className="text-[10px] text-[var(--t-dim)] mb-1">REMEDIATION:</div>
+              <div className="text-[11px] text-[var(--t-dim)] mb-1">REMEDIATION:</div>
               {verdict.recommendations.map((r: string, idx: number) => (
-                <div key={idx} className="text-[10px] text-[var(--t-amber)]">► {r}</div>
+                <div key={idx} className="text-[11px] text-[var(--t-amber)]">► {r}</div>
               ))}
             </div>
           )}
@@ -107,7 +107,7 @@ export function VerdictPanel({
 
         {/* Non-Technical Persona */}
         <div className="flex-1 flex flex-col p-4 overflow-y-auto">
-          <div className="text-[var(--t-green)] text-[10px] uppercase mb-2 tracking-widest shrink-0 border-b border-[var(--t-green)] pb-1 w-full opacity-80">
+          <div className="text-[var(--t-green)] text-[11px] uppercase mb-2 tracking-widest shrink-0 border-b border-[var(--t-green)] pb-1 w-full opacity-80">
             [ EXECUTIVE SUMMARY ]
           </div>
           <div className="text-[13px] leading-relaxed text-[var(--t-text)] opacity-90 whitespace-pre-wrap font-sans pr-2">
@@ -115,7 +115,7 @@ export function VerdictPanel({
           </div>
           {verdict?.simple_recommendations && verdict.simple_recommendations.length > 0 && (
             <div className="mt-4 flex flex-col gap-1">
-              <div className="text-[10px] text-[var(--t-dim)] mb-1">ADVISORY:</div>
+              <div className="text-[11px] text-[var(--t-dim)] mb-1">ADVISORY:</div>
               {verdict.simple_recommendations.map((r: string, idx: number) => (
                 <div key={idx} className="text-[11px] text-[var(--t-green)] font-sans">• {r}</div>
               ))}

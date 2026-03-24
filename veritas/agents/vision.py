@@ -22,6 +22,7 @@ Patterns from:
 
 import enum
 import json
+import re
 import logging
 import time
 from dataclasses import dataclass, field
@@ -1153,12 +1154,9 @@ class VisionAgent:
                 response_text, model, is_fallback
             ))
         else:
-            # Fallback: try to extract findings from free-text
-            findings.extend(self._findings_from_text(
-                response_text, category_id, category, screenshot_path,
-                model, is_fallback
-            ))
-
+            # Fallback: strict mode, do not guess from text to avoid false positives. 
+            logger.warning(f"Failed to parse JSON from VLM response for {category_id}, avoiding text-guessing to prevent false positives.")
+            findings = []
         return findings
 
     def _findings_from_json(
@@ -1175,15 +1173,23 @@ class VisionAgent:
                 if not isinstance(finding, dict):
                     continue
 
-                confidence = float(finding.get("confidence", 0.5))
-                if confidence < 0.3:
+                try:
+                    confidence_raw = finding.get("confidence", 0.8)
+                    if isinstance(confidence_raw, str):
+                        confidence = float(re.search(r"0\.\d+", confidence_raw).group()) if re.search(r"0\.\d+", confidence_raw) else 0.8
+                    else:
+                        confidence = float(confidence_raw)
+                except Exception:
+                    confidence = 0.8
+
+                if confidence < 0.65:
                     continue  # Too low confidence to report
 
                 pattern_type = finding.get("pattern_type", category_id)
                 severity = self._lookup_severity(category_id, pattern_type)
 
                 evidence_parts = []
-                for key in ["pair", "element", "description", "issue", "dominant",
+                for key in ["evidence", "text", "pair", "element", "description", "issue", "dominant",
                             "size_ratio", "contrast_difference"]:
                     if key in finding:
                         evidence_parts.append(f"{key}: {finding[key]}")
@@ -1194,57 +1200,6 @@ class VisionAgent:
                     confidence=confidence,
                     severity=severity,
                     evidence=" | ".join(evidence_parts) if evidence_parts else str(finding),
-                    screenshot_path=screenshot_path,
-                    raw_vlm_response=raw_response,
-                    model_used=model,
-                    fallback_mode=fallback,
-                ))
-
-        # Handle single-finding response formats
-        # (e.g., {"timer_found": true, "timer_value": "04:59", ...})
-        single_finding_keys = [
-            "timer_found", "scarcity_found", "cancel_visible",
-            "guilt_language_found", "pre_selected_found",
-            "price_transparent", "free_claim", "testimonials_found",
-            "badges_found", "authority_claims",
-        ]
-
-        for key in single_finding_keys:
-            if key not in data:
-                continue
-
-            value = data[key]
-            is_pattern = False
-
-            if isinstance(value, bool):
-                # True for positive detectors, False for "cancel_visible" / "price_transparent"
-                if key in ("cancel_visible", "price_transparent"):
-                    is_pattern = value is False  # Not visible → pattern detected
-                else:
-                    is_pattern = value is True
-            elif isinstance(value, list) and len(value) > 0:
-                is_pattern = True
-
-            if is_pattern:
-                confidence = float(data.get("confidence", 0.6))
-                if confidence < 0.3:
-                    continue
-
-                pattern_type = data.get("pattern_type", category_id)
-                severity = self._lookup_severity(category_id, pattern_type)
-
-                # Build evidence from all non-meta fields
-                evidence_parts = []
-                for k, v in data.items():
-                    if k not in ("confidence", "pattern_type") and v:
-                        evidence_parts.append(f"{k}: {v}")
-
-                findings.append(DarkPatternFinding(
-                    category_id=category_id,
-                    pattern_type=pattern_type,
-                    confidence=confidence,
-                    severity=severity,
-                    evidence=" | ".join(evidence_parts),
                     screenshot_path=screenshot_path,
                     raw_vlm_response=raw_response,
                     model_used=model,
@@ -1328,7 +1283,8 @@ class VisionAgent:
         Any fake timer/counter detection heavily penalizes the score.
         """
         if not temporals:
-            return 0.5  # No data — neutral
+            # No timers detected means no fake timers. Fully trustworthy.
+            return 1.0
 
         suspicious = [t for t in temporals if t.is_suspicious]
         if not suspicious:

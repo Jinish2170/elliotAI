@@ -9,7 +9,7 @@ export function CvssRadar({ metrics, status }: { metrics: CVSSMetric[], status?:
     if (status === "complete") {
       return (
         <div className="w-full h-full flex flex-col items-center justify-center p-4 text-center bg-[var(--t-green)]/5">
-          <span className="text-[var(--t-green)]/50 font-mono text-[10px] uppercase tracking-widest">[ NO CVEs DETECTED ]</span>
+          <span className="text-[var(--t-green)]/50 font-mono text-[11px] uppercase tracking-widest">[ NO CVEs DETECTED ]</span>
         </div>
       );
     }
@@ -28,7 +28,7 @@ export function CvssRadar({ metrics, status }: { metrics: CVSSMetric[], status?:
 
   return (
     <div className="w-full h-full relative p-2 flex flex-col">
-      <div className="flex flex-col gap-[2px] z-10 text-[9px] text-[var(--t-dim)] mb-2 shrink-0">
+      <div className="flex flex-col gap-[2px] z-10 text-[11px] text-[var(--t-dim)] mb-2 shrink-0">
          {metrics.slice(0, 4).map((m, i) => (
            <div key={i} className="flex justify-between w-full uppercase">
              <span className="truncate pr-2">{m.name}</span>
@@ -42,7 +42,7 @@ export function CvssRadar({ metrics, status }: { metrics: CVSSMetric[], status?:
         <ResponsiveContainer width="100%" height="100%">
           <RadarChart cx="50%" cy="50%" outerRadius="60%" data={data}>
             <PolarGrid stroke="var(--t-border)" />
-            <PolarAngleAxis dataKey="subject" tick={{ fill: "var(--t-text)", fontSize: 9, fontFamily: "monospace" }} />
+            <PolarAngleAxis dataKey="subject" tick={{ fill: "var(--t-text)", fontSize: 10, fontFamily: "monospace" }} />
             <PolarRadiusAxis angle={30} domain={[0, 4]} tick={false} axisLine={false} />
             <Radar name="Threat" dataKey="A" stroke="var(--t-red)" fill="var(--t-red)" fillOpacity={0.25} />
           </RadarChart>

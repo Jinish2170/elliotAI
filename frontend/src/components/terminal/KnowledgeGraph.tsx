@@ -86,13 +86,11 @@ export function KnowledgeGraph({ findings = [], knowledgeGraph = null }: Advance
 
     const tick = () => {
       time += 0.05;
-      const centerForce = 0.04;
-      const repelForce = 150;
-      const springLength = 60;
-      const springK = 0.03;
-      const damping = 0.8;
-
-      // Reset root to center with slight orbital shift
+        const centerForce = 0.08;
+        const repelForce = 350;
+        const springLength = 80;
+        const springK = 0.05;
+        const damping = 0.7;
       if (simNodes[0]) {
         simNodes[0].x = W / 2 + Math.cos(time) * 5;
         simNodes[0].y = H / 2 + Math.sin(time) * 5;
@@ -182,51 +180,75 @@ export function KnowledgeGraph({ findings = [], knowledgeGraph = null }: Advance
 
         const colorStr = getComputedStyle(document.documentElement).getPropertyValue(n.color.replace('var(', '').replace(')', '')) || "#00FF41";
         
-        // Advanced icons rendering
-        let iconChar = "●";
-        let iconFont = "12px 'JetBrains Mono', monospace";
-        if (n.type === "IOCNode") iconChar = "⚡";
-        else if (n.type === "MITRETacticNode") iconChar = "⚔️";
-        else if (n.type === "OSINTSourceNode") iconChar = "🌐";
-        else if (n.type === "EntityNode") iconChar = "👤";
-        else if (n.type === "threat") iconChar = "💀";
-        else if (n.isRoot) iconChar = "🎯";
+          let iconChar = "●";
+          let iconFont = "12px 'JetBrains Mono', monospace";
+          if (n.type === "IOCNode") iconChar = "⚡";
+          else if (n.type === "MITRETacticNode") iconChar = "⚔️";
+          else if (n.type === "OSINTSourceNode") iconChar = "🌐";
+          else if (n.type === "EntityNode") iconChar = "👤";
+          else if (n.type === "threat") iconChar = "💀";
+          else if (n.isRoot) iconChar = "🎯";
 
-        ctx.shadowColor = colorStr;
-        ctx.shadowBlur = n.isRoot ? 20 : 10;
-        
-        ctx.fillStyle = colorStr;
-        // Central circle behind icon
-        ctx.beginPath();
-        if (!Number.isFinite(n.x) || !Number.isFinite(n.y)) continue;
-        ctx.arc(n.x, n.y, n.isRoot ? 9 : 5, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.shadowBlur = 0; // reset
+          ctx.shadowColor = colorStr;
+          ctx.shadowBlur = n.isRoot ? 25 : 15;
 
-        // Draw icon
-        ctx.fillStyle = "#fff";
-        ctx.font = iconFont;
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText(iconChar, n.x, n.y);
+          const size = n.isRoot ? 12 : 7;
+          
+          // Outer Glow Tech Bracket
+          ctx.strokeStyle = colorStr;
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.moveTo(n.x - size, n.y - size/2);
+          ctx.lineTo(n.x - size, n.y - size);
+          ctx.lineTo(n.x - size/2, n.y - size);
+          ctx.stroke();
 
-        if (n.isRoot || simNodes.length < 25) {
-          ctx.fillStyle = "rgba(255,255,255,0.8)";
-          ctx.font = n.isRoot ? "bold 10px 'JetBrains Mono', monospace" : "9px 'JetBrains Mono', monospace";
+          ctx.beginPath();
+          ctx.moveTo(n.x + size, n.y + size/2);
+          ctx.lineTo(n.x + size, n.y + size);
+          ctx.lineTo(n.x + size/2, n.y + size);
+          ctx.stroke();
+
+          // Central fill
+          ctx.fillStyle = "rgba(0,0,0,0.8)";
+          ctx.beginPath();
+          ctx.rect(n.x - size + 2, n.y - size + 2, size*2 - 4, size*2 - 4);
+          ctx.fill();
+          
+          ctx.fillStyle = colorStr;
+          ctx.globalAlpha = 0.2;
+          ctx.fill();
+          ctx.globalAlpha = 1.0;
+
+          ctx.shadowBlur = 0; // reset
+
+          // Draw icon
+          ctx.fillStyle = colorStr;
+          ctx.font = iconFont;
           ctx.textAlign = "center";
-          ctx.fillText(n.label.substring(0,14), n.x, n.y + 14);
+          ctx.textBaseline = "middle";
+          ctx.fillText(iconChar, n.x, n.y);
+
+          if (n.isRoot || simNodes.length < 25) {
+            ctx.fillStyle = "rgba(255,255,255,0.8)";
+            ctx.font = n.isRoot ? "bold 11px 'JetBrains Mono', monospace" : "11px 'JetBrains Mono', monospace";
+            ctx.textAlign = "center";
+            ctx.fillText(n.label.substring(0,14), n.x, n.y + size + 10);
+            if (n.label.length > 14) {
+              ctx.fillText("...", n.x, n.y + size + 18);
+            }
+          }
         }
-      }
 
-      animationRef.current = requestAnimationFrame(tick);
-    };
+        animationRef.current = requestAnimationFrame(tick);
+      };
 
-    tick();
-    return () => cancelAnimationFrame(animationRef.current);
-  }, [simNodes, simLinks]);
+      tick();
+      return () => cancelAnimationFrame(animationRef.current);
+    }, [simNodes, simLinks]);
 
-  const totalNodes = simNodes.length;
-  if (totalNodes === 0) return <GhostPanel message="AWAITING TOPOLOGY MAP" />;
+    const totalNodes = simNodes.length;
+    if (totalNodes === 0) return <GhostPanel message="AWAITING TOPOLOGY MAP" />;
 
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
@@ -253,7 +275,7 @@ export function KnowledgeGraph({ findings = [], knowledgeGraph = null }: Advance
 
   return (
     <div className="w-full h-full relative bg-[#050505] overflow-hidden group">
-      <div className="absolute top-2 left-2 text-[10px] text-[var(--t-dim)] z-10 select-none uppercase font-mono bg-black/60 p-1 border border-white/5 rounded-sm">
+      <div className="absolute top-2 left-2 text-[11px] text-[var(--t-dim)] z-10 select-none uppercase font-mono bg-black/60 p-1 border border-white/5 rounded-sm">
         <div className="text-[var(--t-green)]">TOPOLOGY.DETECT</div>
         NODES: {totalNodes} <br />
         LINKS: {simLinks.length}
@@ -282,30 +304,39 @@ export function KnowledgeGraph({ findings = [], knowledgeGraph = null }: Advance
             <div className="text-[14px] text-white font-bold mb-2 break-words">
               {selectedNode.label}
             </div>
-            <div className="text-[10px] text-[var(--t-dim)] mb-6">
+            <div className="text-[11px] text-[var(--t-dim)] mb-6">
               CLASS: <span className="text-[var(--t-amber)] bg-[var(--t-amber)]/10 px-1 py-0.5 rounded uppercase">{selectedNode.type}</span>
             </div>
 
-            <div className="flex-1 overflow-y-auto pr-1">
-              <div className="text-[10px] uppercase text-[var(--t-dim)] mb-2 border-b border-[var(--t-border)] pb-1">METADATA</div>
-              {selectedNode.raw ? (
-                <div className="text-[11px] text-[var(--t-dim)] whitespace-pre-wrap break-words flex flex-col gap-3">
-                  {Object.entries(selectedNode.raw).map(([key, val]) => {
-                    if (["id", "label", "type", "node_type"].includes(key)) return null;
-                    if (val === null || val === undefined || val === "") return null;
-                    const displayValue = typeof val === "object" ? JSON.stringify(val, null, 2) : String(val);
-                    return (
-                      <div key={key} className="bg-black/30 p-2 border border-white/5 rounded-sm">
-                        <div className="text-[var(--t-cyan)] uppercase mb-1 text-[9px] tracking-wider">{key}</div>
-                        <div className="text-[var(--t-text)] font-sans opacity-90">{displayValue}</div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="text-[11px] text-[var(--t-dim)] italic">No additional metadata available.</div>
-              )}
-            </div>
+              <div className="flex-1 overflow-y-auto pr-1">
+                <div className="text-[11px] uppercase text-[var(--t-dim)] mb-2 border-b border-[var(--t-border)] pb-1">METADATA</div>
+                {selectedNode.raw ? (
+                  <div className="text-[11px] text-[var(--t-dim)] whitespace-pre-wrap break-words flex flex-col gap-3">
+                    {(() => {
+                      const entries = Object.entries(selectedNode.raw).filter(([key, val]) => 
+                        !["id", "label", "type", "node_type"].includes(key) &&
+                        val !== null && val !== undefined && val !== ""
+                      );
+                      
+                      if (entries.length === 0) {
+                        return <div className="text-[11px] text-[var(--t-dim)] italic">No additional detailed properties.</div>;
+                      }
+
+                      return entries.map(([key, val]) => {
+                        const displayValue = typeof val === "object" ? JSON.stringify(val, null, 2) : String(val);
+                        return (
+                          <div key={key} className="bg-black/30 p-2 border border-white/5 rounded-sm">
+                            <div className="text-[var(--t-cyan)] uppercase mb-1 text-[11px] tracking-wider">{key}</div>
+                            <div className="text-[var(--t-text)] font-sans opacity-90">{displayValue}</div>
+                          </div>
+                        );
+                      });
+                    })()}
+                  </div>
+                ) : (
+                  <div className="text-[11px] text-[var(--t-dim)] italic">No additional metadata available.</div>
+                )}
+              </div>
           </>
         )}
       </div>

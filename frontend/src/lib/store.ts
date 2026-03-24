@@ -576,11 +576,12 @@ function processSingleEvent(
     }
 
     case "screenshot": {
+      const idx = typeof event.index === 'number' ? event.index : state.stats.screenshots;
       const s: Screenshot = {
-        url: event.url as string,
-        label: event.label as string,
-        index: event.index as number,
-        data: event.data as string | undefined,
+        url: (event.url as string) || "",
+        label: (event.label as string) || `Screenshot ${idx}`,
+        index: idx,
+        data: (event.image as string) || (event.data as string) || undefined,
         width: (event.width as number) || undefined,
         height: (event.height as number) || undefined,
       };

@@ -514,11 +514,12 @@ class JudgeAgent:
         # Calculate simplified CVSS score based on findings
         cvss_score = 0.0
         cvss_metrics = None
-        if trust_result.risk_level in (RiskLevel.LIKELY_FRAUDULENT, RiskLevel.HIGH_RISK):
+        r_val = trust_result.risk_level.value if hasattr(trust_result.risk_level, 'value') else str(trust_result.risk_level)
+        if r_val in ("likely_fraudulent", "high_risk"):
             cvss_score = 8.5
-        elif trust_result.risk_level == RiskLevel.SUSPICIOUS:
+        elif r_val == "suspicious":
             cvss_score = 6.5
-        elif trust_result.risk_level in (RiskLevel.LOW_RISK, RiskLevel.SAFE):
+        elif r_val in ("low_risk", "safe", "trusted"):
             cvss_score = 3.5
 
         if cvss_score > 0:
@@ -950,15 +951,15 @@ class JudgeAgent:
         # --- Security Signal (from security modules) ---
         sec = evidence.security_results
         if sec:
-            sec_score = 0.5
+            sec_score = 1.0  # Innocent until proven guilty
             sec_details = {}
             sec_evidence_count = 0
 
             # Security headers
             headers = sec.get("security_headers", {})
             if headers:
-                h_score = headers.get("score", 0.5)
-                sec_score = (sec_score + h_score) / 2
+                h_score = headers.get("score", 1.0)
+                sec_score -= (1.0 - h_score) * 0.2  # Max 20% penalty for bad headers
                 sec_details["headers_score"] = h_score
                 sec_details["missing_headers"] = headers.get("missing_headers", [])
                 sec_evidence_count += 1
@@ -967,7 +968,7 @@ class JudgeAgent:
             phishing = sec.get("phishing_db") or sec.get("phishing", {})
             if phishing:
                 if phishing.get("is_phishing"):
-                    sec_score = max(0.0, sec_score - 0.4)
+                    sec_score -= 0.6
                     sec_details["phishing_alert"] = True
                 sec_details["phishing_flags"] = phishing.get("flags", [])
                 sec_evidence_count += 1
@@ -976,7 +977,7 @@ class JudgeAgent:
             redirects = sec.get("redirect_chain") or sec.get("redirects", {})
             if redirects:
                 if redirects.get("is_suspicious"):
-                    sec_score = max(0.0, sec_score - 0.2)
+                    sec_score -= 0.3
                     sec_details["suspicious_redirects"] = True
                 sec_details["redirect_hops"] = redirects.get("total_hops", 0)
                 sec_evidence_count += 1
@@ -986,20 +987,20 @@ class JudgeAgent:
             if js:
                 js_risk = js.get("risk_score", 0.0)
                 if js_risk > 0.5:
-                    sec_score = max(0.0, sec_score - js_risk * 0.3)
+                    sec_score -= (js_risk * 0.4)
                 sec_details["js_risk_score"] = js_risk
                 sec_evidence_count += 1
 
             signals["security"] = SubSignal(
                 name="security",
                 raw_score=round(max(0.0, min(1.0, sec_score)), 3),
-                confidence=0.8 if sec_evidence_count >= 2 else max(0.6, 0.4 + sec_evidence_count * 0.2),
+                confidence=0.85 if sec_evidence_count >= 2 else max(0.6, 0.4 + sec_evidence_count * 0.2),
                 evidence_count=sec_evidence_count,
                 details=sec_details,
             )
         else:
             signals["security"] = SubSignal(
-                name="security", raw_score=0.5, confidence=0.2,
+                name="security", raw_score=0.9, confidence=0.3,
                 details={"note": "No security modules were run"},
             )
 
@@ -1010,7 +1011,7 @@ class JudgeAgent:
         Compute structural trust signal from Scout's DOM metadata.
         Factors: SSL, forms with passwords, script count, external links ratio.
         """
-        score = 0.5
+        score = 0.95  # Start high, deduct for bad structural signs
         details = {}
         evidence_count = 0
 
@@ -1026,10 +1027,9 @@ class JudgeAgent:
 
             # SSL from browser
             if meta.get("has_ssl"):
-                score += 0.1
                 details["ssl"] = True
             else:
-                score -= 0.1
+                score -= 0.3
                 details["ssl"] = False
 
             # Password forms without SSL → critical
@@ -1038,7 +1038,7 @@ class JudgeAgent:
                 f.get("hasPassword") for f in forms if isinstance(f, dict)
             )
             if has_password_form and not meta.get("has_ssl"):
-                score -= 0.2
+                score -= 0.4
                 details["password_without_ssl"] = True
 
             # Credit card forms → check SSL
@@ -1047,7 +1047,7 @@ class JudgeAgent:
             )
             if has_cc_form:
                 if not meta.get("has_ssl"):
-                    score -= 0.25
+                    score -= 0.5
                     details["credit_card_without_ssl"] = True
                 else:
                     details["has_payment_form"] = True
@@ -1055,7 +1055,7 @@ class JudgeAgent:
             # Excessive external scripts → potential trackers/malware
             ext_scripts = meta.get("external_scripts", [])
             if isinstance(ext_scripts, list) and len(ext_scripts) > 20:
-                score -= 0.05
+                score -= 0.1
                 details["excessive_scripts"] = len(ext_scripts)
 
             # External links ratio
@@ -1065,7 +1065,7 @@ class JudgeAgent:
                 if int_links + ext_links > 0:
                     ext_ratio = ext_links / (int_links + ext_links)
                     if ext_ratio > 0.8:
-                        score -= 0.05
+                        score -= 0.15
                         details["high_external_link_ratio"] = round(ext_ratio, 2)
 
             # Apply scout-level trust modifiers
@@ -1076,7 +1076,7 @@ class JudgeAgent:
         return SubSignal(
             name="structural",
             raw_score=round(score, 3),
-            confidence=0.7 if evidence_count > 0 else 0.2,
+            confidence=0.85 if evidence_count > 0 else 0.2,
             evidence_count=evidence_count,
             details=details,
         )

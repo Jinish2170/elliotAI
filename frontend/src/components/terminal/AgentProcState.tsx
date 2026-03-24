@@ -52,7 +52,7 @@ export function AgentProcState({
 
         return (
           <div key={agentId} className={`flex flex-col border p-1 ${headerColor} ${barColor} transition-colors duration-300`}>
-            <div className="flex justify-between items-center text-[10px] font-bold uppercase">
+            <div className="flex justify-between items-center text-[11px] font-bold uppercase">
               <span>{agentId}</span>
               <span className={isActive ? "animate-pulse" : ""}>[{statusText}]</span>
             </div>

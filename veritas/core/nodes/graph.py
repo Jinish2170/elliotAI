@@ -59,9 +59,17 @@ async def graph_node(state: AuditState) -> dict:
         agent = GraphInvestigator(nim_client=nim)
         graph_timeout_s = tier_config.get("graph_timeout_s", max(10, int(getattr(settings, "GRAPH_PHASE_TIMEOUT_S", 90))))
 
-        # Progress callback — logs sub-phase updates for frontend visibility
+        # Progress callback ~ logs sub-phase updates for frontend visibility
         def _on_progress(step: str, detail: str):
-            logger.info(f"[GRAPH:{audit_tier}] {step} — {detail}")
+            logger.info(f"[GRAPH:{audit_tier}] {step} ~ {detail}")
+            emitter = state.get("_progress_emitter")
+            if emitter:
+                import asyncio
+                try:
+                    loop = asyncio.get_running_loop()
+                    loop.create_task(emitter.emit_progress("Graph", step, 50, detail))
+                except Exception:
+                    pass
 
         try:
             async with asyncio.timeout(graph_timeout_s):
@@ -72,6 +80,7 @@ async def graph_node(state: AuditState) -> dict:
                     external_links=external_links,
                     site_type=state.get("site_type", ""),
                     form_validation=primary.get("form_validation"),
+                    audit_tier=audit_tier,
                     progress_callback=_on_progress,
                 )
         except TimeoutError:
@@ -83,7 +92,7 @@ async def graph_node(state: AuditState) -> dict:
                 "meta_analysis": {},
                 "ip_geolocation": {},
                 "domain_age_days": -1,
-                "has_ssl": False,
+                "has_ssl": url.lower().startswith("https"),
                 "claims_extracted": [],
                 "verifications": [],
                 "inconsistencies": [],

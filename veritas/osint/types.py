@@ -24,6 +24,7 @@ class OSINTCategory(str, Enum):
     WHOIS = "whois"
     SSL = "ssl"
     THREAT_INTEL = "threat_intel"
+    DARKNET = "darknet"
     REPUTATION = "reputation"
     SOCIAL = "social"
 

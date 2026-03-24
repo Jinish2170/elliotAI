@@ -97,21 +97,21 @@ DARK_PATTERN_TAXONOMY: dict[str, DarkPatternCategory] = {
                 "(3) position on page. Report if one action is significantly more prominent than the other. "
                 "Respond in JSON: {\"findings\": [{\"pair\": [\"button1\", \"button2\"], \"dominant\": \"button1\", "
                 "\"size_ratio\": 2.5, \"contrast_difference\": \"high\", \"pattern_type\": \"misdirected_click\", "
-                "\"confidence\": 0.85}]}"
+                "\"confidence\": \"<0.0-1.0 estimated confidence>\"}]}"
             ),
             (
                 "Is there any clickable element on this page that is unusually small (appears under 12px font), "
                 "has very low contrast against its background, or is positioned in a way that makes it hard to find? "
                 "Focus on: unsubscribe links, cancel buttons, close/dismiss buttons, opt-out checkboxes. "
                 "Respond in JSON: {\"findings\": [{\"element\": \"description\", \"issue\": \"low_contrast|tiny_size|hidden_position\", "
-                "\"estimated_size\": \"8px\", \"pattern_type\": \"hidden_unsubscribe\", \"confidence\": 0.9}]}"
+                "\"estimated_size\": \"8px\", \"pattern_type\": \"hidden_unsubscribe\", \"confidence\": \"<0.0-1.0 estimated confidence>\"}]}"
             ),
             (
                 "Are there any elements on this page that look like content or navigation but are actually "
                 "advertisements? Look for: fake download buttons, sponsored content without clear labels, "
                 "ad units styled like article cards. "
                 "Respond in JSON: {\"findings\": [{\"element\": \"description\", \"pattern_type\": \"disguised_ads\", "
-                "\"confidence\": 0.7}]}"
+                "\"confidence\": \"<0.0-1.0 estimated confidence>\"}]}"
             ),
         ],
         structural_signals=[
@@ -165,13 +165,13 @@ DARK_PATTERN_TAXONOMY: dict[str, DarkPatternCategory] = {
                 "or time-limited offer displayed anywhere? If yes, read its EXACT current value "
                 "(e.g., '04:59', '2 hours left', 'Ends today'). "
                 "Respond in JSON: {\"timer_found\": true/false, \"timer_value\": \"exact text\", "
-                "\"timer_location\": \"description of where on page\", \"confidence\": 0.9}"
+                "\"timer_location\": \"description of where on page\", \"confidence\": \"<0.0-1.0 estimated confidence>\"}"
             ),
             (
                 "Is there any 'limited stock', 'only X left', 'X people viewing/buying', or similar "
                 "scarcity/social proof indicator on this page? Read its EXACT value. "
                 "Respond in JSON: {\"scarcity_found\": true/false, \"scarcity_text\": \"exact text\", "
-                "\"scarcity_type\": \"stock|viewers|purchases|other\", \"confidence\": 0.8}"
+                "\"scarcity_type\": \"stock|viewers|purchases|other\", \"confidence\": \"<0.0-1.0 estimated confidence>\"}"
             ),
         ],
         structural_signals=[
@@ -221,17 +221,17 @@ DARK_PATTERN_TAXONOMY: dict[str, DarkPatternCategory] = {
         ],
         vlm_prompts=[
             (
-                "Is there a clearly visible 'Cancel', 'Unsubscribe', or 'Delete Account' option on this page? "
+                "If this is an account settings or subscription page, is there a clearly visible 'Cancel' option? (If this is just a homepage or info page, assume cancel_visible is true). "
                 "If yes, how many clicks/steps does it appear to require? Is it visually prominent or hidden? "
                 "Respond in JSON: {\"cancel_visible\": true/false, \"cancel_prominence\": \"prominent|subtle|hidden\", "
-                "\"estimated_steps\": 1, \"pattern_type\": \"hidden_cancel|none\", \"confidence\": 0.8}"
+                "\"estimated_steps\": 1, \"pattern_type\": \"hidden_cancel|none\", \"confidence\": \"<0.0-1.0 estimated confidence>\"}"
             ),
             (
                 "Does this page use emotional, guilt-inducing, or manipulative language to discourage "
                 "the user from leaving, cancelling, or declining? Look for phrases like 'You'll miss out', "
                 "'Are you sure?', 'No thanks, I don't want [positive thing]'. "
                 "Respond in JSON: {\"guilt_language_found\": true/false, \"phrases\": [\"exact phrases found\"], "
-                "\"pattern_type\": \"guilt_tripping\", \"confidence\": 0.85}"
+                "\"pattern_type\": \"guilt_tripping\", \"confidence\": \"<0.0-1.0 estimated confidence>\"}"
             ),
         ],
         structural_signals=[
@@ -284,15 +284,15 @@ DARK_PATTERN_TAXONOMY: dict[str, DarkPatternCategory] = {
                 "Examine this page for pre-selected checkboxes, pre-opted-in options, or add-ons that are "
                 "already checked/selected without user action. List ALL pre-selected items. "
                 "Respond in JSON: {\"pre_selected_found\": true/false, \"items\": [{\"description\": \"what is pre-selected\", "
-                "\"is_additional_cost\": true/false}], \"pattern_type\": \"pre_selected_options\", \"confidence\": 0.9}"
+                "\"is_additional_cost\": true/false}], \"pattern_type\": \"pre_selected_options\", \"confidence\": \"<0.0-1.0 estimated confidence>\"}"
             ),
             (
-                "Is the total price clearly visible on this page? Are there any additional fees, charges, "
+                "If this is a product, pricing, or checkout page, is the total price transparent? (If no prices are expected here like a homepage, assume price_transparent is true). "
                 "or costs shown in smaller text, lighter color, or below the fold? Compare the prominently "
                 "displayed price with the actual total (if visible). "
                 "Respond in JSON: {\"price_transparent\": true/false, \"displayed_price\": \"$X\", "
                 "\"actual_total\": \"$Y or unknown\", \"hidden_fees\": [\"list of additional charges\"], "
-                "\"pattern_type\": \"hidden_costs\", \"confidence\": 0.8}"
+                "\"pattern_type\": \"hidden_costs\", \"confidence\": \"<0.0-1.0 estimated confidence>\"}"
             ),
             (
                 "Does this page mention a 'free trial', 'free' offer, or '$0' pricing? If yes, is there "
@@ -300,7 +300,7 @@ DARK_PATTERN_TAXONOMY: dict[str, DarkPatternCategory] = {
                 "disclosed at the same visual prominence as the 'free' claim? "
                 "Respond in JSON: {\"free_claim\": true/false, \"requires_payment_info\": true/false, "
                 "\"auto_renewal_disclosed\": true/false, \"disclosure_prominence\": \"prominent|subtle|hidden\", "
-                "\"pattern_type\": \"hidden_subscription\", \"confidence\": 0.85}"
+                "\"pattern_type\": \"hidden_subscription\", \"confidence\": \"<0.0-1.0 estimated confidence>\"}"
             ),
         ],
         structural_signals=[
@@ -355,7 +355,7 @@ DARK_PATTERN_TAXONOMY: dict[str, DarkPatternCategory] = {
                 "Are all ratings 5 stars? "
                 "Respond in JSON: {\"testimonials_found\": true/false, \"stock_photos_suspected\": true/false, "
                 "\"uniform_ratings\": true/false, \"similar_writing_style\": true/false, "
-                "\"pattern_type\": \"fake_reviews\", \"confidence\": 0.75}"
+                "\"pattern_type\": \"fake_reviews\", \"confidence\": \"<0.0-1.0 estimated confidence>\"}"
             ),
             (
                 "Are there trust badges, certification logos, or security seals on this page "
@@ -363,7 +363,7 @@ DARK_PATTERN_TAXONOMY: dict[str, DarkPatternCategory] = {
                 "to a verification page, or are they just static images? "
                 "Respond in JSON: {\"badges_found\": true/false, \"badges\": [{\"name\": \"badge name\", "
                 "\"appears_clickable\": true/false, \"appears_verifiable\": true/false}], "
-                "\"pattern_type\": \"fake_badges\", \"confidence\": 0.8}"
+                "\"pattern_type\": \"fake_badges\", \"confidence\": \"<0.0-1.0 estimated confidence>\"}"
             ),
             (
                 "Does this page claim any awards, media features ('As seen on...'), partnerships, "
@@ -371,7 +371,7 @@ DARK_PATTERN_TAXONOMY: dict[str, DarkPatternCategory] = {
                 "proof supporting the claim. "
                 "Respond in JSON: {\"authority_claims\": [{\"claim\": \"text of claim\", "
                 "\"proof_visible\": true/false, \"link_present\": true/false}], "
-                "\"pattern_type\": \"fake_authority\", \"confidence\": 0.7}"
+                "\"pattern_type\": \"fake_authority\", \"confidence\": \"<0.0-1.0 estimated confidence>\"}"
             ),
         ],
         structural_signals=[
@@ -446,7 +446,7 @@ VISION_PASS_PROMPTS: dict[int, str] = {
     - text: the EXACT text you can read (do NOT paraphrase)
 
     IMPORTANT: If you see NO dark patterns, return {"findings": []}. Do NOT fabricate findings.
-    Only report what is VISUALLY PRESENT in the screenshot.
+    CRITICAL: Only report what is VISUALLY PRESENT in the screenshot. Make absolutely NO ASSUMPTIONS. Do NOT invent text, buttons, or elements that are not clearly visible. The exact text you cite MUST exist in the image.
     Respond ONLY in JSON: {"findings": [...]}
     """,
 
@@ -454,8 +454,8 @@ VISION_PASS_PROMPTS: dict[int, str] = {
     DETAILED DARK PATTERN ANALYSIS of this screenshot.
 
     Check for these specific patterns:
-    1. Misdirection: Is there an "Accept" button much larger/brighter than a "Decline" button?
-    2. Confirmshaming: Does any button use guilt language? ("No thanks, I hate saving money")
+    1. Misdirection: Are there pairs of buttons for opposing actions where one is disproportionately larger/brighter? (Do not guess or invent buttons - they must be visible)
+    2. Confirmshaming: Does any button use guilt language?
     3. Hidden costs: Is a price shown prominently but fees/taxes are in smaller text below?
     4. Pre-selected checkboxes: Are any add-ons or subscriptions pre-checked?
     5. Disguised ads: Are ads styled to look like content or navigation?
@@ -465,9 +465,10 @@ VISION_PASS_PROMPTS: dict[int, str] = {
     - type: misdirection | confirmshaming | hidden_costs | pre_selected | disguised_ad
     - technique: brief description of the specific technique
     - confidence: 0.0-1.0
+    - text: EXACT text visible on the element
 
-    IMPORTANT: Only report patterns you are CONFIDENT about (>0.6 confidence).
-    If the page looks clean, return {"findings": []}. Do NOT invent issues.
+    IMPORTANT: Only report patterns you are CONFIDENT about (>0.8 confidence).
+    CRITICAL: Do NOT invent issues. Do NOT hallucinate button names, text, or elements that do not exist. Any text you cite must be physically present and readable in the image. If the page looks clean, return {"findings": []}.
     Respond ONLY in JSON: {"findings": [...]}
     """,
 

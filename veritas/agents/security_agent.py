@@ -372,6 +372,7 @@ class SecurityAgent:
         dom_meta: Optional[dict] = None,
         page=None,  # Optional Playwright Page object for backward compatibility
         use_tier_execution: Optional[bool] = None,
+        progress_emitter=None,
     ) -> SecurityResult:
         """
         Analyze a URL for security issues.
@@ -404,9 +405,9 @@ class SecurityAgent:
         )
 
         if tier_mode:
-            result = await self._analyze_tier_mode(url, page_content, headers, dom_meta)
+            result = await self._analyze_tier_mode(url, page_content, headers, dom_meta, progress_emitter)
         else:
-            result = await self._analyze_legacy_mode(url, page)
+            result = await self._analyze_legacy_mode(url, page, progress_emitter)
 
         # Calculate execution time
         result.analysis_time_ms = int((time.time() - start_time) * 1000)
@@ -419,6 +420,9 @@ class SecurityAgent:
             f"score={result.composite_score:.2f} | "
             f"time={result.analysis_time_ms}ms"
         )
+        
+        if progress_emitter:
+            await progress_emitter.emit_progress("Security", "complete", 100, f"Analysis complete: {result.total_findings} findings")
 
         return result
 
@@ -432,6 +436,7 @@ class SecurityAgent:
         page_content: Optional[str],
         headers: Optional[dict],
         dom_meta: Optional[dict],
+        progress_emitter=None,
     ) -> SecurityResult:
         """
         Analyze URL using tier-based execution.
@@ -496,6 +501,8 @@ class SecurityAgent:
         if fast_modules:
             logger.info(f"Executing FAST tier with {len(fast_modules)} modules (parallel, <5s)")
             try:
+                if progress_emitter:
+                    await progress_emitter.emit_progress("Security", "fast_tier", 20, "Executing FAST security modules...")
                 async with asyncio.timeout(SecurityTier.FAST.timeout_suggestion):
                     fast_findings = await execute_tier(fast_modules, url, page_content, headers, dom_meta)
                     all_findings.extend(fast_findings)
@@ -516,6 +523,8 @@ class SecurityAgent:
         if medium_modules and (not self._config.fail_fast or modules_failed == 0):
             logger.info(f"Executing MEDIUM tier with {len(medium_modules)} modules (parallel, <15s)")
             try:
+                if progress_emitter:
+                    await progress_emitter.emit_progress("Security", "medium_tier", 50, "Running deep pattern analysis...")
                 async with asyncio.timeout(SecurityTier.MEDIUM.timeout_suggestion):
                     medium_findings = await execute_tier(medium_modules, url, page_content, headers, dom_meta)
                     all_findings.extend(medium_findings)
@@ -535,6 +544,8 @@ class SecurityAgent:
         deep_modules = self._modules_by_tier[SecurityTier.DEEP]
         if deep_modules and (not self._config.fail_fast or modules_failed == 0):
             logger.info(f"Executing DEEP tier with {len(deep_modules)} modules (sequential, <30s)")
+            if progress_emitter:
+                await progress_emitter.emit_progress("Security", "deep_tier", 80, "Performing strict compliance scanning...")
             for module_class in deep_modules:
                 try:
                     instance = module_class()
@@ -631,6 +642,7 @@ class SecurityAgent:
         self,
         url: str,
         page,
+        progress_emitter=None,
     ) -> SecurityResult:
         """
         Analyze URL using legacy function-based execution.

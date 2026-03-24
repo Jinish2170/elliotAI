@@ -295,7 +295,7 @@ class VeritasOrchestrator:
                 "meta_analysis": {},
                 "ip_geolocation": {},
                 "domain_age_days": -1,
-                "has_ssl": False,
+                  "has_ssl": kwargs.get("url", "").lower().startswith("https"),
                 "graph_node_count": 0,
                 "entities": [],
                 "fallback_used": True,
@@ -544,7 +544,8 @@ class VeritasOrchestrator:
             "_estimated_remaining_time": 0,  # Estimated time for remaining agents
             "_quality_penalty": 0.0,  # Accumulated quality penalty
             "_degraded_agents": [],  # List of degraded agent names
-        }
+              "_progress_emitter": getattr(self, "_progress_emitter", None) if getattr(self, "use_progress_streaming", False) else None,
+          }
 
         state: AuditState = state_with_complexity  # type: ignore
 
@@ -658,6 +659,8 @@ class VeritasOrchestrator:
 
                 # 1b. Security modules
                 self._emit("security", "scanning", 27, "Running security analysis modules...", iteration=state["iteration"])
+                if self.use_progress_streaming and self._progress_emitter:
+                    await self._progress_emitter.emit_agent_status("Security", "running", "Performing deep security analysis...")
                 try:
                     # Get timeout from adaptive config or use default
                     timeout = None
@@ -674,10 +677,16 @@ class VeritasOrchestrator:
                     security_mode = sec_update.get("security_mode", "unknown")
                     degr_str = " (degraded)" if sec_penalty > 0 else ""
                     self._emit("security", "done", 30, f"Security modules: {', '.join(sec_modules)} (mode={security_mode}){degr_str}", modules=sec_modules, security_mode=security_mode, security_results=state.get("security_results", {}))
+                    if self.use_progress_streaming and self._progress_emitter:
+                        await self._progress_emitter.emit_agent_status("Security", "completed")
+                        await self._progress_emitter.emit_progress("Overall", "Security", 30, f"Security complete: {len(sec_modules)} modules")
                 except Exception as e:
                     logger.error(f"Security node failed: {e}")
                     state["errors"].append(f"Security: {e}")
                     self._emit("security", "error", 30, str(e))
+                    if self.use_progress_streaming and self._progress_emitter:
+                        await self._progress_emitter.emit_error("security_error", str(e), "Security", recoverable=True)
+                        await self._progress_emitter.emit_agent_status("Security", "failed", str(e))
 
                 # 2. Vision
                 self._emit("vision", "analyzing", 30, "Vision agent analyzing screenshots with NIM VLM...", iteration=state["iteration"])
@@ -715,6 +724,8 @@ class VeritasOrchestrator:
 
                 # 3. Graph
                 self._emit("graph", "investigating", 60, "Graph agent: full investigation (WHOIS, DNS, SSL, MetaAnalyzer, Entity Verification, OSINT, CTI)...", iteration=state["iteration"])
+                if self.use_progress_streaming and self._progress_emitter:
+                    await self._progress_emitter.emit_agent_status("Graph", "running", "Graph agent discovering entities...")
                 try:
                     # Get timeout from adaptive config or use default
                     timeout = None
@@ -757,6 +768,8 @@ class VeritasOrchestrator:
 
                 # 4. Judge
                 self._emit("judge", "deliberating", 80, "Judge agent synthesizing evidence & computing trust score...", iteration=state["iteration"])
+                if self.use_progress_streaming and self._progress_emitter:
+                    await self._progress_emitter.emit_agent_status("Judge", "running", "Judge agent deliberating evidence...")
                 try:
                     # Get timeout from adaptive config or use default
                     timeout = None

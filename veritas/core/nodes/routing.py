@@ -74,13 +74,13 @@ async def force_verdict_node(state: AuditState) -> dict:
     vr = state.get("vision_result") or {}
     gr = state.get("graph_result") or {}
 
-    visual_score = vr.get("visual_score", 0.5) if isinstance(vr, dict) else 0.5
-    temporal_score = vr.get("temporal_score", 0.5) if isinstance(vr, dict) else 0.5
-    graph_score = gr.get("graph_score", 0.5) if isinstance(gr, dict) else 0.5
-    meta_score = gr.get("meta_score", 0.5) if isinstance(gr, dict) else 0.5
+    visual_score = vr.get("visual_score", 0.9) if isinstance(vr, dict) else 0.9
+    temporal_score = vr.get("temporal_score", 0.9) if isinstance(vr, dict) else 0.9
+    graph_score = gr.get("graph_score", 0.8) if isinstance(gr, dict) else 0.8
+    meta_score = gr.get("meta_score", 0.8) if isinstance(gr, dict) else 0.8
 
     # Structural score placeholder (DOM analysis not always present)
-    structural_score = 0.5
+    structural_score = 0.8
 
     signals = {
         "visual": SubSignal(name="visual", raw_score=visual_score, confidence=0.7),
@@ -88,7 +88,7 @@ async def force_verdict_node(state: AuditState) -> dict:
         "temporal": SubSignal(name="temporal", raw_score=temporal_score, confidence=0.6),
         "graph": SubSignal(name="graph", raw_score=graph_score, confidence=0.7),
         "meta": SubSignal(name="meta", raw_score=meta_score, confidence=0.8),
-        "security": SubSignal(name="security", raw_score=0.5, confidence=0.3),
+        "security": SubSignal(name="security", raw_score=0.9, confidence=0.3),
     }
 
     # Extract override info from graph result

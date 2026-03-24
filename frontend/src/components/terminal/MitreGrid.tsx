@@ -8,7 +8,7 @@ export function MitreGrid({ techniques, status }: { techniques: TechniqueMatch[]
     if (status === "complete") {
       return (
         <div className="w-full h-full flex flex-col items-center justify-center p-4 text-center bg-[var(--t-green)]/5">
-          <span className="text-[var(--t-green)]/50 font-mono text-[10px] uppercase tracking-widest">[ NO TTPs DETECTED ]</span>
+          <span className="text-[var(--t-green)]/50 font-mono text-[11px] uppercase tracking-widest">[ NO TTPs DETECTED ]</span>
         </div>
       );
     }
@@ -17,7 +17,7 @@ export function MitreGrid({ techniques, status }: { techniques: TechniqueMatch[]
 
 	return (
 		<div className="w-full h-full overflow-y-auto p-2">
-			<table className="w-full text-left text-[10px] border-collapse sticky top-0">
+			<table className="w-full text-left text-[11px] border-collapse sticky top-0">
 				<thead className="bg-[#111]">
 					<tr className="border-b border-[var(--t-border)] text-[var(--t-dim)] uppercase">
 						<th className="p-2 font-normal">TID</th>

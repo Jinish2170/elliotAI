@@ -219,6 +219,7 @@ class GraphInvestigator:
         site_type: str = "",
         form_validation: Optional[dict] = None,
         page_html: Optional[str] = None,
+        audit_tier: str = "standard_audit",
         progress_callback: Optional[Any] = None,
     ) -> GraphResult:
         """
@@ -381,7 +382,9 @@ class GraphInvestigator:
         if self._osint_orchestrator:
             hostname = self._extract_domain(url)
             ip_address = domain_intel.ip_address if domain_intel else ""
-            osint_results = await self._run_osint_investigation(domain, hostname, ip_address)
+            osint_results = await self._run_osint_investigation(
+                domain, hostname, ip_address, audit_tier=audit_tier
+            )
 
             if osint_results:
                 result.osint_sources = osint_results
@@ -636,7 +639,7 @@ class GraphInvestigator:
         return intel
 
     async def _run_osint_investigation(
-        self, domain: str, hostname: str, ip_address: str
+        self, domain: str, hostname: str, ip_address: str, audit_tier: str = "standard_audit"
     ) -> dict:
         """
         Run OSINT investigation using OSINTOrchestrator.
@@ -694,6 +697,13 @@ class GraphInvestigator:
                 threat_results = await self._osint_orchestrator.query_all(
                     OSINTCategory.THREAT_INTEL, "domain", domain, max_parallel=2
                 )
+                
+                # Query Darknet explicitly if deep forensic tier
+                if audit_tier == "deep_forensic":
+                    darknet_results = await self._osint_orchestrator.query_all(
+                        OSINTCategory.DARKNET, "domain", domain, max_parallel=3
+                    )
+                    threat_results.update(darknet_results)
 
                 # Add successful results
                 for source_name, result in threat_results.items():
@@ -1579,20 +1589,20 @@ class GraphInvestigator:
         Compute graph trust score (0-1, higher = more trustworthy).
 
         Logic:
-        - Start at 0.5 (neutral)
-        - Each confirmed verification adds up to +0.1
-        - Each denied/contradicted verification deducts up to -0.15
+        - Start at 0.9 (innocent until proven guilty, but slight margin for verified adds)
+        - Each confirmed verification adds up to +0.05
+        - Each denied/contradicted verification deducts up to -0.2
         - Each inconsistency deducts based on severity
         """
-        score = 0.5
+        score = 0.9
 
         for v in verifications:
             if v.status == "confirmed":
-                score += 0.1 * v.confidence
+                score += 0.05 * v.confidence
             elif v.status == "contradicted":
-                score -= 0.15 * v.confidence
+                score -= 0.2 * v.confidence
             elif v.status == "denied":
-                score -= 0.12 * v.confidence
+                score -= 0.3 * v.confidence
             # "unverifiable" doesn't change score
 
         for inc in inconsistencies:
@@ -1745,29 +1755,30 @@ class GraphInvestigator:
         Compute meta trust score from domain intelligence (0-1).
 
         Factors: domain age, SSL, WHOIS transparency, name servers.
+        Starts at 0.95 and deducts for new domains, no SSL, etc.
         """
-        score = 0.5
+        score = 0.95
 
         # Domain age (biggest factor)
         if intel.age_days >= 0:
             if intel.age_days > 365 * 3:
-                score += 0.25   # 3+ years old
+                score += 0.05   # 3+ years old -> perfect
             elif intel.age_days > 365:
-                score += 0.15   # 1-3 years
+                pass            # 1-3 years -> good
             elif intel.age_days > 90:
-                score += 0.05   # 3-12 months
+                score -= 0.05   # 3-12 months
             elif intel.age_days > 30:
-                score -= 0.05   # 1-3 months
+                score -= 0.15   # 1-3 months
             elif intel.age_days > 7:
-                score -= 0.10   # 1-4 weeks
+                score -= 0.25   # 1-4 weeks
             else:
-                score -= 0.20   # < 1 week
+                score -= 0.40   # < 1 week
 
         # SSL
         if intel.ssl_issuer:
-            score += 0.10
+            pass
         else:
-            score -= 0.15
+            score -= 0.30
 
         # Privacy protection (slight negative for business sites)
         if intel.is_privacy_protected:
@@ -1824,7 +1835,16 @@ class GraphInvestigator:
 
     def _whois_lookup_sync(self, domain: str):
         import whois
-        return whois.whois(domain)
+        try:
+            if hasattr(whois, "whois"):
+                return whois.whois(domain)
+            elif hasattr(whois, "query"):
+                return whois.query(domain)
+            else:
+                return None
+        except Exception as e:
+            logger.warning(f"WHOIS sync lookup exception: {e}")
+            return None
 
     def _dns_lookup_sync(self, domain: str) -> str:
         return socket.gethostbyname(domain)

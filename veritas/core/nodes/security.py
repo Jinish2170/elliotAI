@@ -135,7 +135,8 @@ async def security_node_with_agent(state: AuditState) -> dict:
                 page_content=page_content,
                 headers=headers,
                 dom_meta=dom_meta,
-                use_tier_execution=use_tier_execution
+                use_tier_execution=use_tier_execution,
+                progress_emitter=state.get("_progress_emitter")
             )
 
             results = dict(result.modules_results)

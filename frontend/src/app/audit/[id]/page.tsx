@@ -25,7 +25,7 @@ import { saveAuditToHistory } from "@/components/landing/RecentAudits";
 
 function TerminalHeader({ url, elapsed }: { url?: string, elapsed: number }) {
   return (
-    <div className="h-10 shrink-0 border-b border-[var(--t-border)] flex items-center justify-between px-4 bg-[var(--t-panel)] text-[10px] uppercase tracking-widest text-[var(--t-dim)] font-mono">
+    <div className="h-10 shrink-0 border-b border-[var(--t-border)] flex items-center justify-between px-4 bg-[var(--t-panel)] text-[11px] uppercase tracking-widest text-[var(--t-dim)] font-mono">
       <div className="flex gap-4 items-center">
         <span className="text-[var(--t-text)] font-bold">VERITAS TERM /// 9.4.0</span>
         {url && (
@@ -51,7 +51,7 @@ function MobileBlocker() {
     <div className="xl:hidden fixed inset-0 z-50 bg-[var(--t-base)] flex flex-col items-center justify-center p-8 text-center">
       <div className="border border-[var(--t-red)] p-6 bg-[var(--t-panel)] max-w-sm">
         <div className="text-[var(--t-red)] font-mono text-sm mb-4">[SYS.ERR] INSUFFICIENT VIEWPORT</div>
-        <p className="text-[var(--t-text)] text-xs font-mono">
+        <p className="text-[var(--t-text)] text-sm font-mono">
           VERITAS requires a full operator terminal display (min-width: 1280px).
           Please maximize your window or switch to a workstation to proceed with the audit overview.
         </p>
@@ -113,7 +113,7 @@ function AuditPageContent({ id }: { id: string }) {
           <div className="absolute top-12 right-4 z-40">
             <button 
               onClick={() => setShowReport(true)}
-              className="bg-[var(--t-cyan)] text-black px-4 py-2 text-[10px] font-bold tracking-widest uppercase animate-pulse border border-[var(--t-cyan)] hover:bg-black hover:text-[var(--t-cyan)] transition-colors shadow-[0_0_15px_rgba(0,180,255,0.4)]"
+              className="bg-[var(--t-cyan)] text-black px-4 py-2 text-[11px] font-bold tracking-widest uppercase animate-pulse border border-[var(--t-cyan)] hover:bg-black hover:text-[var(--t-cyan)] transition-colors shadow-[0_0_15px_rgba(0,180,255,0.4)]"
             >
               VIEW COMPREHENSIVE REPORT
             </button>
@@ -121,50 +121,94 @@ function AuditPageContent({ id }: { id: string }) {
         )}
 
         {/* ZONE 4 (Rails) & ZONES 2/3 (Center) contained in grid */}
-        {/* ZONE 4 (Rails) & ZONES 2/3 (Center) contained in grid */}
         <div className="veritas-terminal-grid overflow-hidden">
 
-          {/* Left Rail (Log Stream, Proc State) - High Importance */}
-          <div className="flex flex-col gap-[2px] flex-[3] min-w-[300px]">
-            <TerminalPanel title="SYS.LOG.STREAM" className="flex-1">
-              <SysLogStream logs={store.logs} />
-            </TerminalPanel>
+          {/* Left Rail (Investigative Matrices + Proc State) */}
+          <div className="flex flex-col gap-2 flex-[3] min-w-[300px] min-h-0">
+            <div className="flex-1 grid grid-rows-3 gap-2 min-h-0">
+              <TerminalPanel title="CVSS.RADAR" className="h-full">
+                <CvssRadar 
+                  metrics={store.cvssMetrics?.length ? store.cvssMetrics : ((store.result as any)?.security_results?.cvss_metrics as any[]) || []}
+                  status={store.status}
+                />
+              </TerminalPanel>
+              <TerminalPanel title="MITRE.ATTACK.GRID" className="h-full">
+                <MitreGrid 
+                  techniques={store.mitreTechniques?.length ? store.mitreTechniques : ((store.result as any)?.security_results?.mitre_mappings as any[]) || []}
+                  status={store.status}
+                />
+              </TerminalPanel>
+              <TerminalPanel title="THREAT.MATRIX" className="h-full">
+                <ThreatIntelligenceMatrix
+                  osintResults={store.osintResults || []}
+                  marketplaceThreats={store.marketplaceThreats || []}
+                  status={store.status}
+                />
+              </TerminalPanel>
+            </div>
             <TerminalPanel title="AGENT.PROC.STATE" className="h-[25%] shrink-0">
               <AgentProcState phases={store.phases} activePhase={store.currentPhase || undefined} status={store.status} />
             </TerminalPanel>
           </div>
 
-          {/* Center Column (Verdict & Matrices) */}
-          <div className="flex flex-col gap-[2px] flex-[5] overflow-y-auto pr-1 custom-scrollbar">
-            {/* Zone 2: Verdict */}
-            <TerminalPanel title="VERDICT.MATRIX" className="h-[20%] shrink-0 flex justify-center items-center">
-              <VerdictPanel
-                verdict={store.dualVerdict ? {
-                  verdict_technical: {
-                    trust_score: store.dualVerdict?.trust_score,
-                    risk_level: store.dualVerdict?.non_technical?.risk_level || store.result?.risk_level || 'unknown'
-                  },
-                  verdict_nontechnical: {
-                    summary: store.dualVerdict?.non_technical?.summary || store.result?.narrative || ''
-                  }
-                } : null}
-                trustScore={store.dualVerdict?.trust_score ?? store.result?.trust_score}
-                status={store.status}
-                error={store.error}
-              />
-            </TerminalPanel>
+          {/* Center Column (Verdict / Active Intel & SysLog.Stream) */}
+          <div className="flex flex-col gap-2 flex-[5] min-h-0">
+
+            {/* Dynamic Telemetry OR Verdict Matrix */}
+            {store.status === "complete" ? (
+              <TerminalPanel title="VERDICT.MATRIX" className="flex-[2] min-h-0 flex flex-col p-2">
+                <VerdictPanel
+                  verdict={store.dualVerdict ? {
+                    verdict_technical: {
+                      trust_score: store.dualVerdict?.trust_score,
+                      risk_level: store.dualVerdict?.non_technical?.risk_level || store.result?.risk_level || 'unknown'
+                    },
+                    verdict_nontechnical: {
+                      summary: store.dualVerdict?.non_technical?.summary || store.result?.narrative || ''
+                    }
+                  } : null}
+                  trustScore={store.dualVerdict?.trust_score ?? store.result?.trust_score}
+                  status={store.status}
+                  error={store.error}
+                />
+              </TerminalPanel>
+            ) : (
+              <TerminalPanel title="LIVE.TELEMETRY.STREAM" className="shrink-0">
+                <div className="flex w-full min-h-[120px] p-2 gap-4 justify-around items-center bg-[#050505]">
+                  <div className="flex flex-col items-center justify-center p-4 border border-[var(--t-border)] bg-[#0a0a0a] rounded flex-1 h-[100px]">
+                    <span className="text-[var(--t-dim)] text-[11px] uppercase tracking-widest mb-2 font-bold">Findings Detected</span>
+                    <span className="text-[var(--t-red)] font-mono text-4xl glow-text-red">{store.stats?.findings || 0}</span>
+                  </div>
+                  <div className="flex flex-col items-center justify-center p-4 border border-[var(--t-border)] bg-[#0a0a0a] rounded flex-1 h-[100px]">
+                    <span className="text-[var(--t-dim)] text-[11px] uppercase tracking-widest mb-2 font-bold">Pages Mapped</span>
+                    <span className="text-[var(--t-cyan)] font-mono text-4xl" style={{textShadow: "0 0 5px var(--t-cyan)"}}>{store.stats?.pages_scanned || 0}</span>
+                  </div>
+                  <div className="flex flex-col items-center justify-center p-4 border border-[var(--t-border)] bg-[#0a0a0a] rounded flex-1 h-[100px]">
+                    <span className="text-[var(--t-dim)] text-[11px] uppercase tracking-widest mb-2 font-bold">Neural Casts</span>
+                    <span className="text-[var(--t-green)] font-mono text-4xl glow-text-green">{store.stats?.ai_calls || 0}</span>
+                  </div>
+                  <div className="flex flex-col items-center justify-center p-4 border border-[var(--t-border)] bg-[#0a0a0a] rounded flex-1 h-[100px]">
+                    <span className="text-[var(--t-dim)] text-[11px] uppercase tracking-widest mb-2 font-bold">Sec Checks</span>
+                    <span className="text-[var(--t-amber)] font-mono text-4xl glow-text-amber">{store.stats?.security_checks || 0}</span>
+                  </div>
+                </div>
+                <div className="absolute top-2 right-4 text-[11px] text-[var(--t-amber)] font-mono animate-pulse">
+                  [ CALIBRATING ]
+                </div>
+              </TerminalPanel>
+            )}
 
             {/* GREEN FLAGS - Positive Indicators */}
             <TerminalPanel title="GREEN.FLAGS" className="shrink-0 min-h-[50px]">
               <div className="flex flex-wrap gap-2 p-2">
                 {store.green_flags?.length ? (
                   store.green_flags.slice(0, 5).map((flag: any) => (
-                    <span key={flag.id || flag.label} className="text-[var(--t-green)] text-[10px] font-mono bg-[var(--t-green)]/10 px-2 py-1 rounded border border-[var(--t-green)]/30">
+                    <span key={flag.id || flag.label} className="text-[var(--t-green)] text-[11px] font-mono bg-[var(--t-green)]/10 px-2 py-1 rounded border border-[var(--t-green)]/30">
                       {flag.icon || "✓"} {flag.label}
                     </span>
                   ))
                 ) : (
-                  <span className="text-[var(--t-dim)] text-[10px] italic py-1 px-2 border border-transparent">
+                  <span className="text-[var(--t-dim)] text-[11px] italic py-1 px-2 border border-transparent">
                     {store.status === "complete" ? "No positive indicators detected" : "Analyzing indicators..."}
                   </span>
                 )}
@@ -180,32 +224,14 @@ function AuditPageContent({ id }: { id: string }) {
               />
             </TerminalPanel>
 
-            {/* Zone 3: Investigative Matrix - Expands if space available */}
-            <div className="flex-1 grid grid-cols-2 gap-[2px] bg-[var(--t-border)] min-h-[300px]">
-              <TerminalPanel title="CVSS.RADAR" className="h-full">
-                <CvssRadar 
-                  metrics={store.cvssMetrics?.length ? store.cvssMetrics : ((store.result as any)?.security_results?.cvss_metrics as any[]) || []}
-                  status={store.status}
-                />
-              </TerminalPanel>
-              <TerminalPanel title="MITRE.ATTACK.GRID" className="h-full">
-                <MitreGrid 
-                  techniques={store.mitreTechniques?.length ? store.mitreTechniques : ((store.result as any)?.security_results?.mitre_mappings as any[]) || []}
-                  status={store.status}
-                />
-              </TerminalPanel>
-              <TerminalPanel title="THREAT.MATRIX" className="col-span-2 h-full">
-                <ThreatIntelligenceMatrix
-                  osintResults={store.osintResults || []}
-                  marketplaceThreats={store.marketplaceThreats || []}
-                  status={store.status}
-                />
-              </TerminalPanel>
-            </div>
+            {/* Zone Center Bottom: Log Stream (Replacing Investigative Matrices) */}
+              <TerminalPanel title="SYS.LOG.STREAM" className="flex-1 min-h-[150px]">
+              <SysLogStream logs={store.logs} />
+            </TerminalPanel>
           </div>
 
           {/* Right Rail (Evidence, Graphs) */}
-          <div className="flex flex-col gap-[2px] flex-[2.5] min-w-[250px]">
+          <div className="flex flex-col gap-2 flex-[2.5] min-w-[250px] min-h-0">
             <TerminalPanel title="SCOUT.IMAGERY" className="h-[25%] shrink-0">
               <ScoutImagery screenshots={store.screenshots} />
             </TerminalPanel>

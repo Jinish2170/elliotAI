@@ -156,12 +156,20 @@ class TemporalAnalyzer:
             import pytesseract
             from PIL import Image
             from veritas.config import settings
+            import os
 
-            pytesseract.pytesseract.tesseract_cmd = settings.TESSERACT_CMD
-            text_a = pytesseract.image_to_string(Image.open(t0_path))
-            text_b = pytesseract.image_to_string(Image.open(t_delay_path))
+            if getattr(settings, 'TESSERACT_CMD', None) and os.path.exists(settings.TESSERACT_CMD):
+                pytesseract.pytesseract.tesseract_cmd = settings.TESSERACT_CMD
+            
+            try:
+                text_a = pytesseract.image_to_string(Image.open(t0_path))
+                text_b = pytesseract.image_to_string(Image.open(t_delay_path))
+            except (pytesseract.TesseractNotFoundError, FileNotFoundError) as e:
+                logger.debug(f"Tesseract OCR skipped (not installed or not in PATH). {e}")
+                return findings
+
         except ImportError:
-            logger.debug("Tesseract not available for OCR comparison")
+            logger.debug("Tesseract dependencies not available for OCR comparison")
             return findings
         except Exception as e:
             logger.warning(f"OCR extraction failed: {e}")

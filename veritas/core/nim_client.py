@@ -191,6 +191,16 @@ class NIMClient:
         """
         self._ensure_client()
 
+        # Inject strict anti-hallucination instruction for VLM to reduce fake data
+        strict_instruction = (
+            "\n\nCRITICAL INSTRUCTION: DO NOT hallucinate or invent text. "
+            "ONLY output information for buttons, links, features, or text that ACTUALLY EXIST visually in the provided image. "
+            "If you are not 100% sure a specific pattern exists, DO NOT include it in the JSON findings. "
+            "Return an empty findings array [] rather than guessing."
+        )
+        if strict_instruction not in prompt:
+            prompt = prompt + strict_instruction
+
         # Check cache - use pass-aware key if pass_type provided
         if pass_type is not None:
             cache_key = self.get_cache_key(image_path, prompt, pass_type)

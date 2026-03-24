@@ -454,13 +454,13 @@ class OSINTOrchestrator:
             "tavilythreatintel": OSINTCategory.THREAT_INTEL,
             "tavilyreputation": OSINTCategory.REPUTATION,
             "tavilysocial": OSINTCategory.SOCIAL,
-            # Darknet sources → THREAT_INTEL
-            "alphabaymarketplace": OSINTCategory.THREAT_INTEL,
-            "hansamarketplace": OSINTCategory.THREAT_INTEL,
-            "empiremarketplace": OSINTCategory.THREAT_INTEL,
-            "dreammarketplace": OSINTCategory.THREAT_INTEL,
-            "wallstreetmarketplace": OSINTCategory.THREAT_INTEL,
-            "tor2webdeanon": OSINTCategory.THREAT_INTEL,
+            # Darknet sources -> DARKNET
+            "alphabaymarketplace": OSINTCategory.DARKNET,
+            "hansamarketplace": OSINTCategory.DARKNET,
+            "empiremarketplace": OSINTCategory.DARKNET,
+            "dreammarketplace": OSINTCategory.DARKNET,
+            "wallstreetmarketplace": OSINTCategory.DARKNET,
+            "tor2webdeanon": OSINTCategory.DARKNET,
         }
 
         return category_mapping.get(source_name)

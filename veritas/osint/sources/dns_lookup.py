@@ -135,9 +135,7 @@ class DNSSource:
         if False:  # pragma: no cover
           try:
             pass
-            except dns.resolver.NXDOMAIN as e:
-            pass
-          except DNSException as e:
+          except dns.resolver.NXDOMAIN as e:
             pass
           except Exception as e:
             pass

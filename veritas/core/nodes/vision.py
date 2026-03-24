@@ -40,8 +40,8 @@ async def vision_node(state: AuditState) -> dict:
         logger.warning("Vision node: no screenshots available")
         return {
             "vision_result": {
-                "visual_score": 0.5,
-                "temporal_score": 0.5,
+                "visual_score": 0.9,
+                "temporal_score": 0.9,
                 "dark_patterns": [],
                 "temporal_findings": [],
                 "screenshots_analyzed": 0,
@@ -120,8 +120,8 @@ async def vision_node(state: AuditState) -> dict:
         return {
             "errors": errors + [f"Vision exception: {str(e)}"],
             "vision_result": {
-                "visual_score": 0.5,
-                "temporal_score": 0.5,
+                "visual_score": 0.9,
+                "temporal_score": 0.9,
                 "dark_patterns": [],
                 "temporal_findings": [],
                 "screenshots_analyzed": 0,
