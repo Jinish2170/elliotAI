@@ -47,9 +47,9 @@ async def scout_node(state: AuditState) -> dict:
         async with StealthScout(use_tor=use_tor) as scout:
             # First URL gets full temporal investigation
             if len(investigated) == 0:
-                result = await scout.investigate(url)
+                result = await scout.investigate(url, progress_emitter=state.get("_progress_emitter"))
             else:
-                result = await scout.navigate_subpage(url)
+                result = await scout.navigate_subpage(url, progress_emitter=state.get("_progress_emitter"))
 
         # Serialize ScoutResult for state storage
         result_dict = {

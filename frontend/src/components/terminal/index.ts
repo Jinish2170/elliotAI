@@ -11,3 +11,4 @@ export { VisionIntelligence } from "./VisionIntelligence";
 export { ThreatIntelligenceMatrix } from "./ThreatIntelligenceMatrix";
 export { ScoutTelemetry } from "./ScoutTelemetry";
 export { FinalAuditReport } from "./FinalAuditReport";
+export { CorporateEntitiesPanel } from "./CorporateEntitiesPanel";

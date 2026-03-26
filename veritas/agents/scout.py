@@ -548,6 +548,15 @@ class StealthScout:
                 if not isinstance(dom_result, dict):
                     dom_result = dom_result.__dict__ if hasattr(dom_result, '__dict__') else {}
                 logger.debug(f"DOM analysis complete: {len(dom_result.get('findings', []))} findings")
+                
+                # Emit DOM health data immediately via stream
+                if emitter:
+                    from veritas.core.progress.event_priority import EventPriority
+                    await emitter.emit_event(
+                        event_type="dom_analysis_complete",
+                        priority=EventPriority.HIGH,
+                        payload=dom_result
+                    )
             except Exception as e:
                 logger.warning(f"DOM analysis failed (non-critical): {e}")
 
@@ -623,6 +632,15 @@ class StealthScout:
                     logger.warning(f"Scroll orchestration failed (non-critical): {e}")
                     scroll_result = None
 
+            # --- Section-aware screenshots ---
+            section_screenshots = []
+            try:
+                if emitter:
+                    await emitter.emit_progress("Scout", "section_capture", 80, "Capturing key DOM sections...")
+                section_screenshots = await self._capture_section_screenshots(page, audit_id)
+            except Exception as e:
+                logger.debug(f"Section screenshots failed (non-critical): {e}")
+
             # --- Assemble Result ---
             screenshots = [p for p in [ss_a, ss_b, ss_full] if p]
             timestamps = []
@@ -636,6 +654,32 @@ class StealthScout:
             if ss_full:
                 timestamps.append(ts_full)
                 labels.append("fullpage")
+
+            # Add scroll screenshots
+            if enable_scrolling and scroll_result and scroll_result.screenshot_paths:
+                for idx, path in enumerate(scroll_result.screenshot_paths):
+                    screenshots.append(path)
+                    timestamps.append(time.time())
+                    labels.append(f"scroll_cycle_{idx}")
+                    # Emit dynamically
+                    if emitter:
+                        import os
+                        if os.path.exists(path):
+                            with open(path, "rb") as f:
+                                await emitter.emit_screenshot(f.read(), f"scroll_cycle_{idx}", "Scout")
+
+            # Add section screenshots
+            if section_screenshots:
+                for idx, path in enumerate(section_screenshots):
+                    screenshots.append(path)
+                    timestamps.append(time.time())
+                    labels.append(f"section_{idx}")
+                    # Emit dynamically
+                    if emitter:
+                        import os
+                        if os.path.exists(path):
+                            with open(path, "rb") as f:
+                                await emitter.emit_screenshot(f.read(), f"section_{idx}", "Scout")
 
             # Scout-level trust signals
             trust_notes = []
@@ -857,6 +901,13 @@ class StealthScout:
                 logger.warning(f"Subpage IOC detection failed (non-critical): {e}")
 
             screenshots = [p for p in [ss, ss_full] if p] + section_screenshots
+            screenshot_labels = ["subpage", "subpage_full"][:min(2, len([p for p in [ss, ss_full] if p]))]
+            screenshot_labels += [f"section_{i}" for i in range(len(section_screenshots))]
+
+            if enable_scrolling and scroll_result and scroll_result.screenshot_paths:
+                for idx, path in enumerate(scroll_result.screenshot_paths):
+                    screenshots.append(path)
+                    screenshot_labels.append(f"scroll_cycle_{idx}")
 
             # Emit screenshots
             if emitter:
@@ -867,12 +918,22 @@ class StealthScout:
                 if ss_full and os.path.exists(ss_full):
                     with open(ss_full, "rb") as f2:
                         await emitter.emit_screenshot(f2.read(), "subpage_full", "Scout")
+                
+                # Emit sections
+                for idx, path in enumerate(section_screenshots):
+                    if os.path.exists(path):
+                        with open(path, "rb") as sec_f:
+                            await emitter.emit_screenshot(sec_f.read(), f"section_{idx}", "Scout")
+                
+                # Emit scroll screenshots
+                if enable_scrolling and scroll_result and scroll_result.screenshot_paths:
+                    for idx, path in enumerate(scroll_result.screenshot_paths):
+                        if os.path.exists(path):
+                            with open(path, "rb") as scr_f:
+                                await emitter.emit_screenshot(scr_f.read(), f"scroll_{idx}", "Scout")
+                                
                 await emitter.emit_agent_status("Scout", "completed")
                 await emitter.emit_progress("Scout", "subpage_complete", 100, f"Subpage captured: {len(screenshots)} screenshots")
-
-            # Build labels list
-            screenshot_labels = ["subpage", "subpage_full"][:min(2, len([p for p in [ss, ss_full] if p]))]
-            screenshot_labels += [f"section_{i}" for i in range(len(section_screenshots))]
 
             return ScoutResult(
                 url=url,

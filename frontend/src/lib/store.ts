@@ -99,6 +99,8 @@ interface AuditStore {
   securityResults: SecurityResultItem[];  // POPULATED via security_result event
   result: AuditResult | null;  // POPULATED via audit_result event
   error: string | null;  // POPULATED via audit_error event
+  dualVerdict?: DualVerdict | null;
+  green_flags?: any[];
 
   // Advanced Vision Data
   darkPatternFindings: DarkPatternFinding[];  // POPULATED via dark_pattern_finding event
@@ -110,11 +112,10 @@ interface AuditStore {
   marketplaceThreats: MarketplaceThreatData[];  // POPULATED via darknet_threat event
   iocIndicators: IOCIndicator[];  // POPULATED via ioc_indicator event
   iocDetection: IOCDetectionResult | null;  // POPULATED via ioc_detection_complete event
-
-  // Advanced Judge Data
-  dualVerdict: DualVerdict | null;  // POPULATED via verdict_technical/verdict_nontechnical/dual_verdict_complete
-
-  green_flags: GreenFlag[]; // POPULATED via green_flags event or verdict events
+    
+    // New streaming intelligence data
+    domHealth: any | null; 
+    corporateEntities: any[];
   // Premium Darknet Analysis Data
   darknetAnalysisResult: DarknetAnalysisResult | null;  // POPULATED via darknet_analysis_result event
   marketplaceDetails: MarketplaceThreatData[];  // POPULATED via marketplace_threat event
@@ -233,10 +234,8 @@ export const useAuditStore = create<AuditStore>((set, get) => ({
   marketplaceThreats: [],
   iocIndicators: [],
   iocDetection: null,
-  dualVerdict: null,
-
-  green_flags: [],
-  // Premium Darknet Analysis Data
+  domHealth: null,
+  corporateEntities: [],
   darknetAnalysisResult: null,
   marketplaceDetails: [],
   tor2WebThreats: [],
@@ -824,6 +823,17 @@ function processSingleEvent(
     case "temporal_finding": {
       const finding = event.finding as TemporalFinding;
       set({ temporalFindings: [...state.temporalFindings, finding] });
+      break;
+    }
+
+    // New streaming intel cases
+    case "dom_analysis_complete": {
+      set({ domHealth: event.payload as any });
+      break;
+    }
+
+    case "entity_verified": {
+      set({ corporateEntities: [...state.corporateEntities, event.payload as any] });
       break;
     }
 

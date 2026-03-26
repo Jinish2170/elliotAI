@@ -163,6 +163,7 @@ class ScrollOrchestrator:
             stabilized=cycles_without_content >= self.STABILIZATION_THRESHOLD,
             lazy_load_detected=lazy_load_detected,
             screenshots_captured=len(screenshot_paths),
+            screenshot_paths=screenshot_paths,
             scroll_states=scroll_states,
         )
 

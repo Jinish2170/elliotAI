@@ -221,6 +221,7 @@ class GraphInvestigator:
         page_html: Optional[str] = None,
         audit_tier: str = "standard_audit",
         progress_callback: Optional[Any] = None,
+        emitter: Optional[Any] = None,
     ) -> GraphResult:
         """
         Full graph-based investigation of a URL.
@@ -313,6 +314,26 @@ class GraphInvestigator:
         _progress("entity_verification", f"Verifying {len(verifiable)} entities via web search...")
         verifications = await self._verify_entities(claims, domain)
         result.verifications = verifications
+        
+        if emitter:
+            from veritas.core.progress.event_priority import EventPriority
+            for v in verifications:
+                import asyncio
+                try: # create task so it doesnt wait for socket push
+                    asyncio.create_task(emitter.emit_event(
+                        event_type="entity_verified",
+                        priority=EventPriority.MEDIUM,
+                        payload={
+                            "entity_type": v.claim.entity_type,
+                            "claimed_value": v.claim.entity_value,
+                            "status": v.status,
+                            "confidence": v.confidence,
+                            "evidence": v.evidence_detail
+                        }
+                    ))
+                except Exception as e:
+                    logger.debug(f"Failed emitting entity verification: {e}")
+
         confirmed = sum(1 for v in verifications if v.status == "confirmed")
         denied = sum(1 for v in verifications if v.status in ("denied", "contradicted"))
         _progress("entity_verification_done", f"Verified: {confirmed} confirmed, {denied} contradicted, {len(verifications)-confirmed-denied} unverifiable")
@@ -390,6 +411,19 @@ class GraphInvestigator:
                 result.osint_sources = osint_results
                 result.osint_consensus = osint_results.get("_consensus", {})
 
+                # Emit individual OSINT results to frontend
+                if emitter:
+                    from veritas.core.progress.emitter import EventPriority
+                    for source_key, source_data in osint_results.items():
+                        if source_key != "_consensus" and isinstance(source_data, dict):
+                            asyncio.create_task(
+                                emitter.emit_event(
+                                    event_type="osint_result",
+                                    priority=EventPriority.NORMAL,
+                                    result=source_data
+                                )
+                            )
+
                 # Enhance DomainIntel with OSINT data
                 if result.domain_intel and "whois" in osint_results:
                     whois_data = osint_results["whois"].get("data", {})
@@ -422,11 +456,28 @@ class GraphInvestigator:
                 result.threat_attribution = cti_result.get("attribution", {})
                 result.threat_level = cti_result.get("threat_level", "none")
                 result.osint_confidence = cti_result.get("confidence", 0.0)
-            except Exception as e:
-                logger.warning(f"CTI analysis failed: {e}")
-                result.errors.append(f"CTI analysis failed: {e}")
+                
+                # EMIT MITRE TECHNIQUES TO WEBSOCKET FOR FRONTEND
+                if emitter and result.cti_techniques:
+                    for tech in result.cti_techniques:
+                        if isinstance(tech, dict) and tech.get("technique_id"):
+                            asyncio.create_task(emitter.emit_event(
+                                event_type="mitre_technique_mapped",
+                                priority=EventPriority.NORMAL,
+                                technique=tech
+                            ))
 
-        # Derive osint_confidence from consensus agreement when CTI
+                # EMIT THREAT ATTRIBUTION TO WEBSOCKET FOR FRONTEND
+                if emitter and result.threat_attribution:
+                    asyncio.create_task(emitter.emit_event(
+                        event_type="threat_attribution",
+                        priority=EventPriority.NORMAL,
+                        attribution=result.threat_attribution
+                    ))
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).warning("CTI analysis failed: %s", e)
+
         # didn't provide one (common — CTI is optional / may fail).
         if result.osint_confidence == 0.0 and result.osint_consensus:
             agreement = result.osint_consensus.get("agreement_count", 0)

@@ -192,7 +192,7 @@ class JudgeAgent:
         # -----------------------------------------------------------
         return await self._render_verdict(evidence)
 
-    async def analyze(self, evidence: AuditEvidence, use_dual_verdict: bool = False) -> JudgeDecision:
+    async def analyze(self, evidence: AuditEvidence, use_dual_verdict: bool = False, emitter=None) -> JudgeDecision:
         """
         Analyze evidence and return a verdict.
 
@@ -202,6 +202,7 @@ class JudgeAgent:
         Args:
             evidence: AuditEvidence containing all collected findings
             use_dual_verdict: If True, generates technical (CWE/CVSS) and non-technical (plain English) verdicts
+            emitter: Progress emitter for streaming UI updates
 
         Returns:
             JudgeDecision with verdict data and optional dual_verdict dict
@@ -223,6 +224,34 @@ class JudgeAgent:
                 decision.use_dual_verdict = True
                 decision.dual_verdict = dual_verdict.to_dict()
                 logger.info(f"Dual-tier verdict generated for {evidence.url}")
+                
+                # Emit CVSS metrics directly to frontend if emitter present
+                if emitter and dual_verdict.technical and dual_verdict.technical.cvss_metrics:
+                    from veritas.core.progress.event_priority import EventPriority
+                    import asyncio
+                    
+                    cvss_dict = dual_verdict.technical.cvss_metrics
+                    cvss_arr = []
+                    _metric_keys = ['attack_vector', 'attack_complexity', 'privileges_required', 
+                                   'user_interaction', 'scope', 'confidentiality', 'integrity', 'availability']
+                    
+                    for k in _metric_keys:
+                        if k in cvss_dict:
+                            cvss_arr.append({
+                                "name": k,
+                                "value": str(cvss_dict[k]),
+                                "severity": "HIGH" if cvss_dict.get('base_score', 0) > 6 else "MEDIUM" # simplified severity mapping
+                            })
+                            
+                    asyncio.create_task(emitter.emit_event(
+                        event_type="cvss_metrics",
+                        priority=EventPriority.NORMAL,
+                        payload={
+                            "metrics": cvss_arr,
+                            "base_score": cvss_dict.get('base_score', 0.0)
+                        }
+                    ))
+                    
             except Exception as e:
                 logger.warning(f"Failed to generate dual verdict: {e}", exc_info=True)
                 decision.use_dual_verdict = False

@@ -871,6 +871,43 @@ class VeritasOrchestrator:
                             f"degraded agents: {state.get('_degraded_agents', [])}"
                         )
 
+            # --- AGGREGATE SECURITY RESULTS FOR FRONTEND VIEW ---
+            sec_res = state.get("security_results", {})
+            try:
+                # 1. MITRE from graph_result
+                if state.get("graph_result"):
+                    gr = state["graph_result"]
+                    techniques = []
+                    if isinstance(gr, dict):
+                        techniques = gr.get("cti_techniques", [])
+                    elif hasattr(gr, "cti_techniques"):
+                        techniques = gr.cti_techniques
+                    if techniques:
+                        sec_res["mitre_mappings"] = techniques
+                        
+                # 2. CVSS from judge_decision dual_verdict / technical
+                jd = state.get("judge_decision", {})
+                if jd and isinstance(jd, dict):
+                    dv = jd.get("dual_verdict", {})
+                    tech = dv.get("technical", {}) if isinstance(dv, dict) else {}
+                    cvss_dict = tech.get("cvss_metrics", {})
+                    if cvss_dict:
+                        arr = []
+                        for k in ['attack_vector', 'attack_complexity', 'privileges_required', 'user_interaction', 'scope', 'confidentiality', 'integrity', 'availability']:
+                            if k in cvss_dict:
+                                arr.append({
+                                    "name": k,
+                                    "value": str(cvss_dict[k]),
+                                    "severity": "HIGH" if cvss_dict.get("base_score", 0) > 6 else "MEDIUM"
+                                })
+                        sec_res["cvss_metrics"] = arr
+                        sec_res["cvss_base_score"] = cvss_dict.get("base_score", 0.0)
+                
+                state["security_results"] = sec_res
+            except Exception as e:
+                logger.warning(f"Failed to aggregate security results: {e}")
+            # ----------------------------------------------------
+
             # Emit completion message with quality penalty info
             penalty_msg = f" (degraded: {quality_penalty:.0%})" if quality_penalty > 0 else ""
             self._emit("complete", "done", 100, f"Audit complete in {state['elapsed_seconds']:.0f}s{penalty_msg}",

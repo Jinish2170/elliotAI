@@ -199,6 +199,7 @@ class AuditRunner:
             if self._result_sent:
                 await send({"type": "audit_complete", "audit_id": self.audit_id, "elapsed": round(time.time() - start_time, 1)})
             else:
+                logger.error(f"Audit failed to parse JSON. STDOUT: {stdout_lines[-10:]} STDERR: {stderr_lines[-10:]}")
                 await send({"type": "audit_error", "audit_id": self.audit_id, "error": "Audit finished but result JSON could not be parsed"})
         except Exception as exc:
             logger.error("[%s] runner error: %s", self.audit_id, exc, exc_info=True)

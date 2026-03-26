@@ -290,7 +290,19 @@ async def security_node(state: AuditState) -> dict:
                 page_content_for_darknet = scout_results_list[0].get("page_content", None)
             # Use analyze_with_details() for full result dict
             res = await analyzer.analyze_with_details(url, page_content=page_content_for_darknet)
-            results["darknet_correlation"] = res.to_dict()
+            res_dict = res.to_dict()
+            results["darknet_correlation"] = res_dict
+            
+            # Emit marketplace threats to frontend
+            if res.marketplace_threats:
+                from veritas.core.progress.emitter import emit_event, EventPriority
+                import asyncio
+                for threat in res.marketplace_threats:
+                    asyncio.create_task(emit_event(
+                        "darknet_threat",
+                        priority=EventPriority.NORMAL,
+                        threat=threat
+                    ))
         except Exception as e:
             results["darknet_correlation"] = {"error": str(e)}
 

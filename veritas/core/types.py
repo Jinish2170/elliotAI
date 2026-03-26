@@ -350,21 +350,24 @@ class ScrollResult:
         stabilized: Whether scrolling terminated due to stabilization
         lazy_load_detected: Whether lazy-loaded content was detected
         screenshots_captured: Number of screenshots captured during scroll
+        screenshot_paths: List of file paths to captured screenshots
         scroll_states: List of ScrollState objects for each cycle
     """
     total_cycles: int
     stabilized: bool
     lazy_load_detected: bool
     screenshots_captured: int
-    scroll_states: list[ScrollState] = field(default_factory=list)
+    screenshot_paths: list[str] = field(default_factory=list)
+    scroll_states: list = field(default_factory=list)
 
-    def to_dict(self) -> dict:
-        """Convert to JSON-serializable dictionary."""
+    def to_dict(self) -> dict[str, Any]:
+        """Convert ScrollResult to dictionary."""
         return {
             "total_cycles": self.total_cycles,
             "stabilized": self.stabilized,
             "lazy_load_detected": self.lazy_load_detected,
             "screenshots_captured": self.screenshots_captured,
+            "screenshot_paths": self.screenshot_paths,
             "scroll_states": [
                 {
                     "cycle": s.cycle,

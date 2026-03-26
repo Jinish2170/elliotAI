@@ -16,7 +16,8 @@ import {
   ScoutTelemetry,
   VisionIntelligence,
   ThreatIntelligenceMatrix,
-  FinalAuditReport
+  FinalAuditReport,
+  CorporateEntitiesPanel
 } from "@/components/terminal";
 import { ChromaticProvider } from "@/components/providers/ChromaticProvider";
 import { useAuditStream } from "@/hooks/useAuditStream";
@@ -126,14 +127,21 @@ function AuditPageContent({ id }: { id: string }) {
           {/* Left Rail (Investigative Matrices + Proc State) */}
           <div className="flex flex-col gap-2 flex-[3] min-w-[300px] min-h-0">
             <div className="flex-1 grid grid-rows-3 gap-2 min-h-0">
-              <TerminalPanel title="CVSS.RADAR" className="h-full">
-                <CvssRadar 
-                  metrics={store.cvssMetrics?.length ? store.cvssMetrics : ((store.result as any)?.security_results?.cvss_metrics as any[]) || []}
-                  status={store.status}
-                />
-              </TerminalPanel>
+              {(!store.cvssMetrics?.length && store.corporateEntities?.length > 0) ? (
+                <TerminalPanel title="CORP.INTEGRITY.VERIFICATION" className="h-full">
+                  <CorporateEntitiesPanel entities={store.corporateEntities} status={store.status} />
+                </TerminalPanel>
+              ) : (
+                <TerminalPanel title="CVSS.RADAR" className="h-full">
+                  <CvssRadar 
+                    metrics={store.cvssMetrics?.length ? store.cvssMetrics : ((store.result as any)?.security_results?.cvss_metrics as any[]) || []}
+                    status={store.status}
+                  />
+                </TerminalPanel>
+              )}
+              
               <TerminalPanel title="MITRE.ATTACK.GRID" className="h-full">
-                <MitreGrid 
+                <MitreGrid
                   techniques={store.mitreTechniques?.length ? store.mitreTechniques : ((store.result as any)?.security_results?.mitre_mappings as any[]) || []}
                   status={store.status}
                 />
@@ -221,6 +229,7 @@ function AuditPageContent({ id }: { id: string }) {
                 formDetections={store.formDetections || []}
                 captchaResults={store.captchaResults || []}
                 pagesScanned={store.stats.pages_scanned}
+                domHealth={store.domHealth}
               />
             </TerminalPanel>
 

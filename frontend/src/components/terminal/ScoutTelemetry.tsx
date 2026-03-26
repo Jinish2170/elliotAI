@@ -8,20 +8,45 @@ interface Props {
   formDetections: FormDetection[];
   captchaResults: CaptchaResult[];
   pagesScanned: number;
+  domHealth?: any;
 }
 
-export function ScoutTelemetry({ explorationPath, formDetections, captchaResults, pagesScanned }: Props) {
-  const isEmpty = !explorationPath && !formDetections?.length && !captchaResults?.length && !pagesScanned;
+export function ScoutTelemetry({ explorationPath, formDetections, captchaResults, pagesScanned, domHealth }: Props) {
+  const isEmpty = !explorationPath && !formDetections?.length && !captchaResults?.length && !pagesScanned && !domHealth;
   if (isEmpty) return <GhostPanel message="SCOUT TELEMETRY - AWAITING DATA" />;
+
+  const pageHealth = domHealth?.page_health;
 
   return (
     <div className="w-full h-full overflow-y-auto p-3 flex flex-col gap-4 align-top items-start">
-      <div className="w-full flex justify-between border-b border-[var(--t-dim)] pb-2 mb-2">
-        <div className="text-[10px] flex flex-col gap-1">
-          <span className="text-[var(--t-dim)]">PAGES SCANNED</span>
+      <div className="w-full flex justify-between gap-2 border-b border-[var(--t-dim)] pb-2 mb-2">
+        <div className="flex-1 text-[10px] flex flex-col gap-1">
+          <span className="text-[var(--t-dim)]">PAGES</span>
           <span className="text-[var(--t-green)] text-lg">{pagesScanned}</span>
         </div>
-        <div className="text-[10px] flex flex-col gap-1 text-right">
+        
+        {pageHealth && (
+          <>
+            <div className="flex-1 text-[10px] flex flex-col gap-1 border-l border-[var(--t-dim)] pl-2">
+              <span className="text-[var(--t-dim)]">LINKS TRACED</span>
+              <span className="text-[var(--t-amber)] text-lg">{pageHealth.total_links || 0}</span>
+            </div>
+            <div className="flex-1 text-[10px] flex flex-col gap-1 border-l border-[var(--t-dim)] pl-2">
+              <span className="text-[var(--t-dim)]">EXT. SCRIPTS</span>
+              <span className={`text-lg ${(pageHealth.external_script_count || 0) > 15 ? 'text-[var(--t-red)]' : 'text-[var(--t-green)]'}`}>
+                {pageHealth.external_script_count || 0}
+              </span>
+            </div>
+            <div className="flex-1 text-[10px] flex flex-col gap-1 border-l border-[var(--t-dim)] pl-2">
+              <span className="text-[var(--t-dim)]">LEGAL / TERMS</span>
+              <span className={`text-lg ${(pageHealth.has_privacy_link || pageHealth.has_terms_link) ? 'text-[var(--t-green)]' : 'text-[var(--t-red)]'}`}>
+                {(pageHealth.has_privacy_link || pageHealth.has_terms_link) ? 'TRUE' : 'FALSE'}
+              </span>
+            </div>
+          </>
+        )}
+
+        <div className="flex-1 text-[10px] flex flex-col gap-1 text-right border-l border-[var(--t-dim)] pl-2">
           <span className="text-[var(--t-dim)]">RUNTIME (ms)</span>
           <span className="text-[var(--t-text)] text-lg">{explorationPath?.total_time_ms || 0}</span>
         </div>

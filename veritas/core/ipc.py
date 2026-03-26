@@ -178,29 +178,26 @@ def serialize_queue(queue: multiprocessing.Queue) -> tuple[str, str]:
         queue: The multiprocessing Queue to serialize
 
     Returns:
-        tuple: (fileno, serialized) where:
-            - fileno: File descriptor/identifier string
-            - serialized: Base64-encoded pickled pipeline handle
+        tuple: (authkey_b64, serialized_queue) where:
+            - authkey_b64: Base64-encoded authkey
+            - serialized_queue: Base64-encoded pickled queue proxy
 
     Note:
-        Uses multiprocessing.reduction.reduce_connection() to get the pipeline
-        handle, then base64-encodes pickled result for env var passing.
+        Uses simple pickling of the proxy object along with passing
+        the multiprocessing authkey for cross-process access.
     """
-    from multiprocessing import reduction
+    import multiprocessing as mp
 
-    # Get pipeline handle for Queue
-    fileno, handle = reduction.reduce_connection(queue)[0]
+    authkey_b64 = base64.b64encode(mp.current_process().authkey).decode('utf-8')
+    serialized = base64.b64encode(pickle.dumps(queue)).decode('utf-8')
 
-    # Base64-encode pickled handle for environment passing
-    serialized = base64.b64encode(pickle.dumps(handle)).decode('utf-8')
-
-    return (str(fileno), serialized)
+    return (authkey_b64, serialized)
 
 
 def deserialize_queue_from_env() -> Optional[multiprocessing.Queue]:
     """Deserialize Queue from environment variables (subprocess-side).
 
-    Reads AUDIT_QUEUE_FD and AUDIT_QUEUE_KEY from environment and
+    Reads AUDIT_QUEUE_FD (used as authkey) and AUDIT_QUEUE_KEY from environment and
     reconstructs the multiprocessing Queue.
 
     Returns:
@@ -210,20 +207,19 @@ def deserialize_queue_from_env() -> Optional[multiprocessing.Queue]:
         Logs ERROR on deserialization failure instead of raising.
         Called in subprocess to receive Queue from parent process.
     """
-    from multiprocessing import reduction
+    import multiprocessing as mp
 
-    fd = os.getenv("AUDIT_QUEUE_FD")
+    authkey_b64 = os.getenv("AUDIT_QUEUE_FD")
     key = os.getenv("AUDIT_QUEUE_KEY")
 
-    if fd is None or key is None:
+    if authkey_b64 is None or key is None:
         logger.error("Missing AUDIT_QUEUE_FD or AUDIT_QUEUE_KEY environment variables")
         return None
 
     try:
-        # Reconstruct handle from base64 pickled data
-        handle = pickle.loads(base64.b64decode(key))
-        # Rebuild Queue from handle
-        queue_obj = reduction.rebuild_connection((None, handle), int(fd))
+        authkey = base64.b64decode(authkey_b64)
+        mp.current_process().authkey = authkey
+        queue_obj = pickle.loads(base64.b64decode(key))
         return queue_obj
     except Exception as e:
         logger.error(f"Failed to deserialize Queue: {e}")

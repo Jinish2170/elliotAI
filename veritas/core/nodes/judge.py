@@ -158,7 +158,11 @@ async def judge_node(state: AuditState) -> dict:
     try:
         nim = NIMClient()
         judge = JudgeAgent(nim_client=nim)
-        decision = await judge.analyze(evidence, use_dual_verdict=True)
+        decision = await judge.analyze(
+            evidence, 
+            use_dual_verdict=True, 
+            emitter=state.get("_progress_emitter")
+        )
 
         if decision.action == "REQUEST_MORE_INVESTIGATION":
             logger.info(f"Judge: need more investigation -> {decision.investigate_urls}")

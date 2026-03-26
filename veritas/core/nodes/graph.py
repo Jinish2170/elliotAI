@@ -82,6 +82,7 @@ async def graph_node(state: AuditState) -> dict:
                     form_validation=primary.get("form_validation"),
                     audit_tier=audit_tier,
                     progress_callback=_on_progress,
+                    emitter=state.get("_progress_emitter"),
                 )
         except TimeoutError:
             timeout_msg = f"Graph phase timeout after {graph_timeout_s}s"
@@ -162,6 +163,20 @@ async def graph_node(state: AuditState) -> dict:
             "osint_confidence": result.osint_confidence,
             "errors": result.errors,
         }
+
+        emitter = state.get("_progress_emitter")
+        if emitter and graph_dict.get("graph_data"):
+            import asyncio
+            from veritas.core.progress.emitter import EventPriority
+            try:
+                # Emit knowledge\_graph event for frontend
+                asyncio.create_task(emitter.emit_event(
+                    event_type="knowledge_graph",
+                    priority=EventPriority.NORMAL,
+                    graph=graph_dict["graph_data"]
+                ))
+            except Exception as emit_err:
+                logger.warning(f"Failed to emit knowledge graph: {emit_err}")
 
         return {
             "graph_result": graph_dict,
