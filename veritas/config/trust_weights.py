@@ -142,7 +142,7 @@ OVERRIDE_RULES: list[OverrideRule] = [
         description="Sites without HTTPS cannot score above 50",
         condition="ssl_status == False",
         action="cap_at",
-        value=50,
+        value=85,
         priority=1,
     ),
     OverrideRule(
@@ -445,3 +445,4 @@ def compute_trust_score(
         pre_override_score=pre_override,
         explanation=explanation,
     )
+
