@@ -663,26 +663,28 @@ function processSingleEvent(
 
     case "audit_result": {
       const result = event.result as AuditResult;
+      const normalizedGreen = normalizeGreenFlags(result.green_flags || []);
       set({
         result: {
           ...result,
-          green_flags: normalizeGreenFlags(result.green_flags || []),
+          green_flags: normalizedGreen,
         } as AuditResult,
+        green_flags: normalizedGreen,
       });
       break;
     }
 
     case "green_flags": {
-      const greenFlags = normalizeGreenFlags(event.green_flags || event.flags);
+      const greenFlags = normalizeGreenFlags(event.green_flags || event.flags); 
       // Update result with green flags
+      const updates: Partial<AuditStore> = { green_flags: greenFlags };
       if (state.result) {
-        set({
-          result: {
-            ...state.result,
-            green_flags: greenFlags,
-          } as AuditResult,
-        });
+        updates.result = {
+          ...state.result,
+          green_flags: greenFlags,
+        } as AuditResult;
       }
+      set(updates);
       break;
     }
 

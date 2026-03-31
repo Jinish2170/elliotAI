@@ -44,12 +44,21 @@ async def scout_node(state: AuditState) -> dict:
         tier_config = settings.AUDIT_TIERS.get(audit_tier, settings.AUDIT_TIERS["standard_audit"])
         use_tor = bool(tier_config.get("enable_tor", False))
 
+        # Deduce max sections based on tier to avoid "why only 6 screenshots" issue
+        max_screenshots = tier_config.get("screenshots", 20)
+        max_sections = min(20, max_screenshots // len(pending)) if pending else 5
+        max_sections = max(5, max_sections)
+
         async with StealthScout(use_tor=use_tor) as scout:
             # First URL gets full temporal investigation
             if len(investigated) == 0:
-                result = await scout.investigate(url, progress_emitter=state.get("_progress_emitter"))
+                result = await scout.investigate(
+                    url, progress_emitter=state.get("_progress_emitter"), max_sections=max_sections
+                )
             else:
-                result = await scout.navigate_subpage(url, progress_emitter=state.get("_progress_emitter"))
+                result = await scout.navigate_subpage(
+                    url, progress_emitter=state.get("_progress_emitter"), max_sections=max_sections
+                )
 
         # Serialize ScoutResult for state storage
         result_dict = {

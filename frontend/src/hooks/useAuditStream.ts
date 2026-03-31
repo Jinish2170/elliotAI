@@ -73,15 +73,13 @@ export function useAuditStream(auditId: string | null, url?: string, tier?: stri
 			}
 		};
 
-		let isIntentionalClose = false;
-
 		ws.onerror = (err) => {
-			const isIntentionalClose = (ws as any).__isIntentionalClose;
-			console.error("[useAuditStream] WebSocket error:", err, "readyState:", ws.readyState);
-			if (isIntentionalClose) {
+			const isIntentionalClose = Boolean((ws as any).__isIntentionalClose);
+			if (isIntentionalClose || ws.readyState === WebSocket.CLOSED) {
 				debugLog("Ignoring error due to intentional close.");
 				return;
 			}
+			console.error("[useAuditStream] WebSocket error:", err, "readyState:", ws.readyState);
 			// Update store with error - use getState to avoid recursion
 			const store2 = useAuditStore.getState();
 			if (store2.status !== "error") {

@@ -51,3 +51,4 @@ export function CvssRadar({ metrics, status }: { metrics: CVSSMetric[], status?:
     </div>
   );
 }
+

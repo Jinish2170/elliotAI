@@ -1,5 +1,5 @@
 """
-Veritas Agent 1 — The Stealth Scout (Browser Automation)
+Veritas Agent 1 â€” The Stealth Scout (Browser Automation)
 
 The "Hands & Legs" of Veritas. Navigates target URLs, captures evidence.
 
@@ -13,9 +13,9 @@ Capabilities:
     - Async context manager for proper resource cleanup
 
 Patterns merged from:
-    - glass-box-portal/backend/main.py → capture_mobile_screenshot()
+    - glass-box-portal/backend/main.py â†’ capture_mobile_screenshot()
       (mobile viewport, navigator.webdriver=undefined, networkidle wait)
-    - Rag_v5.0.0/rag-core/ingestion/scrapers.py → StealthScraper
+    - Rag_v5.0.0/rag-core/ingestion/scrapers.py â†’ StealthScraper
       (enhanced stealth JS, user-agent rotation, retry, content extraction)
 """
 
@@ -67,7 +67,7 @@ except ImportError:
 
 # ============================================================
 # User Agent Pool
-# (From RAGv5 scrapers.py pattern — rotated per-context)
+# (From RAGv5 scrapers.py pattern â€” rotated per-context)
 # ============================================================
 
 _DESKTOP_USER_AGENTS = [
@@ -325,15 +325,16 @@ class StealthScout:
         viewport: str = "desktop",
         enable_scrolling: bool = True,
         progress_emitter: Optional["ProgressEmitter"] = None,
+        max_sections: int = 5,
     ) -> ScoutResult:
         """
         Full forensic investigation of a URL:
             1. Navigate with stealth browser
             2. Check for CAPTCHA
-            3. Take Screenshot_A (t0) — viewport shot
+            3. Take Screenshot_A (t0) â€” viewport shot
             4. Simulate human behavior (scroll, mouse jitter)
             5. Wait temporal_delay seconds
-            6. Take Screenshot_B (t+delay) — viewport shot (for timer comparison)
+            6. Take Screenshot_B (t+delay) â€” viewport shot (for timer comparison)
             7. Take full-page screenshot
             8. Extract comprehensive page metadata
             9. Intelligent scrolling (optional) for lazy-loaded content
@@ -359,7 +360,7 @@ class StealthScout:
 
         # Route .onion URLs via TOR instead of browser (Plan 12-04)
         if self._is_onion_url(url):
-            logger.info(f"Detected .onion URL — routing capture via TOR: {url}")
+            logger.info(f"Detected .onion URL â€” routing capture via TOR: {url}")
             if emitter:
                 await emitter.emit_progress("Scout", "tor_routing", 10, "Routing via TOR network...")
             tor_result = await self._capture_via_tor(url)
@@ -372,7 +373,7 @@ class StealthScout:
                 onion_detected=True,
                 onion_addresses=[url],
                 trust_modifier=-0.3,
-                trust_notes=["Target URL is a .onion hidden service — routed via TOR"],
+                trust_notes=["Target URL is a .onion hidden service â€” routed via TOR"],
                 error_message=tor_result.get("error") or "",
             )
 
@@ -458,7 +459,7 @@ class StealthScout:
                     viewport_used=viewport,
                     user_agent_used=user_agent,
                     trust_modifier=0.0,
-                    trust_notes=["CAPTCHA present — this is a neutral/positive security indicator"],
+                    trust_notes=["CAPTCHA present â€” this is a neutral/positive security indicator"],
                 )
 
             # --- Screenshot A (t0) ---
@@ -519,7 +520,7 @@ class StealthScout:
             # --- Site Type Classification ---
             has_price = any(
                 kw in (metadata.description + " " + " ".join(metadata.keywords)).lower()
-                for kw in ["price", "buy", "cart", "shop", "checkout", "$", "€", "£"]
+                for kw in ["price", "buy", "cart", "shop", "checkout", "$", "â‚¬", "Â£"]
             )
             has_pw = any(f.get("hasPassword") for f in metadata.forms)
             has_cc = any(f.get("hasCreditCard") for f in metadata.forms)
@@ -637,7 +638,7 @@ class StealthScout:
             try:
                 if emitter:
                     await emitter.emit_progress("Scout", "section_capture", 80, "Capturing key DOM sections...")
-                section_screenshots = await self._capture_section_screenshots(page, audit_id)
+                section_screenshots = await self._capture_section_screenshots(page, audit_id, max_sections=max_sections)
             except Exception as e:
                 logger.debug(f"Section screenshots failed (non-critical): {e}")
 
@@ -690,7 +691,7 @@ class StealthScout:
             if len(metadata.forms) > 0:
                 password_forms = [f for f in metadata.forms if f.get("hasPassword")]
                 if password_forms and not metadata.has_ssl:
-                    trust_notes.append("Password form detected WITHOUT SSL — critical risk")
+                    trust_notes.append("Password form detected WITHOUT SSL â€” critical risk")
                     trust_mod -= 0.2
 
             # IOC trust modifiers (onion detection = high risk indicator)
@@ -698,9 +699,9 @@ class StealthScout:
                 trust_notes.append(f"Onion (.onion) addresses detected: {len(onion_addresses)} hidden services found")
                 trust_mod -= 0.3  # Significant trust reduction for .onion links
                 if len(onion_addresses) == 1:
-                    trust_notes.append("Single .onion link detected — may indicate darknet connection")
+                    trust_notes.append("Single .onion link detected â€” may indicate darknet connection")
                 else:
-                    trust_notes.append(f"{len(onion_addresses)} .onion links detected — strong darknet connection signals")
+                    trust_notes.append(f"{len(onion_addresses)} .onion links detected â€” strong darknet connection signals")
             if ioc_detected and not onion_detected:
                 trust_notes.append(f"Security indicators detected: {len(ioc_indicators)} IOCs found")
 
@@ -736,8 +737,8 @@ class StealthScout:
                     "external_scripts": metadata.external_scripts[:20],
                     "forms": metadata.forms,
                     "forms_count": len(metadata.forms),
-                    "internal_links_count": len(metadata.links_internal),
-                    "external_links_count": len(metadata.links_external),
+                    "internal_links_count": len(metadata.links_internal), "internal_links": metadata.links_internal,
+                    "external_links_count": len(metadata.links_external), "external_links": metadata.links_external,
                     "images_count": metadata.images_count,
                     "has_ssl": metadata.has_ssl,
                     "cookies_count": metadata.cookies_count,
@@ -792,6 +793,7 @@ class StealthScout:
         viewport: str = "desktop",
         progress_emitter: Optional["ProgressEmitter"] = None,
         enable_scrolling: bool = True,
+        max_sections: int = 5,
     ) -> ScoutResult:
         """
         Enhanced navigation for sub-pages with intelligent scrolling and
@@ -867,7 +869,7 @@ class StealthScout:
 
             # --- Section-aware screenshots ---
             try:
-                section_screenshots = await self._capture_section_screenshots(page, audit_id)
+                section_screenshots = await self._capture_section_screenshots(page, audit_id, max_sections=max_sections)
             except Exception as e:
                 logger.debug(f"Section screenshots failed (non-critical): {e}")
 
@@ -946,8 +948,8 @@ class StealthScout:
                     "forms_count": len(metadata.forms),
                     "forms": metadata.forms,
                     "has_ssl": metadata.has_ssl,
-                    "internal_links_count": len(metadata.links_internal),
-                    "external_links_count": len(metadata.links_external),
+                    "internal_links_count": len(metadata.links_internal), "internal_links": metadata.links_internal,
+                    "external_links_count": len(metadata.links_external), "external_links": metadata.links_external,
                     "page_text": metadata.page_text,
                     "local_storage_keys": metadata.local_storage_keys,
                     "session_storage_keys": metadata.session_storage_keys,
@@ -1178,7 +1180,7 @@ class StealthScout:
     async def _safe_navigate(self, page: Page, url: str) -> bool:
         """
         Navigate with fallback wait strategies.
-        Tries: networkidle → domcontentloaded → load → commit
+        Tries: networkidle â†’ domcontentloaded â†’ load â†’ commit
         """
         timeout_ms = settings.SCREENSHOT_TIMEOUT * 1000
         return await self._navigate_with_timeout(page, url, timeout_ms)
@@ -1187,7 +1189,7 @@ class StealthScout:
         """
         Navigate with fallback wait strategies using specific timeout.
 
-        Tries strategies in order: networkidle → domcontentloaded → load → commit.
+        Tries strategies in order: networkidle â†’ domcontentloaded â†’ load â†’ commit.
         Returns True on first successful navigation, False if all fail.
 
         Args:
@@ -1384,7 +1386,7 @@ class StealthScout:
 
     # ================================================================
     # Private: Metadata Extraction
-    # (Pattern from RAGv5 scrapers.py → _extract_with_js)
+    # (Pattern from RAGv5 scrapers.py â†’ _extract_with_js)
     # ================================================================
 
     async def _extract_metadata(self, page: Page) -> PageMetadata:
@@ -1405,7 +1407,7 @@ class StealthScout:
                         ogTags[el.getAttribute('property')] = el.getAttribute('content');
                     });
 
-                    // Links — split internal vs external
+                    // Links â€” split internal vs external
                     const hostname = window.location.hostname;
                     const internalLinks = new Set();
                     const externalLinks = new Set();
@@ -1422,7 +1424,7 @@ class StealthScout:
                         } catch(e) {}
                     });
 
-                    // Forms — detect password fields, email fields, action URLs
+                    // Forms â€” detect password fields, email fields, action URLs
                     const forms = [];
                     document.querySelectorAll('form').forEach(f => {
                         const inputs = f.querySelectorAll('input, select, textarea');
@@ -1533,7 +1535,7 @@ class StealthScout:
             await asyncio.sleep(0.5)
 
         except Exception as e:
-            # Non-critical — continue even if simulation fails
+            # Non-critical â€” continue even if simulation fails
             logger.debug(f"Human simulation error (non-critical): {e}")
 
     # ================================================================

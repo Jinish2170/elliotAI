@@ -310,14 +310,28 @@ class JudgeAgent:
         if evidence.pages_investigated < evidence.max_pages and evidence.iteration < evidence.max_iterations:
             # Only loop if we have found some meaningful links to follow
             scout = evidence.scout_results[-1]
+            logger.info(f"Checking for deep scan. scout.status={scout.status}, has_metadata={bool(scout.page_metadata)}")
             if scout.status == "SUCCESS" and scout.page_metadata:
                 links = scout.page_metadata.get("internal_links", [])
+                ext_links = scout.page_metadata.get("external_links", [])
+                links_alt = getattr(scout, 'links', [])
+                logger.info(f"Found internal_links={len(links)} alt_links={len(links_alt)} ext_links={len(ext_links)}")
                 if isinstance(links, list) and len(links) > 0:
-                    logger.info(f"Budget allows more investigation ({evidence.pages_investigated}/{evidence.max_pages}). Requesting deeper scan.")
+                    logger.info(f"Budget allows more investigation ({evidence.pages_investigated}/{evidence.max_pages}). Requesting deeper scan.") 
                     return True
-                # If metadata wasn't a dict or internal_links missing, we might fallback
-                elif hasattr(scout, 'links') and scout.links:
+                elif links_alt:
+                    logger.info(f"Using fallback scout.links len={len(links_alt)}")
                     return True
+                elif isinstance(ext_links, list) and len(ext_links) > 0 and evidence.max_pages > 8:
+                    logger.info("No internal links but deep scan enabled. Falling back to external links.")
+                    return True
+                else:
+                    logger.warning("No links found on this page. Stopping deep scan.")
+            else:
+                logger.warning(f"Scout status was not SUCCESS or no metadata. status={scout.status}")
+        else:
+            logger.info(f"Not checking deep scan: pages_investigated={evidence.pages_investigated}/{evidence.max_pages}, "
+                        f"iteration={evidence.iteration}/{evidence.max_iterations}")
 
         return False
 
@@ -336,11 +350,19 @@ class JudgeAgent:
                 if isinstance(internal_links, int):
                     internal_links = []
                 available_links.extend(internal_links)
-            available_links.extend(scout.links or [])
+            available_links.extend(getattr(scout, "links", []) or [])
 
         # Deduplicate
         seen_urls = {s.url for s in evidence.scout_results}
         candidate_urls = [u for u in set(available_links) if u not in seen_urls]
+
+        # If zero candidate URLs and deep scan, optionally sample a couple of external links just to keep scanning context
+        if not candidate_urls and evidence.max_pages > 8:
+            for scout in evidence.scout_results:
+                if scout.page_metadata and getattr(scout, "status", "") == "SUCCESS":
+                    ext = scout.page_metadata.get("external_links", [])
+                    if isinstance(ext, list) and ext:
+                        candidate_urls.extend([u for u in ext[:2] if u not in seen_urls])
 
         if not candidate_urls:
             # No more URLs to check — force verdict

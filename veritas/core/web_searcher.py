@@ -286,6 +286,14 @@ async def _enrich_results(
         if not url or not url.startswith("http"):
             enriched.append(r)
             continue
+            
+        # Social media and major platforms often block headless browsers explicitly
+        # and throw CAPTCHAs, rendering the underlying search scrape useless.
+        fragile_domains = ['linkedin.com', 'facebook.com', 'twitter.com', 'x.com', 'instagram.com', 'glassdoor.com']
+        if any(d in url.lower() for d in fragile_domains):
+            # Skip playwright enrichment, rely on the search engine snippet
+            enriched.append(r)
+            continue
 
         try:
             page = await context.new_page()
