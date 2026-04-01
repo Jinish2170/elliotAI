@@ -5,7 +5,7 @@ Balanced approach with focus on loot box manipulation
 and pay-to-win pattern detection.
 """
 
-from veritas.agents.judge.strategies.base import (
+from veritas.agents.judge_core.strategies.base import (
     ExtendedSiteType,
     ScoringAdjustment,
     ScoringContext,

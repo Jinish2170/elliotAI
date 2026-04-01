@@ -6,7 +6,7 @@ Critical red flags trigger CRITICAL severity.
 Maximally suspicious approach with 0.30 security weight.
 """
 
-from veritas.agents.judge.strategies.base import (
+from veritas.agents.judge_core.strategies.base import (
     ExtendedSiteType,
     ScoringAdjustment,
     ScoringContext,

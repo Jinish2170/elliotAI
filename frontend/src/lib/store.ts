@@ -67,16 +67,6 @@ import type {
 import { create } from "zustand";
 import { EventSequencer, type SequencedEvent } from "@/hooks/useEventSequencer";
 
-// Module-level event sequencer singleton (shared across store instances)
-let eventSequencer: EventSequencer | null = null;
-
-function getEventSequencer(): EventSequencer {
-  if (!eventSequencer) {
-    eventSequencer = new EventSequencer();
-  }
-  return eventSequencer;
-}
-
 interface AuditStore {
   // Connection
   auditId: string | null;
@@ -188,6 +178,8 @@ interface AuditStore {
   setStatus: (s: AuditStore["status"]) => void;
   handleEvent: (event: Record<string, unknown>) => void;
   reset: () => void;
+  processedEventIds: string[];
+  eventSequencer: EventSequencer;
 }
 
 const initialPhases: Record<Phase, PhaseState> = {
@@ -301,13 +293,22 @@ export const useAuditStore = create<AuditStore>((set, get) => ({
 
   // Trust Score Data
   trustScoreResult: null,
+  processedEventIds: [],
+  eventSequencer: new EventSequencer(),
 
-  setAudit: (id, url, tier) => set({ auditId: id, url, tier, status: "connecting" }),
+  setAudit: (id, url, tier) =>
+    set({
+      auditId: id,
+      url,
+      tier,
+      status: "connecting",
+      processedEventIds: [],
+      eventSequencer: new EventSequencer(),
+    }),
 
   setStatus: (s) => set({ status: s }),
 
   reset: () => {
-    getEventSequencer().reset();
     set({
       auditId: null,
       url: null,
@@ -379,16 +380,30 @@ export const useAuditStore = create<AuditStore>((set, get) => ({
       aptGroupAttributions: [],
       // Reset trust score data
       trustScoreResult: null,
+      processedEventIds: [],
+      eventSequencer: new EventSequencer(),
     });
   },
 
   handleEvent: (event) => {
     const type = event.type as string;
     const sequence = event.sequence as number | undefined;
+    const eventId = event.event_id as string | undefined;
+
+    // At-least-once delivery safety: skip events already processed.
+    if (eventId && get().processedEventIds.includes(eventId)) {
+      return;
+    }
+
+    if (eventId) {
+      const ids = get().processedEventIds;
+      const nextIds = ids.length >= 5000 ? [...ids.slice(1), eventId] : [...ids, eventId];
+      set({ processedEventIds: nextIds });
+    }
 
     // Event sequencer integration: buffer events with sequence numbers
     if (sequence !== undefined) {
-      const sequencer = getEventSequencer();
+      const sequencer = get().eventSequencer;
       sequencer.addEvent({ sequence, type, data: event });
 
       // Process ready events in order
@@ -427,6 +442,46 @@ function processSingleEvent(
       }
       return flag as GreenFlag;
     });
+  };
+  const normalizeCvssMetrics = (metrics: unknown): CVSSMetric[] => {
+    if (!Array.isArray(metrics)) return [];
+    return metrics
+      .map((metric, idx) => {
+        if (!metric || typeof metric !== "object") return null;
+        const m = metric as Record<string, unknown>;
+        const severityRaw = String(m.severity || "MEDIUM").toUpperCase();
+        const allowed = ["NONE", "LOW", "MEDIUM", "HIGH", "CRITICAL"];
+        return {
+          name: String(m.name || `metric_${idx}`),
+          value: String(m.value ?? ""),
+          severity: (allowed.includes(severityRaw) ? severityRaw : "MEDIUM") as CVSSMetric["severity"],
+        } as CVSSMetric;
+      })
+      .filter((metric): metric is CVSSMetric => metric !== null);
+  };
+  const normalizeTechnique = (technique: unknown): TechniqueMatch | null => {
+    if (typeof technique === "string") {
+      const m = technique.match(/^(T\d+(?:\.\d+)?)\s*-\s*(.+)$/i);
+      if (!m) return null;
+      return {
+        technique_id: m[1].toUpperCase(),
+        technique_name: m[2].trim(),
+        tactic: "",
+        confidence: 0,
+        matched_markers: [],
+      };
+    }
+    if (!technique || typeof technique !== "object") return null;
+    const t = technique as Record<string, unknown>;
+    const id = String(t.technique_id || "").trim();
+    if (!id) return null;
+    return {
+      technique_id: id.toUpperCase(),
+      technique_name: String(t.technique_name || "UNKNOWN"),
+      tactic: String(t.tactic || ""),
+      confidence: Number(t.confidence ?? 0) || 0,
+      matched_markers: Array.isArray(t.matched_markers) ? t.matched_markers.map((v) => String(v)) : [],
+    };
   };
   const defaultTechnicalVerdict: DualVerdict["technical"] = {
     cwe_entries: [],
@@ -995,8 +1050,9 @@ function processSingleEvent(
     // ============================================================
 
     case "cvss_metrics": {
+      const normalizedMetrics = normalizeCvssMetrics(event.metrics);
       set({
-        cvssMetrics: event.metrics as CVSSMetric[],
+        cvssMetrics: normalizedMetrics,
         cvssScore: event.base_score as number,
       });
       break;
@@ -1014,8 +1070,14 @@ function processSingleEvent(
     // ============================================================
 
     case "mitre_technique_mapped": {
+      const normalizedTechnique = normalizeTechnique(event.technique);
+      if (!normalizedTechnique) break;
+      const exists = state.mitreTechniques.some(
+        (item) => item.technique_id === normalizedTechnique.technique_id && item.tactic === normalizedTechnique.tactic
+      );
+      if (exists) break;
       set({
-        mitreTechniques: [...state.mitreTechniques, event.technique as TechniqueMatch],
+        mitreTechniques: [...state.mitreTechniques, normalizedTechnique],
       });
       break;
     }
@@ -1125,7 +1187,13 @@ function processSingleEvent(
     // ============================================================
 
     case "cvss_metric": {
-      const metric = event.metric as CVSSMetric;
+      const normalized = normalizeCvssMetrics([event.metric]);
+      if (!normalized.length) break;
+      const metric = normalized[0];
+      const exists = state.cvssMetrics.some(
+        (item) => item.name === metric.name && item.value === metric.value && item.severity === metric.severity
+      );
+      if (exists) break;
       set({ cvssMetrics: [...state.cvssMetrics, metric] });
       break;
     }

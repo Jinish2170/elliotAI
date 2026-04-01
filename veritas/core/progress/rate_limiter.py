@@ -110,7 +110,7 @@ class TokenBucketRateLimiter:
                 # No tokens available, queue event
                 if len(self.event_queue) >= self.max_queue_size:
                     # Queue full, drop lowest-priority event if possible
-                    lowest = min(self.event_queue, key=lambda e: e.priority)
+                    lowest = max(self.event_queue, key=lambda e: e.priority)
                     if priority <= lowest.priority:
                         # Drop queued event to make room (incoming is higher or same priority)
                         self.event_queue.remove(lowest)
@@ -123,16 +123,20 @@ class TokenBucketRateLimiter:
                 self.event_queue.append(event)
                 return False
 
-    async def get_queued_event(self) -> Optional[dict]:
+    async def get_queued_event(self, wait_ms: int = 0) -> Optional[dict]:
         """
         Get next queued event when tokens are available.
 
-        Waits up to 100ms for token refill before returning.
+        Optionally waits before checking token refill.
+
+        Args:
+            wait_ms: Milliseconds to wait before checking refill (default 0)
 
         Returns:
             Event data if available, None if no queued events or no tokens
         """
-        await asyncio.sleep(0.1)  # Wait 100ms for token refill
+        if wait_ms > 0:
+            await asyncio.sleep(wait_ms / 1000.0)
         async with self._lock:
             self._refill_tokens()
 

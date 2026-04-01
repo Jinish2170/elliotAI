@@ -5,7 +5,7 @@ Highest emphasis on official verification with zero tolerance
 for fake government indicators.
 """
 
-from veritas.agents.judge.strategies.base import (
+from veritas.agents.judge_core.strategies.base import (
     ExtendedSiteType,
     ScoringAdjustment,
     ScoringContext,

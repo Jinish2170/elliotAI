@@ -318,9 +318,8 @@ class GraphInvestigator:
         if emitter:
             from veritas.core.progress.event_priority import EventPriority
             for v in verifications:
-                import asyncio
-                try: # create task so it doesnt wait for socket push
-                    asyncio.create_task(emitter.emit_event(
+                try:
+                    await emitter.emit_event(
                         event_type="entity_verified",
                         priority=EventPriority.MEDIUM,
                         payload={
@@ -330,7 +329,7 @@ class GraphInvestigator:
                             "confidence": v.confidence,
                             "evidence": v.evidence_detail
                         }
-                    ))
+                    )
                 except Exception as e:
                     logger.debug(f"Failed emitting entity verification: {e}")
 
@@ -413,15 +412,13 @@ class GraphInvestigator:
 
                 # Emit individual OSINT results to frontend
                 if emitter:
-                    from veritas.core.progress.emitter import EventPriority
+                    from veritas.core.progress.event_priority import EventPriority
                     for source_key, source_data in osint_results.items():
                         if source_key != "_consensus" and isinstance(source_data, dict):
-                            asyncio.create_task(
-                                emitter.emit_event(
-                                    event_type="osint_result",
-                                    priority=EventPriority.NORMAL,
-                                    result=source_data
-                                )
+                            await emitter.emit_event(
+                                event_type="osint_result",
+                                priority=EventPriority.MEDIUM,
+                                result=source_data
                             )
 
                 # Enhance DomainIntel with OSINT data
@@ -461,19 +458,19 @@ class GraphInvestigator:
                 if emitter and result.cti_techniques:
                     for tech in result.cti_techniques:
                         if isinstance(tech, dict) and tech.get("technique_id"):
-                            asyncio.create_task(emitter.emit_event(
+                            await emitter.emit_event(
                                 event_type="mitre_technique_mapped",
-                                priority=EventPriority.NORMAL,
+                                priority=EventPriority.MEDIUM,
                                 technique=tech
-                            ))
+                            )
 
                 # EMIT THREAT ATTRIBUTION TO WEBSOCKET FOR FRONTEND
                 if emitter and result.threat_attribution:
-                    asyncio.create_task(emitter.emit_event(
+                    await emitter.emit_event(
                         event_type="threat_attribution",
-                        priority=EventPriority.NORMAL,
+                        priority=EventPriority.MEDIUM,
                         attribution=result.threat_attribution
-                    ))
+                    )
             except Exception as e:
                 import logging
                 logging.getLogger(__name__).warning("CTI analysis failed: %s", e)

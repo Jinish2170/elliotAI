@@ -32,6 +32,7 @@ class RiskLevel(str, Enum):
     SUSPICIOUS = "suspicious"
     HIGH_RISK = "high_risk"
     DANGEROUS = "dangerous"
+    LIKELY_FRAUDULENT = "likely_fraudulent"
 
 
 @dataclass(frozen=True)
@@ -164,7 +165,7 @@ class DualVerdict:
         elif self.trust_score >= 20:
             object.__setattr__(self, "risk_level", RiskLevel.HIGH_RISK)
         else:
-            object.__setattr__(self, "risk_level", RiskLevel.DANGEROUS)
+            object.__setattr__(self, "risk_level", RiskLevel.LIKELY_FRAUDULENT)
 
     @property
     def is_safe(self) -> bool:

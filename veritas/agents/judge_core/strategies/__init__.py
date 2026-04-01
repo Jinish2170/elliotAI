@@ -4,7 +4,7 @@ Scoring strategies for site-type-specific threat assessment.
 Uses Strategy Pattern (GoF 1994) for runtime strategy switching.
 
 Usage:
-    from veritas.agents.judge.strategies import (
+    from veritas.agents.judge_core.strategies import (
         ExtendedSiteType,
         ScoringContext,
         ScoringAdjustment,
@@ -17,7 +17,7 @@ Usage:
 
 from typing import Optional
 
-from veritas.agents.judge.strategies.base import (
+from veritas.agents.judge_core.strategies.base import (
     ExtendedSiteType,
     ScoringAdjustment,
     ScoringContext,
@@ -25,17 +25,17 @@ from veritas.agents.judge.strategies.base import (
 )
 
 # Import all strategies for registry
-from veritas.agents.judge.strategies.company_portfolio import CompanyPortfolioScoringStrategy
-from veritas.agents.judge.strategies.darknet_suspicious import DarknetSuspiciousScoringStrategy
-from veritas.agents.judge.strategies.ecommerce import EcommerceScoringStrategy
-from veritas.agents.judge.strategies.education import EducationScoringStrategy
-from veritas.agents.judge.strategies.financial import FinancialScoringStrategy
-from veritas.agents.judge.strategies.gaming import GamingScoringStrategy
-from veritas.agents.judge.strategies.government import GovernmentScoringStrategy
-from veritas.agents.judge.strategies.healthcare import HealthcareScoringStrategy
-from veritas.agents.judge.strategies.news_blog import NewsBlogScoringStrategy
-from veritas.agents.judge.strategies.saas_subscription import SaaSSubscriptionScoringStrategy
-from veritas.agents.judge.strategies.social_media import SocialMediaScoringStrategy
+from veritas.agents.judge_core.strategies.company_portfolio import CompanyPortfolioScoringStrategy
+from veritas.agents.judge_core.strategies.darknet_suspicious import DarknetSuspiciousScoringStrategy
+from veritas.agents.judge_core.strategies.ecommerce import EcommerceScoringStrategy
+from veritas.agents.judge_core.strategies.education import EducationScoringStrategy
+from veritas.agents.judge_core.strategies.financial import FinancialScoringStrategy
+from veritas.agents.judge_core.strategies.gaming import GamingScoringStrategy
+from veritas.agents.judge_core.strategies.government import GovernmentScoringStrategy
+from veritas.agents.judge_core.strategies.healthcare import HealthcareScoringStrategy
+from veritas.agents.judge_core.strategies.news_blog import NewsBlogScoringStrategy
+from veritas.agents.judge_core.strategies.saas_subscription import SaaSSubscriptionScoringStrategy
+from veritas.agents.judge_core.strategies.social_media import SocialMediaScoringStrategy
 
 
 # Strategy registry: maps site types to strategy classes

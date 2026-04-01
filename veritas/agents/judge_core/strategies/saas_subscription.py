@@ -5,7 +5,7 @@ Balances feature value against manipulative subscription tactics
 and cancellation barriers.
 """
 
-from veritas.agents.judge.strategies.base import (
+from veritas.agents.judge_core.strategies.base import (
     ExtendedSiteType,
     ScoringAdjustment,
     ScoringContext,

@@ -5,7 +5,7 @@ Focuses on account verification, malicious link detection,
 and platform authenticity assessment.
 """
 
-from veritas.agents.judge.strategies.base import (
+from veritas.agents.judge_core.strategies.base import (
     ExtendedSiteType,
     ScoringAdjustment,
     ScoringContext,

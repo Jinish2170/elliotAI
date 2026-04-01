@@ -44,10 +44,17 @@ async def scout_node(state: AuditState) -> dict:
         tier_config = settings.AUDIT_TIERS.get(audit_tier, settings.AUDIT_TIERS["standard_audit"])
         use_tor = bool(tier_config.get("enable_tor", False))
 
-        # Deduce max sections based on tier to avoid "why only 6 screenshots" issue
-        max_screenshots = tier_config.get("screenshots", 20)
-        max_sections = min(20, max_screenshots // len(pending)) if pending else 5
-        max_sections = max(5, max_sections)
+        # Adaptive section capture budget:
+        # reserve baseline scout screenshots (t0, t-delay, fullpage) and allocate the
+        # remaining screenshot budget across pages left in this tier.
+        max_screenshots = int(tier_config.get("screenshots", 20) or 20)
+        tier_pages = int(state.get("max_pages", tier_config.get("pages", 1)) or 1)
+        pages_left = max(1, tier_pages - len(investigated))
+        captured_so_far = sum(len((sr or {}).get("screenshots", [])) for sr in scout_results if isinstance(sr, dict))
+        remaining_screenshot_budget = max(3, max_screenshots - captured_so_far)
+        per_page_budget = max(3, remaining_screenshot_budget // pages_left)
+        baseline_per_page = 3
+        max_sections = max(0, per_page_budget - baseline_per_page)
 
         async with StealthScout(use_tor=use_tor) as scout:
             # First URL gets full temporal investigation

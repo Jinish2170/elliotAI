@@ -100,14 +100,23 @@ class ProgressEmitter:
             **kwargs,
         }
 
-        allowed = await self.rate_limiter.acquire(event.data if hasattr(event, "data") else event, priority)
+        allowed = await self.rate_limiter.acquire(event, priority)
 
         if allowed and self.websocket:
             await self._send_event(event)
+            await self._drain_rate_limited_queue()
         else:
             logger.debug(f"Event rate-limited: {event_type}")
 
         return allowed
+
+    async def emit(self, event: dict, priority: int = EventPriority.MEDIUM) -> bool:
+        """Compatibility wrapper for callers that pass pre-built event dicts."""
+        if not isinstance(event, dict):
+            return False
+        event_type = str(event.get("type") or "progress")
+        payload = {k: v for k, v in event.items() if k != "type"}
+        return await self.emit_event(event_type=event_type, priority=priority, **payload)
 
     async def emit_screenshot(
         self,
@@ -292,6 +301,20 @@ class ProgressEmitter:
     async def flush(self):
         """Flush any buffered findings."""
         await self._flush_findings_buffer()
+        await self._drain_rate_limited_queue(force_wait_ms=100)
+
+    async def _drain_rate_limited_queue(self, force_wait_ms: int = 0):
+        """Drain queued rate-limited events while tokens are available."""
+        if not self.websocket:
+            return
+
+        wait_ms = max(0, force_wait_ms)
+        while True:
+            queued_event = await self.rate_limiter.get_queued_event(wait_ms=wait_ms)
+            wait_ms = 0
+            if queued_event is None:
+                break
+            await self._send_event(queued_event)
 
     async def _send_event(self, event: dict):
         """Send event via WebSocket (or log warning if no connection)."""

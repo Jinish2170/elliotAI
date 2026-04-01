@@ -38,7 +38,7 @@ from veritas.core.nim_client import NIMClient
 # Dual-verdict imports (V2 feature)
 # These are imported conditionally to avoid dependency issues
 try:
-    from veritas.agents.judge.verdict import (
+    from veritas.agents.judge_core.verdict import (
         DualVerdict,
         RiskLevel,
         SeverityLevel,
@@ -46,7 +46,7 @@ try:
         VerdictTechnical,
         IOC,
     )
-    from veritas.agents.judge.strategies import (
+    from veritas.agents.judge_core.strategies import (
         ExtendedSiteType,
         ScoringContext,
         get_strategy,
@@ -224,11 +224,13 @@ class JudgeAgent:
                 decision.use_dual_verdict = True
                 decision.dual_verdict = dual_verdict.to_dict()
                 logger.info(f"Dual-tier verdict generated for {evidence.url}")
+                logger.warning(f"----- JUDGE EMITTER PRESENT? {emitter is not None} -----")
+                open("judge_debug.txt", "w").write(f"Emitter: {emitter is not None} CVSS: {bool(dual_verdict.technical.cvss_metrics)}")
+                logger.warning(f"----- CVSS DICT PRESENT? {bool(dual_verdict.technical.cvss_metrics)} -----")
                 
                 # Emit CVSS metrics directly to frontend if emitter present
                 if emitter and dual_verdict.technical and dual_verdict.technical.cvss_metrics:
                     from veritas.core.progress.event_priority import EventPriority
-                    import asyncio
                     
                     cvss_dict = dual_verdict.technical.cvss_metrics
                     cvss_arr = []
@@ -242,15 +244,12 @@ class JudgeAgent:
                                 "value": str(cvss_dict[k]),
                                 "severity": "HIGH" if cvss_dict.get('base_score', 0) > 6 else "MEDIUM" # simplified severity mapping
                             })
-                            
-                    asyncio.create_task(emitter.emit_event(
+                    await emitter.emit_event(
                         event_type="cvss_metrics",
-                        priority=EventPriority.NORMAL,
-                        payload={
-                            "metrics": cvss_arr,
-                            "base_score": cvss_dict.get('base_score', 0.0)
-                        }
-                    ))
+                        priority=EventPriority.MEDIUM,
+                        metrics=cvss_arr,
+                        base_score=cvss_dict.get('base_score', 0.0)
+                    )
                     
             except Exception as e:
                 logger.warning(f"Failed to generate dual verdict: {e}", exc_info=True)
@@ -440,7 +439,7 @@ class JudgeAgent:
             DualVerdict with technical (CWE/CVSS/IOCs) and non-technical (plain English) tiers
         """
         if not DUAL_VERDICT_AVAILABLE:
-            raise RuntimeError("Dual verdict requires veritas.agents.judge.verdict module")
+            raise RuntimeError("Dual verdict requires veritas.agents.judge_core.verdict module")
 
         trust_result = decision.trust_score_result
         if not trust_result:
@@ -455,55 +454,60 @@ class JudgeAgent:
         except ValueError:
             site_type = ExtendedSiteType.ECOMMERCE  # Default fallback
 
-        ctx = ScoringContext(
-            url=evidence.url,
-            site_type=site_type,
-            site_type_confidence=evidence.site_type_confidence,
-        )
+        ctx_kwargs = {
+            "url": evidence.url,
+            "site_type": site_type,
+            "site_type_confidence": evidence.site_type_confidence,
+        }
 
         # Fill in visual scores
         if evidence.vision_result:
             vr = evidence.vision_result
-            ctx.visual_score = vr.visual_score * 100
-            ctx.temporal_score = vr.temporal_score * 100
-            ctx.has_dark_patterns = vr.total_patterns_found > 0
+            ctx_kwargs["visual_score"] = vr.visual_score * 100
+            ctx_kwargs["temporal_score"] = vr.temporal_score * 100
+            ctx_kwargs["has_dark_patterns"] = vr.total_patterns_found > 0
             if vr.dark_patterns:
-                ctx.dark_pattern_types = tuple(p.pattern_type for p in vr.dark_patterns[:10])
-            ctx.script_count = getattr(vr, 'js_analysis', {}).get('script_count', 0)
-            ctx.dom_depth = getattr(vr, 'dom_analysis', {}).get('depth', 0)
-            ctx.screenshot_count = vr.screenshots_analyzed
+                ctx_kwargs["dark_pattern_types"] = tuple(p.pattern_type for p in vr.dark_patterns[:10])
+            ctx_kwargs["script_count"] = getattr(vr, 'js_analysis', {}).get('script_count', 0)
+            ctx_kwargs["dom_depth"] = getattr(vr, 'dom_analysis', {}).get('depth', 0)
+            ctx_kwargs["screenshot_count"] = vr.screenshots_analyzed
 
         # Fill in structural scores
         if evidence.graph_result:
             gr = evidence.graph_result
-            ctx.structural_score = gr.structural_score * 100 if hasattr(gr, 'structural_score') else 65.0
-            ctx.graph_score = gr.graph_score * 100
-            ctx.has_ssl = gr.has_ssl
-            ctx.domain_age_days = gr.domain_age_days if gr.domain_age_days >= 0 else None
-            ctx.has_lazy_load = getattr(gr, 'has_lazy_load', False)
-            ctx.screenshot_count = min(ctx.screenshot_count, getattr(gr, 'screenshot_count', 1))
+            ctx_kwargs["structural_score"] = getattr(gr, 'structural_score', 0.65) * 100
+            ctx_kwargs["graph_score"] = gr.graph_score * 100
+            ctx_kwargs["has_ssl"] = gr.has_ssl
+            ctx_kwargs["domain_age_days"] = gr.domain_age_days if gr.domain_age_days >= 0 else None
+            ctx_kwargs["has_lazy_load"] = getattr(gr, 'has_lazy_load', False)
+            if "screenshot_count" in ctx_kwargs:
+                ctx_kwargs["screenshot_count"] = min(ctx_kwargs["screenshot_count"], getattr(gr, 'screenshot_count', 1))
+            else:
+                ctx_kwargs["screenshot_count"] = getattr(gr, 'screenshot_count', 1)
 
         # Fill in scores from SubSignals
-        signals = decision.trust_score_result.signals if decision.trust_score_result else {}
+        signals = {s.name: s for s in decision.trust_score_result.sub_signals} if decision.trust_score_result else {}
         if "meta" in signals:
-            ctx.meta_score = signals["meta"].raw_score * 100
+            ctx_kwargs["meta_score"] = signals["meta"].raw_score * 100
         if "security" in signals:
-            ctx.security_score = signals["security"].raw_score * 100
+            ctx_kwargs["security_score"] = signals["security"].raw_score * 100
 
         # Fill in security results
         sec = evidence.security_results or {}
         phishing = sec.get("phishing_db") or sec.get("phishing", {})
-        ctx.has_phishing_hits = phishing.get("is_phishing", False)
+        ctx_kwargs["has_phishing_hits"] = phishing.get("is_phishing", False)
         js = sec.get("js_analysis", {})
-        ctx.js_risk_score = js.get("risk_score", 0.0)
+        ctx_kwargs["js_risk_score"] = js.get("risk_score", 0.0)
 
         # Check for cross-domain forms
         for scout in evidence.scout_results:
             fv = getattr(scout, 'form_validation', {})
             if fv and fv.get("has_cross_domain", False):
-                ctx.has_cross_domain_forms = True
-                ctx.form_validation_score = fv.get("score", 50.0)
+                ctx_kwargs["has_cross_domain_forms"] = True
+                ctx_kwargs["form_validation_score"] = fv.get("score", 50.0)
                 break
+                
+        ctx = ScoringContext(**ctx_kwargs)
 
         # -----------------------------------------------------------
         # Step 2: Select and apply site-type specific strategy
@@ -566,11 +570,11 @@ class JudgeAgent:
         cvss_score = 0.0
         cvss_metrics = None
         r_val = trust_result.risk_level.value if hasattr(trust_result.risk_level, 'value') else str(trust_result.risk_level)
-        if r_val in ("likely_fraudulent", "high_risk"):
+        if r_val in ("likely_fraudulent", "high_risk", "dangerous"):
             cvss_score = 8.5
         elif r_val == "suspicious":
             cvss_score = 6.5
-        elif r_val in ("low_risk", "safe", "trusted"):
+        elif r_val in ("low_risk", "safe", "trusted", "probably_safe"):
             cvss_score = 3.5
 
         if cvss_score > 0:
@@ -609,7 +613,7 @@ class JudgeAgent:
             critical_patterns = [p.pattern_type for p in evidence.vision_result.critical_patterns]
             if critical_patterns:
                 key_findings.extend([f"Critical: {p}" for p in critical_patterns[:3]])
-            high_patterns = [p.pattern_type for p in evidence.vision_result.high_severity_patterns]
+            high_patterns = [p.pattern_type for p in evidence.vision_result.dark_patterns if p.severity == "high"]
             if high_patterns:
                 key_findings.extend([f"High risk: {p}" for p in high_patterns[:3]])
 
@@ -634,21 +638,26 @@ class JudgeAgent:
         if evidence.graph_result and evidence.graph_result.domain_age_days > 365:
             green_flags.append("Domain is over 1 year old")
 
+        try:
+            rl_enum = RiskLevel(trust_result.risk_level.value.lower()) if hasattr(trust_result.risk_level, 'value') else RiskLevel(str(trust_result.risk_level).lower())
+        except Exception:
+            rl_enum = RiskLevel.SUSPICIOUS
+
         # Simple explanation based on risk level
         simple_explanation = {
             RiskLevel.TRUSTED: "This site appears safe and legitimate. No major concerns detected.",
-            RiskLevel.SAFE: "This site looks reasonably safe. Verify before sharing sensitive info.",
-            RiskLevel.LOW_RISK: "This site has some minor concerns but is probably safe to use.",
+            RiskLevel.PROBABLY_SAFE: "This site looks reasonably safe. Verify before sharing sensitive info.",
             RiskLevel.SUSPICIOUS: "Be cautious with this site. Check for reviews and verify authenticity.",
             RiskLevel.HIGH_RISK: "This site has warning signs. Don't enter personal information here.",
+            RiskLevel.DANGEROUS: "This site has high severity threats. Do not use this site.",
             RiskLevel.LIKELY_FRAUDULENT: "This site is likely a scam. Avoid it completely.",
-        }.get(trust_result.risk_level, "Unable to determine safety.")
+        }.get(rl_enum, "Unable to determine safety.")
 
         # Use strategy narrative if available
         summary = adjustments.narrative_template or decision.simple_narrative[:200]
 
         verdict_non_technical = VerdictNonTechnical(
-            risk_level=RiskLevel(trust_result.risk_level.value.lower()),
+            risk_level=rl_enum,
             summary=summary,
             key_findings=key_findings[:5],
             recommendations=recommendations[:5],

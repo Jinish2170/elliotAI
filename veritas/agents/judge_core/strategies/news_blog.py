@@ -5,7 +5,7 @@ Emphasizes source credibility, clickbait detection, and
 content authenticity assessment.
 """
 
-from veritas.agents.judge.strategies.base import (
+from veritas.agents.judge_core.strategies.base import (
     ExtendedSiteType,
     ScoringAdjustment,
     ScoringContext,

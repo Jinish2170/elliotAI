@@ -5,7 +5,7 @@ Highest security priority with zero tolerance policy for
 authentication and transaction security issues.
 """
 
-from veritas.agents.judge.strategies.base import (
+from veritas.agents.judge_core.strategies.base import (
     ExtendedSiteType,
     ScoringAdjustment,
     ScoringContext,

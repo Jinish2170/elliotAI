@@ -5,7 +5,7 @@ Prioritizes visual analysis for dark pattern detection and
 security signals for payment form safety.
 """
 
-from veritas.agents.judge.strategies.base import (
+from veritas.agents.judge_core.strategies.base import (
     ExtendedSiteType,
     ScoringAdjustment,
     ScoringContext,

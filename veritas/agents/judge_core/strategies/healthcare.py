@@ -5,7 +5,7 @@ Highest priority on medical credentialing and patient data protection.
 Any health claim triggers minimum HIGH severity.
 """
 
-from veritas.agents.judge.strategies.base import (
+from veritas.agents.judge_core.strategies.base import (
     ExtendedSiteType,
     ScoringAdjustment,
     ScoringContext,

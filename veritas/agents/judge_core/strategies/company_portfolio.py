@@ -5,7 +5,7 @@ Focuses on entity verification and claim authenticability
 through graph analysis of business relationships.
 """
 
-from veritas.agents.judge.strategies.base import (
+from veritas.agents.judge_core.strategies.base import (
     ExtendedSiteType,
     ScoringAdjustment,
     ScoringContext,

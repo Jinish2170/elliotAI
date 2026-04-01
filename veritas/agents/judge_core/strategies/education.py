@@ -5,7 +5,7 @@ Prioritizes institutional verification and credential
 authenticity assessment for academic content.
 """
 
-from veritas.agents.judge.strategies.base import (
+from veritas.agents.judge_core.strategies.base import (
     ExtendedSiteType,
     ScoringAdjustment,
     ScoringContext,

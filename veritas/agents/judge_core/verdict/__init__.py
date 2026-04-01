@@ -4,7 +4,7 @@ Dual-tier verdict system for Judge Agent.
 Provides technical (CWE/CVSS/IOCs) and non-technical (plain English) verdict tiers.
 
 Usage:
-    from veritas.agents.judge.verdict import (
+    from veritas.agents.judge_core.verdict import (
         DualVerdict,
         VerdictTechnical,
         VerdictNonTechnical,
@@ -14,7 +14,7 @@ Usage:
     )
 """
 
-from veritas.agents.judge.verdict.base import (
+from veritas.agents.judge_core.verdict.base import (
     DualVerdict,
     IOC,
     RiskLevel,

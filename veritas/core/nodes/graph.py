@@ -64,7 +64,6 @@ async def graph_node(state: AuditState) -> dict:
             logger.info(f"[GRAPH:{audit_tier}] {step} ~ {detail}")
             emitter = state.get("_progress_emitter")
             if emitter:
-                import asyncio
                 try:
                     loop = asyncio.get_running_loop()
                     loop.create_task(emitter.emit_progress("Graph", step, 50, detail))
@@ -166,7 +165,6 @@ async def graph_node(state: AuditState) -> dict:
 
         emitter = state.get("_progress_emitter")
         if emitter and graph_dict.get("graph_data"):
-            import asyncio
             from veritas.core.progress.emitter import EventPriority
             try:
                 # Emit knowledge\_graph event for frontend

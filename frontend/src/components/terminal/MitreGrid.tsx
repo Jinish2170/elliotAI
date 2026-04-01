@@ -4,6 +4,17 @@ import { GhostPanel } from "./TerminalPanel";
 import type { TechniqueMatch } from "@/lib/types";
 
 export function MitreGrid({ techniques, status }: { techniques: TechniqueMatch[], status?: string }) {
+	const formatTactic = (tactic: string): string => {
+		const raw = (tactic || "").trim();
+		if (!raw) return "UNKNOWN";
+		if (/^TA\d{4}$/i.test(raw)) return raw.toUpperCase();
+		return raw
+			.replace("x-mitre-tactic-", "")
+			.replace(/_/g, " ")
+			.replace(/-/g, " ")
+			.toUpperCase();
+	};
+
 	if (!techniques || techniques.length === 0) {
     if (status === "complete") {
       return (
@@ -28,9 +39,9 @@ export function MitreGrid({ techniques, status }: { techniques: TechniqueMatch[]
 				<tbody className="text-[var(--t-text)]">
 					{techniques.map((t, idx) => (
 						<tr key={idx} className="border-b border-[var(--t-border)] hover:bg-[#1a1a1a] transition-colors">
-							<td className="p-2 text-[var(--t-amber)] font-bold">{t.technique_id}</td>
+							<td className="p-2 text-[var(--t-amber)] font-bold">{(t.technique_id || "UNKNOWN").toUpperCase()}</td>
 							<td className="p-2 opacity-70 uppercase truncate max-w-[80px]" title={t.tactic || ""}>
-								{(t.tactic || "").replace("x-mitre-tactic-", "").replace(/-/g, " ")}
+								{formatTactic(t.tactic || "")}
 							</td>
 							<td className="p-2 uppercase truncate max-w-[120px]" title={t.technique_name || ""}>
 								{t.technique_name || "UNKNOWN"}
