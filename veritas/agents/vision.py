@@ -1186,6 +1186,15 @@ class VisionAgent:
                     continue  # Too low confidence to report
 
                 pattern_type = finding.get("pattern_type", category_id)
+                if pattern_type.startswith("pass_"):
+                    pattern_type = {
+                        "pass_1": "Visual Scan Indicator",
+                        "pass_2": "Dark Pattern Detected",
+                        "pass_3": "Dynamic Content Manipulated",
+                        "pass_4": "External Intel Mismatch",
+                        "pass_5": "Confidence Scoring Insight"
+                    }.get(pattern_type, pattern_type)
+                category_id = pattern_type
                 severity = self._lookup_severity(category_id, pattern_type)
 
                 evidence_parts = []

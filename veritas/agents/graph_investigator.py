@@ -1916,16 +1916,31 @@ class GraphInvestigator:
     # Public: Graph Export (for report visualization)
     # ================================================================
 
-    def export_graph_data(self, graph: nx.DiGraph) -> dict:
+    def export_graph_data(self, graph):
         """Export graph as a JSON-serializable dict for reporting."""
         if not graph:
             return {"nodes": [], "edges": []}
 
         nodes = []
         for node_id, attrs in graph.nodes(data=True):
+            label = str(node_id)
+            if label.startswith("OSINTSource_"):
+                label = f"OSINT: {label.replace('OSINTSource_', '')}"
+            elif label.startswith("OSINTConsensus_"):
+                label = "OSINT Consensus"
+            elif label.startswith("site:"):
+                label = f"Site: {label.replace('site:', '')}"
+            elif label.startswith("entity:"):
+                label = f"Entity: {label.replace('entity:', '')}"
+            elif label.startswith("target:"):
+                label = f"Target: {label.replace('target:', '')}"
+            elif label.startswith("pass_"):
+                # Clean up pass_N nodes if they arrive here
+                label = f"Check: {label.replace('pass_', '')}"
+
             nodes.append({
                 "id": str(node_id),
-                "label": str(node_id)[:60],
+                "label": label[:60],
                 **{k: str(v)[:200] for k, v in attrs.items()},
             })
 

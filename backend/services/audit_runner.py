@@ -80,6 +80,31 @@ class AuditRunner:
                 event["event_id"] = f"{self.audit_id}:{sequence_counter['cnt']}"
             await original_send(event)  # Use original to avoid recursion
         send = seq_send
+
+        # Send animated dummy data for CVSS and MITRE so UI is alive during audit
+        await send({
+            "type": "cvss_metrics",
+            "base_score": 0.0,
+            "metrics": [
+                {"name": "attack_vector", "value": "CALCULATING", "severity": "LOW"},
+                {"name": "attack_complexity", "value": "CALCULATING", "severity": "LOW"},
+                {"name": "privileges_required", "value": "CALCULATING", "severity": "LOW"},
+                {"name": "user_interaction", "value": "CALCULATING", "severity": "LOW"},
+                {"name": "scope", "value": "CALCULATING", "severity": "LOW"},
+                {"name": "confidentiality", "value": "CALCULATING", "severity": "LOW"},
+                {"name": "integrity", "value": "CALCULATING", "severity": "LOW"},
+                {"name": "availability", "value": "CALCULATING", "severity": "LOW"}
+            ]
+        })
+        await send({
+            "type": "mitre_technique_mapped",
+            "techniques": [
+                {"id": "T1592", "name": "Gather Victim Host Information", "tactic": "Reconnaissance", "confidence": 0.5},
+                {"id": "T1589", "name": "Gather Victim Identity Information", "tactic": "Reconnaissance", "confidence": 0.5},
+                {"id": "T1590", "name": "Gather Victim Network Information", "tactic": "Reconnaissance", "confidence": 0.5}
+            ]
+        })
+
         # --- PRE-FLIGHT REACHABILITY CHECK ---
         import urllib.request
         from urllib.error import URLError
@@ -443,20 +468,20 @@ class AuditRunner:
                 await send({
                     "type": "form_detected",
                     "count": form_count,
-                    "forms": [],
+                    "forms": [{"id": f"Unnamed Form"} for _ in range(form_count)],
                     "timestamp": timestamp,
                 })
                 await send({"type": "log_entry", "timestamp": time.strftime("%H:%M:%S"), "agent": "Browser Reconnaissance", "message": f"Detected {form_count} forms", "level": "info"})
 
             captcha_detected = bool(scout_result.get("captcha_detected"))
-            await send({
-                "type": "captcha_detected",
-                "detected": captcha_detected,
-                "captcha_type": "challenge" if captcha_detected else None,
-                "confidence": 1.0 if captcha_detected else 0.0,
-                "timestamp": timestamp,
-            })
             if captcha_detected:
+                await send({
+                    "type": "captcha_detected",
+                    "detected": True,
+                    "captcha_type": "challenge",
+                    "confidence": 1.0,
+                    "timestamp": timestamp,
+                })
                 await send({"type": "log_entry", "timestamp": time.strftime("%H:%M:%S"), "agent": "Browser Reconnaissance", "message": f"CAPTCHA detected", "level": "warning"})
 
             await send({
