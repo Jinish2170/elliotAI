@@ -174,4 +174,68 @@ Coverage:
 - Total: 13 phases, 57 plans (57 complete)
 
 ---
-*Last updated: 2026-03-10 - Phase 13 Production Hardening complete (7/7 plans)*
+### Phase 17: System-Wide Quality & Intelligence Upgrade
+
+**Goal**: Eliminate false positives in IOC/CTI detection, fix JS obfuscation false positives, enhance Scout with intelligent scrolling and section screenshots, upgrade analysis modules with dark pattern detection, optimize agent prompts, and integrate Tavily OSINT fallback with social engineering enhancement.
+
+**Depends on**: Phase 13 (Production Hardening)
+
+**Requirements**: WP-01 through WP-06 (6 work packages, 15 implementation steps)
+
+**Success Criteria**:
+1. IOC detector no longer classifies CSS/JS assets as malicious domains
+2. JS entropy threshold raised to 4.8 with bundler signature detection
+3. Scout captures section screenshots with intelligent scrolling
+4. DOM Analyzer detects cookie consent dark patterns and subscription traps
+5. Vision prompts return structured output with anti-hallucination guards
+6. Tavily OSINT sources operational for THREAT_INTEL, REPUTATION, SOCIAL categories
+
+**Plans**: All 15 implementation steps complete across 6 work packages
+
+---
+
+### Phase 18: QA-01 System Fix
+
+**Goal**: Fix all critical data flow issues in backend sequence fields, frontend component field mappings, and TypeScript errors.
+
+**Depends on**: Phase 17
+
+**Requirements**: QA-01 (Critical bug fixes)
+
+**Success Criteria**:
+1. Backend emitter.py uses `sequence` field (not `seq`)
+2. AuditRunner sequence counter wrapper operational
+3. VerdictPanel has summary/executive_summary fallback with NaN protection
+4. KnowledgeGraph TypeScript duplicate label fixed
+5. All 58 audit events have sequence numbers
+
+**Plans**: All fixes applied and verified
+
+---
+
+## Progress
+
+| Phase | Milestone | Plans Complete | Status | Completed |
+|-------|-----------|----------------|--------|-----------|
+| 1 | v1.0 | 22/22 | ✅ Complete | 2026-02-23 |
+| 6 | v2.0 | 6/6 | ✅ Complete | 2026-02-24 |
+| 7 | v2.0 | 4/4 | ✅ Complete | 2026-02-26 |
+| 8 | v2.0 | 6/6 | ✅ Complete | 2026-02-28 |
+| 9 | v2.0 | 3/3 | ✅ Complete | 2026-02-28 |
+| 10 | v2.0 | 4/4 | ✅ Complete | 2026-02-28 |
+| 11 | v2.0 | 3/3 | ✅ Complete | 2026-02-28 |
+| 13 | v2.1 | 7/7 | ✅ Complete | 2026-03-10 |
+| 17 | v2.2 | 15/15 | ✅ Complete | 2026-04-10 |
+| 18 | v2.2 | 6/6 | ✅ Complete | 2026-04-10 |
+
+**Coverage**:
+- v1 phases: 5 phases, 22 plans
+- v2 phases: 6 phases, 28 plans (28 complete)
+- v2.0 MILESTONE COMPLETE
+- v2.1 phases: 1 phase, 7 plans (7 complete)
+- v2.2 phases: 2 phases, 21 plans (21 complete)
+- **Total: 18 phases, 77 plans (77 complete)**
+
+---
+
+*Last updated: 2026-04-10 - Phases 17-18 complete (v2.2 MILESTONE)*
