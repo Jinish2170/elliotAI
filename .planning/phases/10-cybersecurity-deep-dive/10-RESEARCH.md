@@ -54,9 +54,9 @@ Key implementation risks include:
 |-----------|----------|---------------------|
 | **CVSSCalculator** | From Phase 9 | Calculate CVSS base scores for security findings |
 | **CWEMapper** | From Phase 9 | Map security findings to CWE IDs |
-| **SecurityHeaderAnalyzer** | `veritas/analysis/` | Existing security header checking (extend/enhance) |
-| **PhishingChecker** | `veritas/analysis/` | Existing URL reputation checks (extend/enhance) |
-| **DOMAnalyzer** | `veritas/analysis/` | DOM parsing infrastructure (reuse for OWASP checks) |
+| **SecurityHeaderAnalyzer** | `elliot/analysis/` | Existing security header checking (extend/enhance) |
+| **PhishingChecker** | `elliot/analysis/` | Existing URL reputation checks (extend/enhance) |
+| **DOMAnalyzer** | `elliot/analysis/` | DOM parsing infrastructure (reuse for OWASP checks) |
 | **httpx** | Backend requirements | Async HTTP requests for header/SSL checks |
 
 **Installation (if needed beyond existing stack):**
@@ -72,7 +72,7 @@ pip install pyjwt  # For JWT validation in security checks
 
 ### Recommended Project Structure
 ```
-veritas/
+elliot/
 ├── analysis/
 │   ├── security/                    # NEW: Security module organization
 │   │   ├── __init__.py
@@ -116,7 +116,7 @@ veritas/
 **When to use:** All security modules must extend this base class for consistent behavior
 **Example:**
 ```python
-# veritas/analysis/security/base.py
+# elliot/analysis/security/base.py
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
@@ -192,7 +192,7 @@ class SecurityModule(ABC):
 **When to use:** SecurityAgent needs to execute 25+ modules efficiently
 **Example:**
 ```python
-# veritas/agents/security_agent.py (rewrite)
+# elliot/agents/security_agent.py (rewrite)
 import asyncio
 from typing import Dict, List
 from analysis.security.base import SecurityModule, SecurityTier, SecurityFinding
@@ -321,14 +321,14 @@ class SecurityResult:
     modules_executed: int = 0
     modules_failed: int = 0
 ```
-**Source:** Adapted from Async patterns in `veritas/core/orchestrator.py`, ScoutAgent patterns
+**Source:** Adapted from Async patterns in `elliot/core/orchestrator.py`, ScoutAgent patterns
 
 ### Pattern 3: OWASP-A01 Broken Access Control Detection
 **What:** Detect administrative panels exposed without proper authentication
 **When to use:** Checking for unrestricted admin access, path traversal, IDOR
 **Example:**
 ```python
-# veritas/analysis/security/owasp/a01_broken_access_control.py
+# elliot/analysis/security/owasp/a01_broken_access_control.py
 import asyncio
 from analysis.security.base import SecurityModule, SecurityTier, SecurityFinding
 
@@ -394,7 +394,7 @@ class BrokenAccessControlModule(SecurityModule):
 **When to use:** All URL scans - part of FAST tier
 **Example:**
 ```python
-# veritas/analysis/security/tls_ssl.py (extend existing SecurityHeaderAnalyzer)
+# elliot/analysis/security/tls_ssl.py (extend existing SecurityHeaderAnalyzer)
 from analysis.security.base import SecurityModule, SecurityTier, SecurityFinding
 
 class SecurityHeaderAnalyzerEnhanced(SecurityModule):
@@ -463,7 +463,7 @@ class SecurityHeaderAnalyzerEnhanced(SecurityModule):
 **When to use:** All URL scans - part of MEDIUM tier
 **Example:**
 ```python
-# veritas/analysis/security/gdpr.py
+# elliot/analysis/security/gdpr.py
 from analysis.security.base import SecurityModule, SecurityTier, SecurityFinding
 
 class GDPRComplianceModule(SecurityModule):
@@ -678,7 +678,7 @@ async def _execute_with_timeout(
 ### CWE Mapping Table (Simplified Example)
 ```python
 # Source: cwe.mitre.org - Common Weakness Enumeration
-# veritas/config/security_rules.py
+# elliot/config/security_rules.py
 
 CWE_MAPPINGS = {
     # OWASP A01: Broken Access Control
@@ -720,7 +720,7 @@ CWEMapper:
 ### CVSS Base Score Calculation (Simplified - uses Phase 9 calculator)
 ```python
 # Source: FIRST.org CVSS specification
-# veritas/config/security_rules.py
+# elliot/config/security_rules.py
 
 # This integrates with CVSSCalculator from Phase 9
 # Example usage (assuming Phase 9 CVSSCalculator exists):
@@ -905,8 +905,8 @@ def parse_csp_directives(csp: str) -> dict:
 | Framework | pytest >=7.4.0 |
 | Config file | Not found - using default pytest configuration |
 | Async support | pytest-asyncio >=0.23.0 (auto-detection without explicit config) |
-| Quick run command | `cd veritas && python -m pytest tests/test_security/ -v -k "test_fast_tier" --tb=short` |
-| Full suite command | `cd veritas && python -m pytest tests/test_security/ -v --tb=short` |
+| Quick run command | `cd elliot && python -m pytest tests/test_security/ -v -k "test_fast_tier" --tb=short` |
+| Full suite command | `cd elliot && python -m pytest tests/test_security/ -v --tb=short` |
 
 ### Phase Requirements → Test Map
 
@@ -938,28 +938,28 @@ def parse_csp_directives(csp: str) -> dict:
 ### Wave 0 Gaps
 
 **Test Files to Create:**
-- [ ] `veritas/tests/test_security/__init__.py` - Test directory initialization
-- [ ] `veritas/tests/test_security/conftest.py` - Shared fixtures for security testing:
+- [ ] `elliot/tests/test_security/__init__.py` - Test directory initialization
+- [ ] `elliot/tests/test_security/conftest.py` - Shared fixtures for security testing:
   - `mock_scout_result` fixture (ScoutResult with dom_metadata)
   - `mock_headers` fixture (dict with various security header combinations)
   - `mock_page_content` fixture (sample HTML for OWASP analysis)
   - `mock_security_modules` fixture (list of available security module classes)
-- [ ] `veritas/tests/test_security/test_owasp_modules.py` - OWASP A01-A10 module tests with sample findings
-- [ ] `veritas/tests/test_security/test_pci_gdpr.py` - PCI DSS and GDPR compliance module tests
-- [ ] `veritas/tests/test_security/test_tier_classification.py` - Tier timeout and classification tests
-- [ ] `veritas/tests/test_security/test_cwe_mapping.py` - CWE mapping verification against CWE_MAPPINGS table
-- [ ] `veritas/tests/test_security/test_cvss_scoring.py` - CVSS scoring integration with Phase 9 calculator
-- [ ] `veritas/tests/test_security/test_calibration.py` - Baseline testing against known-safe sites (google.com, github.com)
+- [ ] `elliot/tests/test_security/test_owasp_modules.py` - OWASP A01-A10 module tests with sample findings
+- [ ] `elliot/tests/test_security/test_pci_gdpr.py` - PCI DSS and GDPR compliance module tests
+- [ ] `elliot/tests/test_security/test_tier_classification.py` - Tier timeout and classification tests
+- [ ] `elliot/tests/test_security/test_cwe_mapping.py` - CWE mapping verification against CWE_MAPPINGS table
+- [ ] `elliot/tests/test_security/test_cvss_scoring.py` - CVSS scoring integration with Phase 9 calculator
+- [ ] `elliot/tests/test_security/test_calibration.py` - Baseline testing against known-safe sites (google.com, github.com)
 
 **Framework Dependencies:**
-- pytest >=7.4.0: Already in `veritas/requirements.txt`
-- pytest-asyncio >=0.23.0: Already in `veritas/requirements.txt`
+- pytest >=7.4.0: Already in `elliot/requirements.txt`
+- pytest-asyncio >=0.23.0: Already in `elliot/requirements.txt`
 - httpx: Already in stack for HTTP client mocking
 
 **Phase 9 Component Integration Check (Required for SEC-02):**
-- [ ] **CVSSCalculator**: Check if exists in Phase 9 codebase (likely in `veritas/config/judge/` or `veritas/config/security_rules.py`)
-- [ ] **CWEMapper**: Check if exists for CWE ID mapping (likely in `veritas/config/security_rules.py`)
-- [ ] **DarknetThreatIntel**: Check if exists in Phase 8 (`veritas/agents/graph_investigator.py`)
+- [ ] **CVSSCalculator**: Check if exists in Phase 9 codebase (likely in `elliot/config/judge/` or `elliot/config/security_rules.py`)
+- [ ] **CWEMapper**: Check if exists for CWE ID mapping (likely in `elliot/config/security_rules.py`)
+- [ ] **DarknetThreatIntel**: Check if exists in Phase 8 (`elliot/agents/graph_investigator.py`)
 
 *(If any Phase 9/Phase 8 components are missing or differ from assumed interface, update Wave 0 gaps accordingly)*
 

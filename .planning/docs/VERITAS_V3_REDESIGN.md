@@ -1,4 +1,4 @@
-# VERITAS V3 — Redesign Blueprint
+# ELLIOT V3 — Redesign Blueprint
 
 > Deep audit of the current codebase: 130+ files examined. Architectural, product, and agentic framework analysis.
 
@@ -43,7 +43,7 @@
 ### Layer 6: API + UI
 - **FastAPI Backend**: REST + WebSocket, audit_runner subprocess wrapper
 - **Next.js Frontend**: Landing, live audit (3-column animated), report (Simple/Expert modes)
-- **Gradio UI**: `veritas/ui/app.py` — alternate interface
+- **Gradio UI**: `elliot/ui/app.py` — alternate interface
 
 ---
 
@@ -96,7 +96,7 @@ But the actual routing is extremely limited:
 **Severity: HIGH**
 
 Existing tests:
-- `test_veritas.py`: 20 unit tests (claimed, likely mocked)
+- `test_elliot.py`: 20 unit tests (claimed, likely mocked)
 - `test_security_agent.py`: Security agent tests
 - `test_ioc_detector.py`: IOC detector tests
 - `test_darknet_integration.py`: Darknet tests
@@ -142,7 +142,7 @@ The system has circuit breakers and fallbacks (good), but:
 
 Who is this product for?
 
-As-is, VERITAS tries to serve everyone:
+As-is, ELLIOT tries to serve everyone:
 - Security teams (OWASP checks, CVSS scoring)
 - UX researchers (dark pattern detection)
 - Consumers (trust score for "is this site safe?")
@@ -164,7 +164,7 @@ The FastAPI backend has REST endpoints but:
 ### GAP 10: Data Persistence Is Incomplete
 **Severity: MEDIUM**
 
-- SQLite database exists (`veritas_audits.db`) with repository pattern
+- SQLite database exists (`elliot_audits.db`) with repository pattern
 - LanceDB vector store for evidence
 - But: No audit history, no historical comparison, no trend analysis
 - Audit results are ephemeral — stored during pipeline run, then only the final report persists
@@ -296,8 +296,8 @@ What's MISSING from the agentic paradigm:
 #### Solution B: Pluggable Threat Intel Registry
 
 ```python
-# veritas/intel/registry.py
-# Auto-discovers all sources in veritas/intel/sources/
+# elliot/intel/registry.py
+# Auto-discovers all sources in elliot/intel/sources/
 
 INTEL_SOURCES = {
     "virustotal": {"api_key": "VIRUSTOTAL_API_KEY", "free_tier": "500/day"},

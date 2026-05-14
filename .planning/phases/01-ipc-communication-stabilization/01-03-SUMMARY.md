@@ -1,4 +1,4 @@
-# Summary: Plan 03 - Modify VeritasOrchestrator for Dual-Mode Emission
+# Summary: Plan 03 - Modify ElliotOrchestrator for Dual-Mode Emission
 
 **Status**: Completed
 **Completed**: 2026-02-20
@@ -8,7 +8,7 @@
 
 ## What Was Done
 
-### 1. Modified `veritas/core/orchestrator.py`
+### 1. Modified `elliot/core/orchestrator.py`
 
 #### Added Imports
 - `import multiprocessing` - For Queue type hint
@@ -71,7 +71,7 @@ All tests passed:
 
 1. **Initialization with no queue**:
    ```python
-   orch = VeritasOrchestrator(progress_queue=None)
+   orch = ElliotOrchestrator(progress_queue=None)
    assert orch.progress_queue is None
    # OK - stdout mode works
    ```
@@ -79,7 +79,7 @@ All tests passed:
 2. **Initialization with queue**:
    ```python
    q = create_queue(maxsize=100)
-   orch = VeritasOrchestrator(progress_queue=q)
+   orch = ElliotOrchestrator(progress_queue=q)
    assert orch.progress_queue is q
    # OK - queue mode works
    ```
@@ -103,7 +103,7 @@ All tests passed:
 
 ## Artifacts Modified
 
-1. `veritas/core/orchestrator.py` - Added progress_queue param and _emit class method
+1. `elliot/core/orchestrator.py` - Added progress_queue param and _emit class method
 
 ---
 

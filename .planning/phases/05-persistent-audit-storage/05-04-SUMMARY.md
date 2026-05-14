@@ -25,14 +25,14 @@ tech_stack:
 # Key Files
 created: []
 modified:
-  - "veritas/config/settings.py: Added USE_DB_PERSISTENCE flag and helper"
+  - "elliot/config/settings.py: Added USE_DB_PERSISTENCE flag and helper"
   - "backend/routes/audit.py: Implemented database write handlers"
 
 key_files:
-  - "veritas/config/settings.py: Feature flag configuration"
+  - "elliot/config/settings.py: Feature flag configuration"
   - "backend/routes/audit.py: Dual-write implementation with handlers"
-  - "veritas/screenshots/storage.py: Screenshot filesystem storage"
-  - "veritas/db/repositories.py: Audit repository for CRUD operations"
+  - "elliot/screenshots/storage.py: Screenshot filesystem storage"
+  - "elliot/db/repositories.py: Audit repository for CRUD operations"
 
 # Decisions Made
 key_decisions:
@@ -63,7 +63,7 @@ The dual-write migration strategy allows immediate activation of database persis
 
 ### Implementation Details
 
-#### 1. Feature Flag (veritas/config/settings.py)
+#### 1. Feature Flag (elliot/config/settings.py)
 
 Added USE_DB_PERSISTENCE setting following the SecurityAgent pattern for consistency:
 
@@ -157,7 +157,7 @@ To rollback to in-memory only mode:
 
 | File | Changes | Purpose |
 |------|---------|---------|
-| veritas/config/settings.py | +31 lines | Added USE_DB_PERSISTENCE flag and helper |
+| elliot/config/settings.py | +31 lines | Added USE_DB_PERSISTENCE flag and helper |
 | backend/routes/audit.py | +213 insertions, -12 deletions | Implemented database write handlers and read path upgrade |
 
 ### Deviations from Plan

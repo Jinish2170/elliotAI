@@ -18,10 +18,10 @@ patterns: [minimal-reproduction, isolated-testing, behavioral-observation]
 
 # Key files
 created:
-  - path: veritas/tests/langgraph_investigation/test_01_minimal_graph.py
+  - path: elliot/tests/langgraph_investigation/test_01_minimal_graph.py
     lines: 345
     purpose: Minimal StateGraph reproduction test for LangGraph ainvoke() behavior
-  - path: veritas/tests/langgraph_investigation/README.md
+  - path: elliot/tests/langgraph_investigation/README.md
     lines: 351
     purpose: Investigation documentation entry point with findings and next steps
 
@@ -30,13 +30,13 @@ modified: []
 # Key decisions
 decisions:
   - description: "LangGraph ainvoke() works on Python 3.11.5 without CancelledError"
-    rationale: "Minimal reproduction test shows LangGraph internals work correctly; reported issue is likely in VERITAS-specific integration"
+    rationale: "Minimal reproduction test shows LangGraph internals work correctly; reported issue is likely in ELLIOT-specific integration"
     alternatives: ["Workaround with sequential execution", "Version pin to older Python", "Hybrid execution model"]
   - description: "Python version documentation discrepancy identified"
     rationale: "Running version is 3.11.5, not 3.14 as documented in STATE.md; this changes investigation context"
     alternatives: ["N/A - factual observation"]
   - description: "Proceed to Phase 2 with full audit test"
-    rationale: "Minimal graph works, so root cause (if any) is in VERITAS-specific code (NIMClient or orchestrator integration)"
+    rationale: "Minimal graph works, so root cause (if any) is in ELLIOT-specific code (NIMClient or orchestrator integration)"
     alternatives: ["Stop investigation and keep sequential workaround", "Attempt full ainvoke() without further investigation"]
 
 # Metrics
@@ -52,7 +52,7 @@ test-results: "4 passed, 1 skipped"
 # Phase 03 Plan 01: Minimal LangGraph Reproduction Test Summary
 
 ## One-Liner
-Isolated minimal LangGraph StateGraph reproduction test confirms ainvoke() works correctly on Python 3.11.5, revealing documentation discrepancy (actual version 3.11.5 vs documented 3.14) and suggesting root cause issue lies in VERITAS-specific integration rather than LangGraph internals.
+Isolated minimal LangGraph StateGraph reproduction test confirms ainvoke() works correctly on Python 3.11.5, revealing documentation discrepancy (actual version 3.11.5 vs documented 3.14) and suggesting root cause issue lies in ELLIOT-specific integration rather than LangGraph internals.
 
 ## Executive Summary
 
@@ -61,17 +61,17 @@ Created isolated minimal reproduction test `test_01_minimal_graph.py` to verify 
 **Critical finding:** The documented "Python 3.14 asyncio CancelledError" issue appears to be either:
 1. A transient bug that has been fixed in newer LangGraph versions
 2. A misunderstanding of which Python version exhibits the problem
-3. Related to complex VERITAS integration (NIMClient, subprocess isolation), not LangGraph itself
+3. Related to complex ELLIOT integration (NIMClient, subprocess isolation), not LangGraph itself
 
-The investigation establishes a baseline: LangGraph internals work correctly on Python 3.11.5. Any `ainvoke()` issues in VERITAS would be specific to the orchestrator integration, external async calls, or subprocess context—not the LangGraph framework itself.
+The investigation establishes a baseline: LangGraph internals work correctly on Python 3.11.5. Any `ainvoke()` issues in ELLIOT would be specific to the orchestrator integration, external async calls, or subprocess context—not the LangGraph framework itself.
 
 ## Tasks Completed
 
 ### Task 1: Create Investigation Directory and Minimal Graph Tests
 
 **Files created:**
-- `veritas/tests/langgraph_investigation/` - Investigation test directory
-- `veritas/tests/langgraph_investigation/test_01_minimal_graph.py` - 345 lines, 5 tests
+- `elliot/tests/langgraph_investigation/` - Investigation test directory
+- `elliot/tests/langgraph_investigation/test_01_minimal_graph.py` - 345 lines, 5 tests
 
 **Tests implemented:**
 1. `test_ainvoke_minimal_graph` - Minimal StateGraph `ainvoke()` execution
@@ -88,7 +88,7 @@ The investigation establishes a baseline: LangGraph internals work correctly on 
 ### Task 2: Create Investigation README Entry Point
 
 **Files created:**
-- `veritas/tests/langgraph_investigation/README.md` - 351 lines
+- `elliot/tests/langgraph_investigation/README.md` - 351 lines
 
 **Contents:**
 - Investigation overview and purpose
@@ -108,7 +108,7 @@ The investigation establishes a baseline: LangGraph internals work correctly on 
 - **Found during:** Task 1 verification
 - **Issue:** `test_graph_visualization` failed with `ImportError: Install grandalf to draw graphs: pip install grandalf`
 - **Fix:** Modified test to catch `ImportError` and use `pytest.skip()` instead of failing. The grandalf package is an optional visualization dependency, not required for the core investigation.
-- **Files modified:** `veritas/tests/langgraph_investigation/test_01_minimal_graph.py` (10 lines changed)
+- **Files modified:** `elliot/tests/langgraph_investigation/test_01_minimal_graph.py` (10 lines changed)
 - **Commit:** Part of initial test file commit (04a61cc)
 
 **Rationale:** The grandalf dependency is optional for ASCII graph generation visualization. The core investigation only needs to verify graph structure and `ainvoke()` behavior with async nodes, both of which work without grandalf.
@@ -119,12 +119,12 @@ The investigation establishes a baseline: LangGraph internals work correctly on 
 
 The most important finding: **LangGraph's `ainvoke()` method executes successfully without `CancelledError` on Python 3.11.5**.
 
-This contradicts the documented rationale for bypassing LangGraph in `veritas/core/orchestrator.py` line 939:
+This contradicts the documented rationale for bypassing LangGraph in `elliot/core/orchestrator.py` line 939:
 
 > "This bypasses LangGraph's ainvoke to avoid Python 3.14 asyncio CancelledError issues"
 
-**Implication:** The root cause of any `ainvoke()` issues in VERITAS is NOT in LangGraph's core implementation. The issue, if it exists, lies in:
-- Complex VERITAS graph integration
+**Implication:** The root cause of any `ainvoke()` issues in ELLIOT is NOT in LangGraph's core implementation. The issue, if it exists, lies in:
+- Complex ELLIOT graph integration
 - NIMClient async interaction with LangGraph state management
 - Subprocess isolation on Windows affecting asyncio event loop
 
@@ -145,7 +145,7 @@ This discrepancy suggests several possibilities:
 
 Since minimal LangGraph works correctly, the investigation focus should shift:
 - ~~Phase 1: LangGraph internals~~ ✅ Done - working correctly
-- Phase 2: Full VERITAS graph with mocked NIMClient (test_02_full_audit_mocked.py) - Next
+- Phase 2: Full ELLIOT graph with mocked NIMClient (test_02_full_audit_mocked.py) - Next
 - **Phase 3: Behavioral differences** - Observe where execution diverges if issues emerge
 
 ## Tests and Verification
@@ -173,7 +173,7 @@ Since minimal LangGraph works correctly, the investigation focus should shift:
 ### Immediate: Phase 2 Investigation
 
 Create `test_02_full_audit_mocked.py` to:
-1. Test with complete VERITAS `AuditState`
+1. Test with complete ELLIOT `AuditState`
 2. Mock all external dependencies (NIMClient, agents)
 3. Observe real execution flow without external calls
 4. Compare with sequential execution from `orchestrator.py`
@@ -194,14 +194,14 @@ Create `test_02_full_audit_mocked.py` to:
 
 1. **LangGraph ainvoke() is viable on Python 3.11.5**
    - Minimal reproduction confirms core LangGraph works correctly
-   - Proceed with investigation to verify VERITAS integration
+   - Proceed with investigation to verify ELLIOT integration
 
 2. **Python version documentation needs update**
    - STATE.md shows 3.14, actual is 3.11.5
    - Update after investigation complete
 
 3. **Proceed to Phase 2 with full audit test**
-   - Test with VERITAS graph and mocked dependencies
+   - Test with ELLIOT graph and mocked dependencies
    - Observe execution flow for root cause identification
 
 ## Remaining Questions
@@ -211,7 +211,7 @@ Create `test_02_full_audit_mocked.py` to:
    - Actual issue may have been transient or misunderstood
    - No evidence of observed failure in codebase
 
-2. **Does actual VERITAS graph trigger issues?**
+2. **Does actual ELLIOT graph trigger issues?**
    - Phase 2 test (full audit with mocks) will answer this
    - More complex graph with conditional edges may behave differently
 
@@ -220,7 +220,7 @@ Create `test_02_full_audit_mocked.py` to:
    - Possible interaction between `AsyncOpenAI` and LangGraph task management
 
 4. **Does subprocess isolation affect LangGraph?**
-   - VERITAS runs as subprocess on Windows (audit_runner.py)
+   - ELLIOT runs as subprocess on Windows (audit_runner.py)
    - Windows `spawn` context may affect asyncio event loop
    - Requires separate investigation if Phase 2 passes
 
@@ -236,14 +236,14 @@ Create `test_02_full_audit_mocked.py` to:
 
 ### Files Created Verification
 ```bash
-[ -f "C:/files/coding dev era/elliot/elliotAI/veritas/tests/langgraph_investigation/test_01_minimal_graph.py" ] && echo "EXISTS: test_01_minimal_graph.py"
-[ -f "C:/files/coding dev era/elliot/elliotAI/veritas/tests/langgraph_investigation/README.md" ] && echo "EXISTS: README.md"
+[ -f "C:/files/coding dev era/elliot/elliotAI/elliot/tests/langgraph_investigation/test_01_minimal_graph.py" ] && echo "EXISTS: test_01_minimal_graph.py"
+[ -f "C:/files/coding dev era/elliot/elliotAI/elliot/tests/langgraph_investigation/README.md" ] && echo "EXISTS: README.md"
 ```
 
 ### Line Count Verification
 ```bash
-wc -l "C:/files/coding dev era/elliot/elliotAI/veritas/tests/langgraph_investigation/test_01_minimal_graph.py"
-wc -l "C:/files/coding dev era/elliot/elliotAI/veritas/tests/langgraph_investigation/README.md"
+wc -l "C:/files/coding dev era/elliot/elliotAI/elliot/tests/langgraph_investigation/test_01_minimal_graph.py"
+wc -l "C:/files/coding dev era/elliot/elliotAI/elliot/tests/langgraph_investigation/README.md"
 ```
 
 ### Commits Verification
@@ -253,7 +253,7 @@ git log --oneline --grep="03-01" -2
 
 ### Test Results Verification
 ```bash
-cd veritas && python -m pytest tests/langgraph_investigation/test_01_minimal_graph.py -v
+cd elliot && python -m pytest tests/langgraph_investigation/test_01_minimal_graph.py -v
 ```
 
 ---
@@ -263,7 +263,7 @@ cd veritas && python -m pytest tests/langgraph_investigation/test_01_minimal_gra
 ### Test Design Rationale
 
 The minimal reproduction test was designed to:
-1. **Isolate LangGraph behavior** - No VERITAS dependencies, no external calls
+1. **Isolate LangGraph behavior** - No ELLIOT dependencies, no external calls
 2. **Test async node execution** - Include `asyncio.sleep()` to simulate async work
 3. **Verify routing** - Conditional edges based on state counter
 4. **Compare execution patterns** - `ainvoke()` vs manual sequential

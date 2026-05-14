@@ -3,7 +3,7 @@ date: "2026-04-05 16:00"
 promoted: false
 ---
 
-# VERITAS V3 Deep Architecture Audit Session
+# ELLIOT V3 Deep Architecture Audit Session
 
 ## Session Context
 - Date: 2026-04-05
@@ -11,7 +11,7 @@ promoted: false
 - Goal: Deep audit → find gaps → design solutions → plan V3
 
 ## Part 1: What Was Found
-- 130+ Python files in veritas/
+- 130+ Python files in elliot/
 - 7,792 lines of agent code (Scout, Security, Vision, GraphInvestigator, Judge)
 - 30+ analysis modules (OWASP A01-A10, CSP, TLS, GDPR, PCI DSS, dark patterns, etc.)
 - OSINT framework with 15+ sources (DNS, WHOIS, SSL, AbuseIPDB, URLVoid, Tavily, 6 darknet feeds)

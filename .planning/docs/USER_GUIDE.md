@@ -1,6 +1,6 @@
-# Veritas — Local User Guide (This PC)
+# Elliot — Local User Guide (This PC)
 
-> Quick reference for running Veritas on **this machine** (`C:\jinish\elliotAI`).
+> Quick reference for running Elliot on **this machine** (`C:\jinish\elliotAI`).
 
 ---
 
@@ -27,7 +27,7 @@ C:\jinish\elliotAI\.venv\Scripts\uvicorn.exe main:app --host 0.0.0.0 --port 8000
 You should see:
 ```
 INFO:     Uvicorn running on http://0.0.0.0:8000
-✦ Veritas API — Online
+✦ Elliot API — Online
 ```
 
 Verify: open http://localhost:8000/api/health → `{"status":"ok"}`
@@ -103,7 +103,7 @@ Toggle **Simple / Expert** mode in the top-right for different detail levels.
 | Port 3000 already in use | Kill the process: `netstat -ano \| findstr :3000` then `taskkill /PID <pid> /F` |
 | Backend can't find modules | Make sure you're running from `C:\jinish\elliotAI\backend` and using `.venv\Scripts\uvicorn.exe` |
 | Frontend 500 error | Check backend is running first. Frontend calls `localhost:8000` |
-| NVIDIA NIM errors | Check your API key in `veritas/.env` → `NVIDIA_API_KEY=nvapi-...` |
+| NVIDIA NIM errors | Check your API key in `elliot/.env` → `NVIDIA_API_KEY=nvapi-...` |
 | WebSocket not connecting | Ensure backend is on port 8000. Frontend expects `ws://localhost:8000` by default |
 
 ---
@@ -113,7 +113,7 @@ Toggle **Simple / Expert** mode in the top-right for different detail levels.
 ```
 C:\jinish\elliotAI\
 ├── .venv\                  ← Python virtual environment (DO NOT DELETE)
-├── veritas\                ← Core Python engine (20/20 tests passing)
+├── elliot\                ← Core Python engine (20/20 tests passing)
 │   ├── .env                ← API keys and config
 │   ├── agents\             ← Scout, Vision, Graph, Judge
 │   ├── analysis\           ← DOM, forms, patterns, security
@@ -136,7 +136,7 @@ C:\jinish\elliotAI\
 
 ```cmd
 cd C:\jinish\elliotAI
-.venv\Scripts\python.exe -m pytest veritas\tests\test_veritas.py -v
+.venv\Scripts\python.exe -m pytest elliot\tests\test_elliot.py -v
 ```
 
 Expected: **20/20 tests passing**.

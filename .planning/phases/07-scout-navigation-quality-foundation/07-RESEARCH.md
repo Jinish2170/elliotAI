@@ -119,7 +119,7 @@ playwright install chromium
 
 ### Recommended Project Structure
 ```
-veritas/agents/
+elliot/agents/
 ├── scout/
 │   ├── __init__.py                    # Public API
 │   ├── scroll_orchestrator.py         # NEW: Scroll management
@@ -127,13 +127,13 @@ veritas/agents/
 │   ├── lazy_load_detector.py          # NEW: DOM mutation monitoring
 └── scout.py                           # Existing: Main StealthScout class
 
-veritas/quality/
+elliot/quality/
 ├── __init__.py                        # NEW: Quality module
 ├── consensus_engine.py                # NEW: Multi-factor consensus
 ├── confidence_scorer.py               # NEW: Weighted confidence calculation
 └── validation_state.py                # NEW: Finding state machine
 
-veritas/core/
+elliot/core/
 ├── types.py                           # Existing: Finding models
 └── timeout_manager.py                 # NEW: Adaptive timeout manager
 ```

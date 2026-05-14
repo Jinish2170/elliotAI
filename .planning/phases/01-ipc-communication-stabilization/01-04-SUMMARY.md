@@ -26,7 +26,7 @@ if sys.platform == "win32":
 import multiprocessing as mp
 import queue
 sys.path.insert(0, str(project_root))
-from veritas.core.ipc import (
+from elliot.core.ipc import (
     determine_ipc_mode, IPC_MODE_QUEUE, IPC_MODE_STDOUT,
     create_queue, serialize_queue,
 )

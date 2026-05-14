@@ -11,10 +11,10 @@ provides:
 depends_on: []
 
 affects:
-  - system: "VERITAS Core Engine"
+  - system: "ELLIOT Core Engine"
     impact: "Empty return stubs eliminated - failures now explicit"
     files:
-      - "veritas/core/evidence_store.py"
+      - "elliot/core/evidence_store.py"
 
 tech-stack:
   added:
@@ -26,7 +26,7 @@ tech-stack:
 key-files:
   created: []
   modified:
-    - "veritas/core/evidence_store.py"
+    - "elliot/core/evidence_store.py"
 
 decisions:
   - "Caller analysis confirmed safe to replace stubs (no production callers expecting empty returns)"
@@ -56,7 +56,7 @@ None - plan executed exactly as written.
 
 ## Summary of Changes
 
-Modified `veritas/core/evidence_store.py` to replace 6 empty return statements with context-specific exceptions:
+Modified `elliot/core/evidence_store.py` to replace 6 empty return statements with context-specific exceptions:
 
 1. **Line 207 (search_similar method)**: Raises `ValueError` when LanceDB table doesn't exist
    - Error: `"search_similar(): Table '{table_name}' does not exist. Available tables: {self._db.table_names()}"`
@@ -83,8 +83,8 @@ Searched for existing callers of all 4 modified methods:
 
 | Method | Callers Found | Safe to Replace? |
 |--------|--------------|------------------|
-| `search_similar()` | test_veritas.py:328, evidence_store.py:52 (docstring), evidence_store.py:221 (internal) | Yes - tests store data first |
-| `get_all_audits()` | test_veritas.py:311, evidence_store.py:259 (internal) | Yes - tests store data first |
+| `search_similar()` | test_elliot.py:328, evidence_store.py:52 (docstring), evidence_store.py:221 (internal) | Yes - tests store data first |
+| `get_all_audits()` | test_elliot.py:311, evidence_store.py:259 (internal) | Yes - tests store data first |
 | `_json_search()` | evidence_store.py:221 (internal fallback) | Yes - fallback only used when data exists |
 | `_json_list_all()` | evidence_store.py:259 (internal fallback) | Yes - fallback only used when data exists |
 
@@ -98,7 +98,7 @@ All 6 stubs replaced with appropriate exceptions:
 
 ### Test Results
 ```bash
-pytest veritas/tests/test_veritas.py::TestEvidenceStore -v
+pytest elliot/tests/test_elliot.py::TestEvidenceStore -v
 ```
 
 Results:
@@ -142,7 +142,7 @@ This follows the "fail-loud" approach documented in 04-RESEARCH.md, contrasting 
 
 ## Files Modified
 
-- `veritas/core/evidence_store.py` (24 insertions, 10 deletions)
+- `elliot/core/evidence_store.py` (24 insertions, 10 deletions)
   - Replaced 6 empty return statements with context-specific exceptions
   - Added informative error messages with method name and context
 

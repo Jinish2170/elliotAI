@@ -19,25 +19,25 @@ patterns: [full-graph-mocking, behavioral-observation, safety-timeouts]
 
 # Key files
 created:
-  - path: veritas/tests/langgraph_investigation/conftest.py
+  - path: elliot/tests/langgraph_investigation/conftest.py
     lines: 368
     purpose: Shared test fixtures for investigation (mock_nim_client, mock_scout, mock_vision_agent, etc.)
-  - path: veritas/tests/langgraph_investigation/test_02_full_audit_mocked.py
+  - path: elliot/tests/langgraph_investigation/test_02_full_audit_mocked.py
     lines: 583
-    purpose: Full VERITAS audit graph test with mocked dependencies to observe real execution behavior
+    purpose: Full ELLIOT audit graph test with mocked dependencies to observe real execution behavior
 
 modified: []
 
 # Key decisions
 decisions:
-  - description: "Full VERITAS graph ainvoke() hangs despite mocked dependencies"
-    rationale: "Test confirms issue is in VERITAS-specific code, not LangGraph internals or external dependencies"
+  - description: "Full ELLIOT graph ainvoke() hangs despite mocked dependencies"
+    rationale: "Test confirms issue is in ELLIOT-specific code, not LangGraph internals or external dependencies"
     alternatives: ["Minimal graph works (03-01), sequential fallback works fine"]
   - description: "Safety timeouts added to prevent infinite hangs during testing"
     rationale: "30-second timeout for ainvoke(), 60-second for sequential to avoid blocking test runs"
     alternatives: ["No timeout leads to indefinite blocking"]
   - description: "Root cause likely in graph complexity or node interdependencies"
-    rationale: "Minimal StateGraph works (03-01), full VERITAS graph hangs despite mocks - difference is graph topology and node complexity"
+    rationale: "Minimal StateGraph works (03-01), full ELLIOT graph hangs despite mocks - difference is graph topology and node complexity"
     alternatives: ["Could be specific node implementation, routing logic, or state mutation patterns"]
 
 # Metrics
@@ -54,30 +54,30 @@ test-results: "2 skipped (timeout/fallback), 5 passed (isolated nodes, routing, 
 
 ## One-Liner
 
-Full VERITAS audit graph with comprehensive mocked dependencies reveals that `ainvoke()` hangs for 30+ seconds, confirming root cause lies in VERITAS-specific graph topology or node interdependencies rather than LangGraph internals or external API calls—sequential execution fallback validated as working correctly.
+Full ELLIOT audit graph with comprehensive mocked dependencies reveals that `ainvoke()` hangs for 30+ seconds, confirming root cause lies in ELLIOT-specific graph topology or node interdependencies rather than LangGraph internals or external API calls—sequential execution fallback validated as working correctly.
 
 ## Executive Summary
 
-Created comprehensive test suite `test_02_full_audit_mocked.py` (583 lines, 7 tests) and shared fixtures `conftest.py` (368 lines) to test the full VERITAS audit graph with all external dependencies mocked (NIMClient, StealthScout, VisionAgent, GraphInvestigator, JudgeAgent, SecurityAgent).
+Created comprehensive test suite `test_02_full_audit_mocked.py` (583 lines, 7 tests) and shared fixtures `conftest.py` (368 lines) to test the full ELLIOT audit graph with all external dependencies mocked (NIMClient, StealthScout, VisionAgent, GraphInvestigator, JudgeAgent, SecurityAgent).
 
 **Critical Finding:** The `test_ainvoke_full_audit_mocked` test exhibits **30-second timeout hang** on `compiled.ainvoke()`, despite:
 - All external dependencies being mocked
 - Minimal async delay in mocks (no real network calls)
 - Same test structure that passed in minimal graph test (03-01)
 
-This definitively isolates the issue to **VERITAS-specific code**:
+This definitively isolates the issue to **ELLIOT-specific code**:
 - Graph topology with 6 nodes and 4 conditional edges
 - Node interdependencies and state mutations
 - Routing logic (`route_after_scout`, `route_after_judge`)
 - State transition patterns
 
-The sequential execution fallback (`VeritasOrchestrator.audit()`) works correctly, validating the node logic—they just don't work when executed through LangGraph's `ainvoke()`.
+The sequential execution fallback (`ElliotOrchestrator.audit()`) works correctly, validating the node logic—they just don't work when executed through LangGraph's `ainvoke()`.
 
 ## Tasks Completed
 
 ### Task 1: Create conftest.py with Investigation Fixtures
 
-**File:** `veritas/tests/langgraph_investigation/conftest.py` (368 lines)
+**File:** `elliot/tests/langgraph_investigation/conftest.py` (368 lines)
 
 **Fixtures implemented:**
 1. `mock_nim_client()` - Mock NIMClient with cached responses for vision and text generation
@@ -91,11 +91,11 @@ The sequential execution fallback (`VeritasOrchestrator.audit()`) works correctl
 
 ### Task 2: Create Full Audit Test with Mocked NIMClient
 
-**File:** `veritas/tests/langgraph_investigation/test_02_full_audit_mocked.py` (583 lines)
+**File:** `elliot/tests/langgraph_investigation/test_02_full_audit_mocked.py` (583 lines)
 
 **Tests implemented:**
 1. `test_ainvoke_full_audit_mocked` - Full audit via `ainvoke()` with 30s timeout
-2. `test_sequential_execution_fallback` - Sequential audit via `VeritasOrchestrator.audit()`
+2. `test_sequential_execution_fallback` - Sequential audit via `ElliotOrchestrator.audit()`
 3. `test_graph_structure_and_nodes` - Verify all 6 nodes exist (scout, security, vision, graph, judge, force_verdict)
 4. `test_route_after_scout_routing` - Scout routing logic (vision vs abort)
 5. `test_route_after_judge_routing` - Judge routing logic (end vs scout vs force_verdict)
@@ -119,9 +119,9 @@ The sequential execution fallback (`VeritasOrchestrator.audit()`) works correctl
 
 ## Key Findings
 
-### 1. Full VERITAS Graph Hangs via ainvoke()
+### 1. Full ELLIOT Graph Hangs via ainvoke()
 
-The primary finding: **`compiled.ainvoke()` hangs when executing the full VERITAS audit graph**, despite minimal success in Phase 03-01.
+The primary finding: **`compiled.ainvoke()` hangs when executing the full ELLIOT audit graph**, despite minimal success in Phase 03-01.
 
 **Comparison:**
 | Test | Graph | Dependencies | Result |
@@ -129,7 +129,7 @@ The primary finding: **`compiled.ainvoke()` hangs when executing the full VERITA
 | 03-01 minimal graph | 2 nodes, conditional | None | ✅ Works |
 | 03-02 full audit | 6 nodes, 4 conditionals | All mocked | ❌ Hangs (30s) |
 
-**Implication:** The issue is in VERITAS-specific code, NOT:
+**Implication:** The issue is in ELLIOT-specific code, NOT:
 - ~~LangGraph internals~~ - minimal graph proves LangGraph works
 - ~~External dependencies~~ - all mocked, no real calls
 - ~~Python 3.14~~ - running on 3.11.5, no CancelledError
@@ -150,7 +150,7 @@ The difference between working (minimal) and hanging (full) is:
 
 ### 3. Sequential Fallback Works Correctly
 
-The `test_sequential_execution_fallback` test uses `VeritasOrchestrator.audit()` which executes nodes sequentially (not via `ainvoke()`). This passes the graph structure and routing tests, confirming:
+The `test_sequential_execution_fallback` test uses `ElliotOrchestrator.audit()` which executes nodes sequentially (not via `ainvoke()`). This passes the graph structure and routing tests, confirming:
 - Node logic is sound
 - State transitions work correctly
 - Routing functions produce correct decisions
@@ -188,7 +188,7 @@ After 30 seconds, `asyncio.TimeoutError` is raised, and the test skips with mess
 
 **1. Routing Logic Deadlocks**
 
-The VERITAS graph has complex routing conditions:
+The ELLIOT graph has complex routing conditions:
 ```python
 def route_after_scout(state):
     if failures >= 3 and not scout_results:
@@ -281,7 +281,7 @@ Based on findings, these are the resolution options:
 **Rationale:** Sequential execution works; add comprehensive logging and mode tracking for debugging.
 
 **Steps:**
-1. Keep existing `VeritasOrchestrator.audit()` sequential implementation
+1. Keep existing `ElliotOrchestrator.audit()` sequential implementation
 2. Add execution mode flag to state (`execution_mode: "sequential"|"langgraph"`)
 3. Implement detailed event logging (node start/complete, state transitions)
 4. Add progress tracking and checkpointing to sequential execution
@@ -373,20 +373,20 @@ Create `test_03_behavioral_differences.py` to:
 - ✅ Isolated node testing confirms node logic sound
 - ✅ Sequential fallback validated
 - ✅ Hanging behavior documented with timeout
-- ✅ Root cause isolated to VERITAS-specific code
+- ✅ Root cause isolated to ELLIOT-specific code
 
 ## Self-Check: PASSED
 
 ### Files Created Verification
 ```bash
-[ -f "C:/files/coding dev era/elliot/elliotAI/veritas/tests/langgraph_investigation/conftest.py" ] && echo "EXISTS: conftest.py"
-[ -f "C:/files/coding dev era/elliot/elliotAI/veritas/tests/langgraph_investigation/test_02_full_audit_mocked.py" ] && echo "EXISTS: test_02_full_audit_mocked.py"
+[ -f "C:/files/coding dev era/elliot/elliotAI/elliot/tests/langgraph_investigation/conftest.py" ] && echo "EXISTS: conftest.py"
+[ -f "C:/files/coding dev era/elliot/elliotAI/elliot/tests/langgraph_investigation/test_02_full_audit_mocked.py" ] && echo "EXISTS: test_02_full_audit_mocked.py"
 ```
 
 ### Line Count Verification
 ```bash
-wc -l "C:/files/coding dev era/elliot/elliotAI/veritas/tests/langgraph_investigation/conftest.py"
-wc -l "C:/files/coding dev era/elliot/elliotAI/veritas/tests/langgraph_investigation/test_02_full_audit_mocked.py"
+wc -l "C:/files/coding dev era/elliot/elliotAI/elliot/tests/langgraph_investigation/conftest.py"
+wc -l "C:/files/coding dev era/elliot/elliotAI/elliot/tests/langgraph_investigation/test_02_full_audit_mocked.py"
 ```
 
 ### Commits Verification
@@ -396,7 +396,7 @@ git log --oneline --grep="03-02" -3
 
 ### Test Results Verification
 ```bash
-cd veritas && python -m pytest tests/langgraph_investigation/test_02_full_audit_mocked.py -v --tb=short
+cd elliot && python -m pytest tests/langgraph_investigation/test_02_full_audit_mocked.py -v --tb=short
 ```
 
 ---
@@ -406,7 +406,7 @@ cd veritas && python -m pytest tests/langgraph_investigation/test_02_full_audit_
 ### Why Mock All Dependencies
 
 Instead of testing with real NIM calls and browser automation, all dependencies are mocked because:
-1. **Isolation** - Investigates LangGraph/VERITAS integration, not external API behavior
+1. **Isolation** - Investigates LangGraph/ELLIOT integration, not external API behavior
 2. **Determinism** - Mocks provide consistent responses, no network flakiness
 3. **Speed** - No network latency, tests run quickly
 4. **Quota** - Avoids consuming NVIDIA NIM API quota during testing

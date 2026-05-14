@@ -1,4 +1,4 @@
-# Requirements: VERITAS Masterpiece Upgrade
+# Requirements: ELLIOT Masterpiece Upgrade
 
 **Defined:** 2026-02-23
 **Core Value:** Every implementation works at commit time. Build incrementally with explicit tests, verify each phase before proceeding, and deliver a production-ready system suitable for portfolio/job demonstration. Quality over speed - broken code is unacceptable.
@@ -121,7 +121,7 @@ Requirements for Milestone v2.0: Masterpiece-quality features implemented on top
   - Vendor reputation tracking
   - Product category analysis
   - Market intelligence aggregation
-- [ ] **DARKNET-04**: VERITAS darknet agent workflows
+- [ ] **DARKNET-04**: ELLIOT darknet agent workflows
   - TOR-aware security modules
   - Hidden service specific OSINT patterns
   - Darknet vulnerability exploitation detection

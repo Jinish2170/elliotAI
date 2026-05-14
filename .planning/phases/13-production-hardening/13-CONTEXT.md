@@ -2,7 +2,7 @@
 
 ## Phase Goal
 
-Transform VERITAS from a collection of individually-built features into a cohesive, production-grade product where every audit tier works end-to-end with proper data flow between all 5 agents, correct tier-aware behavior, and no orphaned features.
+Transform ELLIOT from a collection of individually-built features into a cohesive, production-grade product where every audit tier works end-to-end with proper data flow between all 5 agents, correct tier-aware behavior, and no orphaned features.
 
 ## Executive Summary
 
@@ -19,12 +19,12 @@ The `orchestrator.py` file has grown to ~1700 lines through 12 phases of increme
 - 7 node functions (scout_node, vision_node, graph_node, judge_node, security_node_with_agent, security_node, force_verdict_node)
 - 3 routing functions
 - Graph builder
-- VeritasOrchestrator class with 400+ line `audit()` method
+- ElliotOrchestrator class with 400+ line `audit()` method
 - Helper functions added as patches
 
 This monolith is fragile — every fix risks breaking something else.
 
-**1.2 — VeritasOrchestrator.audit() bypasses LangGraph entirely**
+**1.2 — ElliotOrchestrator.audit() bypasses LangGraph entirely**
 The `audit()` method manually sequences nodes in a for-loop instead of using `self._compiled.ainvoke()`. This means:
 - The graph topology defined in `build_audit_graph()` is decoration — it's not used
 - Conditional edges (`route_after_scout`, `route_after_judge`) are defined but the manual loop implements its own routing
@@ -34,7 +34,7 @@ The `audit()` method manually sequences nodes in a for-loop instead of using `se
 `scout_node` pops `pending_urls[0]` and processes it. But the manual `audit()` loop calls `scout_node` once per iteration. If Judge requests investigating 3 new URLs, only 1 gets processed per iteration cycle, wasting iteration budget.
 
 **1.4 — Progress emission is scattered across 3 different systems**
-- `self._emit()` in VeritasOrchestrator → writes to `progress_queue` (IPC)
+- `self._emit()` in ElliotOrchestrator → writes to `progress_queue` (IPC)
 - `ProgressEmitter` → WebSocket streaming
 - `##PROGRESS:` stdout markers → parsed by AuditRunner
 These 3 systems run in parallel and emit different events with different schemas. The frontend gets a chaotic mix.
@@ -51,7 +51,7 @@ Quick scan should be fast (< 30 seconds). Currently it can take minutes.
 **2.2 — Darknet tier has no TOR routing in the pipeline**
 `darknet_investigation` tier has `enable_tor: True` in settings but:
 - Scout doesn't check `enable_tor` to route through TOR
-- `TORClient` (veritas/core/tor_client.py) exists but is never called by Scout
+- `TORClient` (elliot/core/tor_client.py) exists but is never called by Scout
 - `OnionDetector` scans for .onion URLs in page content but Scout doesn't act on findings
 - The darknet security modules aren't wired in the graph
 
@@ -92,18 +92,18 @@ JudgeAgent receives `graph_result` with entity verifications, domain intel, and 
 ### Category 4: Broken/Orphaned Components
 
 **4.1 — Duplicate scout modules**
-Both `veritas/agents/scout/` and `veritas/agents/scout_nav/` exist with overlapping files:
+Both `elliot/agents/scout/` and `elliot/agents/scout_nav/` exist with overlapping files:
 - `scout/scroll_orchestrator.py` vs `scout_nav/scroll_orchestrator.py`
 - `scout/lazy_load_detector.py` vs `scout_nav/lazy_load_detector.py`
 - `scout_nav/link_explorer.py` (no equivalent in scout/)
 
 **4.2 — Darknet modules disconnected**
-- `veritas/darknet/onion_detector.py` — OnionDetector class (standalone)
-- `veritas/darknet/threat_scraper.py` — ThreatScraper class (standalone)
-- `veritas/darknet/tor_client.py` — TORClient class (standalone)
-- `veritas/core/tor_client.py` — ANOTHER TORClient (from Phase 12!)
-- `veritas/reporters/darknet_reporter.py` — DarknetReporter (never called)
-- `veritas/osint/sources/darknet_*.py` — 6 marketplace sources (built but not clearly integrated)
+- `elliot/darknet/onion_detector.py` — OnionDetector class (standalone)
+- `elliot/darknet/threat_scraper.py` — ThreatScraper class (standalone)
+- `elliot/darknet/tor_client.py` — TORClient class (standalone)
+- `elliot/core/tor_client.py` — ANOTHER TORClient (from Phase 12!)
+- `elliot/reporters/darknet_reporter.py` — DarknetReporter (never called)
+- `elliot/osint/sources/darknet_*.py` — 6 marketplace sources (built but not clearly integrated)
 
 These exist but aren't wired into the main audit pipeline.
 
@@ -114,7 +114,7 @@ The ROADMAP shows Phase 12 at 20% (1/5 plans). Plans 12-03 through 12-05 were ne
 - 12-05: Integration testing
 
 **4.4 — Report generator exists but isn't in the pipeline**
-`veritas/reporting/report_generator.py` exists and the CLI has `--report pdf/html` flags, but:
+`elliot/reporting/report_generator.py` exists and the CLI has `--report pdf/html` flags, but:
 - The `audit()` method returns raw state, not a formatted report
 - Report generation isn't triggered from the API
 - The frontend has a report page but it works off the raw audit result

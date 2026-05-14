@@ -29,7 +29,7 @@ tech-stack:
 key-files:
   created: []
   modified:
-    - veritas/agents/vision.py - Added 5-pass pipeline, content type detection, event emitter integration
+    - elliot/agents/vision.py - Added 5-pass pipeline, content type detection, event emitter integration
 
 key-decisions:
   - Backward compatibility: Added analyze_5_pass() method separate from existing analyze() to avoid breaking orchestrator, added use_5_pass_pipeline parameter for gradual migration
@@ -84,7 +84,7 @@ _Note: Implementation combined into 2 commits for atomic integration while maint
 
 ## Files Created/Modified
 
-- `veritas/agents/vision.py` - Added _detect_content_type(), _get_pass_description(), _deduplicate_findings(), _compute_confidence(), _cross_reference_findings(), analyze_5_pass(), emit_vision_complete(), event_emitter initialization, temporal_analyzer initialization, use_5_pass_pipeline parameter
+- `elliot/agents/vision.py` - Added _detect_content_type(), _get_pass_description(), _deduplicate_findings(), _compute_confidence(), _cross_reference_findings(), analyze_5_pass(), emit_vision_complete(), event_emitter initialization, temporal_analyzer initialization, use_5_pass_pipeline parameter
 
 ## Decisions Made
 
@@ -124,7 +124,7 @@ None - no external service configuration required.
 ## Self-Check: PASSED
 
 ### Files Verified
-- FOUND: veritas/agents/vision.py
+- FOUND: elliot/agents/vision.py
 - FOUND: .planning/phase-6/06-06-integration-SUMMARY.md
 
 ### Commits Verified

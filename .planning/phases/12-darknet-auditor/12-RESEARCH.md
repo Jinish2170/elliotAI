@@ -18,7 +18,7 @@ Phase 12 requires implementing a premium darknet auditor category with TOR integ
 | DARKNET-01 | TOR integration with Stem client | SOCKS5h proxy approach recommended (aiohttp with PySocks), Stem v1.8.2 available but noted as unmaintained |
 | DARKNET-02 | Hidden service detection algorithms | .onion validation patterns (16-char base32), fingerprinting via CTI module + IOC detector |
 | DARKNET-03 | Marketplace analysis database | OSINT orchestrator pattern + 6 marketplace threat feeds, extend existing CTI infrastructure |
-| DARKNET-04 | VERITAS darknet agent workflows | Extend darknet_suspicious.py strategy with TOR-aware modules, use SecurityModule base class |
+| DARKNET-04 | ELLIOT darknet agent workflows | Extend darknet_suspicious.py strategy with TOR-aware modules, use SecurityModule base class |
 | DARKNET-05 | Premium category UI integration | Streamlit patterns from existing UI, TOR status indicator, marketplace dashboard |
 </phase_requirements>
 
@@ -74,7 +74,7 @@ pip install 'requests[socks]'
 ### Recommended Project Structure
 
 ```
-veritas/
+elliot/
 ├── darknet/                    # New module for darknet capabilities
 │   ├── __init__.py
 │   ├── tor_client.py           # TOR SOCKS5h proxy client wrapper
@@ -248,11 +248,11 @@ class OnionDetector:
 
 **Example:**
 ```python
-# Source: Pattern from veritas.osint.orchestrator (Phase 8)
+# Source: Pattern from elliot.osint.orchestrator (Phase 8)
 # Extend OSINTSource pattern for darknet marketplace data
 
 from typing import Optional
-from veritas.osint.types import OSINTCategory, OSINTResult
+from elliot.osint.types import OSINTCategory, OSINTResult
 
 class DarknetMarketplaceThreatSource:
     """
@@ -342,11 +342,11 @@ class Tor2WebDeanonSource(DarknetMarketplaceThreatSource):
 
 **Example:**
 ```python
-# Source: Pattern from veritas.analysis.security.base (Phase 10)
+# Source: Pattern from elliot.analysis.security.base (Phase 10)
 # Extend SecurityModule with TOR proxy support
 
-from veritas.analysis.security.base import SecurityModule, SecurityFinding
-from veritas.darknet.tor_client import TORClient
+from elliot.analysis.security.base import SecurityModule, SecurityFinding
+from elliot.darknet.tor_client import TORClient
 
 class TORSecurityModule(SecurityModule):
     """
@@ -464,7 +464,7 @@ class DarknetMarketplaceAnalyzer(TORSecurityModule):
 
 **Example:**
 ```python
-# Source: Pattern from veritas.ui/app.py (Phase 11)
+# Source: Pattern from elliot.ui/app.py (Phase 11)
 # Extend existing Streamlit interface with darknet controls
 
 import streamlit as st
@@ -703,15 +703,15 @@ ONION_PATTERN = r'\b[a-z2-7]{16}\.onion\b|\b[a-z2-7]{56}\.onion\b'
 ### Extending SecurityModule for TOR
 
 ```python
-# Source: veritas.analysis.security.base (Phase 10)
+# Source: elliot.analysis.security.base (Phase 10)
 # SecurityModule base class with tier-based async execution
 
-from veritas.analysis.security.base import (
+from elliot.analysis.security.base import (
     SecurityModule,
     SecurityFinding,
     SecurityTier,
 )
-from veritas.darknet.tor_client import TORClient
+from elliot.darknet.tor_client import TORClient
 
 class DarknetAnalysisModule(SecurityModule):
     """Security module for darknet threat analysis."""
@@ -781,7 +781,7 @@ class DarknetAnalysisModule(SecurityModule):
 
 1. **TOR Proxy Deployment**
    - What we know: Standard SOCKS5h port is 9050, can be verified via `check.torproject.org`
-   - What's unclear: Should VERITAS attempt to launch TOR process or assume TOR is already running?
+   - What's unclear: Should ELLIOT attempt to launch TOR process or assume TOR is already running?
    - Recommendation: Assume TOR is already running (user responsibility). Adding process management increases complexity. Document TOR requirements in setup instructions.
 
 2. **Threat Feed Sourcing**
@@ -796,7 +796,7 @@ class DarknetAnalysisModule(SecurityModule):
 
 4. **Tor2Web De-anonymization Detection**
    - What we know: Tor2Web allows .onion sites to be accessed via clearweb gateway, de-anonymizing users
-   - What's unclear: What specific patterns indicate Tor2Web usage? Should VERITAS detect if target uses Tor2Web gateway?
+   - What's unclear: What specific patterns indicate Tor2Web usage? Should ELLIOT detect if target uses Tor2Web gateway?
    - Recommendation: Detect tor2web.org links and onion.to gateway patterns. Include as a data source in threat feeds.
 
 5. **Premium Category Pricing/Access**
@@ -819,14 +819,14 @@ class DarknetAnalysisModule(SecurityModule):
 - [Stem Library - PyPI](https://pypi.org/project/stem/) - Library overview and installation
 - [Stem Project - GitHub](https://github.com/torproject/stem) - Latest version 1.8.2 (June 2023), maintenance status
 - [Requests Documentation - SOCKS Proxy](https://requests.readthedocs.io/en/latest/user/advanced/) - socks5h:// vs socks5:// proxy DNS resolution
-- [Project Code - veritas/agents/judge/strategies/darknet_suspicious.py](C:/files/coding dev era/elliot/elliotAI/veritas/agents/judge/strategies/darknet_suspicious.py) - Existing darknet strategy patterns
-- [Project Code - veritas/analysis/security/base.py](C:/files/coding dev era/elliot/elliotAI/veritas/analysis/security/base.py) - SecurityModule base class and tier execution
-- [Project Code - veritas/osint/cti.py](C:/files/coding dev era/elliot/elliotAI/veritas/osint/cti.py) - CTI module with IOC detection and MITRE ATT&CK mapping
-- [Project Code - veritas/osint/orchestrator.py](C:/files/coding dev era/elliot/elliotAI/veritas/osint/orchestrator.py) - Circuit breaker and rate limiting patterns
-- [Project Code - veritas/osint/ioc_detector.py](C:/files/coding dev era/elliot/elliotAI/veritas/osint/ioc_detector.py) - IOC extraction and threat classification
-- [Project Code - veritas/osint/attack_patterns.py](C:/files/coding dev era/elliot/elliotAI/veritas/osint/attack_patterns.py) - MITRE ATT&CK technique database
-- [Project Code - veritas/ui/app.py](C:/files/coding dev era/elliot/elliotAI/veritas/ui/app.py) - Streamlit UI patterns and design system
-- [Project Code - veritas/requirements.txt](C:/files/coding dev era/elliot/elliotAI/veritas/requirements.txt) - Existing package dependencies (aiohttp, requests, asyncio)
+- [Project Code - elliot/agents/judge/strategies/darknet_suspicious.py](C:/files/coding dev era/elliot/elliotAI/elliot/agents/judge/strategies/darknet_suspicious.py) - Existing darknet strategy patterns
+- [Project Code - elliot/analysis/security/base.py](C:/files/coding dev era/elliot/elliotAI/elliot/analysis/security/base.py) - SecurityModule base class and tier execution
+- [Project Code - elliot/osint/cti.py](C:/files/coding dev era/elliot/elliotAI/elliot/osint/cti.py) - CTI module with IOC detection and MITRE ATT&CK mapping
+- [Project Code - elliot/osint/orchestrator.py](C:/files/coding dev era/elliot/elliotAI/elliot/osint/orchestrator.py) - Circuit breaker and rate limiting patterns
+- [Project Code - elliot/osint/ioc_detector.py](C:/files/coding dev era/elliot/elliotAI/elliot/osint/ioc_detector.py) - IOC extraction and threat classification
+- [Project Code - elliot/osint/attack_patterns.py](C:/files/coding dev era/elliot/elliotAI/elliot/osint/attack_patterns.py) - MITRE ATT&CK technique database
+- [Project Code - elliot/ui/app.py](C:/files/coding dev era/elliot/elliotAI/elliot/ui/app.py) - Streamlit UI patterns and design system
+- [Project Code - elliot/requirements.txt](C:/files/coding dev era/elliot/elliotAI/elliot/requirements.txt) - Existing package dependencies (aiohttp, requests, asyncio)
 
 ### Secondary (MEDIUM confidence)
 

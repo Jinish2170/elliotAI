@@ -1,7 +1,7 @@
-# Research Summary: VERITAS v2.0 Masterpiece Features
+# Research Summary: ELLIOT v2.0 Masterpiece Features
 
-**Project:** VERITAS Masterpiece Upgrade - v2.0 Masterpiece Features
-**Domain:** Add masterpiece features to existing VERITAS forensic web auditing platform
+**Project:** ELLIOT Masterpiece Upgrade - v2.0 Masterpiece Features
+**Domain:** Add masterpiece features to existing ELLIOT forensic web auditing platform
 **Researched:** 2026-02-23
 **Confidence:** MEDIUM-HIGH
 
@@ -9,7 +9,7 @@
 
 ## Executive Summary
 
-VERITAS v2.0 is an enhancement project building on a production-ready foundation from v1.0 Core Stabilization. The platform is an autonomous 5-agent forensic web auditing system (Scout, Security, Vision, Graph, Judge) that analyzes websites for trust, safety, dark patterns, and security vulnerabilities. Expert sources indicate this domain is best built using specialized AI agents with multi-modal analysis pipelines, layered async execution patterns, and real-time progress telemetry for engaging presentation.
+ELLIOT v2.0 is an enhancement project building on a production-ready foundation from v1.0 Core Stabilization. The platform is an autonomous 5-agent forensic web auditing system (Scout, Security, Vision, Graph, Judge) that analyzes websites for trust, safety, dark patterns, and security vulnerabilities. Expert sources indicate this domain is best built using specialized AI agents with multi-modal analysis pipelines, layered async execution patterns, and real-time progress telemetry for engaging presentation.
 
 Based on combined research, the recommended approach is **minimal technical complexity with maximum feature sophistication**. The existing stack (80% of needed libraries already installed) supports all masterpiece features with only 5 new Python packages. Critical risks center on three areas: computer vision image alignment causing false positives, WebSocket event flooding breaking the frontend, and API rate limits truncating OSINT data. These are actively mitigated through image normalization, event throttling, and tiered async execution patterns. The project requires a 5-phase implementation strategy starting with Vision Agent (highest complexity and visual payoff), followed by OSINT integration (data foundation for other agents), Judge system (requires OSINT data), Security modules (OWASP compliance), and finally Showcase components (requires all data streams).
 
@@ -73,7 +73,7 @@ Based on combined research, the recommended approach is **minimal technical comp
 | Dark pattern detection | Vision | High |
 | Dual-tier verdict (technical + non-technical) | Judge | Medium |
 
-**Differentiators (Set VERITAS Apart):**
+**Differentiators (Set ELLIOT Apart):**
 | Feature | Value | Complexity |
 |---------|--------|------------|
 | 5-pass Vision Agent pipeline | 95%+ dark pattern detection | High |
@@ -237,7 +237,7 @@ Based on combined research, the most effective approach is **5 sequential phases
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | **HIGH** | VERITAS v1.0 foundation is excellent. Only 5 new packages, all are industry standards (10+ years production use). |
+| Stack | **HIGH** | ELLIOT v1.0 foundation is excellent. Only 5 new packages, all are industry standards (10+ years production use). |
 | Features | **MEDIUM-HIGH** | Table stakes and differentiators well-researched from OWASP, CVSS sources. Feature dependencies clearly mapped. |
 | Architecture | **HIGH** | Agent Extension Pattern and Tiered Async Execution are solid patterns. Integration points clear. |
 | Pitfalls | **HIGH** | Three critical pitfalls have detailed prevention and detection strategies. Moderate/minor pitfalls documented comprehensively. |
@@ -263,7 +263,7 @@ Research is actionable for planning. All major risks have mitigation strategies.
 - **FEATURES.md**: Table stakes, differentiators, anti-features, feature dependencies, MVP prioritization
 - **ARCHITECTURE.md**: Component boundaries, Agent Extension Pattern, Tiered Async Execution, anti-patterns
 - **PITFALLS.md**: Critical/moderate/minor pitfalls with prevention strategies, phase-specific warnings
-- **PROJECT.md**: VERITAS v1.0 foundation, existing capabilities, implementation timeline, constraints
+- **PROJECT.md**: ELLIOT v1.0 foundation, existing capabilities, implementation timeline, constraints
 
 ### External Sources Referenced
 - **OWASP Top 10 2021**: Security module categories for Phase 4

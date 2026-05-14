@@ -12,7 +12,7 @@
 
 ### Current State (Pre-Phase)
 
-**Scout Agent (`veritas/agents/scout.py`):**
+**Scout Agent (`elliot/agents/scout.py`):**
 - Single-page capture only (t0, t+delay, fullpage screenshots)
 - No scrolling or lazy loading detection
 - No multi-page exploration capability
@@ -95,7 +95,7 @@ Pagination links: Page 1 → Page 2 → Page 3 → ... → Page N → Page 1
 
 **Implementation Tasks:**
 ```python
-# veritas/agents/scout.py (new module: navigation_controller.py)
+# elliot/agents/scout.py (new module: navigation_controller.py)
 class NavigationController:
     """Controls multi-page navigation with loop prevention."""
 
@@ -197,7 +197,7 @@ class NavigationController:
         return False
 
 # 7.1.2 Integrate NavigationController into Scout
-# veritas/agents/scout.py (modify ScoutAgent.navigate_multiple_pages())
+# elliot/agents/scout.py (modify ScoutAgent.navigate_multiple_pages())
 class ScoutAgent:
     def __init__(self, nim_client: NIMClient):
         self.nim_client = nim_client
@@ -334,7 +334,7 @@ class ScoutAgent:
 
 **Implementation Tasks:**
 ```python
-# veritas/agents/scout.py (new module: lazy_loading_detector.py)
+# elliot/agents/scout.py (new module: lazy_loading_detector.py)
 class LazyLoadingDetector:
     """Detects and handles lazy loading on web pages."""
 
@@ -489,7 +489,7 @@ class LazyLoadingDetector:
             return False
 
 # 7.2.2 Integrate lazy loading detection into Scout
-# veritas/agents/scout.py (modify ScoutAgent.navigate_page())
+# elliot/agents/scout.py (modify ScoutAgent.navigate_page())
 class ScoutAgent:
     def __init__(self, nim_client: NIMClient):
         self.nim_client = nim_client
@@ -618,7 +618,7 @@ if vision_says_threat and security_says_safe:
 
 **Implementation Tasks:**
 ```python
-# veritas/core/orchestrator.py (new module: multi_source_validator.py)
+# elliot/core/orchestrator.py (new module: multi_source_validator.py)
 from dataclasses import dataclass, field
 from typing import List, Dict, Set
 from enum import Enum
@@ -859,8 +859,8 @@ class FindingGroup:
         self.agent_findings[agent_name].append(finding)
 
 # 7.3.2 Integrate MultiSourceValidator into Orchestrator
-# veritas/core/orchestrator.py (modify orchestrator.audit())
-class VeritasOrchestrator:
+# elliot/core/orchestrator.py (modify orchestrator.audit())
+class ElliotOrchestrator:
     def __init__(self):
         self.multi_source_validator = MultiSourceValidator(min_confirmations=2)
 
@@ -910,7 +910,7 @@ class VeritasOrchestrator:
 
 **Implementation Tasks:**
 ```python
-# veritas/core/orchestrator.py (new module: confidence_normalizer.py)
+# elliot/core/orchestrator.py (new module: confidence_normalizer.py)
 class ConfidenceNormalizer:
     """Normalizes confidence scores from different agents to 0-100 scale."""
 
@@ -990,12 +990,12 @@ class ConfidenceNormalizer:
 ### 7.1 Implement NavigationController for Multi-Page Navigation
 
 **Files:**
-- `veritas/agents/scout.py` (new module: navigation_controller.py)
-- `veritas/config/settings.py` (add MAX_PAGES_PER_AUDIT setting)
+- `elliot/agents/scout.py` (new module: navigation_controller.py)
+- `elliot/config/settings.py` (add MAX_PAGES_PER_AUDIT setting)
 
 **Tasks:**
 ```python
-# veritas/agents/scout/navigation_controller.py (new file)
+# elliot/agents/scout/navigation_controller.py (new file)
 import logging
 from typing import List, Optional, Set, Tuple
 from urllib.parse import urlparse
@@ -1116,7 +1116,7 @@ class NavigationController:
                 logger.info(f"Detected pagination pattern: {pattern}")
                 self.pagination_patterns[pattern] = count
 
-# veritas/config/settings.py (add navigation settings)
+# elliot/config/settings.py (add navigation settings)
 MAX_PAGES_PER_AUDIT = 10  # For Phase 7
 MAX_NAVIGATION_DEPTH = 3
 SAME_DOMAIN_ONLY = True
@@ -1128,11 +1128,11 @@ PAGE_LOAD_TIMEOUT = 30
 ### 7.2 Implement LazyLoadingDetector
 
 **File:**
-- `veritas/agents/scout/lazy_loading_detector.py` (new file)
+- `elliot/agents/scout/lazy_loading_detector.py` (new file)
 
 **Tasks:**
 ```python
-# veritas/agents/scout/lazy_loading_detector.py (new file)
+# elliot/agents/scout/lazy_loading_detector.py (new file)
 import asyncio
 import logging
 import time
@@ -1232,12 +1232,12 @@ class LazyLoadingDetector:
 ### 7.3 Implement MultiSourceValidator
 
 **Files:**
-- `veritas/core/orchestrator/multi_source_validator.py` (new file)
-- `veritas/core/orchestrator/confidence_normalizer.py` (new file)
+- `elliot/core/orchestrator/multi_source_validator.py` (new file)
+- `elliot/core/orchestrator/confidence_normalizer.py` (new file)
 
 **Tasks:**
 ```python
-# veritas/core/orchestrator/multi_source_validator.py (new file)
+# elliot/core/orchestrator/multi_source_validator.py (new file)
 from dataclasses import dataclass, field
 from typing import Dict, List
 from enum import Enum
@@ -1392,11 +1392,11 @@ class MultiSourceValidator:
 ### 7.4 Integrate All Components into Enhanced Scout
 
 **File:**
-- `veritas/agents/scout.py` (rewrite ScoutAgent)
+- `elliot/agents/scout.py` (rewrite ScoutAgent)
 
 **Tasks:**
 ```python
-# veritas/agents/scout.py (enhanced ScoutAgent)
+# elliot/agents/scout.py (enhanced ScoutAgent)
 class ScoutAgent:
     def __init__(self, nim_client: NIMClient):
         self.nim_client = nim_client
@@ -1516,7 +1516,7 @@ class ScoutAgent:
 
 **Test: NavigationController loop prevention**
 ```python
-# veritas/tests/test_navigation_controller.py
+# elliot/tests/test_navigation_controller.py
 def test_can_visit_prevents_infinite_loop():
     nav = NavigationController(max_pages=3)
 
@@ -1529,7 +1529,7 @@ def test_can_visit_prevents_infinite_loop():
 
 **Test: LazyLoadingDetector height stabilization**
 ```python
-# veritas/tests/test_lazy_loading.py
+# elliot/tests/test_lazy_loading.py
 @pytest.mark.asyncio
 async def test_height_stabilization_works():
     page = MockPage(heights=[1000, 1200, 1400, 1400, 1400])  # Height stabilizes
@@ -1543,7 +1543,7 @@ async def test_height_stabilization_works():
 
 **Test: MultiSourceValidator with 2 agents**
 ```python
-# veritas/tests/test_multi_source_validator.py
+# elliot/tests/test_multi_source_validator.py
 def test_two_agent_finding_confirmed():
     validator = MultiSourceValidator(min_confirmations=2)
 
@@ -1568,7 +1568,7 @@ def test_two_agent_finding_confirmed():
 
 **Test: Full multi-page exploration**
 ```python
-# veritas/tests/test_integration_multi_page.py
+# elliot/tests/test_integration_multi_page.py
 @pytest.mark.asyncio
 async def test_multi_page_scout():
     """Scout navigates multiple pages with loop detection."""

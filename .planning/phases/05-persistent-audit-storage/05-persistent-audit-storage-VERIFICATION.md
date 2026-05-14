@@ -26,7 +26,7 @@ re_verification:
 
 | #   | Truth   | Status     | Evidence       |
 | --- | ------- | ---------- | -------------- |
-| 1   | SQLite database file exists in data/veritas_audits.db on first backend startup | ✓ VERIFIED | Database file exists at 57KB, created automatically on startup |
+| 1   | SQLite database file exists in data/elliot_audits.db on first backend startup | ✓ VERIFIED | Database file exists at 57KB, created automatically on startup |
 | 2   | Database has WAL mode enabled (PRAGMA journal_mode=WAL) | ✓ VERIFIED | sqlite3 PRAGMA journal_mode returns "wal"; guaranteed by init_database() call in lifespan() |
 | 3   | All audit-related tables (audits, audit_findings, audit_screenshots, audit_events) exist | ✓ VERIFIED | sqlite3 .tables shows all 4 tables |
 | 4   | Tables contain all required columns from research document schema | ✓ VERIFIED | models.py defines all columns: id, url, status, audit_tier, verdict_mode, trust_score, risk_level, signal_scores, narrative, site_type, site_type_confidence, security_results, pages_scanned, screenshots_count, elapsed_seconds, errors, error_message, timestamps |
@@ -56,15 +56,15 @@ re_verification:
 
 | Artifact | Expected    | Status | Details |
 | -------- | ----------- | ------ | ------- |
-| veritas/db/__init__.py | Database initialization and async engine setup | ✓ VERIFIED | Exists with engine, AsyncSessionLocal, get_db(), init_database() - 80 lines |
-| veritas/db/models.py | SQLAlchemy ORM models for audit data | ✓ VERIFIED | 4 models defined: Audit, AuditFinding, AuditScreenshot, AuditEvent - 200 lines |
-| veritas/db/config.py | Database configuration and WAL mode settings | ✓ VERIFIED | DATABASE_URL, Base, PRAGMA constants defined - 22 lines |
-| veritas/db/repositories.py | Repository pattern for database operations | ✓ VERIFIED | AuditRepository with 6 CRUD methods - 171 lines |
-| veritas/screenshots/storage.py | Screenshot filesystem storage service | ✓ VERIFIED | ScreenshotStorage with save, delete, get_all, get_file, path traversal protection - 186 lines |
-| veritas/config/settings.py | USE_DB_PERSISTENCE feature flag | ✓ VERIFIED | USE_DB_PERSISTENCE defaults to "true", should_use_db_persistence() defined - 311 lines |
+| elliot/db/__init__.py | Database initialization and async engine setup | ✓ VERIFIED | Exists with engine, AsyncSessionLocal, get_db(), init_database() - 80 lines |
+| elliot/db/models.py | SQLAlchemy ORM models for audit data | ✓ VERIFIED | 4 models defined: Audit, AuditFinding, AuditScreenshot, AuditEvent - 200 lines |
+| elliot/db/config.py | Database configuration and WAL mode settings | ✓ VERIFIED | DATABASE_URL, Base, PRAGMA constants defined - 22 lines |
+| elliot/db/repositories.py | Repository pattern for database operations | ✓ VERIFIED | AuditRepository with 6 CRUD methods - 171 lines |
+| elliot/screenshots/storage.py | Screenshot filesystem storage service | ✓ VERIFIED | ScreenshotStorage with save, delete, get_all, get_file, path traversal protection - 186 lines |
+| elliot/config/settings.py | USE_DB_PERSISTENCE feature flag | ✓ VERIFIED | USE_DB_PERSISTENCE defaults to "true", should_use_db_persistence() defined - 311 lines |
 | backend/routes/audit.py | Dual-write integration + history/compare endpoints | ✓ VERIFIED | DbSession injection, event handlers, /audits/history, /audits/compare - 523 lines |
 | backend/tests/test_audit_persistence.py | Concurrent write and read-write tests | ✓ VERIFIED | 3 tests: concurrent_writes, concurrent_read_write, wal_mode_enabled - 226 lines |
-| data/veritas_audits.db | SQLite database file (created on first run) | ✓ VERIFIED | Exists (57KB created Feb 23 10:43), WAL mode enabled |
+| data/elliot_audits.db | SQLite database file (created on first run) | ✓ VERIFIED | Exists (57KB created Feb 23 10:43), WAL mode enabled |
 | data/screenshots/ | Screenshot storage directory | ✓ VERIFIED | Exists (empty, will be populated on screenshot save) |
 | backend/main.py | FastAPI application with initialization | ✓ VERIFIED | lifespan() function now calls await init_database() - 69 lines |
 
@@ -72,15 +72,15 @@ re_verification:
 
 | From | To | Via | Status | Details |
 | ---- | --- | --- | ------ | ------- |
-| veritas/db/__init__.py | veritas/db/config.py | import DATABASE_URL, Base | ✓ WIRED | Line 12: `from veritas.db.config import DATABASE_URL, Base` |
-| veritas/db/__init__.py | veritas/db/models.py | import models | ✓ WIRED | Line 11: `from veritas.db import models` |
-| veritas/db/__init__.py | PRAGMA journal_mode=WAL | database initialization async function | ✓ WIRED | init_database() defined (line 43) AND called in backend/main.py lifespan() (line 38) - FIXED |
-| backend/main.py | veritas/db/__init__.py | import init_database and call on startup | ✓ WIRED | Line 30: import, Line 38: await init_database() - FIXED |
-| veritas/db/repositories.py | veritas/db/models.py | import Audit, AuditFinding, etc. | ✓ VERIFIED (REGRESSION) | Line 12: `from veritas.db.models import Audit, AuditFinding, AuditScreenshot, AuditStatus` |
-| backend/routes/audit.py | veritas/db/__init__.py | import get_db for dependency injection | ✓ VERIFIED (REGRESSION) | Line 18: `from veritas.db import get_db` |
-| backend/routes/audit.py | veritas/db/repositories.py | import AuditRepository | ✓ VERIFIED (REGRESSION) | Line 20: `from veritas.db.repositories import AuditRepository` |
-| backend/routes/audit.py | veritas/screenshots/storage.py | import ScreenshotStorage | ✓ VERIFIED (REGRESSION) | Line 21: `from veritas.screenshots.storage import ScreenshotStorage` |
-| backend/routes/audit.py | config/settings.py | import USE_DB_PERSISTENCE | ✓ VERIFIED (REGRESSION) | Line 17: `from veritas.config.settings import should_use_db_persistence` |
+| elliot/db/__init__.py | elliot/db/config.py | import DATABASE_URL, Base | ✓ WIRED | Line 12: `from elliot.db.config import DATABASE_URL, Base` |
+| elliot/db/__init__.py | elliot/db/models.py | import models | ✓ WIRED | Line 11: `from elliot.db import models` |
+| elliot/db/__init__.py | PRAGMA journal_mode=WAL | database initialization async function | ✓ WIRED | init_database() defined (line 43) AND called in backend/main.py lifespan() (line 38) - FIXED |
+| backend/main.py | elliot/db/__init__.py | import init_database and call on startup | ✓ WIRED | Line 30: import, Line 38: await init_database() - FIXED |
+| elliot/db/repositories.py | elliot/db/models.py | import Audit, AuditFinding, etc. | ✓ VERIFIED (REGRESSION) | Line 12: `from elliot.db.models import Audit, AuditFinding, AuditScreenshot, AuditStatus` |
+| backend/routes/audit.py | elliot/db/__init__.py | import get_db for dependency injection | ✓ VERIFIED (REGRESSION) | Line 18: `from elliot.db import get_db` |
+| backend/routes/audit.py | elliot/db/repositories.py | import AuditRepository | ✓ VERIFIED (REGRESSION) | Line 20: `from elliot.db.repositories import AuditRepository` |
+| backend/routes/audit.py | elliot/screenshots/storage.py | import ScreenshotStorage | ✓ VERIFIED (REGRESSION) | Line 21: `from elliot.screenshots.storage import ScreenshotStorage` |
+| backend/routes/audit.py | config/settings.py | import USE_DB_PERSISTENCE | ✓ VERIFIED (REGRESSION) | Line 17: `from elliot.config.settings import should_use_db_persistence` |
 | backend/routes/audit.py | /audits/history endpoint | GET request with optional filters | ✓ VERIFIED (REGRESSION) | Line 199: `@router.get("/audits/history")` |
 | backend/routes/audit.py | /audits/compare endpoint | POST request with audit_ids list | ✓ VERIFIED (REGRESSION) | Line 265: `@router.post("/audits/compare")` |
 
@@ -143,7 +143,7 @@ Previous verification identified 1 gap that has been fully resolved:
 The `init_database()` function is properly implemented (enables WAL mode, creates tables) and is now **called during application startup** in `backend/main.py` lifespan() function.
 
 **Evidence of Fix:**
-- backend/main.py line 30: `from veritas.db import init_database`
+- backend/main.py line 30: `from elliot.db import init_database`
 - backend/main.py line 38: `await init_database()` within lifespan() before yielding
 - Database will now automatically initialize with WAL mode on every backend startup
 - CORE-05-2 requirement is now fully satisfied

@@ -7,8 +7,8 @@ autonomous: true
 objective: Implement 5 pass-specific VLM prompts optimized for each analysis target (quick threat, dark patterns, temporal, cross-reference, synthesis).
 
 files_modified:
-  - veritas/config/dark_patterns.py
-  - veritas/agents/vision.py
+  - elliot/config/dark_patterns.py
+  - elliot/agents/vision.py
 
 tasks:
   - Define VISION_PASS_PROMPTS dictionary with 5 pass-specific prompts
@@ -36,7 +36,7 @@ Single generic prompt is insufficient for sophisticated dark pattern detection. 
 
 ### Task 1: Define 5 pass-specific prompts
 
-**File:** `veritas/config/dark_patterns.py`
+**File:** `elliot/config/dark_patterns.py`
 
 ```python
 VISION_PASS_PROMPTS = {
@@ -107,7 +107,7 @@ VISION_PASS_PROMPTS = {
 
 ### Task 2: Add 5-tier confidence mapping
 
-**File:** `veritas/agents/vision.py`
+**File:** `elliot/agents/vision.py`
 
 ```python
 def get_confidence_tier(self, confidence_score: float) -> str:
@@ -130,12 +130,12 @@ def get_confidence_tier(self, confidence_score: float) -> str:
 
 ### Task 3: Implement prompt selection with temporal context
 
-**File:** `veritas/agents/vision.py`
+**File:** `elliot/agents/vision.py`
 
 ```python
 def get_pass_prompt(self, pass_num: int, temporal_result: dict) -> str:
     """Get appropriate prompt for pass number, injecting temporal context."""
-    from veritas.config.dark_patterns import VISION_PASS_PROMPTS
+    from elliot.config.dark_patterns import VISION_PASS_PROMPTS
     base_prompt = VISION_PASS_PROMPTS[pass_num]
 
     # Inject temporal context into Pass 3

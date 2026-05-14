@@ -25,7 +25,7 @@
 
 ### 2. Orchestration Layer
 - **Purpose:** Coordinate multi-agent audit workflow with state management
-- **Location:** `veritas/core/orchestrator.py`, `backend/services/audit_runner.py`
+- **Location:** `elliot/core/orchestrator.py`, `backend/services/audit_runner.py`
 - **Contains:**
   - LangGraph StateGraph with AuditState TypedDict
   - Sequential node execution for each agent phase
@@ -36,7 +36,7 @@
 
 ### 3. Agent Layer
 - **Purpose:** Perform specific forensic analysis tasks
-- **Location:** `veritas/agents/` (5 agents)
+- **Location:** `elliot/agents/` (5 agents)
 - **Contains:**
   - **Scout** (`scout.py`) — Browser automation, screenshot capture, metadata extraction
   - **Vision** (`vision.py`) — NIM-based visual analysis for dark patterns
@@ -49,11 +49,11 @@
 ### 4. Data/Infrastructure Layer
 - **Purpose:** Persist audit data, serve configuration, manage OSINT sources
 - **Location:**
-  - `veritas/db/` — SQLite database operations
-  - `veritas/config/` — Settings and trust weights
-  - `veritas/osint/` — External OSINT source integration
-  - `veritas/darknet/` — Darknet marketplace intelligence
-  - `veritas/cwe/` — CWE vulnerability database
+  - `elliot/db/` — SQLite database operations
+  - `elliot/config/` — Settings and trust weights
+  - `elliot/osint/` — External OSINT source integration
+  - `elliot/darknet/` — Darknet marketplace intelligence
+  - `elliot/cwe/` — CWE vulnerability database
 - **Contains:**
   - SQLite with WAL mode for concurrent access
   - Trust score calculation engine
@@ -79,7 +79,7 @@
 ### Primary Audit Flow
 1. **Frontend:** User submits URL → POST `/api/audit/start`
 2. **API:** Creates audit_id, returns immediately → WebSocket connection established
-3. **Orchestrator:** Instantiates VeritasOrchestrator, executes `audit()` method
+3. **Orchestrator:** Instantiates ElliotOrchestrator, executes `audit()` method
 4. **Agent Execution Loop:**
    - **Scout:** Navigate URL, capture screenshots, collect metadata
    - **Security:** Run modular security scans (OWASP, darknet, phishing)
@@ -105,27 +105,27 @@
 
 ### 1. AuditState TypedDict
 - Purpose: Schema for shared state across all LangGraph nodes
-- Examples: `veritas/core/orchestrator.py` (lines 51-97)
+- Examples: `elliot/core/orchestrator.py` (lines 51-97)
 - Pattern: TypedDict for LangGraph state management
 
-### 2. VeritasOrchestrator Class
+### 2. ElliotOrchestrator Class
 - Purpose: High-level orchestrator API with smart features
-- Examples: `veritas/core/orchestrator.py` (lines 173-897)
+- Examples: `elliot/core/orchestrator.py` (lines 173-897)
 - Pattern: Adaptive timeout management, circuit breakers, fallback execution
 
 ### 3. AuditRunner Class
-- Purpose: Bridge between FastAPI and veritas CLI/module execution
+- Purpose: Bridge between FastAPI and elliot CLI/module execution
 - Examples: `backend/services/audit_runner.py` (lines 31-737)
 - Pattern: Subprocess execution with progress streaming via IPC
 
 ### 4. Agent Node Functions
 - Purpose: Individual agent execution as LangGraph nodes
-- Examples: `veritas/core/nodes/scout.py`, `vision.py`, `graph.py`, `judge.py`
+- Examples: `elliot/core/nodes/scout.py`, `vision.py`, `graph.py`, `judge.py`
 - Pattern: Pure async functions receiving and updating AuditState
 
 ### 5. ProgressEmitter
 - Purpose: Rate-limited WebSocket streaming with token-bucket algorithm
-- Examples: `veritas/core/progress.py`
+- Examples: `elliot/core/progress.py`
 - Pattern: Buffering and throttling for smooth frontend updates
 
 ## Entry Points
@@ -145,10 +145,10 @@
 - **Triggers:** WS connection to `/api/audit/stream/{id}`
 - **Responsibilities:** Bridge AuditRunner events to frontend via asyncio
 
-### Veritas CLI Entry
-- **Location:** `veritas/__main__.py`
-- **Triggers:** `python -m veritas <url> [options]`
-- **Responsibilities:** Parse CLI arguments → run VeritasOrchestrator.audit() directly
+### Elliot CLI Entry
+- **Location:** `elliot/__main__.py`
+- **Triggers:** `python -m elliot <url> [options]`
+- **Responsibilities:** Parse CLI arguments → run ElliotOrchestrator.audit() directly
 
 ## Error Handling
 
@@ -168,7 +168,7 @@
 
 ### Logging
 - Framework: Python standard logging
-- Patterns: One logger per module (veritas.scout, veritas.orchestrator, etc.)
+- Patterns: One logger per module (elliot.scout, elliot.orchestrator, etc.)
 - Outputs: Console, file, and event stream
 
 ### Validation

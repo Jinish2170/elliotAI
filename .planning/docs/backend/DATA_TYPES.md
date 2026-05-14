@@ -1,4 +1,4 @@
-# VERITAS Backend - Data Types Reference
+# ELLIOT Backend - Data Types Reference
 
 **Version:** 2.0.0
 **Last Updated:** 2026-03-08
@@ -8,7 +8,7 @@
 
 ## Overview
 
-This document defines all data types used in the VERITAS backend. These types correspond to Python dataclasses and TypeScript interfaces.
+This document defines all data types used in the ELLIOT backend. These types correspond to Python dataclasses and TypeScript interfaces.
 
 ---
 

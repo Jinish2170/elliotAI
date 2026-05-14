@@ -1,4 +1,4 @@
-# Feature Landscape: VERITAS v2.0 Masterpiece Features
+# Feature Landscape: ELLIOT v2.0 Masterpiece Features
 
 **Domain:** Forensic Web Auditing Platform Enhancement
 **Researched:** 2026-02-23
@@ -26,7 +26,7 @@ Features users expect in a forensic web auditing platform. Missing = product fee
 
 ## Differentiators
 
-Features that set VERITAS apart from competitors. Not expected but valued.
+Features that set ELLIOT apart from competitors. Not expected but valued.
 
 | Feature | Value Proposition | Complexity | Notes |
 |---------|-------------------|------------|-------|
@@ -76,7 +76,7 @@ Screenshot Carousel -> Progress Emitter (needs screenshot URLs)
 
 ## MVP Recommendation
 
-For VERITAS v2.0 masterpiece features (6-week timeline):
+For ELLIOT v2.0 masterpiece features (6-week timeline):
 
 Phase 1 Priority (Vision - Week 1-2):
 1. 5-pass Vision Agent with VLM integration
@@ -115,7 +115,7 @@ Defer:
 
 ## Sources
 
-- VERITAS IMPLEMENTATION_PLAN.md (feature requirements detailed)
-- VERITAS PROJECT.md (existing capabilities confirmed)
+- ELLIOT IMPLEMENTATION_PLAN.md (feature requirements detailed)
+- ELLIOT PROJECT.md (existing capabilities confirmed)
 - OWASP Top 10 2021 (security module categories)
 - CVSS (Common Vulnerability Scoring System v3.1)

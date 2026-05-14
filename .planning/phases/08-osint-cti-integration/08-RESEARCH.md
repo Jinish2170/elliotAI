@@ -143,7 +143,7 @@ Darknet/Tor integration is explicitly NOT in Phase 8 scope.
 
 **Installation:**
 ```bash
-# All core libraries already in veritas/requirements.txt
+# All core libraries already in elliot/requirements.txt
 # No new dependencies needed for surface-level OSINT
 # API client libraries for specific threat intel sources will be added per source
 ```
@@ -152,7 +152,7 @@ Darknet/Tor integration is explicitly NOT in Phase 8 scope.
 
 ### Recommended Project Structure
 ```
-veritas/
+elliot/
 ├── agents/
 │   ├── osint_agent.py          # OSINT Agent (similar patterns to SecurityAgent)
 │   └── osint_orchestrator.py   # Intelligent CTI/OSINT orchestrator
@@ -180,7 +180,7 @@ veritas/
 **When to use:** When you have 15+ OSINT sources with standardized interface but different implementations
 **Example:**
 ```python
-# Source: veritas/agents/security_agent.py (existing pattern)
+# Source: elliot/agents/security_agent.py (existing pattern)
 class SecurityAgent:
     def __init__(self):
         self._discovered_modules = {}
@@ -213,7 +213,7 @@ class SecurityAgent:
 **When to use:** When aggregating findings from multiple OSINT sources to determine threat status
 **Example:**
 ```python
-# Source: veritas/quality/consensus_engine.py (existing pattern)
+# Source: elliot/quality/consensus_engine.py (existing pattern)
 class ConsensusEngine:
     def __init__(self, min_sources: int = 2):
         self.min_sources = min_sources
@@ -260,7 +260,7 @@ async def _run_module_with_retry(self, module_class, module_info, url, page):
 **When to use:** For storing OSINT results with automatic expiration based on source type
 **Example:**
 ```python
-# Pattern from veritas/db/models.py (existing pattern)
+# Pattern from elliot/db/models.py (existing pattern)
 class OSINTCache(Base):
     """OSINT result cache with source-specific TTL."""
     __tablename__ = "osint_cache"
@@ -820,7 +820,7 @@ class OSINTCache:
         Returns:
             Cached result dict or None if not found/expired
         """
-        from veritas.db.models import OSINTCache as OSINTCacheModel
+        from elliot.db.models import OSINTCache as OSINTCacheModel
 
         cache_key = OSINTCache.generate_cache_key(source, query_type, **query_params)
 
@@ -861,7 +861,7 @@ class OSINTCache:
             confidence_score: Source confidence in result (0.0-1.0)
             **query_params: Query parameters
         """
-        from veritas.db.models import OSINTCache as OSINTCacheModel
+        from elliot.db.models import OSINTCache as OSINTCacheModel
 
         cache_key = OSINTCache.generate_cache_key(source, query_type, **query_params)
         ttl = SOURCE_TTLS.get(source, timedelta(hours=24))

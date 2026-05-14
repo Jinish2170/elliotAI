@@ -1,13 +1,13 @@
-# VERITAS: Step-by-Step Implementation Plan
+# ELLIOT: Step-by-Step Implementation Plan
 **Masterpiece Upgrade - College Final Year Project**
 
-> "Make VERITAS more mature than wrappers, with masterclass content showcase that flexes agent intelligence"
+> "Make ELLIOT more mature than wrappers, with masterclass content showcase that flexes agent intelligence"
 
 ---
 
 ## Executive Summary
 
-This plan transforms VERITAS from a functional tool into a sophisticated forensic auditing platform with:
+This plan transforms ELLIOT from a functional tool into a sophisticated forensic auditing platform with:
 - Multi-pass Vision Agent (95%+ dark pattern detection accuracy)
 - Powerful OSINT Graph Investigator (15+ intelligence sources)
 - Dual-Tier Judge System (technical + non-technical verdicts)
@@ -31,7 +31,7 @@ This plan transforms VERITAS from a functional tool into a sophisticated forensi
 **Goal:** 95%+ accuracy in dark pattern detection with sophisticated multi-pass analysis
 
 ### Step 1.1: Create Multi-Pass Pipeline Architecture
-**File:** `veritas/agents/vision_enhanced.py`
+**File:** `elliot/agents/vision_enhanced.py`
 
 ```python
 class EnhancedVisionAgent:
@@ -70,7 +70,7 @@ class EnhancedVisionAgent:
 **Time Estimate:** 4 hours
 
 ### Step 1.2: Design Sophisticated VLM Prompts
-**File:** `veritas/config/vlm_prompts.py`
+**File:** `elliot/config/vlm_prompts.py`
 
 ```python
 VLM_PROMPTS = {
@@ -182,7 +182,7 @@ Output format: JSON
 **Time Estimate:** 6 hours
 
 ### Step 1.3: Implement Enhanced Temporal Comparison with CV
-**File:** `veritas/analysis/temporal_cv.py`
+**File:** `elliot/analysis/temporal_cv.py`
 
 ```python
 import cv2
@@ -293,7 +293,7 @@ class TemporalComputerVision:
 **Time Estimate:** 8 hours
 
 ### Step 1.4: Build Progress Showcase Emitter
-**File:** `veritas/core/progress_emitter.py`
+**File:** `elliot/core/progress_emitter.py`
 
 ```python
 from dataclasses import dataclass
@@ -394,7 +394,7 @@ class ProgressEmitter:
 **Goal:** 15+ intelligence sources with darknet monitoring and deep verification
 
 ### Step 2.1: Create OSIntelligence Engine
-**File:** `veritas/agents/osint_engine.py`
+**File:** `elliot/agents/osint_engine.py`
 
 ```python
 from dataclasses import dataclass, field
@@ -487,7 +487,7 @@ class OSIntelligenceEngine:
 **Time Estimate:** 12 hours
 
 ### Step 2.2: Implement Darknet Analyzer
-**File:** `veritas/analysis/darknet_analyzer.py`
+**File:** `elliot/analysis/darknet_analyzer.py`
 
 ```python
 class DarknetAnalyzer:
@@ -568,7 +568,7 @@ class DarknetAnalyzer:
 **Time Estimate:** 8 hours
 
 ### Step 2.3: Enhance Graph Investigator with OSINT Integration
-**File:** `veritas/agents/graph_investigator.py` (enhance existing)
+**File:** `elliot/agents/graph_investigator.py` (enhance existing)
 
 ```python
 class EnhancedGraphInvestigator:
@@ -724,7 +724,7 @@ class EnhancedGraphInvestigator:
 **Goal:** Sophisticated verdicts for both technical and non-technical users
 
 ### Step 3.1: Design Verdict Data Classes
-**File:** `veritas/models/verdicts.py`
+**File:** `elliot/models/verdicts.py`
 
 ```python
 from dataclasses import dataclass, field
@@ -838,7 +838,7 @@ class DualVerdict:
 **Time Estimate:** 4 hours
 
 ### Step 3.2: Implement Site-Type-Specific Scoring
-**File:** `veritas/config/site_strategies.py`
+**File:** `elliot/config/site_strategies.py`
 
 ```python
 class ECommerceStrategy:
@@ -955,7 +955,7 @@ class SiteTypeDetector:
 **Time Estimate:** 12 hours
 
 ### Step 3.3: Build Judge Agent with Dual-Tier Generation
-**File:** `veritas/agents/judge_dual.py`
+**File:** `elliot/agents/judge_dual.py`
 
 ```python
 class DualJudgeAgent:
@@ -1081,7 +1081,7 @@ class DualJudgeAgent:
 **Goal:** 25+ security modules including darknet-level threat detection
 
 ### Step 4.1: Implement Enterprise Security Modules
-**File:** `veritas/analysis/security_enterprise.py`
+**File:** `elliot/analysis/security_enterprise.py`
 
 ```python
 class ComprehensiveSecurityAudit:
@@ -1182,7 +1182,7 @@ class ComprehensiveSecurityAudit:
 **Time Estimate:** 16 hours
 
 ### Step 4.2: Build Darknet-Level Threat Detection
-**File:** `veritas/analysis/threat_advanced.py`
+**File:** `elliot/analysis/threat_advanced.py`
 
 ```python
 class AdvancedThreatAnalyzer:
@@ -2055,4 +2055,4 @@ function getFlexStatement(agent: string, accuracy: number, findingRate: number):
 - Computer vision temporal analysis
 - Progress showcase emitter
 
-Let's make VERITAS a masterpiece! 🚀🎓✨
+Let's make ELLIOT a masterpiece! 🚀🎓✨

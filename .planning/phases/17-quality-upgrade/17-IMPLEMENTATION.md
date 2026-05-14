@@ -159,7 +159,7 @@ Testing revealed 8 specific issues. Combined with user requirements, we have **1
 - Social engineering detection is split across Vision (visual) and DOM (structural) with no coordination
 
 ### Fix
-1. **New: TavilyOSINTSource** (`veritas/osint/sources/tavily_source.py`):
+1. **New: TavilyOSINTSource** (`elliot/osint/sources/tavily_source.py`):
    - Implements OSINT source interface
    - Intelligent query construction: `"{domain}" site reputation review scam`
    - Categories: THREAT_INTEL (search for domain + "malware/threat"), REPUTATION (search for domain + "reviews/scam"), SOCIAL (search for domain + "social media presence")
@@ -179,21 +179,21 @@ Testing revealed 8 specific issues. Combined with user requirements, we have **1
 
 | Step | WP | What | Files Modified | Risk |
 |------|-----|------|----------------|------|
-| 1 | WP-1 | IOC false positive filter | `veritas/osint/ioc_detector.py` | Low |
-| 2 | WP-1 | CTI false positive filter | `veritas/osint/cti.py` | Low |
-| 3 | WP-2 | JS entropy threshold + bundler detection | `veritas/analysis/js_analyzer.py` | Low |
-| 4 | WP-6 | New TavilyOSINTSource | `veritas/osint/sources/tavily_source.py` (new) | Low |
-| 5 | WP-6 | Register Tavily + fix category mapping | `veritas/osint/orchestrator.py` | Medium |
-| 6 | WP-3 | Scout subpage scrolling + section screenshots | `veritas/agents/scout.py` | Medium |
-| 7 | WP-3 | Scout node multi-page integration | `veritas/core/nodes/scout.py` | Medium |
-| 8 | WP-4 | DOM Analyzer improvements | `veritas/analysis/dom_analyzer.py` | Low |
-| 9 | WP-4 | Temporal Analyzer semantic detection | `veritas/analysis/temporal_analyzer.py` | Low |
-| 10 | WP-4 | Security Headers contextual scoring | `veritas/analysis/security_headers.py` | Low |
-| 11 | WP-4 | JS Analyzer fingerprint/keylogger detection | `veritas/analysis/js_analyzer.py` | Low |
-| 12 | WP-5 | Vision prompt optimization | `veritas/config/dark_patterns.py` | Low |
-| 13 | WP-5 | Graph prompt optimization | `veritas/agents/graph_investigator.py` | Medium |
-| 14 | WP-5 | Judge prompt optimization | `veritas/agents/judge.py` | Medium |
-| 15 | WP-6 | Social engineering in Graph | `veritas/agents/graph_investigator.py` | Medium |
+| 1 | WP-1 | IOC false positive filter | `elliot/osint/ioc_detector.py` | Low |
+| 2 | WP-1 | CTI false positive filter | `elliot/osint/cti.py` | Low |
+| 3 | WP-2 | JS entropy threshold + bundler detection | `elliot/analysis/js_analyzer.py` | Low |
+| 4 | WP-6 | New TavilyOSINTSource | `elliot/osint/sources/tavily_source.py` (new) | Low |
+| 5 | WP-6 | Register Tavily + fix category mapping | `elliot/osint/orchestrator.py` | Medium |
+| 6 | WP-3 | Scout subpage scrolling + section screenshots | `elliot/agents/scout.py` | Medium |
+| 7 | WP-3 | Scout node multi-page integration | `elliot/core/nodes/scout.py` | Medium |
+| 8 | WP-4 | DOM Analyzer improvements | `elliot/analysis/dom_analyzer.py` | Low |
+| 9 | WP-4 | Temporal Analyzer semantic detection | `elliot/analysis/temporal_analyzer.py` | Low |
+| 10 | WP-4 | Security Headers contextual scoring | `elliot/analysis/security_headers.py` | Low |
+| 11 | WP-4 | JS Analyzer fingerprint/keylogger detection | `elliot/analysis/js_analyzer.py` | Low |
+| 12 | WP-5 | Vision prompt optimization | `elliot/config/dark_patterns.py` | Low |
+| 13 | WP-5 | Graph prompt optimization | `elliot/agents/graph_investigator.py` | Medium |
+| 14 | WP-5 | Judge prompt optimization | `elliot/agents/judge.py` | Medium |
+| 15 | WP-6 | Social engineering in Graph | `elliot/agents/graph_investigator.py` | Medium |
 
 ---
 

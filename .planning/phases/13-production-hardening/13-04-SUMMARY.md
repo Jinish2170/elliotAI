@@ -1,11 +1,11 @@
 # Phase 13 Plan 04: Orchestrator Nodes Package Refactoring Summary
 
 ## One-liner
-Refactored orchestrator.py into a veritas/core/nodes/ package with 6 dedicated node modules, removing 988 lines from orchestrator.py while preserving all function logic exactly.
+Refactored orchestrator.py into a elliot/core/nodes/ package with 6 dedicated node modules, removing 988 lines from orchestrator.py while preserving all function logic exactly.
 
 ## What was changed
 
-### Task 1: Create `veritas/core/nodes/` package
+### Task 1: Create `elliot/core/nodes/` package
 Created 6 new node files + __init__.py:
 - `scout.py`: `scout_node()` function
 - `vision.py`: `vision_node()` function
@@ -18,22 +18,22 @@ Created 6 new node files + __init__.py:
 `AuditState` TypedDict stays in `orchestrator.py` as planned.
 
 ### Task 2: Update orchestrator.py
-- Replaced 988 lines of node function definitions with `from veritas.core.nodes import ...`
+- Replaced 988 lines of node function definitions with `from elliot.core.nodes import ...`
 - Removed standalone `_get_security_modules_for_tier()` (now in nodes/security.py)
-- `build_audit_graph()` and `VeritasOrchestrator` remain in orchestrator.py
+- `build_audit_graph()` and `ElliotOrchestrator` remain in orchestrator.py
 
 ### Circular Import Resolution
 LangGraph introspects routing function type hints via `get_type_hints()`. Used `try/except ImportError` pattern in routing.py to import AuditState at runtime safely.
 
 ## Files Modified
-- `veritas/core/orchestrator.py` (988 lines removed, import block added)
-- `veritas/core/nodes/__init__.py` (created)
-- `veritas/core/nodes/scout.py` (created)
-- `veritas/core/nodes/vision.py` (created)
-- `veritas/core/nodes/graph.py` (created)
-- `veritas/core/nodes/judge.py` (created)
-- `veritas/core/nodes/security.py` (created)
-- `veritas/core/nodes/routing.py` (created)
+- `elliot/core/orchestrator.py` (988 lines removed, import block added)
+- `elliot/core/nodes/__init__.py` (created)
+- `elliot/core/nodes/scout.py` (created)
+- `elliot/core/nodes/vision.py` (created)
+- `elliot/core/nodes/graph.py` (created)
+- `elliot/core/nodes/judge.py` (created)
+- `elliot/core/nodes/security.py` (created)
+- `elliot/core/nodes/routing.py` (created)
 
 ## Commit
 `bfa52a4` - feat(13-04): refactor orchestrator into nodes/ package

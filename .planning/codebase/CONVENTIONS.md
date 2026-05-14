@@ -28,7 +28,7 @@
 
 - **Python**: Try/except blocks with graceful degradation, custom exception classes (`NIMCreditExhausted`), circuit breaker pattern, module-level loggers
 - **React**: Error boundaries catch rendering failures, WebSocket message parsing wrapped in try/catch, optional chaining for defensive access
-- **Logging**: Python modules use `logging.getLogger("veritas.{module}")`; frontend has minimal logging (no console.log)
+- **Logging**: Python modules use `logging.getLogger("elliot.{module}")`; frontend has minimal logging (no console.log)
 
 ---
 

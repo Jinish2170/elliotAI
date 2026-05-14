@@ -65,7 +65,7 @@ Queue size limits, backpressure handling - defer to implementation decisions or 
 
 | ID | Description | Research Support |
 |----|-------------|-----------------|
-| **CORE-02** | Backend can receive structured progress events from Veritas subprocess without parsing stdout | multiprocessing.Queue provides type-safe structured message passing, eliminates parsing |
+| **CORE-02** | Backend can receive structured progress events from Elliot subprocess without parsing stdout | multiprocessing.Queue provides type-safe structured message passing, eliminates parsing |
 | **CORE-02-2** | Implement multiprocessing.Queue for Windows + Python 3.14 subprocess communication | Confirmed compatible: mp.Manager().Queue() works with spawn context on Windows, Python 3.14 verified |
 | **CORE-02-3** | Replace `##PROGRESS:` marker parsing with Queue-based event streaming | ProgressEvent dataclass structure defined, direct Queue.put() replaces print() with markers |
 | **CORE-02-4** | Implement fallback to stdout mode for instant rollback capability | Dual-mode architecture defined with exception-based auto-fallback pattern |
@@ -77,7 +77,7 @@ Queue size limits, backpressure handling - defer to implementation decisions or 
 
 ## Summary
 
-Phase 1 replaces fragile stdout marker parsing (`##PROGRESS:`) with robust `multiprocessing.Queue` based IPC between the FastAPI backend and the Veritas subprocess. The research confirms HIGH confidence that `multiprocessing.Queue` is the optimal solution for Windows + Python 3.14 compatibility.
+Phase 1 replaces fragile stdout marker parsing (`##PROGRESS:`) with robust `multiprocessing.Queue` based IPC between the FastAPI backend and the Elliot subprocess. The research confirms HIGH confidence that `multiprocessing.Queue` is the optimal solution for Windows + Python 3.14 compatibility.
 
 Key implementation details:
 - Use `mp.Manager().Queue()` for picklability across processes (required for Windows spawn context)
@@ -207,7 +207,7 @@ def _serialize_queue(self) -> tuple[str, str]:
 
     return str(fd), serialized
 
-# veritas/__main__.py
+# elliot/__main__.py
 def create_queue_from_env() -> mp.Queue:
     """Reconstruct Queue from subprocess environment."""
     import multiprocessing as mp
@@ -478,7 +478,7 @@ class AuditRunner:
 ### Subprocess Queue Reconstruction
 
 ```python
-# veritas/__main__.py
+# elliot/__main__.py
 import os
 import pickle
 import base64
@@ -510,15 +510,15 @@ def main():
     args = parse_args()
 
     # Run orchestrator
-    from veritas.core.orchestrator import VeritasOrchestrator
-    orchestrator = VeritasOrchestrator(progress_queue=progress_queue)
+    from elliot.core.orchestrator import ElliotOrchestrator
+    orchestrator = ElliotOrchestrator(progress_queue=progress_queue)
     return asyncio.run(orchestrator.audit(url=args.url, ...))
 ```
 
 ### Orchestrator Dual-Mode Emission
 
 ```python
-class VeritasOrchestrator:
+class ElliotOrchestrator:
     def __init__(self, progress_queue: Optional[mp.Queue] = None):
         self.progress_queue = progress_queue
 
@@ -571,12 +571,12 @@ class VeritasOrchestrator:
 │   └─ Set AUDIT_QUEUE_KEY env var              │
 └─────────────────────────────────────────────────┘
          ↓
-[Spawn subprocess: python -m veritas --use-queue-ipc]
+[Spawn subprocess: python -m elliot --use-queue-ipc]
          ↓
 ┌─────────────────────────────────────────────────┐
 │ Subprocess starts:                              │
 │   ├─ Reconstruct Queue from env                │
-│   ├─ Pass Queue to VeritasOrchestrator         │
+│   ├─ Pass Queue to ElliotOrchestrator         │
 │   └─ Orchestrator emits via queue.put()        │
 └─────────────────────────────────────────────────┘
          ↓

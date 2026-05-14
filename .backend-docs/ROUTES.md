@@ -1,4 +1,4 @@
-# VERITAS Backend - API Routes Reference
+# ELLIOT Backend - API Routes Reference
 
 **Version:** 2.0.0
 **Last Updated:** 2026-03-08
@@ -7,7 +7,7 @@
 
 ## Overview
 
-VERITAS backend provides a FastAPI-based REST API with WebSocket support for real-time audit streaming.
+ELLIOT backend provides a FastAPI-based REST API with WebSocket support for real-time audit streaming.
 
 ---
 
@@ -36,7 +36,7 @@ Returns API health status.
 ```yaml
 Response:
   status: "ok"
-  service: "veritas-api"
+  service: "elliot-api"
   version: "2.0.0"
 ```
 

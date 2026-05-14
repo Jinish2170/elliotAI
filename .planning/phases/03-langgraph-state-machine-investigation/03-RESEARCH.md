@@ -6,7 +6,7 @@
 
 ## Summary
 
-The VERITAS orchestrator properly builds a LangGraph StateGraph but executes nodes sequentially instead of using `ainvoke()` to avoid an unspecified async issue. The existing LANGGRAPH.md research (completed 2026-02-20) provides comprehensive background on the problem, including possible causes and workaround options. However, the actual root cause has not been verified through reproduction testing.
+The ELLIOT orchestrator properly builds a LangGraph StateGraph but executes nodes sequentially instead of using `ainvoke()` to avoid an unspecified async issue. The existing LANGGRAPH.md research (completed 2026-02-20) provides comprehensive background on the problem, including possible causes and workaround options. However, the actual root cause has not been verified through reproduction testing.
 
 **Critical finding**: The running Python version is 3.11.5, not 3.14 as documented in STATE.md. This suggests either the documentation is outdated, or the issue was misdiagnosed as Python 3.14-specific. Investigation should focus on Python 3.11+ asyncio behavior with LangGraph.
 
@@ -25,7 +25,7 @@ The VERITAS orchestrator properly builds a LangGraph StateGraph but executes nod
 | CORE-03-3 | Isolated reproduction test documents root cause of CancelledError | Test design patterns provided; behavioral observation strategy documented |
 | CORE-03-4 | Workaround documented if version pin or hybrid execution needed | Three workaround options (sequential tracking, hybrid, version pin) documented with tradeoffs |
 | CORE-03-5 | Sequential execution fallback maintained for instant rollback | Current sequential audit() method serves as fallback; migration path documented |
-| CORE-06-3 | LangGraph reproduction test covers Python 3.14 async behavior | Test patterns for minimal graph, VERITAS-style graph, and NIM integration provided |
+| CORE-06-3 | LangGraph reproduction test covers Python 3.14 async behavior | Test patterns for minimal graph, ELLIOT-style graph, and NIM integration provided |
 
 **Note**: Python 3.14 investigation references in requirements should actually target Python 3.11+ based on actual running version (3.11.5).
 </phase_requirements>
@@ -113,7 +113,7 @@ pip install pytest pytest-asyncio coverage.py
 
 ### Recommended Investigation Project Structure
 ```
-veritas/tests/langgraph_investigation/
+elliot/tests/langgraph_investigation/
 ├── test_01_minimal_graph.py          # Minimal isolated reproduction (Phase 1)
 ├── test_02_full_audit_mocked.py      # Full audit with mocked agents (Phase 2)
 ├── test_03_python_version_compare.py # Python version comparison (Phase 3 - optional)
@@ -123,7 +123,7 @@ veritas/tests/langgraph_investigation/
 
 ### Pattern 1: Minimal StateGraph Reproduction Test
 
-**What**: Isolated test with minimal StateGraph that strips away VERITAS complexity
+**What**: Isolated test with minimal StateGraph that strips away ELLIOT complexity
 
 **When to use**: First phase of investigation to verify basic LangGraph ainvoke() behavior
 
@@ -199,7 +199,7 @@ async def test_ainvoke_vs_manual_execution():
 
 ### Pattern 2: Full Audit Test with Mocked NIMClient
 
-**What:** Complete VERITAS audit with LangGraph ainvoke() using mocked external dependencies
+**What:** Complete ELLIOT audit with LangGraph ainvoke() using mocked external dependencies
 
 **When to use:** Second phase to observe real execution path without external calls
 
@@ -214,14 +214,14 @@ import asyncio
 import sys
 from pathlib import Path
 
-# Add veritas to path
+# Add elliot to path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 from core.orchestrator import AuditState, build_audit_graph
 
 @pytest.mark.asyncio
-@patch('veritas.agents.scout.StealthScout')
-@patch('veritas.core.nim_client.NIMClient')
+@patch('elliot.agents.scout.StealthScout')
+@patch('elliot.core.nim_client.NIMClient')
 async def test_ainvoke_full_audit_mocked(mock_nim_class, mock_scout_class):
     """Test full audit graph ainvoke() with mocked agents."""
 
@@ -425,7 +425,7 @@ async def test_ainvoke_vs_sequential_behavior():
 
 **What goes wrong:** Tests pass on Linux but fail on Windows (or vice versa) due to subprocess/async differences
 
-**Why it happens:** VERITAS runs as a subprocess on Windows with specific asyncio characteristics (selector vs proactor event loop)
+**Why it happens:** ELLIOT runs as a subprocess on Windows with specific asyncio characteristics (selector vs proactor event loop)
 
 **How to avoid:** Run investigation tests on the actual platform (Windows). If cross-platform testing is needed, document that findings may not transfer.
 
@@ -543,9 +543,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 from core.orchestrator import AuditState, build_audit_graph
 
 @pytest.mark.asyncio
-@patch('veritas.agents.scout.StealthScout')
-@patch('veritas.agents.vision.VisionAgent')
-@patch('veritas.core.nim_client.NIMClient')
+@patch('elliot.agents.scout.StealthScout')
+@patch('elliot.agents.vision.VisionAgent')
+@patch('elliot.core.nim_client.NIMClient')
 async def test_ainvoke_detailed_event_flow(mock_nim, mock_vision, mock_scout):
     """
     Test full audit ainvoke() with detailed event logging.
@@ -679,7 +679,7 @@ async def test_subprocess_ainvoke_comparison():
     """
     Test if subprocess context affects ainvoke() behavior.
 
-    Runs veritas audit via subprocess and compares with direct execution.
+    Runs elliot audit via subprocess and compares with direct execution.
     """
     project_root = Path(__file__).resolve().parent.parent.parent
     python = sys.executable
@@ -842,8 +842,8 @@ asyncio.run(test())
 
 ### Primary (HIGH confidence)
 - **Existing LANGGRAPH.md research** (C:\files\coding dev era\elliot\elliotAI\.planning\research\LANGGRAPH.md) — Comprehensive foundation for understanding LangGraph problem, test patterns, workaround options
-- **VERITAS codebase** (veritas/core/orchestrator.py) — Actual implementation showing StateGraph build, sequential bypass, ainvoke comment at line 1072
-- **VERITAS codebase** (veritas/core/nim_client.py) — NIMClient async implementation using AsyncOpenAI, semaphore rate limiting
+- **ELLIOT codebase** (elliot/core/orchestrator.py) — Actual implementation showing StateGraph build, sequential bypass, ainvoke comment at line 1072
+- **ELLIOT codebase** (elliot/core/nim_client.py) — NIMClient async implementation using AsyncOpenAI, semaphore rate limiting
 
 ### Secondary (MEDIUM confidence)
 - **LangGraph documentation** — StateGraph API, ainvoke() method, config options, checkpointing patterns

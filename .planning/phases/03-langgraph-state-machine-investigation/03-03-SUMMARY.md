@@ -20,7 +20,7 @@ patterns: [behavioral-observation, event-flow-analysis, resolution-documentation
 
 # Key files
 created:
-  - path: veritas/tests/langgraph_investigation/test_03_behavioral_differences.py
+  - path: elliot/tests/langgraph_investigation/test_03_behavioral_differences.py
     lines: 577
     purpose: Behavioral differences test with event logging infrastructure
   - path: .planning/phases/03-langgraph-state-machine-investigation/03-RESOLUTION.md
@@ -52,7 +52,7 @@ test-results: "7 passed"
 
 ## One-Liner
 
-Behavioral differences test confirms all VERITAS execution patterns work correctly in isolation and minimal graphs; combined with Phase 01 and 02 findings, confirms root cause is in LangGraph framework itself (version 0.5.3), leading to resolution selection of **Option B: Maintain Sequential Execution with Enhanced Tracking**.
+Behavioral differences test confirms all ELLIOT execution patterns work correctly in isolation and minimal graphs; combined with Phase 01 and 02 findings, confirms root cause is in LangGraph framework itself (version 0.5.3), leading to resolution selection of **Option B: Maintain Sequential Execution with Enhanced Tracking**.
 
 ## Executive Summary
 
@@ -63,9 +63,9 @@ Created comprehensive behavioral differences test suite `test_03_behavioral_diff
 **Rationale:**
 1. **All node code verified correct** (9/9 isolated tests in Phase 02 + 7/7 in Phase 03 = 16/16 passing)
 2. **Minimal LangGraph works** (Phase 01 proved framework basics functional)
-3. **Full VERITAS graph hangs** (Phase 02 confirmed LangGraph issue with complex graphs)
+3. **Full ELLIOT graph hangs** (Phase 02 confirmed LangGraph issue with complex graphs)
 4. **Sequential execution works** (production-ready, zero risk)
-5. **Framework limitation identified** (LangGraph 0.5.3 task scheduler bug, not VERITAS code)
+5. **Framework limitation identified** (LangGraph 0.5.3 task scheduler bug, not ELLIOT code)
 
 The investigation is **COMPLETE**. Root cause found, resolution selected, documentation produced.
 
@@ -73,7 +73,7 @@ The investigation is **COMPLETE**. Root cause found, resolution selected, docume
 
 ### Task 1: Create Behavioral Differences Comparison Test
 
-**File:** `veritas/tests/langgraph_investigation/test_03_behavioral_differences.py` (577 lines)
+**File:** `elliot/tests/langgraph_investigation/test_03_behavioral_differences.py` (577 lines)
 
 **Infrastructure created:**
 - `EventLogger` class - Captures execution flow for comparison
@@ -84,10 +84,10 @@ The investigation is **COMPLETE**. Root cause found, resolution selected, docume
 1. `test_ainvoke_vs_sequential_behavior` - Compare ainvoke vs manual sequential execution
 2. `test_event_order_verification` - Verify nodes execute in correct order
 3. `test_error_propagation_differences` - Compare error handling between modes
-4. `test_veritas_graph_structure_validation` - Validate VERITAS graph builds correctly
-5. `test_state_mutation_patterns` - Test VERITAS-style state updates
+4. `test_elliot_graph_structure_validation` - Validate ELLIOT graph builds correctly
+5. `test_state_mutation_patterns` - Test ELLIOT-style state updates
 6. `test_async_context_manager_pattern` - Test `async with` pattern (used by Scout)
-7. `test_veritas_full_graph_timeout_behavior` - Document hang behavior with resolution note
+7. `test_elliot_full_graph_timeout_behavior` - Document hang behavior with resolution note
 
 **Test results:** **7 passed** ✅
 
@@ -120,7 +120,7 @@ The investigation is **COMPLETE**. Root cause found, resolution selected, docume
 | 02 | Full graph (6 nodes) with mocks | ❌ Hangs | Complex graph triggers issue |
 | 03 | Observable patterns | ✅ Works | Node patterns correct |
 
-**Conclusion:** LangGraph 0.5.3's `ainvoke()` has a framework bug with complex graph topologies. This is NOT a VERITAS code issue - all node logic is verified correct (16/16 tests pass).
+**Conclusion:** LangGraph 0.5.3's `ainvoke()` has a framework bug with complex graph topologies. This is NOT a ELLIOT code issue - all node logic is verified correct (16/16 tests pass).
 
 ### 2. No CancelledError Observed
 
@@ -134,7 +134,7 @@ The original issue documented "Python 3.14 asyncio CancelledError" but investiga
 ### 3. Sequential Execution Production-Ready
 
 **Evidence:**
-- `VeritasOrchestrator.audit()` works perfectly
+- `ElliotOrchestrator.audit()` works perfectly
 - 9/9 isolated node tests passed (Phase 02)
 - All routing logic verified correct
 - Zero risk, full functionality preserved
@@ -181,10 +181,10 @@ The original issue documented "Python 3.14 asyncio CancelledError" but investiga
 - test_ainvoke_vs_sequential_behavior ✅
 - test_event_order_verification ✅
 - test_error_propagation_differences ✅
-- test_veritas_graph_structure_validation ✅
+- test_elliot_graph_structure_validation ✅
 - test_state_mutation_patterns ✅
 - test_async_context_manager_pattern ✅
-- test_veritas_full_graph_timeout_behavior ✅
+- test_elliot_full_graph_timeout_behavior ✅
 
 **Total: 23 tests (18 passed, 5 skipped - skips are expected behaviors)**
 
@@ -192,9 +192,9 @@ The original issue documented "Python 3.14 asyncio CancelledError" but investiga
 
 ### Step 1: Add Execution Mode Tracking
 
-File: `veritas/core/orchestrator.py`
+File: `elliot/core/orchestrator.py`
 ```python
-class VeritasOrchestrator:
+class ElliotOrchestrator:
     def __init__(self, progress_queue: Optional[multiprocessing.Queue] = None):
         self._execution_mode = "sequential"  # Track execution mode
         self._graph = build_audit_graph()  # Graph can still be built
@@ -204,7 +204,7 @@ class VeritasOrchestrator:
 
 ### Step 2: Add Detailed Event Logging
 
-File: `veritas/core/orchestrator.py`
+File: `elliot/core/orchestrator.py`
 ```python
 def _emit_detailed(self, phase: str, step: str, **extra):
     """Emit detailed progress with execution mode metadata."""
@@ -223,20 +223,20 @@ def _emit_detailed(self, phase: str, step: str, **extra):
 
 ### Step 3: Document the Workaround
 
-File: `veritas/core/orchestrator.py` (at top of `audit()` method)
+File: `elliot/core/orchestrator.py` (at top of `audit()` method)
 ```python
 """
 Run a complete audit on a URL using sequential node execution.
 
 Implementation Note:
-    VERITAS uses sequential node execution instead of LangGraph's ainvoke()
+    ELLIOT uses sequential node execution instead of LangGraph's ainvoke()
     due to observed hanging behavior on complex graph topologies.
 
     Investigation Findings (Phase 03, 2026-02-22):
         - LangGraph ainvoke() works for minimal graphs (tested)
-        - Full VERITAS graph (6 nodes) hangs on ainvoke() (30s+ timeout)
+        - Full ELLIOT graph (6 nodes) hangs on ainvoke() (30s+ timeout)
         - All node logic verified correct (9/9 isolated tests passed)
-        - Root cause: LangGraph 0.5.3 framework issue, not VERITAS code
+        - Root cause: LangGraph 0.5.3 framework issue, not ELLIOT code
 
     Resolution Path: Option B - Sequential with Enhanced Tracking
         - Maintain working sequential execution
@@ -283,7 +283,7 @@ Deferred to v2 milestone (per 03-CONTEXT.md):
 ## Next Steps: Beyond Phase 3
 
 ### Immediate: Implement Option B
-1. Add execution mode tracking to `VeritasOrchestrator.__init__`
+1. Add execution mode tracking to `ElliotOrchestrator.__init__`
 2. Add `_emit_detailed()` method with metadata
 3. Update `audit()` method docstring with rationale
 4. Add configuration flag for runtime toggling (optional)
@@ -304,20 +304,20 @@ Deferred to v2 milestone (per 03-CONTEXT.md):
 
 ### Files Created Verification
 ```bash
-[ -f "C:/files/coding dev era/elliot/elliotAI/veritas/tests/langgraph_investigation/test_03_behavioral_differences.py" ] && echo "EXISTS: test_03_behavioral_differences.py"
+[ -f "C:/files/coding dev era/elliot/elliotAI/elliot/tests/langgraph_investigation/test_03_behavioral_differences.py" ] && echo "EXISTS: test_03_behavioral_differences.py"
 [ -f "C:/files/coding dev era/elliot/elliotAI/.planning/phases/03-langgraph-state-machine-investigation/03-RESOLUTION.md" ] && echo "EXISTS: 03-RESOLUTION.md"
 [ -f "C:/files/coding dev era/elliot/elliotAI/.planning/phases/03-langgraph-state-machine-investigation/03-03-SUMMARY.md" ] && echo "EXISTS: 03-03-SUMMARY.md"
 ```
 
 ### Line Count Verification
 ```bash
-wc -l "C:/files/coding dev era/elliot/elliotAI/veritas/tests/langgraph_investigation/test_03_behavioral_differences.py"
+wc -l "C:/files/coding dev era/elliot/elliotAI/elliot/tests/langgraph_investigation/test_03_behavioral_differences.py"
 wc -l "C:/files/coding dev era/elliot/elliotAI/.planning/phases/03-langgraph-state-machine-investigation/03-RESOLUTION.md"
 ```
 
 ### Test Results Verification
 ```bash
-cd veritas && python -m pytest tests/langgraph_investigation/test_03_behavioral_differences.py -v
+cd elliot && python -m pytest tests/langgraph_investigation/test_03_behavioral_differences.py -v
 ```
 
 ### Phase Completion Checklist

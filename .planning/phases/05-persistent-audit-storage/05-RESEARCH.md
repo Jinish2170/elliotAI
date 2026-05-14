@@ -8,7 +8,7 @@
 
 Phase 5 requires implementing SQLite-based persistent audit storage to replace the current in-memory `_audits` dictionary in `backend/routes/audit.py`. The implementation must use WAL (Write-Ahead Logging) mode for concurrent write support, implement a dual-write migration strategy for gradual data migration, store screenshots on the filesystem with database references, and provide an audit history API for historical retrieval.
 
-Based on existing persistence research in `.planning/research/PERSISTENCE.md`, SQLite with WAL mode is the standard choice for single-instance deployments like VERITAS. The schema design separates structured data (audits, findings, events) from binary data (screenshots stored on filesystem). The dual-write migration pattern ensures zero downtime during transition from in-memory to persistent storage.
+Based on existing persistence research in `.planning/research/PERSISTENCE.md`, SQLite with WAL mode is the standard choice for single-instance deployments like ELLIOT. The schema design separates structured data (audits, findings, events) from binary data (screenshots stored on filesystem). The dual-write migration pattern ensures zero downtime during transition from in-memory to persistent storage.
 
 **Primary recommendation:** Use SQLAlchemy ORM with AsyncSession for database operations, enable WAL mode via `PRAGMA journal_mode=WAL`, implement repository pattern for audit operations, use filesystem for screenshot storage with database path references, and follow dual-write migration (write to both memory → switch reads → remove memory).
 
@@ -55,7 +55,7 @@ pip install "sqlalchemy>=2.0,<3.0" "aiosqlite>=0.20.0,<1.0"
 
 ### Recommended Project Structure
 ```
-veritas/
+elliot/
 ├── db/
 │   ├── __init__.py              # Database initialization, async engine
 │   ├── models.py                # SQLAlchemy ORM models (Audit, AuditFinding, etc.)
@@ -82,7 +82,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sess
 from fastapi import Depends
 
 # SQLite + aiosqlite for async operations
-DATABASE_URL = "sqlite+aiosqlite:///./data/veritas_audits.db"
+DATABASE_URL = "sqlite+aiosqlite:///./data/elliot_audits.db"
 
 engine = create_async_engine(
     DATABASE_URL,
@@ -702,13 +702,13 @@ async def test_concurrent_read_write(db: AsyncSession):
 - [Python 3.14 sqlite3 Documentation](https://docs.python.org/3.14/library/sqlite3.html) - Connection management, thread safety, best practices
 - [FastAPI SQL Databases Tutorial](https://fastapi.tiangolo.com/tutorial/sql-databases/) - Dependency injection, session management, repository patterns
 - [PERSISTENCE.md Research](./../../research/PERSISTENCE.md) - Complete schema design, migration strategy, performance optimizations
-- Existing codebase - `backend/routes/audit.py` (in-memory storage), `veritas/agents/judge.py` (AuditEvidence structure)
+- Existing codebase - `backend/routes/audit.py` (in-memory storage), `elliot/agents/judge.py` (AuditEvidence structure)
 
 ### Secondary (MEDIUM confidence)
 - [.planning/REQUIREMENTS.md](./../../REQUIREMENTS.md) - Phase 5 requirements (CORE-05 series, CORE-06-5)
 - [.planning/STATE.md](./../../STATE.md) - Phase 5 status, test coverage requirements
 - [`backend/tests/test_audit_runner_queue.py`](../../backend/tests/test_audit_runner_queue.py) - Existing test patterns for Phase 5 concurrent testing
-- [`veritas/core/evidence_store.py`](../../veritas/core/evidence_store.py) - Existing LanceDB for semantic search patterns (may integrate audit storage)
+- [`elliot/core/evidence_store.py`](../../elliot/core/evidence_store.py) - Existing LanceDB for semantic search patterns (may integrate audit storage)
 
 ### Tertiary (LOW confidence)
 - None - All findings verified via official docs or codebase analysis

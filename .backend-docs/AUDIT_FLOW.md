@@ -1,13 +1,13 @@
-# VERITAS Backend Audit Flow
+# ELLIOT Backend Audit Flow
 
 **Last updated:** 2026-03-09
-**Source of truth:** `backend/routes/audit.py`, `backend/services/audit_runner.py`, `veritas/core/orchestrator.py`
+**Source of truth:** `backend/routes/audit.py`, `backend/services/audit_runner.py`, `elliot/core/orchestrator.py`
 
 ## Flow Summary
 
 1. `POST /api/audit/start` creates an in-memory audit record.
 2. `GET /api/audit/stream/{audit_id}` opens the WebSocket and starts the audit.
-3. `AuditRunner` launches `python -m veritas <url> --json` in a subprocess.
+3. `AuditRunner` launches `python -m elliot <url> --json` in a subprocess.
 4. Progress is read from Queue IPC or stdout markers.
 5. The runner converts progress plus the final canonical orchestrator result into WebSocket events.
 6. `audit_result` is stored in memory and persisted through `on_audit_completed()`.
@@ -16,7 +16,7 @@
 ## Canonical Runtime Path
 
 ```text
-veritas.core.orchestrator
+elliot.core.orchestrator
   -> canonical result dict
 backend.services.audit_runner
   -> WebSocket events + persistence-ready audit_result

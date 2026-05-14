@@ -1,8 +1,8 @@
-# Roadmap: VERITAS
+# Roadmap: ELLIOT
 
 ## Overview
 
-VERITAS's journey from initial concept to production masterpiece: v1.0 established a production-grade foundation with stabilized architecture (IPC, state management, persistence). v2.0 adds masterpiece features (5-pass Vision Agent, OSINT integration, dual-tier Judge, 25+ security modules, agent theater) that differentiate it as a portfolio-ready thesis project demonstrating expert-level capabilities in autonomous multi-modal web forensics.
+ELLIOT's journey from initial concept to production masterpiece: v1.0 established a production-grade foundation with stabilized architecture (IPC, state management, persistence). v2.0 adds masterpiece features (5-pass Vision Agent, OSINT integration, dual-tier Judge, 25+ security modules, agent theater) that differentiate it as a portfolio-ready thesis project demonstrating expert-level capabilities in autonomous multi-modal web forensics.
 
 ## Milestones
 

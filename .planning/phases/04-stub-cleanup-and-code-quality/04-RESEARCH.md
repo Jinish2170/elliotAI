@@ -58,7 +58,7 @@ None — discussion stayed within phase scope.
 | Library | Version | Purpose | Why Standard |
 |---------|---------|---------|--------------|
 | pytest | 8.4.1 | Exception testing framework | Industry standard for Python testing, supports async tests |
-| pytest-asyncio | 1.0.0 | Async exception testing | Needed for testing async methods in VERITAS codebase |
+| pytest-asyncio | 1.0.0 | Async exception testing | Needed for testing async methods in ELLIOT codebase |
 
 ### Testing
 | Library | Version | Purpose | When to Use |
@@ -97,7 +97,7 @@ None — discussion stayed within phase scope.
 
 ### Recommended Test Structure
 ```
-veritas/tests/
+elliot/tests/
 ├── test_stub_cleanup.py          # New: Tests for stub cleanup
 │   ├── class TestEvidenceStoreStubs
 │   │   ├── test_search_similar_table_not_exists
@@ -169,9 +169,9 @@ def search_similar(self, query: str, k: int = 5, table_name: str = "audits") -> 
 **Example:**
 ```bash
 # Search for all calls to specific methods
-grep -rn "search_similar(" veritas/ --include="*.py"
-grep -rn "get_all_audits(" veritas/ --include="*.py"
-grep -rn "_summarize_dark_patterns(" veritas/ --include="*.py"
+grep -rn "search_similar(" elliot/ --include="*.py"
+grep -rn "get_all_audits(" elliot/ --include="*.py"
+grep -rn "_summarize_dark_patterns(" elliot/ --include="*.py"
 ```
 
 ### Anti-Patterns to Avoid
@@ -187,7 +187,7 @@ grep -rn "_summarize_dark_patterns(" veritas/ --include="*.py"
 | Method call analysis tool | Custom AST traverser for finding callers | grep patterns with Grep tool | Simpler for this phase; sufficient accuracy |
 | Exception testing framework | Custom try/except helpers | `pytest.raises()` context manager | Standard pytest pattern; framework integration |
 | Error message templates | Custom template system | F-strings with method name context | Python 3.6+ feature; readable and flexible |
-| Coverage checking | Custom test execution wrapper | `pytest --cov veritas` | Built-in pytest integration |
+| Coverage checking | Custom test execution wrapper | `pytest --cov elliot` | Built-in pytest integration |
 
 **Key insight:** Python's standard library (inspect, ast) and pytest ecosystem provide all tools needed. Custom solutions add complexity without benefit for stub replacement.
 
@@ -348,12 +348,12 @@ def search_similar(self, query: str, k: int = 5, table_name: str = "audits") -> 
 
 2. **Caller Search Scope**
    - What we know: Must search for callers before modifying return statements
-   - What's unclear: Whether to search only in veritas/ directory or include backend/ and frontend/
-   - Recommendation: Start with veritas/ only (backend should use APIs, frontend uses backend), expand if grep shows no veritas/ callers
+   - What's unclear: Whether to search only in elliot/ directory or include backend/ and frontend/
+   - Recommendation: Start with elliot/ only (backend should use APIs, frontend uses backend), expand if grep shows no elliot/ callers
 
 3. **Test File Organization**
    - What we know: Separate test file (test_stub_cleanup.py) needed for exception tests
-   - What's unclear: Whether to integrate with existing test files (test_veritas.py etc.) or keep separate
+   - What's unclear: Whether to integrate with existing test files (test_elliot.py etc.) or keep separate
    - Recommendation: Create separate test_stub_cleanup.py following project pattern (test_ipc_queue.py, test_security_agent.py are separate)
 
 ## Sources

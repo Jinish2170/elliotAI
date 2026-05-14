@@ -11,10 +11,10 @@ C:\files\coding dev era\elliot\elliotAI/
 │   │   ├── audit.py                  # Audit start & WebSocket endpoints
 │   │   └── health.py                 # Health check
 │   ├── services/
-│   │   ├── audit_runner.py           # Orchestration bridging to veritas
+│   │   ├── audit_runner.py           # Orchestration bridging to elliot
 │   │   └── (other services if any)
 │   ├── data/
-│   │   └── veritas_audits.db*        # SQLite database (WAL mode)
+│   │   └── elliot_audits.db*        # SQLite database (WAL mode)
 │   ├── requirements.txt              # Python dependencies
 │   └── tests/                        # Backend unit tests
 │
@@ -33,7 +33,7 @@ C:\files\coding dev era\elliot\elliotAI/
 │           │   └── [ids]/page.tsx    # Side-by-side view
 │           └── globals.css           # Tailwind + terminal styles
 │
-├── veritas/                          # Core audit engine
+├── elliot/                          # Core audit engine
 │   ├── __main__.py                   # CLI entry point
 │   ├── .env                          # Environment configuration
 │   ├── config/
@@ -62,7 +62,7 @@ C:\files\coding dev era\elliot\elliotAI/
 │   │   ├── judge.py                  # Verdict synthesis
 │   │   └── security_agent.py         # Security scanning
 │   ├── db/
-│   │   └── veritas.db                # SQLite audit storage
+│   │   └── elliot.db                # SQLite audit storage
 │   ├── osint/                        # OSINT integrations
 │   │   ├── ioc_detector.py           # IOC analysis
 │   │   ├── virus_total.py            # VirusTotal client
@@ -93,7 +93,7 @@ C:\files\coding dev era\elliot\elliotAI/
 - **Contains:**
   - FastAPI application setup with CORS middleware
   - Audit API routes (start, stream, status)
-  - Services bridging HTTP to veritas orchestration
+  - Services bridging HTTP to elliot orchestration
   - SQLite database with WAL mode for concurrency
 
 ### Frontend (`frontend/`)
@@ -104,7 +104,7 @@ C:\files\coding dev era\elliot\elliotAI/
   - Darkmode terminal-styled interface
   - Dark pattern visualization components
 
-### Core Engine (`veritas/`)
+### Core Engine (`elliot/`)
 - **Purpose:** Autonomous forensic web auditor engine
 - **Contains:**
   - LangGraph orchestration with state machine
@@ -120,22 +120,22 @@ C:\files\coding dev era\elliot\elliotAI/
 
 ### Entry Points
 - `backend/main.py` — FastAPI server (uvicorn)
-- `veritas/__main__.py` — CLI entry (`python -m veritas`)
+- `elliot/__main__.py` — CLI entry (`python -m elliot`)
 - `backend/routes/audit.py` — Audit API endpoints
 - `frontend/src/app/page.tsx` — Frontend home
 
 ### Core Logic
-- `veritas/core/orchestrator.py` — LangGraph orchestration (897 lines)
+- `elliot/core/orchestrator.py` — LangGraph orchestration (897 lines)
 - `backend/services/audit_runner.py` — Process execution bridge (737 lines)
-- `veritas/agents/judge.py` — Verdict computation
-- `veritas/config/trust_weights.py` — Trust score algorithm
+- `elliot/agents/judge.py` — Verdict computation
+- `elliot/config/trust_weights.py` — Trust score algorithm
 
 ### Agent Implementations
-- `veritas/agents/scout.py` — Browser automation (+300 lines)
-- `veritas/agents/vision.py` — Visual analysis with NIM
-- `veritas/agents/graph_investigator.py` — Entity/OSINT analysis
-- `veritas/agents/judge.py` — Evidence synthesis + scoring
-- `veritas/agents/security_agent.py` — Security module orchestration
+- `elliot/agents/scout.py` — Browser automation (+300 lines)
+- `elliot/agents/vision.py` — Visual analysis with NIM
+- `elliot/agents/graph_investigator.py` — Entity/OSINT analysis
+- `elliot/agents/judge.py` — Evidence synthesis + scoring
+- `elliot/agents/security_agent.py` — Security module orchestration
 
 ### Frontend Components
 - `frontend/src/app/audit/[id]/page.tsx` — Live audit terminal
@@ -143,8 +143,8 @@ C:\files\coding dev era\elliot\elliotAI/
 - `frontend/src/components/terminal/` — Terminal UI components
 
 ### Configuration
-- `veritas/config/settings.py` — Settings + audit tier configs
-- `veritas/.env` — Environment variables
+- `elliot/config/settings.py` — Settings + audit tier configs
+- `elliot/.env` — Environment variables
 - `backend/.env` — Backend environment variables
 - `package.json` — Frontend dependencies
 
@@ -156,11 +156,11 @@ C:\files\coding dev era\elliot\elliotAI/
 - **Config:** snake_case (e.g., `settings.py`, `trust_weights.py`)
 
 ### Directories
-- **Python packages:** snake_case (e.g., `veritas/core/`, `veritas/agents/`)
+- **Python packages:** snake_case (e.g., `elliot/core/`, `elliot/agents/`)
 - **Frontend routes:** kebab-case matching URL pattern (e.g., `audit/[id]/`)
 
 ### Classes/Functions
-- **Classes:** PascalCase (e.g., `VeritasOrchestrator`, `AuditRunner`, `StealthScout`)
+- **Classes:** PascalCase (e.g., `ElliotOrchestrator`, `AuditRunner`, `StealthScout`)
 - **Functions:** snake_case (e.g., `build_audit_graph()`, `_execute_agent_smart()`)
 - **Async functions:** Prefix with `_` for internal (e.g., `_handle_result()`)
 
@@ -170,14 +170,14 @@ C:\files\coding dev era\elliot\elliotAI/
 ## Where to Add New Code
 
 ### New Feature
-- **Primary code:** Add to corresponding agent in `veritas/agents/`, or new module in `veritas/core/`
-- **Tests:** Add to agent's test file or create `veritas/tests/test_feature.py`
-- **Integration:** If needs orchestrator update → modify node in `veritas/core/nodes/`
+- **Primary code:** Add to corresponding agent in `elliot/agents/`, or new module in `elliot/core/`
+- **Tests:** Add to agent's test file or create `elliot/tests/test_feature.py`
+- **Integration:** If needs orchestrator update → modify node in `elliot/core/nodes/`
 
 ### New Agent
-- **Implementation:** Create new file in `veritas/agents/` (e.g., `new_agent.py`)
-- **Orchestrator:** Add node to `veritas/core/nodes/` and update `orchestrator.py`'s graph
-- **Tests:** Create `veritas/tests/test_new_agent.py`
+- **Implementation:** Create new file in `elliot/agents/` (e.g., `new_agent.py`)
+- **Orchestrator:** Add node to `elliot/core/nodes/` and update `orchestrator.py`'s graph
+- **Tests:** Create `elliot/tests/test_new_agent.py`
 
 ### New Frontend Page/Feature
 - **Implementation:** Create route in `frontend/src/app/` (e.g., `dashboard/`)
@@ -185,13 +185,13 @@ C:\files\coding dev era\elliot\elliotAI/
 - **API Integration:** Add WebSocket or REST call in page component
 
 ### Utilities
-- **Backend:** Add to `backend/services/` or `veritas/analysis/`
+- **Backend:** Add to `backend/services/` or `elliot/analysis/`
 - **Frontend:** Add to `frontend/src/lib/` or `frontend/src/utils/`
 
 ### Configuration
-- **Global settings:** Edit `veritas/config/settings.py`
-- **Trust weights:** Edit `veritas/config/trust_weights.py`
-- **Environment:** Update `veritas/.env` (DO NOT commit secrets)
+- **Global settings:** Edit `elliot/config/settings.py`
+- **Trust weights:** Edit `elliot/config/trust_weights.py`
+- **Environment:** Update `elliot/.env` (DO NOT commit secrets)
 
 ## Special Directories
 
@@ -205,7 +205,7 @@ C:\files\coding dev era\elliot\elliotAI/
 - **Generated:** Yes (during setup)
 - **Committed:** No (ignored in .gitignore)
 
-### `veritas/screenshots/` (Artifacts)
+### `elliot/screenshots/` (Artifacts)
 - **Purpose:** Store captured screenshots during audits
 - **Generated:** Yes (during execution)
 - **Committed:** No (ignored)

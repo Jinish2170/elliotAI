@@ -11,12 +11,12 @@
 ### 1. Created `backend/tests/` Directory Structure
 - `backend/tests/__init__.py` - Empty file for package initialization
 
-### 2. Created Integration Tests in `veritas/tests/test_ipc_integration.py`
+### 2. Created Integration Tests in `elliot/tests/test_ipc_integration.py`
 
 #### Test Classes
 
 **TestOrchestratorWithQueue** (6 tests):
-- `test_orchestrator_with_queue_mode`: Verifies Queue can be passed to VeritasOrchestrator
+- `test_orchestrator_with_queue_mode`: Verifies Queue can be passed to ElliotOrchestrator
 - `test_orchestrator_with_none_queue`: Verifies None Queue defaults to stdout mode
 - `test_emit_with_queue`: Confirm ProgressEvent is sent to Queue via _emit()
 - `test_emit_with_stdout`: Confirm ##PROGRESS: markers used when Queue is None
@@ -65,7 +65,7 @@
 
 ## Test Results
 
-### Integration Tests (`veritas/tests/test_ipc_integration.py`):
+### Integration Tests (`elliot/tests/test_ipc_integration.py`):
 ```
 12 passed in 4.70s
 ```
@@ -132,7 +132,7 @@ All 24 new integration tests pass, confirming:
 ## Artifacts Created
 
 1. `backend/tests/__init__.py` - Package initialization (5 lines)
-2. `veritas/tests/test_ipc_integration.py` - Integration tests (250+ lines)
+2. `elliot/tests/test_ipc_integration.py` - Integration tests (250+ lines)
 3. `backend/tests/test_audit_runner_queue.py` - Backend tests (300+ lines)
 
 ---
@@ -142,7 +142,7 @@ All 24 new integration tests pass, confirming:
 All 5 plans for Phase 1 are now complete:
 - Plan 01: Create core IPC module with ProgressEvent and Queue utilities
 - Plan 02: Add CLI flags and mode selection logic
-- Plan 03: Modify VeritasOrchestrator for dual-mode emission
+- Plan 03: Modify ElliotOrchestrator for dual-mode emission
 - Plan 04: Modify AuditRunner for Queue IPC
 - Plan 05: Add integration tests (this plan)
 

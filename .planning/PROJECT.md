@@ -1,8 +1,8 @@
-# VERITAS Masterpiece Upgrade
+# ELLIOT Masterpiece Upgrade
 
 ## What This Is
 
-VERITAS is an autonomous multi-modal forensic web auditing platform that analyzes websites for trust, safety, dark patterns, and security vulnerabilities. It combines 5 specialized AI agents (Scout, Security, Vision, Graph, Judge) with visual analysis, graph investigation, and multi-signal scoring to produce comprehensive trust reports. This project is a college master's final year thesis being upgraded to "masterpiece" quality with advanced features and production-grade stability.
+ELLIOT is an autonomous multi-modal forensic web auditing platform that analyzes websites for trust, safety, dark patterns, and security vulnerabilities. It combines 5 specialized AI agents (Scout, Security, Vision, Graph, Judge) with visual analysis, graph investigation, and multi-signal scoring to produce comprehensive trust reports. This project is a college master's final year thesis being upgraded to "masterpiece" quality with advanced features and production-grade stability.
 
 ## Core Value
 
@@ -76,7 +76,7 @@ VERITAS is an autonomous multi-modal forensic web auditing platform that analyze
 
 **Current State (post v1.0):**
 
-VERITAS is now production-ready with stabilized foundation. All critical technical debt has been resolved:
+ELLIOT is now production-ready with stabilized foundation. All critical technical debt has been resolved:
 
 **Foundation Complete (v1.0):**
 - SecurityAgent class properly implements agent architecture pattern

@@ -19,12 +19,12 @@ tech-stack:
     - "Source priority-based fallback ordering"
 key-files:
   created:
-    - veritas/osint/orchestrator.py
-    - veritas/osint/sources/urlvoid.py
-    - veritas/osint/sources/abuseipdb.py
+    - elliot/osint/orchestrator.py
+    - elliot/osint/sources/urlvoid.py
+    - elliot/osint/sources/abuseipdb.py
   modified:
-    - veritas/config/settings.py
-    - veritas/.env.template
+    - elliot/config/settings.py
+    - elliot/.env.template
 decisions: []
 metrics:
   duration: ~20 minutes
@@ -153,11 +153,11 @@ Implemented threat intelligence API clients:
 
 | File | Purpose | Lines |
 |------|---------|-------|
-| veritas/osint/orchestrator.py | Orchestrator with circuit breaker and rate limiter | 360 |
-| veritas/osint/sources/urlvoid.py | URLVoid API client | 187 |
-| veritas/osint/sources/abuseipdb.py | AbuseIPDB API client | 222 |
-| veritas/config/settings.py | Added OSINT API keys | 20 |
-| veritas/.env.template | Added OSINT API key placeholders | 8 |
+| elliot/osint/orchestrator.py | Orchestrator with circuit breaker and rate limiter | 360 |
+| elliot/osint/sources/urlvoid.py | URLVoid API client | 187 |
+| elliot/osint/sources/abuseipdb.py | AbuseIPDB API client | 222 |
+| elliot/config/settings.py | Added OSINT API keys | 20 |
+| elliot/.env.template | Added OSINT API key placeholders | 8 |
 
 ## Git Commits
 
@@ -171,9 +171,9 @@ Implemented threat intelligence API clients:
 ## Self-Check: PASSED
 
 All files exist and are committed correctly:
-- veritas/osint/orchestrator.py: FOUND
-- veritas/osint/sources/urlvoid.py: FOUND
-- veritas/osint/sources/abuseipdb.py: FOUND
+- elliot/osint/orchestrator.py: FOUND
+- elliot/osint/sources/urlvoid.py: FOUND
+- elliot/osint/sources/abuseipdb.py: FOUND
 - Commit 25b92c6: FOUND
 - Commit 69e16b1: FOUND
 - Commit 84f3367: FOUND

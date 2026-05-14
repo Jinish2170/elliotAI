@@ -80,7 +80,7 @@ Monitors:
 
 ## Summary
 
-**VERITAS system is fully operational.** All Phase 17 quality upgrades and Phase 18 critical fixes have been implemented and verified. The system is production-ready with:
+**ELLIOT system is fully operational.** All Phase 17 quality upgrades and Phase 18 critical fixes have been implemented and verified. The system is production-ready with:
 
 - Zero critical issues
 - All tests passing (75+ tests)

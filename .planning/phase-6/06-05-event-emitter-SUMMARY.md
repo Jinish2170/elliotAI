@@ -17,7 +17,7 @@ WebSocket event throttling and batching for 5-pass Vision Agent pipeline to prev
 
 ### Backend Changes
 
-**File: `veritas/agents/vision.py`**
+**File: `elliot/agents/vision.py`**
 
 Created `VisionEventEmitter` class with the following features:
 
@@ -65,7 +65,7 @@ Updated `handleEvent()` switch statement to process vision pass events:
 
 | File | Lines Changed | Description |
 |------|---------------|-------------|
-| `veritas/agents/vision.py` | +154 | Added VisionEventEmitter class |
+| `elliot/agents/vision.py` | +154 | Added VisionEventEmitter class |
 | `frontend/src/lib/types.ts` | +20 | Added vision event interfaces, extended PhaseState |
 | `frontend/src/lib/store.ts` | +45 | Added vision pass event handlers |
 
@@ -73,7 +73,7 @@ Updated `handleEvent()` switch statement to process vision pass events:
 
 | Hash | Message | Files |
 |------|---------|-------|
-| `8bcaad8` | feat(06-05): add VisionEventEmitter class with throttling and batching | veritas/agents/vision.py |
+| `8bcaad8` | feat(06-05): add VisionEventEmitter class with throttling and batching | elliot/agents/vision.py |
 | `91b2700` | feat(06-05): extend frontend types and store for vision pass events | frontend/src/lib/types.ts, frontend/src/lib/store.ts |
 
 ## Success Criteria Met

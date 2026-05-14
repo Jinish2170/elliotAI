@@ -20,8 +20,8 @@ tech-stack:
   patterns: [pass-level caching, cache-key hashing with pass_type]
 
 key-files:
-  created: [veritas/tests/test_vlm_caching.py]
-  modified: [veritas/core/nim_client.py, veritas/agents/vision.py]
+  created: [elliot/tests/test_vlm_caching.py]
+  modified: [elliot/core/nim_client.py, elliot/agents/vision.py]
 
 key-decisions:
   - "Cache key format uses MD5 of (image_bytes + prompt + pass_type) for pass-specific isolation"
@@ -71,11 +71,11 @@ Each task was committed atomically:
 ## Files Created/Modified
 
 ### Modified
-- `veritas/core/nim_client.py` - Added `get_cacheKey(pass_type)` public method, extended `analyze_image()` to accept optional pass_type parameter for pass-specific caching
-- `veritas/agents/vision.py` - Added `run_pass_with_cache()` method for cache-aware vision pass execution with intelligent pass skipping
+- `elliot/core/nim_client.py` - Added `get_cacheKey(pass_type)` public method, extended `analyze_image()` to accept optional pass_type parameter for pass-specific caching
+- `elliot/agents/vision.py` - Added `run_pass_with_cache()` method for cache-aware vision pass execution with intelligent pass skipping
 
 ### Created
-- `veritas/tests/test_vlm_caching.py` - Comprehensive test suite with 12 tests covering:
+- `elliot/tests/test_vlm_caching.py` - Comprehensive test suite with 12 tests covering:
   - Cache key generation includes pass_type (4 tests)
   - Cache-aware execution returns cached responses (2 tests)
   - Cache hit rate >60% on repeated URLs (3 tests)

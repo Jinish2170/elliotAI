@@ -11,7 +11,7 @@ Added `use_tor` parameter to StealthScout with SOCKS5 proxy routing, wired scout
 - Graceful degradation: logs warning on failure, continues without TOR
 - Settings reads `TOR_SOCKS_HOST` and `TOR_SOCKS_PORT` from settings
 
-Updated `veritas/core/nodes/scout.py`:
+Updated `elliot/core/nodes/scout.py`:
 - Reads `enable_tor` from `tier_config` (comes from AUDIT_TIERS)
 - Passes `use_tor=use_tor` to `StealthScout()`
 - `darknet_investigation` tier now has `enable_tor: True` in AUDIT_TIERS
@@ -23,9 +23,9 @@ Fixed `security_node()` darknet_correlation handler:
 - Returns proper dict for the security results
 
 ## Files Modified
-- `veritas/agents/scout.py` (added use_tor parameter + SOCKS5 proxy setup)
-- `veritas/core/nodes/scout.py` (added tier_config reading and use_tor passing)
-- `veritas/core/nodes/security.py` (fixed darknet_correlation handler)
+- `elliot/agents/scout.py` (added use_tor parameter + SOCKS5 proxy setup)
+- `elliot/core/nodes/scout.py` (added tier_config reading and use_tor passing)
+- `elliot/core/nodes/security.py` (fixed darknet_correlation handler)
 
 ## Commit
 `d7890ab` - feat(13-05): wire darknet pipeline

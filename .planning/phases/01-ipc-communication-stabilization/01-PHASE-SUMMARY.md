@@ -9,7 +9,7 @@
 
 ## Overview
 
-Successfully implemented Queue-based Inter-Process Communication (IPC) to replace fragile stdout marker parsing (`##PROGRESS:`) in the VERITAS audit pipeline. The implementation includes dual-mode support (Queue/stdout) with automatic fallback, proper Windows multiprocessing context configuration, and comprehensive test coverage.
+Successfully implemented Queue-based Inter-Process Communication (IPC) to replace fragile stdout marker parsing (`##PROGRESS:`) in the ELLIOT audit pipeline. The implementation includes dual-mode support (Queue/stdout) with automatic fallback, proper Windows multiprocessing context configuration, and comprehensive test coverage.
 
 ---
 
@@ -17,7 +17,7 @@ Successfully implemented Queue-based Inter-Process Communication (IPC) to replac
 
 All 5 success criteria from ROADMAP.md have been achieved:
 
-1. **Backend receives structured progress events from Veritas subprocess via multiprocessing.Queue** ✓
+1. **Backend receives structured progress events from Elliot subprocess via multiprocessing.Queue** ✓
    - ProgressEvent dataclass defines structured event schema
    - Queue created and serialized via multiprocessing.Manager
    - Events flow from subprocess through Queue to backend
@@ -33,7 +33,7 @@ All 5 success criteria from ROADMAP.md have been achieved:
    - Auto-fallback on Queue creation failure implemented in AuditRunner
 
 4. **Dual-mode operation enabled via `--use-queue-ipc` CLI flag for gradual migration** ✓
-   - Three CLI flags added to veritas/__main__.py
+   - Three CLI flags added to elliot/__main__.py
    - Default 10% Queue mode rollout via `QUEUE_IPC_ROLLOUT`
    - Percentage-based gradual rollout for production migration
 
@@ -51,7 +51,7 @@ All 5 success criteria from ROADMAP.md have been achieved:
 |------|-------------|--------|-------|
 | 01-01 | Create core IPC module with ProgressEvent and Queue utilities | Complete | 16 unit tests |
 | 01-02 | Add CLI flags and mode selection logic for dual-mode IPC | Complete | Mode determination verified |
-| 01-03 | Modify VeritasOrchestrator to support dual-mode emission | Complete | 6 integration tests |
+| 01-03 | Modify ElliotOrchestrator to support dual-mode emission | Complete | 6 integration tests |
 | 01-04 | Modify AuditRunner to create Queue and implement auto-fallback | Complete | 6 backend tests |
 | 01-05 | Add integration tests for Queue IPC and fallback behavior | Complete | 12 integration tests |
 
@@ -61,20 +61,20 @@ All 5 success criteria from ROADMAP.md have been achieved:
 
 ### Production Code
 
-1. **veritas/core/ipc.py** (~280 lines) - IPC utilities module
+1. **elliot/core/ipc.py** (~280 lines) - IPC utilities module
    - ProgressEvent dataclass
    - Queue creation, serialization, deserialization
    - Mode determination logic
    - safe_put helper with backpressure handling
 
-2. **veritas/core/__init__.py** - Updated docstring for IPC module
+2. **elliot/core/__init__.py** - Updated docstring for IPC module
 
-3. **veritas/__main__.py** - Added CLI flags:
+3. **elliot/__main__.py** - Added CLI flags:
    - `--use-queue-ipc`: Force Queue mode
    - `--use-stdout`: Force stdout mode
    - `--validate-ipc`: Run both modes and compare
 
-4. **veritas/core/orchestrator.py** - Added progress_queue parameter and _emit class method
+4. **elliot/core/orchestrator.py** - Added progress_queue parameter and _emit class method
 
 5. **backend/__init__.py** (~15 lines) - Set spawn context for Windows
 
@@ -86,8 +86,8 @@ All 5 success criteria from ROADMAP.md have been achieved:
 
 ### Test Files
 
-1. **veritas/tests/test_ipc_queue.py** (~200 lines) - Unit tests for IPC module
-2. **veritas/tests/test_ipc_integration.py** (~250 lines) - Integration tests for Queue IPC
+1. **elliot/tests/test_ipc_queue.py** (~200 lines) - Unit tests for IPC module
+2. **elliot/tests/test_ipc_integration.py** (~250 lines) - Integration tests for Queue IPC
 3. **backend/tests/__init__.py** - Package initialization
 4. **backend/tests/test_audit_runner_queue.py** (~300 lines) - Backend tests for Queue integration
 
@@ -105,7 +105,7 @@ All 5 success criteria from ROADMAP.md have been achieved:
 ## Technical Achievements
 
 ### Windows Compatibility
-- Spawn context configured at module import time in both veritas/core/ipc.py and backend/__init__.py
+- Spawn context configured at module import time in both elliot/core/ipc.py and backend/__init__.py
 - Uses multiprocessing.Manager() for cross-process Queue support
 - Tested on Windows 11 Home with Python 3.11.5
 
@@ -135,23 +135,23 @@ All 5 success criteria from ROADMAP.md have been achieved:
 
 ### Force Queue Mode
 ```bash
-python -m veritas https://example.com --use-queue-ipc
+python -m elliot https://example.com --use-queue-ipc
 ```
 
 ### Force Stdout Mode
 ```bash
-python -m veritas https://example.com --use-stdout
+python -m elliot https://example.com --use-stdout
 ```
 
 ### Use Environment Variables
 ```bash
-QUEUE_IPC_MODE=queue python -m veritas https://example.com
-QUEUE_IPC_ROLLOUT=0.5 python -m veritas https://example.com  # 50% rollout
+QUEUE_IPC_MODE=queue python -m elliot https://example.com
+QUEUE_IPC_ROLLOUT=0.5 python -m elliot https://example.com  # 50% rollout
 ```
 
 ### Validation Mode
 ```bash
-python -m veritas https://example.com --validate-ipc
+python -m elliot https://example.com --validate-ipc
 ```
 
 ---
@@ -176,7 +176,7 @@ From REQUIREMENTS.md and ROADMAP.md:
 |-------------|------|--------|
 | CORE-02 | 01-01 | Complete - IPC module created |
 | CORE-02-2 | 01-01 | Complete - ProgressEvent dataclass defined |
-| CORE-02-3 | 01-03 | Complete - VeritasOrchestrator dual-mode emission |
+| CORE-02-3 | 01-03 | Complete - ElliotOrchestrator dual-mode emission |
 | CORE-02-4 | 01-02 | Complete - CLI flags and mode selection |
 | CORE-02-5 | 01-04 | Complete - Auto-fallback implemented |
 | CORE-06 | 01-01,05 | Complete - Unit and integration tests |

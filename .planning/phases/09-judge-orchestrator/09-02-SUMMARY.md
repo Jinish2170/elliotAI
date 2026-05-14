@@ -23,7 +23,7 @@ provides:
   - "Estimated completion time calculation for remaining agents"
 
 affects:
-  - "veritas/core/orchestrator.py (main integration point)"
+  - "elliot/core/orchestrator.py (main integration point)"
   - "All agent executions (vision, graph, security, judge, osint)"
 
 # Tech Stack
@@ -42,13 +42,13 @@ tech_stack_patterns:
 
 # Key Files Created/Modified
 key_files_created:
-  - "veritas/core/timeout_manager.py (509 lines) - TimeoutStrategy, ComplexityMetrics, TimeoutConfig, TimeoutManager"
-  - "veritas/core/circuit_breaker.py (477 lines) - CircuitState, CircuitBreaker, ResultWithFallback"
-  - "veritas/core/degradation.py (435 lines) - FallbackMode, DegradedResult, FallbackManager"
-  - "veritas/core/complexity_analyzer.py (499 lines) - ComplexityAnalyzer with 15 metric extractors"
+  - "elliot/core/timeout_manager.py (509 lines) - TimeoutStrategy, ComplexityMetrics, TimeoutConfig, TimeoutManager"
+  - "elliot/core/circuit_breaker.py (477 lines) - CircuitState, CircuitBreaker, ResultWithFallback"
+  - "elliot/core/degradation.py (435 lines) - FallbackMode, DegradedResult, FallbackManager"
+  - "elliot/core/complexity_analyzer.py (499 lines) - ComplexityAnalyzer with 15 metric extractors"
 
 key_files_modified:
-  - "veritas/core/orchestrator.py (+389/-14 lines) - Integrated all 4 new components"
+  - "elliot/core/orchestrator.py (+389/-14 lines) - Integrated all 4 new components"
 
 # Decisions
 decisions:
@@ -80,7 +80,7 @@ Successfully implemented smart orchestrator with adaptive timeout management, ci
 
 ## Implementation Details
 
-### 1. TimeoutManager (veritas/core/timeout_manager.py)
+### 1. TimeoutManager (elliot/core/timeout_manager.py)
 
 **Components Created:**
 - `TimeoutStrategy` enum (FAST, STANDARD, CONSERVATIVE, ADAPTIVE)
@@ -96,7 +96,7 @@ Successfully implemented smart orchestrator with adaptive timeout management, ci
 - `record_execution()`: Tracks execution times in deque(maxlen=10)
 - `get_estimated_remaining_time()`: Estimates time for remaining agents
 
-### 2. CircuitBreaker (veritas/core/circuit_breaker.py)
+### 2. CircuitBreaker (elliot/core/circuit_breaker.py)
 
 **Components Created:**
 - `CircuitState` enum (CLOSED, OPEN, HALF_OPEN)
@@ -112,7 +112,7 @@ Successfully implemented smart orchestrator with adaptive timeout management, ci
 - `get_state()`: Returns current circuit state
 - `reset()`: Manually closes circuit to CLOSED
 
-### 3. FallbackManager (veritas/core/degradation.py)
+### 3. FallbackManager (elliot/core/degradation.py)
 
 **Components Created:**
 - `FallbackMode` enum (NONE, SIMPLIFIED, CACHED, PARTIAL, ALTERNATIVE)
@@ -126,7 +126,7 @@ Successfully implemented smart orchestrator with adaptive timeout management, ci
 - Default configs per agent (vision 60s, graph 30s, security 45s, osint 90s)
 - "Show must go on" policy: DegradedResult always contains result_data dict (never None)
 
-### 4. ComplexityAnalyzer (veritas/core/complexity_analyzer.py)
+### 4. ComplexityAnalyzer (elliot/core/complexity_analyzer.py)
 
 **Components Created:**
 - `ComplexityAnalyzer` class with 15 metric extractors
@@ -139,7 +139,7 @@ Successfully implemented smart orchestrator with adaptive timeout management, ci
 - Handles missing fields gracefully with defaults
 - `get_timeout_suggestion()`: Returns FAST/STANDARD/CONSERVATIVE based on complexity thresholds
 
-### 5. Orchestrator Refactoring (veritas/core/orchestrator.py)
+### 5. Orchestrator Refactoring (elliot/core/orchestrator.py)
 
 **Changes Made:**
 - Added imports for all 4 new components
@@ -187,13 +187,13 @@ Successfully implemented smart orchestrator with adaptive timeout management, ci
 ## Verification
 
 ### Files Created
-- [x] veritas/core/timeout_manager.py (509 lines)
-- [x] veritas/core/circuit_breaker.py (477 lines)
-- [x] veritas/core/degradation.py (435 lines)
-- [x] veritas/core/complexity_analyzer.py (499 lines)
+- [x] elliot/core/timeout_manager.py (509 lines)
+- [x] elliot/core/circuit_breaker.py (477 lines)
+- [x] elliot/core/degradation.py (435 lines)
+- [x] elliot/core/complexity_analyzer.py (499 lines)
 
 ### Files Modified
-- [x] veritas/core/orchestrator.py (+389/-14 lines)
+- [x] elliot/core/orchestrator.py (+389/-14 lines)
 
 ### All Tests Passed
 - [x] TimeoutManager calculates complexity scores 0.0-1.0 from DOM metrics

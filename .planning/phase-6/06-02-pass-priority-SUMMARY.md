@@ -23,7 +23,7 @@ tech-stack:
 key-files:
   created: []
   modified:
-    - veritas/agents/vision.py - Added VisionPassPriority enum and should_run_pass() function
+    - elliot/agents/vision.py - Added VisionPassPriority enum and should_run_pass() function
 
 key-decisions:
   - "Three-tier priority system (CRITICAL, CONDITIONAL, EXPENSIVE) enables 3-5x GPU cost reduction"
@@ -70,7 +70,7 @@ Note: Tasks 1 and 2 were combined into a single commit since the enum and functi
 
 ## Files Created/Modified
 
-- `veritas/agents/vision.py` - Added `VisionPassPriority` enum and `should_run_pass()` function for intelligent VLM pass execution
+- `elliot/agents/vision.py` - Added `VisionPassPriority` enum and `should_run_pass()` function for intelligent VLM pass execution
 
 ## Decisions Made
 

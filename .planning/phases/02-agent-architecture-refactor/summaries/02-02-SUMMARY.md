@@ -9,7 +9,7 @@
 Implemented module auto-discovery system for SecurityAgent. All 5 security analysis modules are now automatically discovered via inheritance-based pattern matching. The SecurityAgent.analyze() method executes all enabled modules, aggregating results into SecurityResult with a weighted composite score calculation. Modules requiring Playwright page are properly handled (js_analysis, form_validation) and skipped when not provided.
 
 **Key achievements:**
-- SecurityModuleBase abstract class in `veritas/analysis/__init__.py` with auto-discovery patterns
+- SecurityModuleBase abstract class in `elliot/analysis/__init__.py` with auto-discovery patterns
 - All 5 security modules now inherit from SecurityModuleBase with metadata (module_name, category, requires_page)
 - `_discover_modules()` in SecurityAgent automatically registers modules by examining class inheritance
 - `SecurityAgent.analyze(url, page)` executes modules in priority order with retry logic and timeout handling
@@ -18,13 +18,13 @@ Implemented module auto-discovery system for SecurityAgent. All 5 security analy
 - JSON-serializable results via to_dict() / from_dict() methods on all result types
 
 **Files created/modified:**
-- `veritas/analysis/__init__.py` - SecurityModuleBase, ModuleInfo, auto-discovery utilities
-- `veritas/analysis/security_headers.py` - Updated to inherit from SecurityModuleBase
-- `veritas/analysis/phishing_checker.py` - Updated to inherit, added analyze() wrapper
-- `veritas/analysis/redirect_analyzer.py` - Updated to inherit from SecurityModuleBase
-- `veritas/analysis/js_analyzer.py` - Updated to inherit, added page parameter handling
-- `veritas/analysis/form_validator.py` - Updated to inherit, added analyze() wrapper
-- `veritas/agents/security_agent.py` - Implemented auto-discovery and analyze() logic
+- `elliot/analysis/__init__.py` - SecurityModuleBase, ModuleInfo, auto-discovery utilities
+- `elliot/analysis/security_headers.py` - Updated to inherit from SecurityModuleBase
+- `elliot/analysis/phishing_checker.py` - Updated to inherit, added analyze() wrapper
+- `elliot/analysis/redirect_analyzer.py` - Updated to inherit from SecurityModuleBase
+- `elliot/analysis/js_analyzer.py` - Updated to inherit, added page parameter handling
+- `elliot/analysis/form_validator.py` - Updated to inherit, added analyze() wrapper
+- `elliot/agents/security_agent.py` - Implemented auto-discovery and analyze() logic
 
 ---
 
@@ -40,7 +40,7 @@ Implemented module auto-discovery system for SecurityAgent. All 5 security analy
 
 | Task | Description | Commit |
 |------|-------------|--------|
-| 1 | Create SecurityModuleBase base class in veritas/analysis/__init__.py | 3626f79 |
+| 1 | Create SecurityModuleBase base class in elliot/analysis/__init__.py | 3626f79 |
 | 2 | Update security modules to inherit from SecurityModuleBase | 3626f79 |
 | 3 | Implement module auto-discovery in SecurityAgent._discover_modules() | e396f97 |
 | 4 | Implement SecurityAgent.analyze() with module execution, result aggregation | e396f97 |
@@ -65,19 +65,19 @@ None encountered.
 ## Key Files Created/Modified
 
 ### Created
-- `SecurityModuleBase` in `veritas/analysis/__init__.py` - Abstract base class for security modules
-- `ModuleInfo` named tuple in `veritas/analysis/__init__.py` - Module metadata container
-- `_MODULE_PRIORITY` list in `veritas/agents/security_agent.py` - Module execution ordering (5 modules)
-- `_MODULE_WEIGHTS` dict in `veritas/agents/security_agent.py` - Weighted score coefficients
+- `SecurityModuleBase` in `elliot/analysis/__init__.py` - Abstract base class for security modules
+- `ModuleInfo` named tuple in `elliot/analysis/__init__.py` - Module metadata container
+- `_MODULE_PRIORITY` list in `elliot/agents/security_agent.py` - Module execution ordering (5 modules)
+- `_MODULE_WEIGHTS` dict in `elliot/agents/security_agent.py` - Weighted score coefficients
 
 ### Modified
-- `veritas/analysis/__init__.py` - Added SecurityModuleBase, ModuleInfo, discovered module imports
-- `veritas/analysis/security_headers.py` - Inherit from SecurityModuleBase, added module metadata
-- `veritas/analysis/phishing_checker.py` - Inherit from SecurityModuleBase, added analyze() wrapper
-- `veritas/analysis/redirect_analyzer.py` - Inherit from SecurityModuleBase, added module metadata
-- `veritas/analysis/js_analyzer.py` - Inherit from SecurityModuleBase, added page parameter handling
-- `veritas/analysis/form_validator.py` - Inherit from SecurityModuleBase, added analyze() wrapper
-- `veritas/agents/security_agent.py` - Implemented _discover_modules(), analyze(), retry logic, score calculation
+- `elliot/analysis/__init__.py` - Added SecurityModuleBase, ModuleInfo, discovered module imports
+- `elliot/analysis/security_headers.py` - Inherit from SecurityModuleBase, added module metadata
+- `elliot/analysis/phishing_checker.py` - Inherit from SecurityModuleBase, added analyze() wrapper
+- `elliot/analysis/redirect_analyzer.py` - Inherit from SecurityModuleBase, added module metadata
+- `elliot/analysis/js_analyzer.py` - Inherit from SecurityModuleBase, added page parameter handling
+- `elliot/analysis/form_validator.py` - Inherit from SecurityModuleBase, added analyze() wrapper
+- `elliot/agents/security_agent.py` - Implemented _discover_modules(), analyze(), retry logic, score calculation
 
 ---
 

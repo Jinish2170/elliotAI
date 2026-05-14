@@ -1,6 +1,6 @@
 # IPC Research: Subprocess Communication for Windows + Python 3.14
 
-**Domain:** Inter-Process Communication for Veritas audit subprocess
+**Domain:** Inter-Process Communication for Elliot audit subprocess
 **Researched:** 2026-02-20
 **Confidence:** HIGH
 **Mode:** Feasibility with Recommendations
@@ -70,7 +70,7 @@ Alternatives like SQLite add database complexity without performance benefits. N
                     │ multiprocessing.Queue (Windows pipe)
 ┌───────────────────┼─────────────────────────────────────────┐
 │  ┌──────────────▼───────────────────────────────────────┐   │
-│  │           Subprocess (Veritas Engine)                 │   │
+│  │           Subprocess (Elliot Engine)                 │   │
 │  │  • Receives Queue connection via pickled Queue       │   │
 │  │  • Orchestrator.put_progress() → Queue               │   │
 │  │  • No stdout markers needed                          │   │
@@ -83,7 +83,7 @@ Alternatives like SQLite add database complexity without performance benefits. N
 | Component | Responsibility | Implementation |
 |-----------|----------------|----------------|
 | `AuditRunner` | Create Queue, spawn subprocess, read events, send to WebSocket | `multiprocessing.Queue` with `subprocess.Popen` |
-| `VeritasEngineEntry` | Receive Queue via pickled Queue fd, emit structured events | `Queue.put()` from orchestrator |
+| `ElliotEngineEntry` | Receive Queue via pickled Queue fd, emit structured events | `Queue.put()` from orchestrator |
 | `Orchestrator` | Convert current API to Queue-based emission | Replace `print()` with `queue.put()` |
 
 ### Python 3.14 Spawn Context on Windows
@@ -137,7 +137,7 @@ class AuditRunner:
         env["AUDIT_QUEUE_KEY"] = base64.b64encode(pickle.dumps(queue_bytes)).decode('ascii')
 
         cmd = [
-            _find_venv_python(), "-m", "veritas",
+            _find_venv_python(), "-m", "elliot",
             self.url, "--tier", self.tier,
             "--use-queue-ipc",  # New flag to use Queue
         ]
@@ -179,7 +179,7 @@ class AuditRunner:
 ### Subprocess Engine Entry Point
 
 ```python
-# veritas/__main__.py
+# elliot/__main__.py
 import multiprocessing as mp
 import pickle
 import base64
@@ -203,16 +203,16 @@ def main():
 
     # Run orchestrator with queue
     import asyncio
-    from veritas.core.orchestrator import VeritasOrchestrator
+    from elliot.core.orchestrator import ElliotOrchestrator
 
-    orchestrator = VeritasOrchestrator(progress_queue=progress_queue)
+    orchestrator = ElliotOrchestrator(progress_queue=progress_queue)
     return asyncio.run(orchestrator.audit(url=args.url, ...))
 ```
 
 ### Orchestrator Queue Emission
 
 ```python
-# veritas/core/orchestrator.py
+# elliot/core/orchestrator.py
 from dataclasses import dataclass
 from typing import Optional
 
@@ -227,7 +227,7 @@ class ProgressEvent:
     summary: dict = None
     data: bytes = None  # For binary data
 
-class VeritasOrchestrator:
+class ElliotOrchestrator:
     def __init__(self, progress_queue: Optional[mp.Queue] = None):
         self.progress_queue = progress_queue
 
@@ -257,7 +257,7 @@ class VeritasOrchestrator:
 **Goal:** Maintain backward compatibility while implementing Queue IPC.
 
 1. Add `--use-queue-ipc` flag to CLI entry point
-2. Add `progress_queue` parameter to `VeritasOrchestrator.__init__`
+2. Add `progress_queue` parameter to `ElliotOrchestrator.__init__`
 3. Modify `_emit()` to support both Queue and stdout modes
 4. Add Queue creation in `AuditRunner.__init__()`
 5. Test with existing behavior (stdout mode still works)
@@ -600,7 +600,7 @@ Run staging tests with Queue mode before production:
 # Run 100 audits with Queue mode
 for i in {1..100}; do
   echo "Test run $i"
-  python -m veritas https://example.com --use-queue-ipc
+  python -m elliot https://example.com --use-queue-ipc
 done
 
 # Verify all completed successfully
@@ -672,7 +672,7 @@ class AuditRunner:
 
 ---
 
-*IPC Research for: Veritas subprocess communication*
+*IPC Research for: Elliot subprocess communication*
 *Researched: 2026-02-20*
 *Confidence: HIGH*
 *Recommendation: multiprocessing.Queue*

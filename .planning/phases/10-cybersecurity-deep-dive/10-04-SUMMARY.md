@@ -22,7 +22,7 @@ SecurityAgent rewritten with tier-based parallel execution (FAST 5s → MEDIUM 1
 
 ### Task 1: Extend Core Types for CVSS and Darknet Correlation (Previously Completed)
 
-Extended `SecurityFinding` and `SecurityResult` in `veritas/core/types.py`:
+Extended `SecurityFinding` and `SecurityResult` in `elliot/core/types.py`:
 - `SecurityFinding`: Added `cwe_id`, `cvss_score`, `recommendation`, `url_finding` fields
 - `SecurityResult`: Added `modules_executed`, `modules_failed`, `darknet_correlation` fields
 - Backward compatibility maintained via `Optional` field types
@@ -31,7 +31,7 @@ Commit: `0a71190`
 
 ### Task 2: Rewrite SecurityAgent with Tier-Based Execution and CVSS Integration
 
-Completely rewrote `veritas/agents/security_agent.py` with tier-based architecture:
+Completely rewrote `elliot/agents/security_agent.py` with tier-based architecture:
 
 **New Feature Flags:**
 - `use_tier_execution`: Enable tier-based parallel execution (default: False for gradual rollout)
@@ -77,7 +77,7 @@ Commit: `b0a4420`
 
 ### Task 3: Update Orchestrator Integration
 
-Updated `veritas/core/orchestrator.py` `security_node_with_agent()` function:
+Updated `elliot/core/orchestrator.py` `security_node_with_agent()` function:
 
 **New Feature Flag:**
 - `SECURITY_USE_TIER_EXECUTION`: Environment variable to control tier execution rollout (default: "false")
@@ -114,19 +114,19 @@ Commit: `eefd44e`
 ## Dependency Graph
 
 ### Provides
-- **veritas/agents/security_agent.py**: Rewritten SecurityAgent with tier execution, CVSS integration, darknet correlation
-- **veritas/core/orchestrator.py**: Updated orchestrator with tier execution integration
+- **elliot/agents/security_agent.py**: Rewritten SecurityAgent with tier execution, CVSS integration, darknet correlation
+- **elliot/core/orchestrator.py**: Updated orchestrator with tier execution integration
 
 ### Requires
-- **veritas/analysis/security/utils.py**: `get_all_security_modules()`, `group_modules_by_tier()`, `execute_tier()`
-- **veritas/analysis/security/base.py**: `SecurityModule`, `SecurityTier`
-- **veritas/cwe/cvss_calculator.py**: `cvss_calculate_score()`, `PRESET_METRICS`
-- **veritas/cwe/registry.py**: `map_finding_to_cwe()`
-- **veritas/osint/cti.py**: `CThreatIntelligence`
-- **veritas/core/types.py**: `SecurityFinding`, `SecurityResult` (extended fields)
+- **elliot/analysis/security/utils.py**: `get_all_security_modules()`, `group_modules_by_tier()`, `execute_tier()`
+- **elliot/analysis/security/base.py**: `SecurityModule`, `SecurityTier`
+- **elliot/cwe/cvss_calculator.py**: `cvss_calculate_score()`, `PRESET_METRICS`
+- **elliot/cwe/registry.py**: `map_finding_to_cwe()`
+- **elliot/osint/cti.py**: `CThreatIntelligence`
+- **elliot/core/types.py**: `SecurityFinding`, `SecurityResult` (extended fields)
 
 ### Affects
-- **veritas/core/orchestrator.py**: Security node integration
+- **elliot/core/orchestrator.py**: Security node integration
 - Future security module development (must inherit from `SecurityModule`)
 
 ## Tech Stack
@@ -139,8 +139,8 @@ Commit: `eefd44e`
 5. **Darknet Correlation**: Threat intelligence via Phase 8 components
 
 ### Key Files Modified
-- `veritas/agents/security_agent.py`: 599 insertions, 87 deletions
-- `veritas/core/orchestrator.py`: 74 insertions, 11 deletions
+- `elliot/agents/security_agent.py`: 599 insertions, 87 deletions
+- `elliot/core/orchestrator.py`: 74 insertions, 11 deletions
 
 ## Key Decisions
 
@@ -221,7 +221,7 @@ All tasks completed as specified with no deviations.
 ### Automated Verification
 ```python
 # SecurityAgent verification
-from veritas.agents.security_agent import SecurityAgent
+from elliot.agents.security_agent import SecurityAgent
 print('SecurityAgent imported successfully')
 print(f'use_tier_execution: {SecurityAgent.use_tier_execution}')  # False
 print(f'enable_cvss: {SecurityAgent.enable_cvss}')               # True
@@ -236,7 +236,7 @@ print('Has _correlate_darknet_threats:', hasattr(SecurityAgent, '_correlate_dark
 ### Known Issues
 - **Pre-existing import error**: `ImportError: cannot import name 'ScoutResult' from 'agents.scout'`
   - This error exists independently of plan changes
-  - Affects `veritas/core/orchestrator.py` import but not plan functionality
+  - Affects `elliot/core/orchestrator.py` import but not plan functionality
   - Requires separate fix in scout module
 
 ## Success Criteria
@@ -267,8 +267,8 @@ print('Has _correlate_darknet_threats:', hasattr(SecurityAgent, '_correlate_dark
 
 - Phase 8 OSINT/CTI Integration: `.planning/phases/08-osint-cti-integration/08-05-SUMMARY.md`
 - Phase 9 Judge Orchestrator: `.planning/phases/09-judge-orchestrator/09-02-SUMMARY.md`
-- Security Module Base: `veritas/analysis/security/base.py`
-- Tier Execution Utilities: `veritas/analysis/security/utils.py`
-- CVSS Calculator: `veritas/cwe/cvss_calculator.py`
-- CWE Registry: `veritas/cwe/registry.py`
-- CTI Module: `veritas/osint/cti.py`
+- Security Module Base: `elliot/analysis/security/base.py`
+- Tier Execution Utilities: `elliot/analysis/security/utils.py`
+- CVSS Calculator: `elliot/cwe/cvss_calculator.py`
+- CWE Registry: `elliot/cwe/registry.py`
+- CTI Module: `elliot/osint/cti.py`

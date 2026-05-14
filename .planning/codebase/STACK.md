@@ -17,7 +17,7 @@
 
 **Package Manager:**
 - npm 10.x (frontend) - Lockfile present
-- pip/venv (backend/veritas) - requirements.txt managed
+- pip/venv (backend/elliot) - requirements.txt managed
 
 ## Frameworks
 **Core:**
@@ -36,7 +36,7 @@
 
 ## Key Dependencies
 
-### Backend/Veritas (Python)
+### Backend/Elliot (Python)
 **AI & Vision:**
 - openai 1.0.0+ - NVIDIA NIM integration for LLM/VLM APIs
 - langchain 0.3.0+, langgraph 0.2.0+ - Agent orchestration
@@ -92,9 +92,9 @@
 ## Configuration
 
 **Environment:**
-- `.env` files (veritas/, backend/, frontend/)
+- `.env` files (elliot/, backend/, frontend/)
 - Environment variables configured via dotenv
-- Path: `C:\files\coding dev era\elliot\elliotAI\veritas\.env` (template)
+- Path: `C:\files\coding dev era\elliot\elliotAI\elliot\.env` (template)
 - Key configs: API keys for NVIDIA NIM, Tavily, URLVoid, AbuseIPDB, Google Safe Browsing
 
 **Build:**

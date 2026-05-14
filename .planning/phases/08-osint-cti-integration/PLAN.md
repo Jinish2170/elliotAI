@@ -13,7 +13,7 @@
 
 ### Current State (Pre-Phase)
 
-**Graph Investigator (`veritas/agents/graph_investigator.py`):**
+**Graph Investigator (`elliot/agents/graph_investigator.py`):**
 - Basic WHOIS, DNS, SSL certificate verification (synchronous)
 - Tavily search for entity verification
 - Simple domain intel gathering

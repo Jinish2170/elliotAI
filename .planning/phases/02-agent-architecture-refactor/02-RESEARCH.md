@@ -6,11 +6,11 @@
 
 ## Summary
 
-This phase creates a SecurityAgent class that matches VisionAgent and JudgeAgent patterns while introducing auto-discovery of security modules from the `veritas/analysis/` directory. The key technical challenge is implementing dynamic module discovery and method generation at runtime without hardcoding module implementations. The migration uses a feature flag pattern (USE_SECURITY_AGENT) for gradual rollout with automatic fallback to the existing `security_node` function.
+This phase creates a SecurityAgent class that matches VisionAgent and JudgeAgent patterns while introducing auto-discovery of security modules from the `elliot/analysis/` directory. The key technical challenge is implementing dynamic module discovery and method generation at runtime without hardcoding module implementations. The migration uses a feature flag pattern (USE_SECURITY_AGENT) for gradual rollout with automatic fallback to the existing `security_node` function.
 
 The primary technical decision is using Python's `inspect` and `importlib` modules for runtime module discovery and `setattr` for dynamic method creation. This allows new security modules to be automatically available without code changes to SecurityAgent, while maintaining the familiar VisionAgent/JudgeAgent interface for consistency across the codebase.
 
-**Primary recommendation:** Implement SecurityAgent with auto-discovery pattern using `importlib.import_module()` to dynamically load security modules from `veritas/analysis/`, create analyzer instances, and bind them to SecurityAgent as methods using `setattr()`. Feature flag defaults to new agent behavior with rollback to legacy `security_node` function.
+**Primary recommendation:** Implement SecurityAgent with auto-discovery pattern using `importlib.import_module()` to dynamically load security modules from `elliot/analysis/`, create analyzer instances, and bind them to SecurityAgent as methods using `setattr()`. Feature flag defaults to new agent behavior with rollback to legacy `security_node` function.
 
 <user_constraints>
 ## User Constraints (from CONTEXT.md)
@@ -89,7 +89,7 @@ The primary technical decision is using Python's `inspect` and `importlib` modul
 |----|-------------|-----------------|
 | CORE-01 | SecurityAgent class matches VisionAgent and JudgeAgent patterns | VisionAgent/JudgeAgent patterns analyzed (class-based, async analyze(), Result dataclass, NIMClient injection) |
 | CORE-01-2 | SecurityAgent has async analyze() method returning SecurityResult dataclass | VisionAgent.analyze() → async method returning VisionResult dataclass; pattern verified |
-| CORE-01-3 | SecurityAgent includes all security modules (headers, phishing, redirects, JS analysis, form validation) | All 5 security analysis modules confirmed in veritas/analysis/ directory: SecurityHeaderAnalyzer, PhishingChecker, RedirectAnalyzer, JSObfuscationDetector, FormActionValidator |
+| CORE-01-3 | SecurityAgent includes all security modules (headers, phishing, redirects, JS analysis, form validation) | All 5 security analysis modules confirmed in elliot/analysis/ directory: SecurityHeaderAnalyzer, PhishingChecker, RedirectAnalyzer, JSObfuscationDetector, FormActionValidator |
 | CORE-01-4 | Feature flag enables gradual migration from function to class-based agent | Feature flag pattern from STABILIZATION.md (FEATURE_FLAG = os.getenv(...)), auto-fallback pattern documented |
 | CORE-06-2 | SecurityAgent class follows same test pattern as VisionAgent/JudgeAgent | Test patterns documented in STABILIZATION.md (characterization, change detection, integration tests) |
 </phase_requirements>
@@ -125,7 +125,7 @@ No external dependencies required - all functionality uses Python standard libra
 
 ### Recommended Project Structure
 ```
-veritas/
+elliot/
 ├── agents/
 │   ├── security_agent.py        # NEW: SecurityAgent class with auto-discovery
 │   ├── vision.py                # EXISTING: VisionAgent pattern reference
@@ -151,7 +151,7 @@ veritas/
 
 **Example (VisionAgent reference):**
 ```python
-# Source: C:/files/coding dev era/elliot/elliotAI/veritas/agents/vision.py
+# Source: C:/files/coding dev era/elliot/elliotAI/elliot/agents/vision.py
 class VisionAgent:
     """Agent: Visual forensics using VLM."""
 
@@ -217,7 +217,7 @@ def discover_security_modules() -> Dict[str, Type]:
         if module_file.name.startswith("_"):
             continue  # Skip __init__.py
 
-        module_name = f"veritas.analysis.{module_file.stem}"
+        module_name = f"elliot.analysis.{module_file.stem}"
         try:
             module = importlib.import_module(module_name)
 
@@ -280,7 +280,7 @@ class SecurityAgent:
 import os
 import logging
 
-logger = logging.getLogger("veritas.orchestrator")
+logger = logging.getLogger("elliot.orchestrator")
 
 # Feature flags
 USE_SECURITY_AGENT = os.getenv("USE_SECURITY_AGENT", "true").lower() == "true"
@@ -517,7 +517,7 @@ Verified patterns from official sources and existing codebase:
 
 ### SecurityAgent Skeleton with Auto-Discovery
 ```python
-# veritas/agents/security_agent.py
+# elliot/agents/security_agent.py
 import asyncio
 import importlib
 import inspect
@@ -532,7 +532,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from core.nim_client import NIMClient
 from config.security_config import SecurityConfig
 
-logger = logging.getLogger("veritas.security_agent")
+logger = logging.getLogger("elliot.security_agent")
 
 
 # ============================================================
@@ -638,9 +638,9 @@ class SecurityAgent:
     """
     Agent 2: Security analysis coordinator.
 
-    Auto-discovers security modules from veritas/analysis/ directory.
+    Auto-discovers security modules from elliot/analysis/ directory.
     Modules must:
-        - Be in veritas/analysis/*.py files
+        - Be in elliot/analysis/*.py files
         - Contain classes ending in "Analyzer", "Checker", or "Validator"
         - Have async methods: analyze(url), check(url), or validate(page, url)
 
@@ -683,7 +683,7 @@ class SecurityAgent:
             if module_file.name.startswith("_"):
                 continue  # Skip __init__.py, __pycache__
 
-            module_name = f"veritas.analysis.{module_file.stem}"
+            module_name = f"elliot.analysis.{module_file.stem}"
             try:
                 module = importlib.import_module(module_name)
 
@@ -829,7 +829,7 @@ class SecurityAgent:
 
 ### SecurityConfig Dataclass
 ```python
-# veritas/config/security_config.py
+# elliot/config/security_config.py
 import os
 from dataclasses import dataclass, field
 
@@ -844,7 +844,7 @@ class SecurityConfig:
 
     # Module discovery
     auto_discover: bool = True              # If False, only use hardcoded module list
-    analysis_dir: str = "veritas/analysis"  # Directory to scan for modules
+    analysis_dir: str = "elliot/analysis"  # Directory to scan for modules
 
     # Rollout control
     use_agent: bool = True                  # Default to agent (can be overridden by env var)
@@ -864,12 +864,12 @@ class SecurityConfig:
 
 ### Legacy security_node with Feature Flags (Modified)
 ```python
-# veritas/core/orchestrator.py
+# elliot/core/orchestrator.py
 import os
 import hashlib
 import logging
 
-logger = logging.getLogger("veritas.orchestrator")
+logger = logging.getLogger("elliot.orchestrator")
 
 # Feature flags
 USE_SECURITY_AGENT = os.getenv("USE_SECURITY_AGENT", "true").lower() == "true"
@@ -1028,13 +1028,13 @@ def _should_use_agent(url: str, rollout_percent: int) -> bool:
   - https://docs.python.org/3/library/importlib.html
 - **Python 3.14 inspect documentation** - `getmembers()`, `iscoroutinefunction()`, `isclass()`
   - https://docs.python.org/3/library/inspect.html
-- **Existing VisionAgent code** - C:/files/coding dev era/elliot/elliotAI/veritas/agents/vision.py
-- **Existing JudgeAgent code** - C:/files/coding dev era/elliot/elliotAI/veritas/agents/judge.py
-- **Existing security modules** - All 5 modules in veritas/analysis/ directory (headers, phishing, redirects, JS, forms)
+- **Existing VisionAgent code** - C:/files/coding dev era/elliot/elliotAI/elliot/agents/vision.py
+- **Existing JudgeAgent code** - C:/files/coding dev era/elliot/elliotAI/elliot/agents/judge.py
+- **Existing security modules** - All 5 modules in elliot/analysis/ directory (headers, phishing, redirects, JS, forms)
 
 ### Secondary (MEDIUM confidence)
 - **Phase research on feature flag patterns** - .planning/research/STABILIZATION.md (Strangler Fig pattern, gradual migration)
-- **security_node implementation** - veritas/core/orchestrator.py lines 638-700 (current functionality to preserve)
+- **security_node implementation** - elliot/core/orchestrator.py lines 638-700 (current functionality to preserve)
 
 ### Tertiary (LOW confidence)
 - **Rollout best practices** - General pattern for staged rollout (no specific source verified, but pattern is standard)

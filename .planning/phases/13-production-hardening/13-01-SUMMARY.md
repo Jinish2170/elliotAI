@@ -10,7 +10,7 @@ No code changes needed. Ran verification command to confirm prior changes were a
 None (verification only)
 
 ## Test Results
-- Verification command passed: `from veritas.agents.scout import ScoutResult; assert 'page_content' in r; assert 'response_headers' in r` → OK
+- Verification command passed: `from elliot.agents.scout import ScoutResult; assert 'page_content' in r; assert 'response_headers' in r` → OK
 
 ## Deviations from Plan
 None - plan executed exactly as written.

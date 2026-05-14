@@ -1,4 +1,4 @@
-# Stack Research: VERITAS v2.0 Masterpiece Features
+# Stack Research: ELLIOT v2.0 Masterpiece Features
 
 **Purpose:** Document stack additions/changes needed for Vision Agent, OSINT, Judge, Security, and Showcase features.
 
@@ -9,9 +9,9 @@
 
 ## Executive Summary
 
-Based on research of VERITAS v1.0 foundation and new feature requirements, **MINIMAL stack additions** are needed. The existing stack is well-positioned for masterpiece features, with only 5-6 new Python packages required for specific domain capabilities. Frontend already has Framer Motion for animations and is fully equipped.
+Based on research of ELLIOT v1.0 foundation and new feature requirements, **MINIMAL stack additions** are needed. The existing stack is well-positioned for masterpiece features, with only 5-6 new Python packages required for specific domain capabilities. Frontend already has Framer Motion for animations and is fully equipped.
 
-**Key Finding:** VERITAS already has 80% of needed libraries. Focus on:
+**Key Finding:** ELLIOT already has 80% of needed libraries. Focus on:
 1. Computer Vision: `opencv-contrib-python` for temporal analysis
 2. OSINT/Security: `requests`, `cryptography`, `beautifulsoup4`, `sqlparse`, `cvss`
 3. No new frontend dependencies needed
@@ -64,7 +64,7 @@ Based on research of VERITAS v1.0 foundation and new feature requirements, **MIN
 
 | Package | Version | Why Needed | Integration Points |
 |---------|---------|------------|-------------------|
-| `opencv-contrib-python` | >=4.9.0.80 | SSIM calculation, optical flow, difference masks | `veritas/analysis/temporal_cv.py` - TemporalComputerVision class |
+| `opencv-contrib-python` | >=4.9.0.80 | SSIM calculation, optical flow, difference masks | `elliot/analysis/temporal_cv.py` - TemporalComputerVision class |
 | `scikit-image` | >=0.24.0 | Advanced image processing algorithms | Enhanced temporal diff algorithms |
 
 #### Installation
@@ -223,7 +223,7 @@ async def check_osint_source(domain: str, source: str) -> Dict:
 
 | Package | Already Installed | How to Use |
 |---------|------------------|------------|
-| `pydantic` | >=2.5.0 | Data classes for verdicts | `veritas/models/verdicts.py` |
+| `pydantic` | >=2.5.0 | Data classes for verdicts | `elliot/models/verdicts.py` |
 | `LangChain` | >=0.3.0 | AI verdict generation | LLM-based explanation generation |
 | `LangGraph` | >=0.2.0 | State management | Dual-tier verdict workflow |
 
@@ -263,9 +263,9 @@ async def check_osint_source(domain: str, source: str) -> Dict:
 
 | Package | Version | Why Needed | Integration Points |
 |---------|---------|------------|-------------------|
-| `sqlparse` | >=0.5.0 | SQL injection detection | `veritas/analysis/security_sql.py` |
-| `cvss` | >=2.4.0 | CVSS 3.1 scoring for vulnerabilities | `veritas/analysis/security_cvss.py` |
-| `requests` | >=2.31.0 | Security header scanning | `veritas/analysis/security_http.py` |
+| `sqlparse` | >=0.5.0 | SQL injection detection | `elliot/analysis/security_sql.py` |
+| `cvss` | >=2.4.0 | CVSS 3.1 scoring for vulnerabilities | `elliot/analysis/security_cvss.py` |
+| `requests` | >=2.31.0 | Security header scanning | `elliot/analysis/security_http.py` |
 
 #### Installation
 
@@ -457,7 +457,7 @@ npm install  # Install existing dependencies
 
 ```txt
 # ============================================================
-# Veritas v2.0 — Requirements (with Masterpiece Features)
+# Elliot v2.0 — Requirements (with Masterpiece Features)
 # ============================================================
 
 # --- Core Framework ---
@@ -524,14 +524,14 @@ aiohttp>=3.9.0
 
 ---
 
-## Integration Points with Existing VERITAS
+## Integration Points with Existing ELLIOT
 
 ### Vision Agent
 
 ```python
-# New file: veritas/analysis/temporal_cv.py
+# New file: elliot/analysis/temporal_cv.py
 # Uses: opencv, scikit-image
-# Integrates with: veritas/agents/vision.py (existing)
+# Integrates with: elliot/agents/vision.py (existing)
 
 from .vision import VisionAgent  # Existing agent
 
@@ -556,9 +556,9 @@ class EnhancedVisionAgent(VisionAgent):
 ### OSINT Integration
 
 ```python
-# New file: veritas/agents/osint_engine.py
+# New file: elliot/agents/osint_engine.py
 # Uses: requests, cryptography, beautifulsoup4, python-whois, dnspython
-# Integrates with: veritas/agents/graph_investigator.py (existing)
+# Integrates with: elliot/agents/graph_investigator.py (existing)
 
 from .graph_investigator import GraphInvestigator
 
@@ -587,11 +587,11 @@ class OSIntelligenceEngine:
 ### Security Modules
 
 ```python
-# New file: veritas/analysis/security_enterprise.py
+# New file: elliot/analysis/security_enterprise.py
 # Uses: sqlparse, cvss, requests
-# Integrates with: veritas/agents/security.py (existing)
+# Integrates with: elliot/agents/security.py (existing)
 
-from veritas.agents.security import SecurityAgent
+from elliot.agents.security import SecurityAgent
 
 class ComprehensiveSecurityAudit(SecurityAgent):
     """Add 25+ modules to existing SecurityAgent"""
@@ -620,11 +620,11 @@ class ComprehensiveSecurityAudit(SecurityAgent):
 ### Progress Emitter (Frontend Integration)
 
 ```python
-# New file: veritas/core/progress_emitter.py
+# New file: elliot/core/progress_emitter.py
 # Uses: existing websockets
 # Sends to: frontend AgentTheater.tsx (existing)
 
-from veritas.backend.websocket import websocket_manager  # Existing
+from elliot.backend.websocket import websocket_manager  # Existing
 
 class ProgressEmitter:
     """Emit real-time progress events to frontend"""
@@ -693,7 +693,7 @@ class ProgressEmitter:
 **Confidence:** MEDIUM - Web access to PyPI was limited (403 errors). Version numbers are based on:
 
 1. **Historical release patterns:** Libraries with 10+yr stable release cycles
-2. **Project requirements files:** Existing VERITAS stack usage patterns
+2. **Project requirements files:** Existing ELLIOT stack usage patterns
 3. **Best practice:** Conservative version boundaries (>=Major.Minor.Patch)
 
 **Verification Approach Used:**
@@ -734,7 +734,7 @@ class ProgressEmitter:
 | Showcase | 0 | framer-motion, lucide, radix | 4 (front) |
 | **TOTAL** | **5 Python packages** | **12 existing** | **~23 total** |
 
-**Key Insight:** VERITAS v1.0 foundation is excellent. Only 5 new Python packages needed to support all masterpiece features. Frontend is fully equipped with Framer Motion 12.34.0 and showcase libraries.
+**Key Insight:** ELLIOT v1.0 foundation is excellent. Only 5 new Python packages needed to support all masterpiece features. Frontend is fully equipped with Framer Motion 12.34.0 and showcase libraries.
 
 **Implementation Priority:**
 1. Vision Agent first (opencv for temporal analysis)

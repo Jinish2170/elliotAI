@@ -12,7 +12,7 @@
 
 ### Current State (Pre-Phase)
 
-**Judge Agent (`veritas/agents/judge.py`):**
+**Judge Agent (`elliot/agents/judge.py`):**
 - Single-tier verdict (plain English recommendations only)
 - Simple trust scoring based on 6 signals (visual, structural, temporal, graph, meta, security)
 - No CWE/CVSS technical details
@@ -20,7 +20,7 @@
 - Site-type basic detection but no scoring strategies
 - Trust score: 0-100 with simple weighted average
 
-**Orchestrator (`veritas/core/orchestrator.py`):**
+**Orchestrator (`elliot/core/orchestrator.py`):**
 - Sequential node execution (scout → security → vision → graph → judge)
 - Manual state management (not using LangGraph ainvoke due to Python 3.14 issue)
 - Fixed timeouts per node (30s vision, 10s security, etc.)
@@ -138,14 +138,14 @@ DualVerdict = {
 
 **A. CWE Taxonomy Mapping**
 ```python
-# veritas/agents/judge/cwe_mapping.py (new file)
+# elliot/agents/judge/cwe_mapping.py (new file)
 from typing import Dict, List
 from enum import Enum
 
 logger = logging.getLogger(__name__)
 
 class CWECategory(Enum):
-    """CWE categories mapped to VERITAS finding types."""
+    """CWE categories mapped to ELLIOT finding types."""
     INJECTION = " CWE-89"  # SQL Injection
     XSS = "CWE-79"        # Cross-site Scripting
     CSRF = "CWE-352"      # Cross-Site Request Forgery
@@ -158,7 +158,7 @@ class CWECategory(Enum):
     SSRF = "CWE-918"        # Server-Side Request Forgery
 
 class CWEMapper:
-    """Maps VERITAS findings to CWE IDs."""
+    """Maps ELLIOT findings to CWE IDs."""
 
     # Finding category → CWE mapping
     FINDING_CWE_MAP = {
@@ -206,7 +206,7 @@ class CWEMapper:
     }
 
     def map_finding_to_cwe(self, finding_type: str) -> str:
-        """Map VERITAS finding type to CWE ID."""
+        """Map ELLIOT finding type to CWE ID."""
         # Dark patterns don't have CWE IDs
         if finding_type in self.DARK_PATTERN_NO_CWE:
             return None
@@ -243,7 +243,7 @@ class CWEMapper:
 
 **B. CVSS 3.1 Calculator**
 ```python
-# veritas/agents/judge/cvss_calculator.py (new file)
+# elliot/agents/judge/cvss_calculator.py (new file)
 """
 CVSS 3.1 Calculator Implementation.
 
@@ -425,7 +425,7 @@ class CVSSCalculator:
 
 **C. IOC (Indicator of Compromise) Extraction**
 ```python
-# veritas/agents/judge/ioc_extractor.py (new file)
+# elliot/agents/judge/ioc_extractor.py (new file)
 """
 Extract Indicators of Compromise (IOCs) from findings.
 
@@ -616,7 +616,7 @@ class IOCExtractor:
 
 **D. DualVerdict Dataclass**
 ```python
-# veritas/agents/judge/dual_verdict.py (new file)
+# elliot/agents/judge/dual_verdict.py (new file)
 from dataclasses import dataclass, field
 from typing import List, Dict, Optional
 from enum import Enum
@@ -716,7 +716,7 @@ class DualVerdict:
 
 **Solution:**
 ```python
-# veritas/agents/judge/site_type_strategies.py (new file)
+# elliot/agents/judge/site_type_strategies.py (new file)
 from dataclasses import dataclass
 from typing import Dict
 from enum import Enum
@@ -915,7 +915,7 @@ class NewsStrategy(SiteTypeStrategy):
 
 **Solution:**
 ```python
-# veritas/core/orchestrator/complexity_estimator.py (new file)
+# elliot/core/orchestrator/complexity_estimator.py (new file)
 from dataclasses import dataclass
 from typing import Optional
 from enum import Enum
@@ -1009,7 +1009,7 @@ class ComplexityEstimator:
         return PageComplexity.TRIVIAL
 
 
-# veritas/core/orchestrator/adaptive_orchestrator.py (new file)
+# elliot/core/orchestrator/adaptive_orchestrator.py (new file)
 class AdaptiveOrchestrator:
     """Orchestrator with adaptive timeout and progress tracking."""
 
@@ -1142,7 +1142,7 @@ class ProgressTracker:
 ### 9.1 Implement CWEMapper and CVE Mapping
 
 **Files:**
-- `veritas/agents/judge/cwe_mapping.py` (new file)
+- `elliot/agents/judge/cwe_mapping.py` (new file)
 
 **Tasks:**
 - Map finding categories to CWE IDs
@@ -1155,7 +1155,7 @@ class ProgressTracker:
 ### 9.2 Implement CVSSCalculator
 
 **Files:**
-- `veritas/agents/judge/cvss_calculator.py` (new file)
+- `elliot/agents/judge/cvss_calculator.py` (new file)
 
 **Tasks:**
 - Implement CVSS 3.1 base score calculation
@@ -1168,7 +1168,7 @@ class ProgressTracker:
 ### 9.3 Implement IOCExtractor
 
 **Files:**
-- `veritas/agents/judge/ioc_extractor.py` (new file)
+- `elliot/agents/judge/ioc_extractor.py` (new file)
 
 **Tasks:**
 - Extract domains, IPs, URLs, emails, hashes
@@ -1181,7 +1181,7 @@ class ProgressTracker:
 ### 9.4 Implement SiteTypeStrategy Classes
 
 **Files:**
-- `veritas/agents/judge/site_type_strategies.py` (new file)
+- `elliot/agents/judge/site_type_strategies.py` (new file)
 
 **Tasks:**
 - Define 11 site types
@@ -1194,7 +1194,7 @@ class ProgressTracker:
 ### 9.5 Implement DualVerdict Dataclasses
 
 **Files:**
-- `veritas/agents/judge/dual_verdict.py` (new file)
+- `elliot/agents/judge/dual_verdict.py` (new file)
 
 **Tasks:**
 - Define VerdictTechnical dataclass
@@ -1207,7 +1207,7 @@ class ProgressTracker:
 ### 9.6 Implement ComplexityEstimator
 
 **Files:**
-- `veritas/core/orchestrator/complexity_estimator.py` (new file)
+- `elliot/core/orchestrator/complexity_estimator.py` (new file)
 
 **Tasks:**
 - Analyze DOM metadata for complexity metrics
@@ -1220,7 +1220,7 @@ class ProgressTracker:
 ### 9.7 Implement AdaptiveOrchestrator
 
 **Files:**
-- `veritas/core/orchestrator/adaptive_orchestrator.py` (new file)
+- `elliot/core/orchestrator/adaptive_orchestrator.py` (new file)
 
 **Tasks:**
 - Execute Scout first to estimate
@@ -1333,7 +1333,7 @@ def test_conflict_resolver_high_trust_overrides_low_trust():
 ```python
 def test_site_type_strategy_thresholds_scoring_adjustments():
     """Verify scoring adjustments based on detected site type."""
-    from veritas.agests.judge.site_type_strategies import (
+    from elliot.agests.judge.site_type_strategies import (
         ECommerceStrategy, FinancialStrategy, PortfolioStrategy, SiteType, RiskLevel
     )
 

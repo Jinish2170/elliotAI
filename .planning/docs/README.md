@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="frontend/public/file.svg" width="80" alt="Veritas Logo" />
+  <img src="frontend/public/file.svg" width="80" alt="Elliot Logo" />
 </p>
 
-<h1 align="center">VERITAS</h1>
+<h1 align="center">ELLIOT</h1>
 <p align="center">
   <strong>Autonomous Multi-Modal Forensic Web Auditor</strong>
 </p>
@@ -18,7 +18,7 @@
 
 ---
 
-Veritas is an AI-powered forensic web auditing platform that analyzes websites for trust, safety, dark patterns, and security vulnerabilities. It combines **5 specialized AI agents** with **visual analysis**, **graph investigation**, and **multi-signal scoring** to produce comprehensive trust reports.
+Elliot is an AI-powered forensic web auditing platform that analyzes websites for trust, safety, dark patterns, and security vulnerabilities. It combines **5 specialized AI agents** with **visual analysis**, **graph investigation**, and **multi-signal scoring** to produce comprehensive trust reports.
 
 ---
 
@@ -53,7 +53,7 @@ Veritas is an AI-powered forensic web auditing platform that analyzes websites f
 └────────────────────┬────────────────────────────────────┘
                      │ Subprocess + stdout
 ┌────────────────────▼────────────────────────────────────┐
-│                  Veritas Python Engine                    │
+│                  Elliot Python Engine                    │
 │                                                          │
 │  ┌─────────┐  ┌──────────┐  ┌────────┐  ┌───────────┐  │
 │  │  Scout   │→│ Security │→│ Vision │→│   Graph    │   │
@@ -91,8 +91,8 @@ Veritas is an AI-powered forensic web auditing platform that analyzes websites f
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/your-org/veritas.git
-cd veritas
+git clone https://github.com/your-org/elliot.git
+cd elliot
 ```
 
 ### 2. Set Up Python Environment
@@ -108,7 +108,7 @@ python -m venv .venv
 source .venv/bin/activate
 
 # Install Python engine dependencies
-pip install -r veritas/requirements.txt
+pip install -r elliot/requirements.txt
 
 # Install Playwright browsers
 playwright install chromium
@@ -116,7 +116,7 @@ playwright install chromium
 
 ### 3. Configure Environment Variables
 
-Create the file `veritas/.env`:
+Create the file `elliot/.env`:
 
 ```env
 # ── NVIDIA NIM ──────────────────────────────
@@ -199,11 +199,11 @@ gunicorn main:app -w 4 -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000
 # backend/Dockerfile
 FROM python:3.13-slim
 WORKDIR /app
-COPY veritas/ ./veritas/
+COPY elliot/ ./elliot/
 COPY backend/ ./backend/
-COPY veritas/requirements.txt ./veritas/
+COPY elliot/requirements.txt ./elliot/
 COPY backend/requirements.txt ./backend/
-RUN pip install -r veritas/requirements.txt -r backend/requirements.txt
+RUN pip install -r elliot/requirements.txt -r backend/requirements.txt
 RUN playwright install chromium --with-deps
 WORKDIR /app/backend
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
@@ -229,7 +229,7 @@ services:
       dockerfile: backend/Dockerfile
     ports:
       - "8000:8000"
-    env_file: veritas/.env
+    env_file: elliot/.env
 
   frontend:
     build:
@@ -298,8 +298,8 @@ Connect to `ws://localhost:8000/api/audit/stream/{audit_id}` to receive real-tim
 ## Project Structure
 
 ```
-veritas/
-├── veritas/                        # Python auditing engine
+elliot/
+├── elliot/                        # Python auditing engine
 │   ├── __main__.py                 # CLI entry point
 │   ├── .env                        # Environment config
 │   ├── requirements.txt            # Python dependencies
@@ -332,7 +332,7 @@ veritas/
 │   ├── reporting/                  # Report generation
 │   │   └── report_generator.py     # Markdown/JSON report builder
 │   └── tests/                      # Test suite
-│       └── test_veritas.py         # 20 unit tests
+│       └── test_elliot.py         # 20 unit tests
 │
 ├── backend/                        # FastAPI API layer
 │   ├── main.py                     # CORS, routers, sys.path setup
@@ -347,7 +347,7 @@ veritas/
 │   ├── src/
 │   │   ├── app/
 │   │   │   ├── layout.tsx          # Root layout (fonts, theme)
-│   │   │   ├── globals.css         # Veritas dark theme + animations
+│   │   │   ├── globals.css         # Elliot dark theme + animations
 │   │   │   ├── page.tsx            # Landing page
 │   │   │   ├── audit/[id]/page.tsx # Live audit view
 │   │   │   └── report/[id]/page.tsx# Forensic report view
@@ -412,7 +412,7 @@ veritas/
 
 ```bash
 # Activate venv first
-python -m pytest veritas/tests/test_veritas.py -v
+python -m pytest elliot/tests/test_elliot.py -v
 ```
 
 Expected output: **20 passed**.
@@ -463,16 +463,16 @@ Expected output: 3 routes generated (`/`, `/audit/[id]`, `/report/[id]`), 0 erro
 
 | Issue | Solution |
 |-------|----------|
-| `ModuleNotFoundError: veritas` | Run backend from the `backend/` directory — `main.py` adds parent path automatically |
+| `ModuleNotFoundError: elliot` | Run backend from the `backend/` directory — `main.py` adds parent path automatically |
 | `playwright._impl._errors.Error` | Run `playwright install chromium` inside the venv |
-| NVIDIA NIM 401/403 | Verify `NVIDIA_API_KEY` in `veritas/.env` |
+| NVIDIA NIM 401/403 | Verify `NVIDIA_API_KEY` in `elliot/.env` |
 | NVIDIA NIM 404 | Model name may have changed. Check [NVIDIA NIM Catalog](https://build.nvidia.com/explore/discover) |
 | Port already in use | Kill existing process or change port: `uvicorn main:app --port 8001` |
 | WebSocket fails to connect | Ensure backend is running before accessing the audit page |
 | Frontend blank page | Check browser console. Ensure `npm install` completed without errors |
 | Python 3.14 `CancelledError` | Already patched in orchestrator.py — uses `asyncio.exceptions.CancelledError` |
 | `UnicodeEncodeError` on Windows | Already patched — engine uses `utf-8` encoding explicitly |
-| LanceDB lock errors | Delete `veritas/data/vectordb/` and restart |
+| LanceDB lock errors | Delete `elliot/data/vectordb/` and restart |
 
 ---
 

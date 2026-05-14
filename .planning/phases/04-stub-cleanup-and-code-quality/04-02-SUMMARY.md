@@ -12,12 +12,12 @@ depends_on:
   - "04-01"
 
 affects:
-  - system: "VERITAS Core Engine"
+  - system: "ELLIOT Core Engine"
     impact: "Empty return stubs eliminated - failures now explicit"
     files:
-      - "veritas/agents/judge.py"
-      - "veritas/analysis/dom_analyzer.py"
-      - "veritas/config/dark_patterns.py"
+      - "elliot/agents/judge.py"
+      - "elliot/analysis/dom_analyzer.py"
+      - "elliot/config/dark_patterns.py"
 
 tech-stack:
   added:
@@ -28,11 +28,11 @@ tech-stack:
 
 key-files:
   created:
-    - "veritas/tests/test_stub_cleanup.py"
+    - "elliot/tests/test_stub_cleanup.py"
   modified:
-    - "veritas/agents/judge.py"
-    - "veritas/analysis/dom_analyzer.py"
-    - "veritas/config/dark_patterns.py"
+    - "elliot/agents/judge.py"
+    - "elliot/analysis/dom_analyzer.py"
+    - "elliot/config/dark_patterns.py"
 
 decisions:
   - "Caller analysis confirmed safe to replace stubs (no production callers expecting empty returns)"
@@ -103,7 +103,7 @@ All 4 stubs replaced with appropriate exceptions:
 - `ValueError` for invalid input in dark_patterns.py
 
 ### Task 4: Test Suite Creation
-Created comprehensive test file `veritas/tests/test_stub_cleanup.py` with 11 tests:
+Created comprehensive test file `elliot/tests/test_stub_cleanup.py` with 11 tests:
 
 | Test Class | Tests | Verification |
 |------------|-------|--------------|
@@ -114,7 +114,7 @@ Created comprehensive test file `veritas/tests/test_stub_cleanup.py` with 11 tes
 
 ### Test Results
 ```bash
-pytest veritas/tests/test_stub_cleanup.py -v
+pytest elliot/tests/test_stub_cleanup.py -v
 ```
 
 Results:
@@ -163,18 +163,18 @@ This follows the "fail-loud" approach documented in 04-RESEARCH.md, building on 
 
 ## Files Modified
 
-- `veritas/agents/judge.py` (18 insertions, 10 deletions)
+- `elliot/agents/judge.py` (18 insertions, 10 deletions)
   - Replaced 2 empty return statements with RuntimeError
 
-- `veritas/analysis/dom_analyzer.py` (6 insertions, 4 deletions)
+- `elliot/analysis/dom_analyzer.py` (6 insertions, 4 deletions)
   - Replaced 1 empty return statement with NotImplementedError
 
-- `veritas/config/dark_patterns.py` (5 insertions, 3 deletions)
+- `elliot/config/dark_patterns.py` (5 insertions, 3 deletions)
   - Replaced 1 empty return statement with ValueError
 
 ## Files Created
 
-- `veritas/tests/test_stub_cleanup.py` (340 lines)
+- `elliot/tests/test_stub_cleanup.py` (340 lines)
   - Comprehensive test suite with 11 tests
   - 4 test classes covering all stub locations
   - Uses pytest.raises() pattern from existing project tests

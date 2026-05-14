@@ -12,7 +12,7 @@
 
 ### Current State (Pre-Phase)
 
-**Security Analysis (`veritas/analysis/`):**
+**Security Analysis (`elliot/analysis/`):**
 - Existing modules: Security headers, phishing checker, redirect analyzer, DOM analyzer
 - Limited enterprise compliance checks (no OWASP Top 10, PCI DSS, GDPR)
 - No CVSS scoring for findings
@@ -20,7 +20,7 @@
 - No darknet threat detection integration
 - Security findings not mapped to CWE or CVSS
 
-**Security Agent (`veritas/agents/security_agent.py`):**
+**Security Agent (`elliot/agents/security_agent.py`):**
 - Empty SecurityAgent class (tech debt)
 - Security node uses imperative module calls directly
 - No agent pattern consistency
@@ -61,9 +61,9 @@
 ### 10.1 Create Security Module Structure
 
 **Files:**
-- `veritas/analysis/security/owasp_top10.py` (new)
-- `veritas/analysis/security/pci_dss.py` (new)
-- `veritas/analysis/security/gdpr.py` (new)
+- `elliot/analysis/security/owasp_top10.py` (new)
+- `elliot/analysis/security/pci_dss.py` (new)
+- `elliot/analysis/security/gdpr.py` (new)
 
 **25+ Modules:**
 
@@ -104,7 +104,7 @@
 ### 10.2 Implement Security Module Base Class
 
 ```python
-# veritas/analysis/security/base.py (new)
+# elliot/analysis/security/base.py (new)
 class SecurityModule:
     def __init__(self):
         self.timeout = 10
@@ -120,7 +120,7 @@ class SecurityModule:
 ### 10.3 Create SecurityAgent with Grouped Execution
 
 ```python
-# veritas/agents/security_agent.py (rewrite)
+# elliot/agents/security_agent.py (rewrite)
 class SecurityAgent:
     tiers = {
         'fast': [SSLModule, SecurityHeaderAnalyzer],

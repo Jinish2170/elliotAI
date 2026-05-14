@@ -1,4 +1,4 @@
-# QA-01: Deep Working State Analysis - Veritas System Diagnosis
+# QA-01: Deep Working State Analysis - Elliot System Diagnosis
 
 **Date:** 2026-03-16
 **Status:** INVESTIGATION COMPLETE
@@ -20,7 +20,7 @@ Multiple interconnected issues cause the reported symptoms. The backend tests pa
 **Root Cause:** Backend sends `seq` field, frontend expects `sequence` field
 
 **Evidence:**
-- Backend ProgressEmitter (veritas/core/progress/emitter.py:98): sends `"seq": self.sequence_number`
+- Backend ProgressEmitter (elliot/core/progress/emitter.py:98): sends `"seq": self.sequence_number`
 - Frontend Store (store.ts:386): looks for `event.sequence`:
   ```typescript
   const sequence = event.sequence as number | undefined;
@@ -38,7 +38,7 @@ Multiple interconnected issues cause the reported symptoms. The backend tests pa
 - Components may receive data in wrong order (e.g., findings before screenshots)
 
 **Files Involved:**
-- `veritas/core/progress/emitter.py` - sends wrong field name
+- `elliot/core/progress/emitter.py` - sends wrong field name
 - `frontend/src/hooks/useEventSequencer.ts` - expects correct field name
 - `frontend/src/lib/store.ts` - checks `event.sequence` not `event.seq`
 
@@ -154,7 +154,7 @@ enriched_summary = {
 ## Priority Order Fixes
 
 ### PRIORITY 1 (Critical - Fix Immediately)
-1. **Fix sequence field name** in `veritas/core/progress/emitter.py`:
+1. **Fix sequence field name** in `elliot/core/progress/emitter.py`:
    - Change `seq` to `sequence` on line 98
 2. **Verify AuditRunner sends sequence numbers** - add to send() calls in audit_runner.py for critical events
 
@@ -219,7 +219,7 @@ result:
 
 ### Fix 1: Emit correct sequence field
 ```python
-# veritas/core/progress/emitter.py line 98
+# elliot/core/progress/emitter.py line 98
 # BEFORE:
 "seq": self.sequence_number,
 # AFTER:
@@ -252,7 +252,7 @@ const summaryStr = verdict?.verdict_nontechnical?.summary || verdict?.verdict_no
 
 | File | Change | Priority |
 |------|--------|----------|
-| `veritas/core/progress/emitter.py` | Field `seq` -> `sequence` | P1 |
+| `elliot/core/progress/emitter.py` | Field `seq` -> `sequence` | P1 |
 | `frontend/src/components/terminal/VerdictPanel.tsx` | Fix field mapping, add error handling | P2 |
 | `backend/services/audit_runner.py` | Add sequence numbers to events | P1 |
 | `frontend/src/app/audit/[id]/page.tsx` | Add error boundary | P3 |

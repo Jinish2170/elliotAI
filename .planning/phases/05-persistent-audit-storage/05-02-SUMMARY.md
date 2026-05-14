@@ -13,7 +13,7 @@ tech-stack:
     - FastAPI dependency injection
 key-files:
   created:
-    - path: veritas/db/repositories.py
+    - path: elliot/db/repositories.py
       description: AuditRepository class with CRUD operations
   modified:
     - path: backend/routes/audit.py
@@ -41,7 +41,7 @@ Create repository layer for database operations and integrate FastAPI dependency
 **Status:** Complete
 **Commit:** a2c51ac
 
-Created `veritas/db/repositories.py` with AuditRepository class implementing 6 methods:
+Created `elliot/db/repositories.py` with AuditRepository class implementing 6 methods:
 
 - **get_by_id(audit_id)** - Fetch audit by ID with eager loading of findings and screenshots via selectinload
 - **create(audit)** - Save audit record with cascade to related objects (findings, screenshots, events)

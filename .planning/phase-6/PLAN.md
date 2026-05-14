@@ -36,7 +36,7 @@
 
 ### Current State (Pre-Phase)
 
-**Vision Agent (`veritas/agents/vision.py`):**
+**Vision Agent (`elliot/agents/vision.py`):**
 - Single-pass VLM analysis per screenshot
 - Basic dark pattern detection categories
 - Simple prompt: "Look for dark patterns and UI manipulation"
@@ -117,7 +117,7 @@
 
 **Implementation Tasks:**
 ```python
-# veritas/agents/vision.py
+# elliot/agents/vision.py
 class VisionPassPriority(enum.Enum):
     """Priority levels for vision passes."""
     CRITICAL = 1   # Always run (Pass 1, Pass 5)
@@ -174,7 +174,7 @@ def should_run_pass(pass_num: int, cache_key: str, prior_findings: List[Finding]
 
 **Implementation Tasks:**
 ```python
-# veritas/agents/vision.py (new module: temporal_analysis.py)
+# elliot/agents/vision.py (new module: temporal_analysis.py)
 import gc
 import numpy as np
 from PIL import Image
@@ -258,7 +258,7 @@ def compute_ssim(img1_path: str, img2_path: str) -> float:
 
 **Implementation Tasks:**
 ```python
-# veritas/agents/vision.py
+# elliot/agents/vision.py
 class VisionEventEmitter:
     """Manages vision-related WebSocket events with throttling."""
 
@@ -329,7 +329,7 @@ class VisionEventEmitter:
 
 **Current State:**
 ```python
-# veritas/agents/vision.py (current)
+# elliot/agents/vision.py (current)
 class VisionAgent:
     async def analyze(self, screenshots: List[str]) -> VisionResult:
         # Single pass through VLM for each screenshot
@@ -349,7 +349,7 @@ class VisionAgent:
 
 **Implementation Tasks:**
 ```python
-# veritas/agents/vision.py (new module: temporal_coordinator.py)
+# elliot/agents/vision.py (new module: temporal_coordinator.py)
 class TemporalCoordinator:
     """Coordinates temporal analysis with vision passes."""
 
@@ -462,7 +462,7 @@ class TemporalCoordinator:
 
 **Implementation Tasks:**
 ```python
-# veritas/agents/vision.py (pass 4 placeholder)
+# elliot/agents/vision.py (pass 4 placeholder)
 def _cross_reference_findings(self, findings: List[Finding]) -> List[Finding]:
     """
     Cross-reference visual findings with intelligence sources.
@@ -515,8 +515,8 @@ def _cross_reference_findings(self, findings: List[Finding]) -> List[Finding]:
 ### 6.1 Implement VLM Caching with Pass-Level Keys
 
 **Files:**
-- `veritas/core/nim_client.py` (extend existing cache)
-- `veritas/agents/vision.py` (new caching logic)
+- `elliot/core/nim_client.py` (extend existing cache)
+- `elliot/agents/vision.py` (new caching logic)
 
 **Tasks:**
 ```python
@@ -556,7 +556,7 @@ async def run_pass_with_cache(pass_num: int, screenshot: str, prompt: str) -> Fi
 ### 6.2 Implement Pass Priority Logic
 
 **Files:**
-- `veritas/agents/vision.py` (new class: VisionPassPriority)
+- `elliot/agents/vision.py` (new class: VisionPassPriority)
 
 **Tasks:**
 ```python
@@ -590,8 +590,8 @@ def should_run_pass(pass_num: int, prior_findings: List[Finding], has_temporal_c
 ### 6.3 Implement 5 Pass-Specific VLM Prompts
 
 **Files:**
-- `veritas/config/dark_patterns.py` (extend existing prompts)
-- `veritas/agents/vision.py` (new prompt selection logic)
+- `elliot/config/dark_patterns.py` (extend existing prompts)
+- `elliot/agents/vision.py` (new prompt selection logic)
 
 **Tasks:**
 ```python
@@ -711,13 +711,13 @@ def get_pass_prompt(pass_num: int, temporal_result: dict) -> str:
 ### 6.4 Implement Computer Vision Temporal Analysis
 
 **Files:**
-- `veritas/agents/vision.py` (new module: temporal_analysis.py)
-- `veritas/requirements.txt` (add: scikit-image, opencv-python)
+- `elliot/agents/vision.py` (new module: temporal_analysis.py)
+- `elliot/requirements.txt` (add: scikit-image, opencv-python)
 
 **Tasks:**
 ```python
 # 6.4.1 Create temporal_analysis module
-# veritas/agents/vision/temporal_analysis.py (new file)
+# elliot/agents/vision/temporal_analysis.py (new file)
 
 import gc
 import numpy as np
@@ -893,7 +893,7 @@ class TemporalAnalyzer:
         }
 
 # 6.4.2 Integrate temporal analyzer into VisionAgent
-# veritas/agents/vision.py (modify existing VisionAgent)
+# elliot/agents/vision.py (modify existing VisionAgent)
 class VisionAgent:
     def __init__(self, nim_client: NIMClient):
         self.nim_client = nim_client
@@ -903,7 +903,7 @@ class VisionAgent:
 
 **Requirements Update:**
 ```bash
-# veritas/requirements.txt
+# elliot/requirements.txt
 # Add CV dependencies
 scikit-image>=0.21.0
 opencv-python>=4.8.0
@@ -914,7 +914,7 @@ opencv-python>=4.8.0
 ### 6.5 Implement Vision Event Emitter for Progress Streaming
 
 **Files:**
-- `veritas/agents/vision.py` (new class: VisionEventEmitter)
+- `elliot/agents/vision.py` (new class: VisionEventEmitter)
 - `frontend/src/lib/types.ts` (extend AuditEvent types)
 
 **Tasks:**
@@ -1068,7 +1068,7 @@ handleEvent(event: AuditEvent) {
 ### 6.6 Integrate All Components into Enhanced VisionAgent
 
 **Files:**
-- `veritas/agents/vision.py` (rewrite VisionAgent.analyze() method)
+- `elliot/agents/vision.py` (rewrite VisionAgent.analyze() method)
 
 **Tasks:**
 ```python
@@ -1268,7 +1268,7 @@ class VisionAgent:
 
     def _get_pass_prompt(self, pass_num: int, temporal_result: dict) -> str:
         """Get appropriate prompt for pass number."""
-        from veritas.config.dark_patterns import VISION_PASS_PROMPTS
+        from elliot.config.dark_patterns import VISION_PASS_PROMPTS
         base_prompt = VISION_PASS_PROMPTS[pass_num]
 
         # Inject temporal context for Pass 3
@@ -1367,9 +1367,9 @@ class VisionAgent:
 
 **Test: Pass priority logic**
 ```python
-# veritas/tests/test_vision_pass_priority.py
+# elliot/tests/test_vision_pass_priority.py
 import pytest
-from veritas.agents.vision import VisionAgent, VisionPassPriority
+from elliot.agents.vision import VisionAgent, VisionPassPriority
 
 def test_should_run_pass_critical_always_runs():
     """Critical passes (1, 5) always run."""
@@ -1389,14 +1389,14 @@ def test_should_run_pass_expensive_requires_temporal_changes():
 
 **Test: Temporal analysis caching**
 ```python
-# veritas/tests/test_temporal_analysis.py
+# elliot/tests/test_temporal_analysis.py
 import pytest
-from veritas.agents.vision.temporal_analysis import TemporalAnalyzer
+from elliot.agents.vision.temporal_analysis import TemporalAnalyzer
 
 def test_temporal_analyzer_memory_check():
     """Temporal analyzer raises error when insufficient memory."""
     # Mock psutil to return low memory
-    with patch('veritas.agents.vision.temporal_analysis.psutil') as mock_psutil:
+    with patch('elliot.agents.vision.temporal_analysis.psutil') as mock_psutil:
         mock_psutil.virtual_memory.return_value.available = 1 * 1024 ** 3  # 1GB
 
         with pytest.raises(MemoryError, match="Insufficient memory"):
@@ -1415,9 +1415,9 @@ def test_ssim_computation(self, t0_screenshot, t_delay_screenshot, test_dir):
 
 **Test: Event emitter throttling**
 ```python
-# veritas/tests/test_vision_event_emitter.py
+# elliot/tests/test_vision_event_emitter.py
 import pytest
-from veritas.agents.vision import VisionEventEmitter
+from elliot.agents.vision import VisionEventEmitter
 
 @pytest.mark.asyncio
 async def test_event_emitter_throttling():
@@ -1448,9 +1448,9 @@ async def test_event_emitter_throttling():
 
 **Test: Full vision pipeline with mock VLM**
 ```python
-# veritas/tests/test_vision_pipeline.py
+# elliot/tests/test_vision_pipeline.py
 import pytest
-from veritas.agents.vision import VisionAgent
+from elliot.agents.vision import VisionAgent
 
 @pytest.mark.asyncio
 async def test_vision_pipeline_5_pass_execution():
@@ -1484,11 +1484,11 @@ async def test_vision_pipeline_5_pass_execution():
 
 **Test: Memory usage during CV operations**
 ```python
-# veritas/tests/test_vision_memory.py
+# elliot/tests/test_vision_memory.py
 import pytest
 import psutil
 import gc
-from veritas.agents.vision.temporal_analysis import TemporalAnalyzer
+from elliot.agents.vision.temporal_analysis import TemporalAnalyzer
 
 def test_cv_memory_does_not_leak():
     """CV operations don't leak memory."""
@@ -1512,9 +1512,9 @@ def test_cv_memory_does_not_leak():
 
 **Test: VLM call count with caching**
 ```python
-# veritas/tests/test_vision_cache.py
+# elliot/tests/test_vision_cache.py
 import pytest
-from veritas.agents.vision import VisionAgent
+from elliot.agents.vision import VisionAgent
 
 @pytest.mark.asyncio
 async def test_vision_caching_reduces_vlm_calls():

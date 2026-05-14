@@ -1,4 +1,4 @@
-# Veritas — Independent Module Testing Progress
+# Elliot — Independent Module Testing Progress
 
 **Started:** 2026-03-11  
 **Target:** avrut.com  

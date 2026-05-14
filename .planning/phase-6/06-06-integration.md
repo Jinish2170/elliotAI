@@ -7,7 +7,7 @@ autonomous: true
 objective: Integrate all components into enhanced VisionAgent with 5-pass pipeline, content type detection, and temporal analysis coordination.
 
 files_modified:
-  - veritas/agents/vision.py
+  - elliot/agents/vision.py
 
 tasks:
   - Create _detect_content_type() method for adaptive SSIM thresholds
@@ -38,7 +38,7 @@ After implementing individual components, we need to orchestrate them:
 
 ### Task 1: Add content type detection
 
-**File:** `veritas/agents/vision.py`
+**File:** `elliot/agents/vision.py`
 
 ```python
 def _detect_content_type(self, url: str, scout_result: ScoutResult = None) -> str:
@@ -72,7 +72,7 @@ def _detect_content_type(self, url: str, scout_result: ScoutResult = None) -> st
 
 ### Task 2: Rewrite VisionAgent.analyze() method
 
-**File:** `veritas/agents/vision.py`
+**File:** `elliot/agents/vision.py`
 
 ```python
 async def analyze(self, screenshots: List[str], scout_result: ScoutResult = None) -> VisionResult:

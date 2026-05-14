@@ -25,10 +25,10 @@ tech-stack:
 
 key-files:
   created:
-    - veritas/agents/vision/__init__.py
-    - veritas/agents/vision/temporal_analysis.py
+    - elliot/agents/vision/__init__.py
+    - elliot/agents/vision/temporal_analysis.py
   modified:
-    - veritas/requirements.txt
+    - elliot/requirements.txt
 
 key-decisions:
   - "Used 640x480 resize for memory efficiency (0.3MP per image)"
@@ -77,8 +77,8 @@ Each task was committed atomically:
 
 ## Files Created/Modified
 
-- `veritas/agents/vision/__init__.py` - Module initialization exports TemporalAnalyzer
-- `veritas/agents/vision/temporal_analysis.py` - Main TemporalAnalyzer class with:
+- `elliot/agents/vision/__init__.py` - Module initialization exports TemporalAnalyzer
+- `elliot/agents/vision/temporal_analysis.py` - Main TemporalAnalyzer class with:
   - `compute_ssim()`: SSIM similarity scoring with memory-safe loading
   - `compute_optical_flow()`: Dense optical flow using Farneback algorithm
   - `detect_changed_regions()`: Bounding box region detection with magnitude scoring
@@ -86,7 +86,7 @@ Each task was committed atomically:
   - `get_threshold_for_site_type()`: SiteType enum to SSIM threshold mapping
   - `_load_and_resize()`: Memory-efficient image loading at 640x480
   - `_compute_cross_correlation()`: Fallback method when scikit-image unavailable
-- `veritas/requirements.txt` - Added scikit-image>=0.21.0, opencv-python>=4.8.0, psutil>=5.9.0
+- `elliot/requirements.txt` - Added scikit-image>=0.21.0, opencv-python>=4.8.0, psutil>=5.9.0
 
 ## Decisions Made
 

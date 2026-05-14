@@ -28,7 +28,7 @@
 - Community-driven threat intelligence
 
 ```python
-# TODO: veritas/osint/sources/alienvault.py
+# TODO: elliot/osint/sources/alienvault.py
 class AlienVaultSource:
     BASE_URL = "https://otx.alienvault.com/api/v1"
     # Implement indicator lookup for malware/signatures
@@ -45,7 +45,7 @@ class AlienVaultSource:
 - Check if IP/domain is listed in spam databases
 
 ```python
-# TODO: veritas/osint/sources/spamhaus.py
+# TODO: elliot/osint/sources/spamhaus.py
 class SpamhausSource:
     # DNSBL queries for DROP, Zen lists
 ```
@@ -61,7 +61,7 @@ class SpamhausSource:
 - Check URLs against Google's reputation database
 
 ```python
-# TODO: veritas/osint/sources/gsafebrowsing.py
+# TODO: elliot/osint/sources/gsafebrowsing.py
 class GoogleSafeBrowsingSource:
     BASE_URL = "https://safebrowsing.googleapis.com/v4/threatMatches:find"
 ```
@@ -81,7 +81,7 @@ class GoogleSafeBrowsingSource:
 - Returns detection count across 70+ engines
 
 ```python
-# TODO: veritas/osint/sources/virustotal.py
+# TODO: elliot/osint/sources/virustotal.py
 class VirusTotalSource:
     BASE_URL = "https://www.virustotal.com/api/v3"
 ```
@@ -97,7 +97,7 @@ class VirusTotalSource:
 - Excellent for SSL certificate chain analysis
 
 ```python
-# TODO: veritas/osint/sources/censys.py
+# TODO: elliot/osint/sources/censys.py
 class CensysSource:
     BASE_URL = "https://search.censys.io/api/v2"
 ```
@@ -117,7 +117,7 @@ class CensysSource:
 - May require API key for domain-specific searches
 
 ```python
-# TODO: veritas/osint/sources/haveibeenpwned.py
+# TODO: elliot/osint/sources/haveibeenpwned.py
 class HaveIBeenPwnedSource:
     BASE_URL = "https://haveibeenpwned.com/api/v3"
 ```
@@ -133,7 +133,7 @@ class HaveIBeenPwnedSource:
 - Check domain email patterns
 
 ```python
-# TODO: veritas/osint/sources/hunter.py
+# TODO: elliot/osint/sources/hunter.py
 class HunterSource:
     BASE_URL = "https://api.hunter.io/v2"
 ```
@@ -153,7 +153,7 @@ class HunterSource:
 - Identify hosting companies, ISPs
 
 ```python
-# TODO: veritas/osint/sources/ipinfo.py
+# TODO: elliot/osint/sources/ipinfo.py
 class IpInfoSource:
     BASE_URL = "https://ipinfo.io"
 ```
@@ -169,7 +169,7 @@ class IpInfoSource:
 - Use sparingly for exposed service detection
 
 ```python
-# TODO: veritas/osint/sources/shodan.py
+# TODO: elliot/osint/sources/shodan.py
 class ShodanSource:
     BASE_URL = "https://api.shodan.io"
 ```
@@ -180,7 +180,7 @@ class ShodanSource:
 
 ### File Structure for Future Sources:
 ```
-veritas/osint/sources/
+elliot/osint/sources/
 ├── __init__.py
 ├── dns_lookup.py          # ✅ DONE (08-01)
 ├── whois_lookup.py        # ✅ DONE (08-01)
@@ -199,11 +199,11 @@ veritas/osint/sources/
 ```
 
 ### Registration in OSINTOrchestrator:
-Update `veritas/osint/orchestrator.py` `_discover_sources()` method to register new sources:
+Update `elliot/osint/orchestrator.py` `_discover_sources()` method to register new sources:
 ```python
 # Pattern for adding new sources
 try:
-    from veritas.osint.sources.{api_name} import {ClassName}
+    from elliot.osint.sources.{api_name} import {ClassName}
     api_key = getattr(settings, "{API_NAME_UPPER}_API_KEY", None)
 
     if api_key or not requires_api_key:

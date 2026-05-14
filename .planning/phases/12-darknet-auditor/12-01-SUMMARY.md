@@ -19,11 +19,11 @@ tech-stack:
 
 key-files:
   created:
-    - veritas/darknet/__init__.py
-    - veritas/darknet/tor_client.py
-    - veritas/tests/unit/test_tor_client.py
+    - elliot/darknet/__init__.py
+    - elliot/darknet/tor_client.py
+    - elliot/tests/unit/test_tor_client.py
   modified:
-    - veritas/requirements.txt
+    - elliot/requirements.txt
 
 key-decisions:
   - "SOCKS5h proxy approach (socks5h://127.0.0.1:9050) for DNS resolution on proxy server to preserve privacy"
@@ -70,18 +70,18 @@ completed: 2026-03-01
 Each task was committed atomically:
 
 1. **Task: TOR client wrapper** - `15cce96` (feat)
-   - Created veritas/darknet/__init__.py with package exports
-   - Created veritas/darknet/tor_client.py with TORClient class
+   - Created elliot/darknet/__init__.py with package exports
+   - Created elliot/darknet/tor_client.py with TORClient class
    - Implements async context manager (__aenter__, __aexit__)
    - get() method routes through SOCKS5h proxy
    - check_connection() verifies TOR connectivity
 
 2. **Task: Add PySocks dependency** - `875e24e` (feat)
-   - Added PySocks>=1.7.1 to veritas/requirements.txt
+   - Added PySocks>=1.7.1 to elliot/requirements.txt
    - Enables aiohttp to use SOCKS5h proxy for .onion routing
 
 3. **Task: Unit tests** - `f679cd2` (test)
-   - Created veritas/tests/unit/test_tor_client.py
+   - Created elliot/tests/unit/test_tor_client.py
    - Test classes: Context manager, health check, GET request, configuration
    - All 16 tests pass with pytest-asyncio
    - Tests mock aiohttp for isolated testing
@@ -96,21 +96,21 @@ Each task was committed atomically:
 
 ### Created Files
 
-- `veritas/darknet/__init__.py` - Package entry point exporting TORClient
-- `veritas/darknet/tor_client.py` - TORClient class with 152 lines
+- `elliot/darknet/__init__.py` - Package entry point exporting TORClient
+- `elliot/darknet/tor_client.py` - TORClient class with 152 lines
   - Async context manager pattern using aiohttp.ClientSession
   - SOCKS5h proxy configuration (default: socks5h://127.0.0.1:9050)
   - get() method returning {status, text, headers, error} dict
   - check_connection() for TOR health verification
   - Connection pooling (limit=10, limit_per_host=5)
-- `veritas/tests/unit/test_tor_client.py` - Unit test suite with 204 lines
+- `elliot/tests/unit/test_tor_client.py` - Unit test suite with 204 lines
   - 4 test classes with 16 total tests
   - Tests for context manager, health check, request routing, configuration
   - All use pytest-asyncio and mock aiohttp
 
 ### Modified Files
 
-- `veritas/requirements.txt` - Added PySocks>=1.7.1 for SOCKS5h support
+- `elliot/requirements.txt` - Added PySocks>=1.7.1 for SOCKS5h support
 
 ## Decisions Made
 
@@ -155,13 +155,13 @@ To use TOR client functionality, the following prerequisites must be set up:
 
 5. **Install PySocks dependency**:
    ```bash
-   pip install -r veritas/requirements.txt
+   pip install -r elliot/requirements.txt
    ```
 
 **Verification command**:
 ```python
 import asyncio
-from veritas.darknet import TORClient
+from elliot.darknet import TORClient
 
 async def main():
     async with TORClient() as tor:

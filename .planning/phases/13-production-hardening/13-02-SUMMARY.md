@@ -5,7 +5,7 @@ Added behavioral budgets (vision_passes, graph_timeout_s, enable_tavily, etc.) t
 
 ## What was changed
 
-### Task 1: AUDIT_TIERS in `veritas/config/settings.py`
+### Task 1: AUDIT_TIERS in `elliot/config/settings.py`
 Added to all tiers:
 - `max_verifications`: 0/10/15/20 per tier
 - `enable_tavily`: False for quick_scan, True for others
@@ -15,14 +15,14 @@ Added to all tiers:
 - `target_duration_s`: 30/120/300/600 per tier
 - `enable_osint_deep` and `enable_tor`/`enable_darknet` for deep/darknet tiers
 
-### Task 2: Tier-aware nodes in `veritas/core/orchestrator.py`
+### Task 2: Tier-aware nodes in `elliot/core/orchestrator.py`
 - `vision_node()`: replaced `{"quick_scan": 1, "standard_audit": 3}.get(audit_tier, 5)` with `tier_config.get("vision_passes", 3)`
 - `graph_node()`: replaced hardcoded `GRAPH_PHASE_TIMEOUT_S` with `tier_config.get("graph_timeout_s", 90)`
 - `graph_node()`: added quick_scan branch that passes empty text/links to skip Tavily
 
 ## Files Modified
-- `veritas/config/settings.py`
-- `veritas/core/orchestrator.py`
+- `elliot/config/settings.py`
+- `elliot/core/orchestrator.py`
 
 ## Commit
 `36eb65c` - feat(13-02): add tier budgets to AUDIT_TIERS and make nodes tier-aware

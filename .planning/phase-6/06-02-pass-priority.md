@@ -7,7 +7,7 @@ autonomous: true
 objective: Implement pass priority logic to skip unnecessary VLM passes based on findings and cost/benefit analysis.
 
 files_modified:
-  - veritas/agents/vision.py
+  - elliot/agents/vision.py
 
 tasks:
   - Define VisionPassPriority enum (CRITICAL, CONDITIONAL, EXPENSIVE)
@@ -33,7 +33,7 @@ Not all 5 passes need to run on every page. Pass priority logic enables conditio
 
 ### Task 1: Define pass priority enum
 
-**File:** `veritas/agents/vision.py`
+**File:** `elliot/agents/vision.py`
 
 ```python
 class VisionPassPriority(enum.Enum):
@@ -44,7 +44,7 @@ class VisionPassPriority(enum.Enum):
 
 ### Task 2: Implement pass skipping logic
 
-**File:** `veritas/agents/vision.py`
+**File:** `elliot/agents/vision.py`
 
 ```python
 def should_run_pass(pass_num: int, prior_findings: List[Finding], has_temporal_changes: bool) -> bool:

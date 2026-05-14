@@ -19,9 +19,9 @@ tech_stack:
   patterns: ["integration test pattern", "migration verification"]
 key_files:
   created:
-    - path: "veritas/tests/test_security_integration.py"
+    - path: "elliot/tests/test_security_integration.py"
       description: "12 integration tests with real modules"
-    - path: "veritas/tests/test_migration_path.py"
+    - path: "elliot/tests/test_migration_path.py"
       description: "20 tests for feature flag routing and migration"
 decisions:
   - key: integration-markers
@@ -53,8 +53,8 @@ Integration tests for real security module execution and migration path verifica
 
 | Task | Commit | Files | Description |
 |------|--------|-------|-------------|
-| Create test_security_integration.py | b2afc58 | veritas/tests/test_security_integration.py | 17 tests for real module integration |
-| Create test_migration_path.py | 4c27ade | veritas/tests/test_migration_path.py | 32 tests for migration path verification |
+| Create test_security_integration.py | b2afc58 | elliot/tests/test_security_integration.py | 17 tests for real module integration |
+| Create test_migration_path.py | 4c27ade | elliot/tests/test_migration_path.py | 32 tests for migration path verification |
 
 ## Test Coverage Summary
 
@@ -158,8 +158,8 @@ Integration tests for real security module execution and migration path verifica
 ## Files Created
 
 ### Created
-- `veritas/tests/test_security_integration.py` (334 lines)
-- `veritas/tests/test_migration_path.py` (420 lines)
+- `elliot/tests/test_security_integration.py` (334 lines)
+- `elliot/tests/test_migration_path.py` (420 lines)
 
 ## Commits
 
@@ -169,7 +169,7 @@ Integration tests for real security module execution and migration path verifica
 ## Test Execution Results
 
 ```
-cd veritas && python -m pytest tests/test_security_integration.py tests/test_migration_path.py -v
+cd elliot && python -m pytest tests/test_security_integration.py tests/test_migration_path.py -v
 ============================== 49 passed in 24.58s ==============================
 ```
 

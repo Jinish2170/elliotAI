@@ -1,7 +1,7 @@
-# VERITAS UI ARCHITECTURE: The "Expert Terminal"
+# ELLIOT UI ARCHITECTURE: The "Expert Terminal"
 
 ## 1. VISION & PSYCHOLOGICAL NARRATIVE
-The Veritas Terminal is designed for the **Expert Operator**. It abandons consumer-grade "whitespace-heavy" design in favor of a high-density, mission-critical interface inspired by Bloomberg Terminals, Aegis combat systems, and aerospace HUDs. 
+The Elliot Terminal is designed for the **Expert Operator**. It abandons consumer-grade "whitespace-heavy" design in favor of a high-density, mission-critical interface inspired by Bloomberg Terminals, Aegis combat systems, and aerospace HUDs. 
 
 ### Psychological Principles Leveraged:
 - **Gestalt Proximity & Enclosure:** Data grouped in strict, 1px bordered boxes creates subconscious associations, lowering cognitive processing time.

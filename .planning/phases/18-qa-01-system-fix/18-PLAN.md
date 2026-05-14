@@ -2,7 +2,7 @@
 
 ## Objective
 
-Fix all critical issues in VERITAS system: backend processes, results accuracy, sequence ordering, and frontend UX.
+Fix all critical issues in ELLIOT system: backend processes, results accuracy, sequence ordering, and frontend UX.
 
 ## Status: COMPLETED ✓
 
@@ -24,7 +24,7 @@ Fix all critical issues in VERITAS system: backend processes, results accuracy, 
 
 ## Files Modified
 
-- `veritas/core/progress/emitter.py` - sequence field
+- `elliot/core/progress/emitter.py` - sequence field
 - `backend/services/audit_runner.py` - sequence counter wrapper
 - `frontend/src/components/terminal/VerdictPanel.tsx` - field fallback + NaN protection
 - `frontend/src/components/terminal/KnowledgeGraph.tsx` - TS fix

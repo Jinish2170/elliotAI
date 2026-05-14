@@ -8,7 +8,7 @@
 
 ## Planning Context
 
-Phase 8 requires implementing OSINT (Open-Source Intelligence) and CTI (Cyber Threat Intelligence) integration into VERITAS to provide multi-source threat verification and entity profiling capabilities.
+Phase 8 requires implementing OSINT (Open-Source Intelligence) and CTI (Cyber Threat Intelligence) integration into ELLIOT to provide multi-source threat verification and entity profiling capabilities.
 
 **Inputs:**
 - 08-CONTEXT.md: Context with locked decisions (API tiering, orchestrator design, TTLs, darknet deferred)

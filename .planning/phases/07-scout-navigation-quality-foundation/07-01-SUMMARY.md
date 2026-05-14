@@ -22,14 +22,14 @@ tech_stack:
     - "Screenshot capture at scroll intervals"
 key_files:
   created:
-    - veritas/agents/scout_nav/lazy_load_detector.py
-    - veritas/agents/scout_nav/scroll_orchestrator.py
-    - veritas/agents/scout_nav/__init__.py
+    - elliot/agents/scout_nav/lazy_load_detector.py
+    - elliot/agents/scout_nav/scroll_orchestrator.py
+    - elliot/agents/scout_nav/__init__.py
     - tests/test_scroll_orchestrator.py
     - tests/__init__.py
   modified:
-    - veritas/core/types.py
-    - veritas/agents/scout.py
+    - elliot/core/types.py
+    - elliot/agents/scout.py
 decisions:
   - "07-01 Scrolled Screenshot Naming (2026-02-26): Used cycle-based naming {audit_id}_scroll_{cycle:02d}.jpg"
   - "07-01 Scroll Termination Logic (2026-02-26): Stop when 2 consecutive cycles have no new content OR max 15 cycles"
@@ -111,14 +111,14 @@ Maintains backward compatibility - existing investigate() calls work unchanged.
 
 ### 5. Module Naming Resolution (Deviations)
 
-Issue: Created `veritas/agents/scout/` directory conflicting with existing `veritas/agents/scout.py` file.
+Issue: Created `elliot/agents/scout/` directory conflicting with existing `elliot/agents/scout.py` file.
 
-Fix: Renamed to `veritas/agents/scout_nav/` to avoid module name shadowing.
+Fix: Renamed to `elliot/agents/scout_nav/` to avoid module name shadowing.
 
 Files updated:
-- veritas/agents/scout_nav/lazy_load_detector.py
-- veritas/agents/scout_nav/scroll_orchestrator.py
-- veritas/agents/scout.py (imports updated)
+- elliot/agents/scout_nav/lazy_load_detector.py
+- elliot/agents/scout_nav/scroll_orchestrator.py
+- elliot/agents/scout.py (imports updated)
 
 ## Deviations from Plan
 
@@ -133,9 +133,9 @@ Files updated:
 
 **2. [Rule 1 - Bug] Module name conflict with scout/ directory**
 - **Found during:** Task 3 (verification)
-- **Issue:** Created `veritas/agents/scout/` directory which shadowed existing `veritas/agents/scout.py` file, causing `ScoutResult` import to fail
-- **Fix:** Renamed directory to `veritas/agents/scout_nav/` to avoid module name conflict
-- **Files modified:** veritas/agents/scout.py (import paths updated), veritas/agents/scout_nav/* (directory renamed)
+- **Issue:** Created `elliot/agents/scout/` directory which shadowed existing `elliot/agents/scout.py` file, causing `ScoutResult` import to fail
+- **Fix:** Renamed directory to `elliot/agents/scout_nav/` to avoid module name conflict
+- **Files modified:** elliot/agents/scout.py (import paths updated), elliot/agents/scout_nav/* (directory renamed)
 - **Commit:** b8e0e99
 
 **3. [Rule 1 - Bug] Mock matching issue in test_scrolling_with_lazy_loaded_content**
@@ -183,9 +183,9 @@ All tests pass with meaningful coverage:
 
 ### Files Created Verification
 ```bash
-[ -f "veritas/agents/scout_nav/lazy_load_detector.py" ] && echo "FOUND: lazy_load_detector.py" || echo "MISSING: lazy_load_detector.py"
-[ -f "veritas/agents/scout_nav/scroll_orchestrator.py" ] && echo "FOUND: scroll_orchestrator.py" || echo "MISSING: scroll_orchestrator.py"
-[ -f "veritas/agents/scout_nav/__init__.py" ] && echo "FOUND: scout_nav/__init__.py" || echo "MISSING: scout_nav/__init__.py"
+[ -f "elliot/agents/scout_nav/lazy_load_detector.py" ] && echo "FOUND: lazy_load_detector.py" || echo "MISSING: lazy_load_detector.py"
+[ -f "elliot/agents/scout_nav/scroll_orchestrator.py" ] && echo "FOUND: scroll_orchestrator.py" || echo "MISSING: scroll_orchestrator.py"
+[ -f "elliot/agents/scout_nav/__init__.py" ] && echo "FOUND: scout_nav/__init__.py" || echo "MISSING: scout_nav/__init__.py"
 [ -f "tests/test_scroll_orchestrator.py" ] && echo "FOUND: test_scroll_orchestrator.py" || echo "MISSING: test_scroll_orchestrator.py"
 [ -f "tests/__init__.py" ] && echo "FOUND: tests/__init__.py" || echo "MISSING: tests/__init__.py"
 ```

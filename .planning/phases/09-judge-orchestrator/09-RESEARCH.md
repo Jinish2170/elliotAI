@@ -8,7 +8,7 @@
 
 ## Summary
 
-Phase 9 implements a dual-tier verdict system with technical (CWE/CVSS/IOCs) and non-technical (plain English recommendations) tiers, 11 site-type-specific scoring strategies using the strategy pattern, adaptive orchestrator timeout management based on page complexity, real-time progress streaming with throttling, graceful degradation patterns for agent failures, and estimated completion time calculation for countdown timers. This transformation upgrades VERITAS from a single-tier audit system to a professional-grade forensic platform suitable for both security professionals and general users.
+Phase 9 implements a dual-tier verdict system with technical (CWE/CVSS/IOCs) and non-technical (plain English recommendations) tiers, 11 site-type-specific scoring strategies using the strategy pattern, adaptive orchestrator timeout management based on page complexity, real-time progress streaming with throttling, graceful degradation patterns for agent failures, and estimated completion time calculation for countdown timers. This transformation upgrades ELLIOT from a single-tier audit system to a professional-grade forensic platform suitable for both security professionals and general users.
 
 **Primary recommendations:**
 1. Use Strategy Pattern with abstract base class for 11 site-type scoring strategies
@@ -78,7 +78,7 @@ pip install fastapi uvicorn pillow
 ### Recommended Project Structure
 
 ```
-veritas/agents/
+elliot/agents/
 ├── judge/
 │   ├── __init__.py                              # NEW: Judge module package
 │   ├── judge_agent.py                           # REFACTOR: Dual-tier generation
@@ -102,7 +102,7 @@ veritas/agents/
 │       ├── gaming.py                            # Gaming strategy
 │       └── risk_scoring.py                      # Risk scoring utility
 
-veritas/core/
+elliot/core/
 ├── orchestrator.py                               # REFACTOR: Adaptive timeout, graceful degradation
 ├── timeout_manager.py                           # NEW: Adaptive timeout based on complexity
 ├── fallback_manager.py                          # NEW: Fallback strategies
@@ -115,7 +115,7 @@ veritas/core/
 │   └── estimator.py                            # Completion time estimator
 └── degradation.py                                # NEW: Graceful degradation patterns
 
-veritas/cwe/                                      # NEW: CWE/CVSS integration
+elliot/cwe/                                      # NEW: CWE/CVSS integration
 ├── __init__.py
 ├── registry.py                                  # CWE category mapping to findings
 ├── cvss_calculator.py                           # CVSS v4.0 score calculation
@@ -338,7 +338,7 @@ class DualVerdict:
     technical: VerdictTechnical
     non_technical: VerdictNonTechnical
     site_type: str = ""
-    auditor_version: str = "veritas-v2.0"
+    auditor_version: str = "elliot-v2.0"
     timestamp: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
     def __post_init__(self):
@@ -385,7 +385,7 @@ class DualVerdict:
 ### CWE Category Mapping to Findings
 
 ```python
-# veritas/cwe/registry.py
+# elliot/cwe/registry.py
 
 from typing import Optional
 from enum import Enum
@@ -515,7 +515,7 @@ def map_finding_to_cwe(
     severity: SeverityLevel
 ) -> Optional[CWEEntry]:
     """
-    Map a VERITAS finding to a relevant CWE entry.
+    Map a ELLIOT finding to a relevant CWE entry.
 
     Args:
         finding_category: Finding category (e.g., "xss", "phishing", "injection")
@@ -556,7 +556,7 @@ def map_finding_to_cwe(
 ### Code Pattern
 
 ```python
-# veritas/agents/judge/strategies/base.py
+# elliot/agents/judge/strategies/base.py
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
@@ -721,7 +721,7 @@ class ScoringStrategy(ABC):
 ### Example Strategy Implementations
 
 ```python
-# veritas/agents/judge/strategies/ecommerce.py
+# elliot/agents/judge/strategies/ecommerce.py
 
 from .base import ScoringStrategy, ScoringAdjustment, ScoringContext, ExtendedSiteType
 
@@ -844,7 +844,7 @@ class EcommerceScoringStrategy(ScoringStrategy):
         return modifications
 
 
-# veritas/agents/judge/strategies/financial.py
+# elliot/agents/judge/strategies/financial.py
 
 class FinancialScoringStrategy(ScoringStrategy):
     """
@@ -960,7 +960,7 @@ class FinancialScoringStrategy(ScoringStrategy):
         return modifications
 
 
-# veritas/agents/judge/strategies/saas_subscription.py
+# elliot/agents/judge/strategies/saas_subscription.py
 
 class SaaSSubscriptionScoringStrategy(ScoringStrategy):
     """
@@ -1059,7 +1059,7 @@ class SaaSSubscriptionScoringStrategy(ScoringStrategy):
         return modifications
 
 
-# veritas/agents/judge/strategies/__init__.py
+# elliot/agents/judge/strategies/__init__.py
 
 from .base import ScoringStrategy, ScoringContext, ScoringAdjustment, ExtendedSiteType
 from .ecommerce import EcommerceScoringStrategy
@@ -1130,7 +1130,7 @@ def get_all_strategies() -> dict[ExtendedSiteType, ScoringStrategy]:
 ### Code Pattern
 
 ```python
-# veritas/core/timeout_manager.py
+# elliot/core/timeout_manager.py
 
 from dataclasses import dataclass, field
 from enum import Enum
@@ -1454,7 +1454,7 @@ class TimeoutManager:
 ### Code Pattern
 
 ```python
-# veritas/core/circuit_breaker.py
+# elliot/core/circuit_breaker.py
 
 from dataclasses import dataclass, field
 from enum import Enum
@@ -1462,7 +1462,7 @@ import time
 from typing import Optional, Callable, Any
 import logging
 
-logger = logging.getLogger("veritas.circuit_breaker")
+logger = logging.getLogger("elliot.circuit_breaker")
 
 class CircuitState(str, Enum):
     """Circuit breaker states."""
@@ -1634,14 +1634,14 @@ class CircuitBreaker:
         logger.info(f"Circuit breaker [{self._name}] manually reset to CLOSED")
 
 
-# veritas/core/degradation.py
+# elliot/core/degradation.py
 
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Optional
 import logging
 
-logger = logging.getLogger("veritas.degradation")
+logger = logging.getLogger("elliot.degradation")
 
 class FallbackMode(str, Enum):
     """Fallback modes for agent failures."""
@@ -1842,7 +1842,7 @@ class FallbackManager:
 ### Code Pattern
 
 ```python
-# veritas/core/progress/rate_limiter.py
+# elliot/core/progress/rate_limiter.py
 
 import time
 from dataclasses import dataclass
@@ -1850,7 +1850,7 @@ from collections import deque
 import asyncio
 import logging
 
-logger = logging.getLogger("veritas.progress.rate_limiter")
+logger = logging.getLogger("elliot.progress.rate_limiter")
 
 @dataclass
 class RateLimiterConfig:
@@ -1988,12 +1988,12 @@ class TokenBucketRateLimiter:
         }
 
 
-# veritas/core/progress/emitter.py
+# elliot/core/progress/emitter.py
 
 import logging
 from .rate_limiter import TokenBucketRateLimiter, RateLimiterConfig
 
-logger = logging.getLogger("veritas.progress.emitter")
+logger = logging.getLogger("elliot.progress.emitter")
 
 class EventPriority:
     """Event priority levels."""
@@ -2271,7 +2271,7 @@ class ProgressEmitter:
 ### Code Pattern
 
 ```python
-# veritas/core/progress/estimator.py
+# elliot/core/progress/estimator.py
 
 import time
 from dataclasses import dataclass, field
@@ -2279,7 +2279,7 @@ from collections import deque
 from enum import Enum
 import logging
 
-logger = logging.getLogger("veritas.progress.estimator")
+logger = logging.getLogger("elliot.progress.estimator")
 
 class AgentStatus(str, Enum):
     """Agent execution status."""
@@ -2734,7 +2734,7 @@ class CompletionTimeEstimator:
 
 1. **CVSS v4.0 Integration Scope**
    - What we know: Full CVSS v4.0 calculation requires 8 base metrics with complex formula
-   - What's unclear: Should VERITAS implement full CVSS v4.0 or simplified approximation?
+   - What's unclear: Should ELLIOT implement full CVSS v4.0 or simplified approximation?
    - Recommendation: Start with simplified approximation for Phase 9, plan full CVSS v4.0 for Phase 10 (Security Deep Dive) when 25+ enterprise modules are added
 
 2. **CWE Registry Completeness**

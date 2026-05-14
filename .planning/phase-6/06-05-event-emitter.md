@@ -7,7 +7,7 @@ autonomous: true
 objective: Implement VisionEventEmitter with throttling and batching to prevent WebSocket flooding during 5-pass analysis.
 
 files_modified:
-  - veritas/agents/vision.py
+  - elliot/agents/vision.py
   - frontend/src/lib/types.ts
   - frontend/src/lib/store.ts
 
@@ -37,7 +37,7 @@ gap_closure: false
 
 ### Task 1: Create VisionEventEmitter class
 
-**File:** `veritas/agents/vision.py`
+**File:** `elliot/agents/vision.py`
 
 ```python
 class VisionEventEmitter:

@@ -24,28 +24,28 @@
 ## Data Storage
 
 ### SQLite Database
-- **Type:** Local relational database (veritas_audits.db)
-- **Connection:** `veritas.db` module with async SQLAlchemy
+- **Type:** Local relational database (elliot_audits.db)
+- **Connection:** `elliot.db` module with async SQLAlchemy
 - **Mode:** WAL (Write-Ahead Logging) enabled
 - **ORM:** SQLAlchemy 2.x (async)
-- **Path:** `backend/data/veritas_audits.db`
+- **Path:** `backend/data/elliot_audits.db`
 - **Models:** Audit, AuditFinding, AuditScreenshot, AuditEvent
 
 ### Vector Database
 - **Product:** LanceDB 0.4.0+
 - **Purpose:** Disk-based vector store for embeddings (NOT in-memory)
-- **Path:** `veritas/data/vectordb/`
+- **Path:** `elliot/data/vectordb/`
 - **Embedding Model:** all-MiniLM-L6-v2 (~90MB local model)
 
 ### File Storage
-- **Screenshots:** `veritas/data/evidence/`
-- **Reports:** `veritas/data/reports/`
-- **Cache:** `veritas/data/cache/`
+- **Screenshots:** `elliot/data/evidence/`
+- **Reports:** `elliot/data/reports/`
+- **Cache:** `elliot/data/cache/`
 - **Implementation:** Custom ScreenshotStorage class
 
 ### Caching
 - **Type:** Local disk cache
-- **Location:** `veritas/data/cache/`
+- **Location:** `elliot/data/cache/`
 - **Purpose:** OSINT responses, domain analysis results
 
 ## Security & Threat Intelligence APIs
@@ -88,7 +88,7 @@
 
 **Auth Provider:** Custom/Future
 - Current: No authentication on API endpoints (CORS enabled for all origins)
-- Plan: Veritas authentication system (future)
+- Plan: Elliot authentication system (future)
 - Implementation: CORS middleware allows all origins (`allow_origins=["*"]`)
 
 ## WebSocket & Real-Time Communication
@@ -108,7 +108,7 @@
 ## Monitoring & Observability
 
 **Error Tracking:** Not currently integrated
-- Backend logs: Python logging (veritas config modules)
+- Backend logs: Python logging (elliot config modules)
 - Frontend logs: console.* - No external error tracking service
 
 **Logs:**
@@ -125,12 +125,12 @@
 
 **CI Pipeline:**
 - Not currently configured
-- Tests: pytest framework in `veritas/tests/` directory
+- Tests: pytest framework in `elliot/tests/` directory
 - Frontend: ESLint for code quality
 
 ## Environment Configuration
 
-### Required ENV Keys (Backend/Veritas)
+### Required ENV Keys (Backend/Elliot)
 - `NVIDIA_NIM_API_KEY` - AI inference (NVIDIA NIM credits)
 - `TAVILY_API_KEY` - External search
 - `URLVOID_API_KEY` - Domain reputation
@@ -143,8 +143,8 @@
 - `NEXT_PUBLIC_WS_URL` - Frontend WebSocket endpoint
 
 ### Configuration Hierarchy
-1. Environment variables from `.env` (veritas/)
-2. Defaults in `veritas/config/settings.py`
+1. Environment variables from `.env` (elliot/)
+2. Defaults in `elliot/config/settings.py`
 3. Runtime overrides in audit tiers
 
 ## Webhooks & Callbacks
@@ -159,13 +159,13 @@
 ## Inter-Process Communication
 
 **Architecture:**
-- Backend (FastAPI) → Veritas agents (Python) via direct imports
+- Backend (FastAPI) → Elliot agents (Python) via direct imports
 - Frontend (React) ↔ Backend via REST + WebSocket
-- Agent orchestration: LangGraph state machine from `veritas/core/orchestrator.py`
+- Agent orchestration: LangGraph state machine from `elliot/core/orchestrator.py`
 
 **Key Files:**
 - `backend/services/audit_runner.py` - Audit lifecycle management
-- `veritas/core/orchestrator.py` - LangGraph workflow
+- `elliot/core/orchestrator.py` - LangGraph workflow
 - `backend/routes/audit.py` - REST + WebSocket endpoints
 
 ---

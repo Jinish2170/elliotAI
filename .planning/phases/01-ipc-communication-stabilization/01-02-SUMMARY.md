@@ -8,7 +8,7 @@
 
 ## What Was Done
 
-### 1. Modified `veritas/__main__.py`
+### 1. Modified `elliot/__main__.py`
 
 #### Added CLI Arguments
 Added three new CLI flags **before** existing arguments (highest priority order):
@@ -35,22 +35,22 @@ The `determine_ipc_mode()` function implements the priority hierarchy:
 ### CLI Flag Override Examples
 ```bash
 # Force Queue mode (highest priority)
-python -m veritas https://example.com --use-queue-ipc
+python -m elliot https://example.com --use-queue-ipc
 
 # Force stdout mode
-python -m veritas https://example.com --use-stdout
+python -m elliot https://example.com --use-stdout
 
 # Validate both modes
-python -m veritas https://example.com --validate-ipc
+python -m elliot https://example.com --validate-ipc
 ```
 
 ### Environment Variable Examples
 ```bash
 # Use Queue mode from environment
-QUEUE_IPC_MODE=queue python -m veritas https://example.com
+QUEUE_IPC_MODE=queue python -m elliot https://example.com
 
 # Use stdout mode from environment
-QUEUE_IPC_MODE=stdout python -m veritas https://example.com
+QUEUE_IPC_MODE=stdout python -m elliot https://example.com
 ```
 
 ### Default Rollout Behavior
@@ -84,10 +84,10 @@ When no flags or env vars are specified:
 
 ## Artifacts Modified
 
-1. `veritas/__main__.py` - Added CLI flags and IPC mode determination
+1. `elliot/__main__.py` - Added CLI flags and IPC mode determination
 
 ---
 
 ## Next Steps
 
-Proceed to **Plan 03**: Modify VeritasOrchestrator to support dual-mode emission via Queue or stdout
+Proceed to **Plan 03**: Modify ElliotOrchestrator to support dual-mode emission via Queue or stdout

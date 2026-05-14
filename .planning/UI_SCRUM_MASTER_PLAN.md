@@ -1,4 +1,4 @@
-# SCRUM MASTER TACTICAL PLAN: VERITAS UI IMPLEMENTATION
+# SCRUM MASTER TACTICAL PLAN: ELLIOT UI IMPLEMENTATION
 
 ## 0. EXECUTIVE SUMMARY & CRITICAL GAP ANALYSIS
 Before executing the `UI_ARCHITECTURE.md` blueprint, we must identify and preemptively resolve structural conflicts between React's rendering engine, high-frequency WebSockets, and our rigid UI constraints.
@@ -7,8 +7,8 @@ Before executing the `UI_ARCHITECTURE.md` blueprint, we must identify and preemp
 | Identified Conflict | Why it will fail if ignored | The Engineered Mitigation |
 | :--- | :--- | :--- |
 | **DOM Thrashing (Render Collapse)** | WebSockets firing 50+ events/sec will trigger React re-renders across the entire app, locking the main thread and freezing the UI. | **Selective Zustand Slices (`useStore(s => s.slice, shallow)`)** + **Data Virtualization (`react-window`)**. Components ONLY subscribe to their specific data shards. |
-| **CSS Specificity Wars** | Existing Tailwind/UI libraries usually force `border-radius`, generic sans-serif fonts, and consumer padding. | Establish a global `.veritas-terminal` CSS wrapper that aggressively resets `border-radius: 0px !important`, enforces `box-sizing`, and locks the physical layout using `CSS Grid` (no flex wrapping). |
-| **Mobile / Responsive Collapse** | A Bloomberg terminal physically cannot exist on an iPhone screen. Flexbox wrapping will destroy the Gestalt grouping psychology. | **Hard Viewport Locks.** We declare `min-width: 1280px`. If viewed on mobile, display an intercept overlay: *"VERITAS requires an operator terminal. Screen too small."* |
+| **CSS Specificity Wars** | Existing Tailwind/UI libraries usually force `border-radius`, generic sans-serif fonts, and consumer padding. | Establish a global `.elliot-terminal` CSS wrapper that aggressively resets `border-radius: 0px !important`, enforces `box-sizing`, and locks the physical layout using `CSS Grid` (no flex wrapping). |
+| **Mobile / Responsive Collapse** | A Bloomberg terminal physically cannot exist on an iPhone screen. Flexbox wrapping will destroy the Gestalt grouping psychology. | **Hard Viewport Locks.** We declare `min-width: 1280px`. If viewed on mobile, display an intercept overlay: *"ELLIOT requires an operator terminal. Screen too small."* |
 | **Ghost Data Cascades** | `store.ts` arrays starting empty (`[]`) will cause `undefined` mapping errors if rendered before the backend populates them. | **Strict Nil-Tiers.** `?` optional chaining everywhere + `<GhostPanel>` skeleton components that statically render `[ AWAITING STREAM... ]` before data arrival. |
 
 ---

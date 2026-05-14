@@ -1,15 +1,15 @@
 # Phase 13 Plan 07: Integration Tests Summary
 
 ## One-liner
-Created veritas/tests/integration/ package with tier workflow configuration tests and data flow verification tests covering all 4 audit tiers and the Scout-to-Security data pipeline.
+Created elliot/tests/integration/ package with tier workflow configuration tests and data flow verification tests covering all 4 audit tiers and the Scout-to-Security data pipeline.
 
 ## What was changed
 
 ### New files created
-- `veritas/tests/integration/__init__.py`: empty package init
-- `veritas/tests/integration/conftest.py`: fixtures for `base_audit_state` and `mock_scout_result_dict`
-- `veritas/tests/integration/test_tier_workflows.py`: 7 tests verifying AUDIT_TIERS behavioral budgets
-- `veritas/tests/integration/test_data_flow.py`: 4 tests verifying Scout data flows correctly
+- `elliot/tests/integration/__init__.py`: empty package init
+- `elliot/tests/integration/conftest.py`: fixtures for `base_audit_state` and `mock_scout_result_dict`
+- `elliot/tests/integration/test_tier_workflows.py`: 7 tests verifying AUDIT_TIERS behavioral budgets
+- `elliot/tests/integration/test_data_flow.py`: 4 tests verifying Scout data flows correctly
 
 ### Test coverage
 **test_tier_workflows.py:**
@@ -27,10 +27,10 @@ Created veritas/tests/integration/ package with tier workflow configuration test
 - All required Scout output fields present in result dict
 
 ## Files Created
-- `veritas/tests/integration/__init__.py`
-- `veritas/tests/integration/conftest.py`
-- `veritas/tests/integration/test_tier_workflows.py`
-- `veritas/tests/integration/test_data_flow.py`
+- `elliot/tests/integration/__init__.py`
+- `elliot/tests/integration/conftest.py`
+- `elliot/tests/integration/test_tier_workflows.py`
+- `elliot/tests/integration/test_data_flow.py`
 
 ## Commit
 `7d2f2b2` - feat(13-07): add integration tests for tier workflows and data flow

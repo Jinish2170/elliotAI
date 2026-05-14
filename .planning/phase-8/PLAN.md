@@ -12,7 +12,7 @@
 
 ### Current State (Pre-Phase)
 
-**Graph Investigator (`veritas/agents/graph_investigator.py`):**
+**Graph Investigator (`elliot/agents/graph_investigator.py`):**
 - Basic WHOIS, DNS, SSL certificate verification
 - Tavily search for entity verification
 - Simple domain intel gathering
@@ -100,7 +100,7 @@ Audit URL → Query 15 sources → Most throttle → Partial results → Unrelia
 
 **A. Tiered Source Strategy (Run in Parallel Groups)**
 ```python
-# veritas/agents/graph_investigator/osint_sources.py (new file)
+# elliot/agents/graph_investigator/osint_sources.py (new file)
 from enum import Enum
 from dataclasses import dataclass
 
@@ -179,7 +179,7 @@ SOURCE_GROUPS = {
 
 **B. Circuit Breaker Pattern for API Calls**
 ```python
-# veritas/core/osint_client.py (new file)
+# elliot/core/osint_client.py (new file)
 from dataclasses import dataclass
 from typing import Dict, Optional
 import asyncio
@@ -525,7 +525,7 @@ class OSINTClient:
 
 **C. Offline Database Fallback for Strict Sources**
 ```python
-# veritas/agents/graph_investigator/offline_feeds.py (new file)
+# elliot/agents/graph_investigator/offline_feeds.py (new file)
 import json
 import logging
 from pathlib import Path
@@ -675,7 +675,7 @@ class OfflineThreatFeed:
 
 **Implementation:**
 ```python
-# veritas/agents/graph_investigator/darknet_intel.py (new file)
+# elliot/agents/graph_investigator/darknet_intel.py (new file)
 import logging
 from typing import List, Dict, Set
 from dataclasses import dataclass
@@ -838,7 +838,7 @@ class DarknetThreatFeed:
 
 **Implementation:**
 ```python
-# veritas/agents/graph_investigator/conflict_resolver.py (new file)
+# elliot/agents/graph_investigator/conflict_resolver.py (new file)
 from dataclasses import dataclass
 from typing import Dict, List, Tuple
 from enum import Enum
@@ -1041,12 +1041,12 @@ class ConflictResolver:
 ### 8.1 Implement OSINTClient with Rate Limiting
 
 **Files:**
-- `veritas/core/osint_client.py` (new file)
-- `veritas/config/settings.py` (add API key settings)
+- `elliot/core/osint_client.py` (new file)
+- `elliot/config/settings.py` (add API key settings)
 
 **Tasks:**
 ```python
-# veritas/core/osint/client.py (new file)
+# elliot/core/osint/client.py (new file)
 """OSINT client with rate limiting, caching, and circuit breakers."""
 
 import asyncio
@@ -1192,11 +1192,11 @@ class OSINTClient:
 ### 8.2 Implement OfflineThreatFeed
 
 **File:**
-- `veritas/core/osint/offline_feeds.py` (new file)
+- `elliot/core/osint/offline_feeds.py` (new file)
 
 **Tasks:**
 ```python
-# veritas/core/osint/offline_feeds.py (new file)
+# elliot/core/osint/offline_feeds.py (new file)
 """Offline threat intelligence databases for rate-limited OSINT sources."""
 
 import csv
@@ -1293,11 +1293,11 @@ class OfflineThreatFeed:
 ### 8.3 Implement Darknet Threat Feed Integration
 
 **File:**
-- `veritas/agents/graph_investigator/darknet_intel.py` (new file)
+- `elliot/agents/graph_investigator/darknet_intel.py` (new file)
 
 **Tasks:**
 ```python
-# veritas/agents/graph_investigator/darknet_intel.py (new file)
+# elliot/agents/graph_investigator/darknet_intel.py (new file)
 """Darknet intelligence via threat feeds (no direct Tor access)."""
 
 import logging
@@ -1358,11 +1358,11 @@ class DarknetThreatIntel:
 ### 8.4 Implement ConflictResolver for Cross-Source Validation
 
 **File:**
-- `veritas/agents/graph_investigator/conflict_resolver.py` (new file)
+- `elliot/agents/graph_investigator/conflict_resolver.py` (new file)
 
 **Tasks:**
 ```python
-# veritas/agents/graph_investigator/conflict_resolver.py (new file)
+# elliot/agents/graph_investigator/conflict_resolver.py (new file)
 """Resolves conflicts between OSINT sources using trust scoring."""
 
 from dataclasses import dataclass
@@ -1455,7 +1455,7 @@ class ConflictResolver:
 ### 8.5 Integrate into Enhanced Graph Investigator
 
 **File:**
-- `veritas/agents/graph_investigator.py` (rewrite)
+- `elliot/agents/graph_investigator.py` (rewrite)
 
 **Tasks:**
 ```python

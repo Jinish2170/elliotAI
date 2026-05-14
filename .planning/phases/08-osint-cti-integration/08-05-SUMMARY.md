@@ -23,8 +23,8 @@ tech-stack:
 key-files:
   created: []
   modified:
-    - veritas/agents/graph_investigator.py - OSINT/CTI integration and enhanced scoring
-    - veritas/config/settings.py - OSINT/CTI configuration variables
+    - elliot/agents/graph_investigator.py - OSINT/CTI integration and enhanced scoring
+    - elliot/config/settings.py - OSINT/CTI configuration variables
 
 key-decisions:
   - "08-05 OSINT-CTI integration (2026-02-28)": Integrated OSINT/CTI into GraphInvestigator with 40/30/20/10 weighted scoring (meta/entity/osint/cti)
@@ -81,8 +81,8 @@ _Note: All tasks completed in 7 atomic commits with no failures_
 
 ## Files Created/Modified
 
-- `veritas/agents/graph_investigator.py` - Added OSINT/CTI integration in __init__, _run_osint_investigation(), enhanced GraphResult, _add_osint_nodes_to_graph(), _calculate_enhanced_graph_score(), and updated investigate() with OSINT/CTI phases
-- `veritas/config/settings.py` - Added GRAPH_ENABLE_OSINT, GRAPH_OSINT_TIMEOUT_S, GRAPH_OSINT_MAX_PARALLEL, GRAPH_ENABLE_CTI, GRAPH_CTI_MIN_CONFIDENCE configuration variables
+- `elliot/agents/graph_investigator.py` - Added OSINT/CTI integration in __init__, _run_osint_investigation(), enhanced GraphResult, _add_osint_nodes_to_graph(), _calculate_enhanced_graph_score(), and updated investigate() with OSINT/CTI phases
+- `elliot/config/settings.py` - Added GRAPH_ENABLE_OSINT, GRAPH_OSINT_TIMEOUT_S, GRAPH_OSINT_MAX_PARALLEL, GRAPH_ENABLE_CTI, GRAPH_CTI_MIN_CONFIDENCE configuration variables
 
 ## Decisions Made
 
@@ -123,8 +123,8 @@ Set these in `.env` for full threat intelligence coverage.
 
 All files exist:
 - FOUND: .planning/phases/08-osint-cti-integration/08-05-SUMMARY.md
-- FOUND: veritas/agents/graph_investigator.py
-- FOUND: veritas/config/settings.py
+- FOUND: elliot/agents/graph_investigator.py
+- FOUND: elliot/config/settings.py
 
 All commits exist:
 - FOUND: 5674608 (feat: integrate OSINT/CTI components into GraphInvestigator.__init__)

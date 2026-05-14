@@ -8,7 +8,7 @@
 
 ## What Was Done
 
-### 1. Created `veritas/core/ipc.py` Module
+### 1. Created `elliot/core/ipc.py` Module
 
 Created a new IPC utilities module with the following components:
 
@@ -30,11 +30,11 @@ Created a new IPC utilities module with the following components:
   - `get_rollout_percentage()`: Reads QUEUE_IPC_ROLLOUT env var
   - `determine_ipc_mode(cli_use_queue_ipc, cli_use_stdout, cli_validate_ipc)`: Priority-based mode selection
 
-### 2. Updated `veritas/core/__init__.py`
+### 2. Updated `elliot/core/__init__.py`
 
 Added documentation for the new IPC module to the core layer docstring.
 
-### 3. Created Unit Tests in `veritas/tests/test_ipc_queue.py`
+### 3. Created Unit Tests in `elliot/tests/test_ipc_queue.py`
 
 Created comprehensive unit tests covering:
 - `TestProgressEvent` (3 tests): ProgressEvent creation, defaults, serialization
@@ -50,9 +50,9 @@ Created comprehensive unit tests covering:
 
 ## Artifacts Created
 
-1. `veritas/core/ipc.py` (~280 lines) - IPC utilities module
-2. `veritas/tests/test_ipc_queue.py` (~200 lines) - Unit tests
-3. `veritas/core/__init__.py` - Updated docstring
+1. `elliot/core/ipc.py` (~280 lines) - IPC utilities module
+2. `elliot/tests/test_ipc_queue.py` (~200 lines) - Unit tests
+3. `elliot/core/__init__.py` - Updated docstring
 
 ---
 
@@ -60,7 +60,7 @@ Created comprehensive unit tests covering:
 
 The module imports cleanly and all exports work:
 ```python
-from veritas.core.ipc import (
+from elliot.core.ipc import (
     ProgressEvent, create_queue, serialize_queue,
     determine_ipc_mode, IPC_MODE_QUEUE, safe_put
 )

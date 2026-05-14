@@ -14,7 +14,7 @@ Implemented Cyber Threat Intelligence (CTI-lite) functionality for detecting Ind
 
 ## Changes Made
 
-### veritas/osint/ioc_detector.py (NEW)
+### elliot/osint/ioc_detector.py (NEW)
 - **IOCType enum**: URL, DOMAIN, IPV4, IPV6, EMAIL, MD5, SHA1, SHA256, FILENAME
 - **Indicator dataclass**: IOC type, value, confidence (0.0-1.0), context, source
   - `__hash__()` method for deduplication based on (ioc_type, value)
@@ -27,7 +27,7 @@ Implemented Cyber Threat Intelligence (CTI-lite) functionality for detecting Ind
   - `_calculate_confidence(ioc_type, value)`: Baseline + HTTPS bonus + TLD penalty
   - `classify_threat_level(indicator, osint_context)`: critical/high/medium/low/none
 
-### veritas/osint/attack_patterns.py (NEW)
+### elliot/osint/attack_patterns.py (NEW)
 - **MITRETactic enum**: 12 MITRE ATT&CK tactics (INITIAL_ACCESS, EXECUTION, PERSISTENCE, etc.)
 - **MITRETechnique dataclass**: technique_id, name, tactic, description, detection_markers
 - **MITRE_ATTACK_PATTERNS dict**: 4 techniques mapped
@@ -42,7 +42,7 @@ Implemented Cyber Threat Intelligence (CTI-lite) functionality for detecting Ind
   - `_get_matched_markers()`: Return list of matched detection markers
   - `generate_attribution_suggestion(techniques)`: Threat actor, pattern, tactic, explanation
 
-### veritas/osint/cti.py (NEW)
+### elliot/osint/cti.py (NEW)
 - **CThreatIntelligence class**:
   - `analyze_threats(url, page_html, page_text, metadata, osint_results)`: Async comprehensive threat analysis
   - `_extract_site_features(metadata)`: Dark patterns, urgency, credential harvesting
@@ -70,9 +70,9 @@ Implemented Cyber Threat Intelligence (CTI-lite) functionality for detecting Ind
 
 ### Import Test
 ```bash
-python -c "from veritas.osint.ioc_detector import IOCDetector, IOCType, Indicator; \
-from veritas.osint.attack_patterns import AttackPatternMapper, MITRETactic; \
-from veritas.osint.cti import CThreatIntelligence; \
+python -c "from elliot.osint.ioc_detector import IOCDetector, IOCType, Indicator; \
+from elliot.osint.attack_patterns import AttackPatternMapper, MITRETactic; \
+from elliot.osint.cti import CThreatIntelligence; \
 print('All imports successful!')"
 ```
 **Result:** ✅ All imports successful

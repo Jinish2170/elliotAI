@@ -7,8 +7,8 @@ autonomous: true
 objective: Implement computer vision temporal analysis with SSIM and optical flow, with adaptive thresholds based on content type.
 
 files_modified:
-  - veritas/agents/vision/temporal_analysis.py
-  - veritas/requirements.txt
+  - elliot/agents/vision/temporal_analysis.py
+  - elliot/requirements.txt
 
 tasks:
   - Create temporal_analysis.py module with TemporalAnalyzer class
@@ -40,7 +40,7 @@ Current temporal analysis uses string diff only. Computer vision (SSIM + optical
 
 ### Task 1: Create temporal_analysis.py module
 
-**File:** `veritas/agents/vision/temporal_analysis.py` (new file)
+**File:** `elliot/agents/vision/temporal_analysis.py` (new file)
 
 ```python
 import gc
@@ -116,7 +116,7 @@ class TemporalAnalyzer:
 
 ### Task 2: Add CV dependencies
 
-**File:** `veritas/requirements.txt`
+**File:** `elliot/requirements.txt`
 
 ```
 scikit-image>=0.21.0

@@ -8,7 +8,7 @@
 
 ## Executive Summary
 
-After comprehensive investigation across three phases (minimal graph, full audit with mocks, behavioral differences), we have identified that the VERITAS orchestrator's node implementation is **complete and correct**, but **LangGraph's `ainvoke()` method hangs when executing the full graph topology**.
+After comprehensive investigation across three phases (minimal graph, full audit with mocks, behavioral differences), we have identified that the ELLIOT orchestrator's node implementation is **complete and correct**, but **LangGraph's `ainvoke()` method hangs when executing the full graph topology**.
 
 **Resolution:** Maintain the existing sequential execution implementation and enhance it with comprehensive logging and mode tracking. This is a production-ready, low-risk approach that retains all functionality while acknowledging the LangGraph framework limitation.
 
@@ -23,13 +23,13 @@ After comprehensive investigation across three phases (minimal graph, full audit
 - No `CancelledError` observed
 - Confirms issue is NOT in LangGraph core implementation
 
-### Phase 02: Full VERITAS Audit Test (COMPLETED)
+### Phase 02: Full ELLIOT Audit Test (COMPLETED)
 **Result:** ⚠️ HANGING EXPECTED
-- Full VERITAS graph (6 nodes, 4 conditional edges) hangs on `ainvoke()`
+- Full ELLIOT graph (6 nodes, 4 conditional edges) hangs on `ainvoke()`
 - 30-second timeout documented even with all dependencies mocked
 - **9/9 isolated node tests PASSED** - node logic verified correct
-- Sequential execution (`VeritasOrchestrator.audit()`) works correctly
-- Confirms issue is in VERITAS-specific graph topology or LangGraph integration
+- Sequential execution (`ElliotOrchestrator.audit()`) works correctly
+- Confirms issue is in ELLIOT-specific graph topology or LangGraph integration
 
 ### Phase 03: Behavioral Differences (COMPLETED)
 **Result:** ✅ DOCUMENTED
@@ -37,7 +37,7 @@ After comprehensive investigation across three phases (minimal graph, full audit
 - Minimal graph execution order verified
 - State mutation patterns validated
 - Async context manager pattern tested (works in isolation)
-- Confirmed root cause: LangGraph framework, not VERITAS code
+- Confirmed root cause: LangGraph framework, not ELLIOT code
 
 ---
 
@@ -56,7 +56,7 @@ After comprehensive investigation across three phases (minimal graph, full audit
 
 Evidence:
 1. **Minimal graphs work** (Phase 01) - LangGraph basics functional
-2. **Isolated nodes work** (Phase 02) - VERITAS node logic correct
+2. **Isolated nodes work** (Phase 02) - ELLIOT node logic correct
 3. **Full graph hangs** (Phase 02) - Complex topology triggers issue
 4. **Sequential works** (Phase 02) - Node execution order is sound
 
@@ -68,7 +68,7 @@ Evidence:
 
 ### Behavioral Differences Observed
 
-| Execution Mode | Minimal Graph | Full VERITAS Graph |
+| Execution Mode | Minimal Graph | Full ELLIOT Graph |
 |---------------|---------------|-------------------|
 | ainvoke() | ✅ Works (seconds) | ❌ Hangs (30s+) |
 | Sequential | ✅ Works | ✅ Works |
@@ -94,9 +94,9 @@ Evidence:
 
 #### Step 1: Add Execution Mode Tracking
 
-File: `veritas/core/orchestrator.py`
+File: `elliot/core/orchestrator.py`
 ```python
-# Add to VeritasOrchestrator.__init__
+# Add to ElliotOrchestrator.__init__
 self._execution_mode = "sequential"  # "sequential" | "langgraph"
 
 # Add tracking state to AuditState
@@ -105,7 +105,7 @@ self._execution_mode = "sequential"  # "sequential" | "langgraph"
 
 #### Step 2: Add Detailed Event Logging
 
-File: `veritas/core/orchestrator.py`
+File: `elliot/core/orchestrator.py`
 ```python
 def _emit_detailed(self, phase: str, step: str, **extra):
     """Emit detailed progress with execution mode metadata."""
@@ -124,20 +124,20 @@ def _emit_detailed(self, phase: str, step: str, **extra):
 
 #### Step 3: Document the Workaround
 
-File: `veritas/core/orchestrator.py` (at top of audit() method)
+File: `elliot/core/orchestrator.py` (at top of audit() method)
 ```python
 """
 Run a complete audit on a URL using sequential node execution.
 
 Implementation Note:
-    VERITAS uses sequential node execution instead of LangGraph's ainvoke()
+    ELLIOT uses sequential node execution instead of LangGraph's ainvoke()
     due to observed hanging behavior on complex graph topologies.
 
     Investigation Findings (Phase 03, 2026-02-22):
         - LangGraph ainvoke() works for minimal graphs (tested)
-        - Full VERITAS graph (6 nodes) hangs on ainvoke() (30s+ timeout)
+        - Full ELLIOT graph (6 nodes) hangs on ainvoke() (30s+ timeout)
         - All node logic verified correct (9/9 isolated tests passed)
-        - Root cause: LangGraph framework issue, not VERITAS code
+        - Root cause: LangGraph framework issue, not ELLIOT code
 
     Resolution Path: Option B - Sequential with Enhanced Tracking
         - Maintain working sequential execution
@@ -177,8 +177,8 @@ ENABLE_LANGGRAPH_INVOKE: bool = False  # Disabled by default due to hanging
 The sequential execution is **already implemented and production-tested**:
 
 ```python
-# File: veritas/core/orchestrator.py, line 1062
-class VeritasOrchestrator:
+# File: elliot/core/orchestrator.py, line 1062
+class ElliotOrchestrator:
     def __init__(self, progress_queue: Optional[multiprocessing.Queue] = None):
         self._graph = build_audit_graph()  # Graph can still be built
         self._compiled = self._graph.compile()  # Compile works, ainvoke hangs
@@ -193,7 +193,7 @@ class VeritasOrchestrator:
 ```
 
 **Rollback:** If `ainvoke()` were to be enabled, rollback involves:
-1. Simply call `VeritasOrchestrator.audit()` instead of `compiled.ainvoke()`
+1. Simply call `ElliotOrchestrator.audit()` instead of `compiled.ainvoke()`
 2. Zero code changes - both interfaces return `AuditState`
 3. Instant switch via configuration flag
 
@@ -203,7 +203,7 @@ Based on investigation tests, sequential should be used for:
 
 | Scenario | Use Sequential | Use ainvoke() |
 |----------|----------------|---------------|
-| Full VERITAS audit (6 nodes) | ✅ YES | ❌ NO (hangs) |
+| Full ELLIOT audit (6 nodes) | ✅ YES | ❌ NO (hangs) |
 | Simple audits (max_pages=1) | ✅ YES (safe) | ⚠️ MAY work (complex) |
 | Debugging/Development | ✅ YES | ❌ NO (harder with hang) |
 | Production | ✅ YES | ❌ NO (reliability) |
@@ -346,12 +346,12 @@ For Option B - Sequential with Enhanced Tracking:
 - **Phase 03 Summary:** `.planning/phases/03-langgraph-state-machine-investigation/03-03-SUMMARY.md` (pending)
 
 ### Test Files
-- **Minimal graph test:** `veritas/tests/langgraph_investigation/test_01_minimal_graph.py`
-- **Full audit test:** `veritas/tests/langgraph_investigation/test_02_full_audit_mocked.py`
-- **Behavioral test:** `veritas/tests/langgraph_investigation/test_03_behavioral_differences.py`
+- **Minimal graph test:** `elliot/tests/langgraph_investigation/test_01_minimal_graph.py`
+- **Full audit test:** `elliot/tests/langgraph_investigation/test_02_full_audit_mocked.py`
+- **Behavioral test:** `elliot/tests/langgraph_investigation/test_03_behavioral_differences.py`
 
 ### Fixtures
-- **Shared fixtures:** `veritas/tests/langgraph_investigation/conftest.py`
+- **Shared fixtures:** `elliot/tests/langgraph_investigation/conftest.py`
 
 ### Research
 - **LANGGRAPH research:** `.planning/research/LANGGRAPH.md`
@@ -363,7 +363,7 @@ For Option B - Sequential with Enhanced Tracking:
 
 The LangGraph State Machine investigation has successfully **identified the root cause** and **selected a production-ready resolution**:
 
-**Root Cause:** LangGraph 0.5.3's `ainvoke()` hangs on complex graph topologies like VERITAS's 6-node audit graph. This is a framework limitation, not a VERITAS code issue.
+**Root Cause:** LangGraph 0.5.3's `ainvoke()` hangs on complex graph topologies like ELLIOT's 6-node audit graph. This is a framework limitation, not a ELLIOT code issue.
 
 **Resolution:** Maintain sequential execution with enhanced tracking (Option B). This preserves all functionality, adds comprehensive logging, and provides a clear fallback path for future LangGraph improvements.
 
@@ -373,7 +373,7 @@ The LangGraph State Machine investigation has successfully **identified the root
 3. Revisit if LangGraph releases fixes to task scheduler
 4. Consider hybrid approach for simple graphs in future
 
-The VERITAS orchestrator is **production-ready and stable** with sequential execution. All node logic is verified correct, and the system delivers full functionality through the execution mode that works reliably.
+The ELLIOT orchestrator is **production-ready and stable** with sequential execution. All node logic is verified correct, and the system delivers full functionality through the execution mode that works reliably.
 
 ---
 

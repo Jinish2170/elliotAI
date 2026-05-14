@@ -18,19 +18,19 @@ affects: ["Future security modules", "SecurityAgent orchestration"]
 
 # Tech tracking
 tech-stack:
-  added: ["veritas.analysis.security module", "veritas.config.security_rules"]
+  added: ["elliot.analysis.security module", "elliot.config.security_rules"]
   patterns: ["Tier-based module execution", "Auto-discovery pattern", "CWE/CVSS integration"]
 
 key-files:
   created:
-    - veritas/analysis/security/base.py - SecurityModule base class, SecurityFinding, SecurityTier
-    - veritas/analysis/security/utils.py - get_all_security_modules, group_modules_by_tier, execute_tier
-    - veritas/analysis/security/tls_ssl.py - SecurityHeaderAnalyzerEnhanced (FAST tier)
-    - veritas/analysis/security/cookies.py - CookieSecurityAnalyzer (FAST tier)
-    - veritas/analysis/security/csp.py - ContentSecurityPolicyAnalyzer (FAST tier)
-    - veritas/config/security_rules.py - CWE mappings, CVSS metrics, severity rules
+    - elliot/analysis/security/base.py - SecurityModule base class, SecurityFinding, SecurityTier
+    - elliot/analysis/security/utils.py - get_all_security_modules, group_modules_by_tier, execute_tier
+    - elliot/analysis/security/tls_ssl.py - SecurityHeaderAnalyzerEnhanced (FAST tier)
+    - elliot/analysis/security/cookies.py - CookieSecurityAnalyzer (FAST tier)
+    - elliot/analysis/security/csp.py - ContentSecurityPolicyAnalyzer (FAST tier)
+    - elliot/config/security_rules.py - CWE mappings, CVSS metrics, severity rules
   modified:
-    - veritas/analysis/security/__init__.py - Module exports
+    - elliot/analysis/security/__init__.py - Module exports
 
 key-decisions:
   - Used relative imports (.base) for security module internal organization
@@ -94,15 +94,15 @@ _Note: Task 4 was auto-fixed deviations (Rule 1 - Bug)_
 ## Files Created/Modified
 
 ### Created
-- `veritas/analysis/security/base.py` (400 lines) - SecurityModule ABC, SecurityFinding dataclass, SecurityTier enum, module registry
-- `veritas/analysis/security/utils.py` (264 lines) - get_all_security_modules, group_modules_by_tier, execute_tier, execute_all_modules
-- `veritas/analysis/security/tls_ssl.py` (320 lines) - SecurityHeaderAnalyzerEnhanced with HSTS, CSP, X-Frame-Options, X-Content-Type-Options checks
-- `veritas/analysis/security/cookies.py` (222 lines) - CookieSecurityAnalyzer with Secure, HttpOnly, SameSite flag analysis
-- `veritas/analysis/security/csp.py` (252 lines) - ContentSecurityPolicyAnalyzer with unsafe-inline, unsafe-eval, wildcard detection
-- `veritas/config/security_rules.py` (200 lines) - CWE_SEVERITY_MAPPING, DEFAULT_CVSS_METRICS, get_cwe_for_finding, calculate_cvss_for_severity
+- `elliot/analysis/security/base.py` (400 lines) - SecurityModule ABC, SecurityFinding dataclass, SecurityTier enum, module registry
+- `elliot/analysis/security/utils.py` (264 lines) - get_all_security_modules, group_modules_by_tier, execute_tier, execute_all_modules
+- `elliot/analysis/security/tls_ssl.py` (320 lines) - SecurityHeaderAnalyzerEnhanced with HSTS, CSP, X-Frame-Options, X-Content-Type-Options checks
+- `elliot/analysis/security/cookies.py` (222 lines) - CookieSecurityAnalyzer with Secure, HttpOnly, SameSite flag analysis
+- `elliot/analysis/security/csp.py` (252 lines) - ContentSecurityPolicyAnalyzer with unsafe-inline, unsafe-eval, wildcard detection
+- `elliot/config/security_rules.py` (200 lines) - CWE_SEVERITY_MAPPING, DEFAULT_CVSS_METRICS, get_cwe_for_finding, calculate_cvss_for_severity
 
 ### Modified
-- `veritas/analysis/security/__init__.py` - Added exports for FAST tier modules and base classes
+- `elliot/analysis/security/__init__.py` - Added exports for FAST tier modules and base classes
 
 ## Decisions Made
 
@@ -136,7 +136,7 @@ _Note: Task 4 was auto-fixed deviations (Rule 1 - Bug)_
 - **Found during:** Final verification (post-Task 3)
 - **Issue:** get_cwe_for_finding() returned None for all patterns because registry keys didn't match module call pattern
 - **Fix:** Added _HEADER_CWE_MAPPING dict with direct CWE ID mappings for all security finding patterns (security_headers_hsts → CWE-523, cookies_secure → CWE-614, etc.)
-- **Files modified:** veritas/config/security_rules.py
+- **Files modified:** elliot/config/security_rules.py
 - **Verification:** get_cwe_for_finding() now returns valid CWE IDs (CWE-523, CWE-614, CWE-693)
 - **Committed in:** `6fc36e4` (Auto-fix commit)
 
@@ -144,7 +144,7 @@ _Note: Task 4 was auto-fixed deviations (Rule 1 - Bug)_
 - **Found during:** Final verification (post-Task 3)
 - **Issue:** _check_overly_permissive() only checked for quoted wildcards (`'|| '*'`), not bare asterisk (`*`)
 - **Fix:** Added `"*" in default_sources` check to catch bare asterisk in default-src directive
-- **Files modified:** veritas/analysis/security/csp.py
+- **Files modified:** elliot/analysis/security/csp.py
 - **Verification:** CSP analyzer now detects `"default-src *"` as overly_permissive
 - **Committed in:** `6fc36e4` (Auto-fix commit)
 
@@ -152,7 +152,7 @@ _Note: Task 4 was auto-fixed deviations (Rule 1 - Bug)_
 - **Found during:** Final verification (post-Task 3)
 - **Issue:** CSP and cookie modules failed with mixed-case header keys (e.g., "Content-Security-Policy")
 - **Fix:** Added header normalization to lowercase in all modules (CSP, cookies, TLS/SSL already had it)
-- **Files modified:** veritas/analysis/security/csp.py, veritas/analysis/security/cookies.py
+- **Files modified:** elliot/analysis/security/csp.py, elliot/analysis/security/cookies.py
 - **Verification:** All modules now work with both lowercase and mixed-case header keys
 - **Committed in:** `6fc36e4` (Auto-fix commit)
 
@@ -209,12 +209,12 @@ None - no external service configuration required.
 ## Self-Check
 
 **Created files exist:**
-- ✓ veritas/analysis/security/base.py (400 lines)
-- ✓ veritas/analysis/security/utils.py (264 lines)
-- ✓ veritas/analysis/security/tls_ssl.py (320 lines)
-- ✓ veritas/analysis/security/cookies.py (222 lines)
-- ✓ veritas/analysis/security/csp.py (252 lines)
-- ✓ veritas/config/security_rules.py (200 lines)
+- ✓ elliot/analysis/security/base.py (400 lines)
+- ✓ elliot/analysis/security/utils.py (264 lines)
+- ✓ elliot/analysis/security/tls_ssl.py (320 lines)
+- ✓ elliot/analysis/security/cookies.py (222 lines)
+- ✓ elliot/analysis/security/csp.py (252 lines)
+- ✓ elliot/config/security_rules.py (200 lines)
 
 **Commits exist:**
 - ✓ b41608b - feat(10-01): create SecurityModule base class

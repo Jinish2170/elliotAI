@@ -7,8 +7,8 @@ autonomous: true
 objective: Implement VLM caching with pass-level keys to reduce GPU costs by enabling pass-skipping and reusing cached VLM responses.
 
 files_modified:
-  - veritas/core/nim_client.py
-  - veritas/agents/vision.py
+  - elliot/core/nim_client.py
+  - elliot/agents/vision.py
 
 tasks:
   - Extend NIM cache key generation to include pass_type parameter
@@ -41,7 +41,7 @@ Phase 6 introduces a 5-pass vision pipeline that would otherwise multiply GPU co
 
 ### Task 1: Extend NIM cache key to include pass type
 
-**File:** `veritas/core/nim_client.py`
+**File:** `elliot/core/nim_client.py`
 
 ```python
 def get_cache_key(image_path: str, prompt: str, pass_type: int) -> str:
@@ -58,7 +58,7 @@ def get_cache_key(image_path: str, prompt: str, pass_type: int) -> str:
 
 ### Task 2: Implement cache-aware vision pass execution
 
-**File:** `veritas/agents/vision.py`
+**File:** `elliot/agents/vision.py`
 
 ```python
 async def run_pass_with_cache(pass_num: int, screenshot: str, prompt: str) -> Finding:

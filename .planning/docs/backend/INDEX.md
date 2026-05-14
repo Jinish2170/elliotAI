@@ -1,4 +1,4 @@
-# VERITAS Backend - Complete Documentation
+# ELLIOT Backend - Complete Documentation
 
 **Version:** 2.0.0
 **Last Updated:** 2026-03-08
@@ -8,7 +8,7 @@
 
 ## Overview
 
-VERITAS (Virtual Entity Risk, Integrity, and Trust Assessment System) is an autonomous multi-modal forensic web auditing platform. This documentation provides a complete, production-grade reference for all backend functionality, events, data types, and file purposes.
+ELLIOT (Virtual Entity Risk, Integrity, and Trust Assessment System) is an autonomous multi-modal forensic web auditing platform. This documentation provides a complete, production-grade reference for all backend functionality, events, data types, and file purposes.
 
 ---
 
@@ -99,9 +99,9 @@ See [EVENTS.md](./EVENTS.md) for complete reference.
 ### 3. Services (`backend/services/`)
 - `audit_runner.py` - Audit orchestration and WebSocket event streaming
 
-### 4. Veritas Package (`veritas/`)
+### 4. Elliot Package (`elliot/`)
 
-#### Agents (`veritas/agents/`)
+#### Agents (`elliot/agents/`)
 - `scout.py` - Web navigation and page analysis
 - `scout_nav/` - Scout navigation modules
 - `vision.py` - VLM-based visual analysis (5 passes)
@@ -111,7 +111,7 @@ See [EVENTS.md](./EVENTS.md) for complete reference.
 - `judge.py` - Expert decision making (dual verdict)
 - `judge/strategies/` - 11+ specialized site type strategies
 
-#### Analysis (`veritas/analysis/`)
+#### Analysis (`elliot/analysis/`)
 - `pattern_matcher.py` - Dark pattern detection
 - `js_analyzer.py` - JavaScript code analysis
 - `phishing_checker.py` - Phishing URL detection
@@ -122,7 +122,7 @@ See [EVENTS.md](./EVENTS.md) for complete reference.
   - `cookies.py`, `csp.py`, `tls_ssl.py` - Security checks
 - `scenario_generator.py` - Attack scenario construction
 
-#### OSINT/CTI (`veritas/osint/`)
+#### OSINT/CTI (`elliot/osint/`)
 - `orchestrator.py` - OSINT query orchestration
 - `ioc_detector.py` - Indicator of compromise detection
 - `cti.py` - Cyber threat intelligence
@@ -132,31 +132,31 @@ See [EVENTS.md](./EVENTS.md) for complete reference.
   - `dns_lookup.py`, `whois_lookup.py`
 - `attack_patterns.py` - MITRE ATT&CK integration
 
-#### CWE/CVSS (`veritas/cwe/`)
+#### CWE/CVSS (`elliot/cwe/`)
 - `cvss_calculator.py` - CVSS v4.0 scoring
 - `registry.py` - CVE/CWE database
 
-#### Configuration (`veritas/config/`)
+#### Configuration (`elliot/config/`)
 - `settings.py` - Application settings
 - `security_rules.py` - Security check rules
 - `dark_patterns.py` - Dark pattern definitions
 - `site_types.py` - Site type classifications
 - `trust_weights.py` - Trust scoring weights
 
-#### Database (`veritas/db/`)
+#### Database (`elliot/db/`)
 - `models.py` - SQLAlchemy ORM models
 - `repositories.py` - Data access layer
 - `init_database.py` - Database initialization
 
-#### Darknet (`veritas/darknet/`)
+#### Darknet (`elliot/darknet/`)
 - `onion_detector.py` - .onion domain detection
 - `tor_client.py` - Tor network client
 - `threat_scraper.py` - Darknet threat scraping
 
-#### Screenshots (`veritas/screenshots/`)
+#### Screenshots (`elliot/screenshots/`)
 - `storage.py` - Screenshot file system storage
 
-#### Core (`veritas/core/`)
+#### Core (`elliot/core/`)
 - `ipc.py` - Inter-process communication
 - `prompting.py` - VLM prompt templates
 
@@ -191,7 +191,7 @@ WebSocket Connection (WS /api/audit/stream/{id})
     ↓
 AuditRunner (orchestrator wrapper)
     ↓
-VeritasOrchestrator (main logic)
+ElliotOrchestrator (main logic)
     ↓
 ├── Scout Agent (navigation, page analysis)
 ├── Vision Agent (VLM visual analysis, 5 passes)
@@ -234,7 +234,7 @@ All events follow this structure:
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `USE_DB_PERSISTENCE` | Enable database persistence | `false` |
-| `DATABASE_URL` | SQLAlchemy database URL | `sqlite+sqlite3:///./veritas.db` |
+| `DATABASE_URL` | SQLAlchemy database URL | `sqlite+sqlite3:///./elliot.db` |
 | `VLM_API_KEY` | Vision Language Model API key | Required |
 | `OSINT_API_KEY_ABUSEIPDB` | AbuseIPDB API key | Optional |
 | `OSINT_API_KEY_URLVOID` | URLVoid API key | Optional |

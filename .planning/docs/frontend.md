@@ -1,4 +1,4 @@
-# VERITAS — Frontend Implementation Blueprint
+# ELLIOT — Frontend Implementation Blueprint
 
 > **"Think like a creator, not just a coder."**
 > This document is the single source of truth for the Next.js frontend.
@@ -162,7 +162,7 @@ The user should feel like they're stepping into a world-class security operation
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│ ✦ VERITAS                              [About] [How It Works]      │ ← Minimal nav
+│ ✦ ELLIOT                              [About] [How It Works]      │ ← Minimal nav
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                     │
 │              ◐  ← Animated shield/eye logo (SVG, subtle pulse)     │
@@ -225,7 +225,7 @@ The user should feel like they're stepping into a world-class security operation
 │                                                                     │
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                     │
-│  ── HOW VERITAS WORKS ──────────────────────────────────────────── │
+│  ── HOW ELLIOT WORKS ──────────────────────────────────────────── │
 │                                                                     │
 │  Scroll-triggered step-by-step reveal:                              │
 │                                                                     │
@@ -246,12 +246,12 @@ The user should feel like they're stepping into a world-class security operation
 │                                                                     │
 │  🛒 E-commerce   🏢 Corporate   🏦 Financial   ☁️ SaaS   🕶️ Dark Web │
 │                                                                     │
-│  "Veritas adapts its analysis to each website type."               │
-│  Hover each icon to see what Veritas checks specifically.          │
+│  "Elliot adapts its analysis to each website type."               │
+│  Hover each icon to see what Elliot checks specifically.          │
 │                                                                     │
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                     │
-│                    Veritas — Trust, Verified.                       │ ← Footer
+│                    Elliot — Trust, Verified.                       │ ← Footer
 │                                                                     │
 └─────────────────────────────────────────────────────────────────────┘
 ```
@@ -283,7 +283,7 @@ Even during quiet moments (backend processing), the UI must be visually engaging
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│ ← Back   VERITAS AUDIT: www.example.com            ⏱ 2m 34s      │
+│ ← Back   ELLIOT AUDIT: www.example.com            ⏱ 2m 34s      │
 ├──────────────┬──────────────────────────────┬───────────────────────┤
 │              │                              │                       │
 │  AGENT       │    NARRATIVE FEED            │  EVIDENCE PANEL       │
@@ -536,7 +536,7 @@ Two modes: **Simple** (for non-technical users) and **Expert** (for security pro
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│ ← Back to Audit   VERITAS FORENSIC REPORT                         │
+│ ← Back to Audit   ELLIOT FORENSIC REPORT                         │
 │                    www.example.com · February 14, 2026              │
 │                                                                     │
 │     ┌───────┐      ┌──────────────┐                                │
@@ -954,7 +954,7 @@ backend/
     audit.py           ← POST /api/audit/start, WS /api/audit/stream/{id}
     health.py          ← GET /api/health
   services/
-    audit_runner.py    ← Wraps VeritasOrchestrator, emits WS events
+    audit_runner.py    ← Wraps ElliotOrchestrator, emits WS events
 ```
 
 ### API Endpoints

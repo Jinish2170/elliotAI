@@ -1,4 +1,4 @@
-# VERITAS Backend Event Contract
+# ELLIOT Backend Event Contract
 
 **Last updated:** 2026-03-09
 **Source of truth:** `backend/services/audit_runner.py`

@@ -9,13 +9,13 @@ requires:
   - phase: 04-stub-cleanup
     provides: cleaned codebase with proper error handling
 provides:
-  - veritas/db package with config.py, models.py, __init__.py
+  - elliot/db package with config.py, models.py, __init__.py
   - SQLAlchemy ORM models for Audit, AuditFinding, AuditScreenshot, AuditEvent
   - SQLite database initialization with WAL mode for concurrent writes
   - Database connection infrastructure (engine, AsyncSessionLocal, get_db, init_database)
 affects:
   - backend/routes - will use database for audit CRUD operations
-  - veritas/agents - will need to persist audit results to database
+  - elliot/agents - will need to persist audit results to database
 
 # Tech tracking
 tech-stack:
@@ -29,9 +29,9 @@ tech-stack:
 
 key-files:
   created:
-    - veritas/db/config.py - Database URL, Base model, PRAGMA constants
-    - veritas/db/models.py - Four ORM models with relationships and indexes
-    - veritas/db/__init__.py - Async engine setup and init_database() function
+    - elliot/db/config.py - Database URL, Base model, PRAGMA constants
+    - elliot/db/models.py - Four ORM models with relationships and indexes
+    - elliot/db/__init__.py - Async engine setup and init_database() function
   modified: []
 
 key-decisions:
@@ -67,10 +67,10 @@ completed: 2026-02-23
 
 ## Accomplishments
 
-- **veritas/db package created** with three files providing the complete database persistence infrastructure
+- **elliot/db package created** with three files providing the complete database persistence infrastructure
 - **Four SQLAlchemy ORM models** defined: Audit (main), AuditFinding (dark patterns), AuditScreenshot (file metadata), AuditEvent (progress tracking)
 - **WAL mode enabled** with PRAGMA optimization for concurrent write support (confirmed via `PRAGMA journal_mode` returning "wal")
-- **Database initialized** at data/veritas_audits.db with all tables and indexes created
+- **Database initialized** at data/elliot_audits.db with all tables and indexes created
 - **Relationships configured** with cascade delete (all, delete-orphan) for referential integrity
 - **Indexes added** on status, created_at, trust_score, url for query optimization
 - **FastAPI dependency injection** ready via get_db() async generator function
@@ -85,14 +85,14 @@ Each task was committed atomically:
 
 ## Files Created/Modified
 
-- `veritas/db/config.py` - Database URL ("sqlite+aiosqlite:///./data/veritas_audits.db"), declarative Base, PRAGMA constants for WAL mode optimization (journal_mode=WAL, synchronous=NORMAL, cache_size=-64000, temp_store=MEMORY, wal_autocheckpoint=1000)
-- `veritas/db/models.py` - Four ORM models:
+- `elliot/db/config.py` - Database URL ("sqlite+aiosqlite:///./data/elliot_audits.db"), declarative Base, PRAGMA constants for WAL mode optimization (journal_mode=WAL, synchronous=NORMAL, cache_size=-64000, temp_store=MEMORY, wal_autocheckpoint=1000)
+- `elliot/db/models.py` - Four ORM models:
   - `Audit`: Main audit table with 23 columns including url, status (enum), trust_score, risk_level, signal_scores (JSON), narrative, site_type, security_results (JSON), statistics, errors (JSON), timestamps, and relationships to findings/screenshots/events
   - `AuditFinding`: Individual dark pattern findings with pattern_type, category, severity, confidence, description, plain_english, screenshot_index
   - `AuditScreenshot`: File metadata (file_path, label, index_num, file_size_bytes) - images stored on filesystem
   - `AuditEvent`: Progress events with event_type, data (JSON), timestamp
   - All relationships use `cascade="all, delete-orphan"` and foreign keys with `ondelete="CASCADE"`
-- `veritas/db/__init__.py` - Async database infrastructure:
+- `elliot/db/__init__.py` - Async database infrastructure:
   - `create_async_engine` with aiosqlite driver and `check_same_thread=False`
   - `AsyncSessionLocal` sessionmaker with `expire_on_commit=False`
   - `get_db()` generator for FastAPI dependency injection
@@ -102,10 +102,10 @@ Each task was committed atomically:
 
 All verification criteria passed:
 
-1. **Models import:** `from veritas.db.models import Audit, AuditFinding, AuditScreenshot, AuditEvent` - confirmed
-2. **Configuration:** `DATABASE_URL = "sqlite+aiosqlite:///./data/veritas_audits.db"` - confirmed, 4 tables registered
+1. **Models import:** `from elliot.db.models import Audit, AuditFinding, AuditScreenshot, AuditEvent` - confirmed
+2. **Configuration:** `DATABASE_URL = "sqlite+aiosqlite:///./data/elliot_audits.db"` - confirmed, 4 tables registered
 3. **Initialization:** `asyncio.run(init_database())` - completed successfully
-4. **Database file created:** `data/veritas_audits.db` - 57KB file exists
+4. **Database file created:** `data/elliot_audits.db` - 57KB file exists
 5. **Table schema:** `audits` table with all 23 columns and 4 indexes - confirmed
 6. **WAL mode enabled:** `PRAGMA journal_mode` returns "wal" - confirmed
 
@@ -125,7 +125,7 @@ All verification criteria passed:
 - **Found during:** Task 1 (Initial __init__.py creation)
 - **Issue:** First attempt incorrectly imported `create_async_engine` and `async_sessionmaker` from `sqlalchemy` instead of `sqlalchemy.ext.asyncio`. This caused ImportError because these async-specific functions are in the extension module.
 - **Fix:** Corrected import to `from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine`
-- **Files modified:** veritas/db/__init__.py (line 9)
+- **Files modified:** elliot/db/__init__.py (line 9)
 - **Verification:** Import errors resolved, all verification commands passed
 - **Committed in:** ead2332 (part of task commit)
 
@@ -147,7 +147,7 @@ None - no external service configuration required. Database is self-contained SQ
 The database layer is now complete and ready for:
 
 1. **Phase 5 Plan 02**: Backend integration - modify backend/routes/audit.py to use database for CRUD operations
-2. **Phase 5 Plan 03**: Agent integration - update veritas/agents to persist audit results to database
+2. **Phase 5 Plan 03**: Agent integration - update elliot/agents to persist audit results to database
 3. **Phase 5 Plan 04**: Dual-write migration - maintain in-memory dict as backup while writing to database
 4. **Phase 5 Plan 05**: Migration completion - remove in-memory dict after verification
 
@@ -160,9 +160,9 @@ No blockers - the database infrastructure is confirmed working with WAL mode and
 ## Self-Check: PASSED
 
 ### Files Created
-- FOUND: veritas/db/__init__.py
-- FOUND: veritas/db/config.py
-- FOUND: veritas/db/models.py
+- FOUND: elliot/db/__init__.py
+- FOUND: elliot/db/config.py
+- FOUND: elliot/db/models.py
 - FOUND: .planning/phases/05-persistent-audit-storage/05-01-SUMMARY.md
 
 ### Commits Found

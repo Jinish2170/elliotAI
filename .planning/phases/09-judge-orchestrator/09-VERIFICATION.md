@@ -19,10 +19,10 @@ gaps: []
 
 | #   | Truth   | Status     | Evidence       |
 | --- | ------- | ---------- | -------------- |
-| 1   | DualVerdict class exists with technical and non_technical tiers | VERIFIED | veritas/agents/judge/verdict/base.py contains DualVerdict, VerdictTechnical (CWE/CVSS/IOCs), VerdictNonTechnical (plain English) |
+| 1   | DualVerdict class exists with technical and non_technical tiers | VERIFIED | elliot/agents/judge/verdict/base.py contains DualVerdict, VerdictTechnical (CWE/CVSS/IOCs), VerdictNonTechnical (plain English) |
 | 2   | All 11 site-type strategies implemented and registered | VERIFIED | Ecommerce, Financial, SaaS, Portfolio, News/Blog, Social, Education, Healthcare, Government, Gaming, Darknet strategies; STRATEGY_REGISTRY has all 11 mappings |
 | 3   | JudgeAgent refactored with use_dual_verdict parameter | VERIFIED | judge.py line 186 has analyze(use_dual_verdict=False), imports DualVerdict, has _build_dual_verdict() method |
-| 4   | CWE/CVSS integration for technical tier scoring | VERIFIED | veritas/cwe/registry.py has CWE_REGISTRY with 14 entries including CWE-787, CWE-79, CWE-352, etc.; map_finding_to_cwe() function available |
+| 4   | CWE/CVSS integration for technical tier scoring | VERIFIED | elliot/cwe/registry.py has CWE_REGISTRY with 14 entries including CWE-787, CWE-79, CWE-352, etc.; map_finding_to_cwe() function available |
 | 5   | TimeoutManager calculates adaptive timeouts based on complexity | VERIFIED | timeout_manager.py has ComplexityMetrics.calculate_complexity_score() returning 0.0-1.0; TimeoutManager.calculate_timeout_config() selects FAST/STANDARD/CONSERVATIVE strategies |
 | 6   | CircuitBreaker prevents cascading failures with auto recovery | VERIFIED | circuit_breaker.py implements CLOSED/OPEN/HALF_OPEN state machine; transitions after failures and timeouts; supports fallback functions |
 | 7   | FallbackManager provides graceful degradation ("show must go on") | VERIFIED | degradation.py has FallbackManager with execute_with_fallback(); DegradedResult always has result_data dict; quality penalties applied (0.2/0.5/0.7) |
@@ -35,33 +35,33 @@ gaps: []
 
 | Artifact | Expected | Status | Details |
 | -------- | -------- | ------ | ------- |
-| veritas/agents/judge/verdict/base.py | DualVerdict base class | VERIFIED | Contains SeverityLevel, IOC, VerdictTechnical, VerdictNonTechnical, DualVerdict with to_dict(), is_safe, hasCriticalThreats properties |
-| veritas/agents/judge/verdict/technical.py | VerdictTechnical with CWE/CVSS | VERIFIED | Integrated into base.py with cvss_metrics, cvss_score, cwe_entries fields |
-| veritas/agents/judge/verdict/non_technical.py | VerdictNonTechnical with plain English | VERIFIED | Integrated into base.py with risk_level, summary, key_findings, recommendations, warnings, green_flags fields |
-| veritas/agents/judge/strategies/base.py | ScoringStrategy abstract base | VERIFIED | Has ExtendedSiteType enum (11 values), ScoringContext (17 fields), ScoringAdjustment, ScoringStrategy ABC with abstract properties/methods |
-| veritas/agents/judge/strategies/ecommerce.py | EcommerceScoringStrategy | VERIFIED | Extends ScoringStrategy, visual weight 0.25, custom_findings for dark patterns, narrative template |
-| veritas/agents/judge/strategies/financial.py | FinancialScoringStrategy | VERIFIED | Security weight 0.30 (highest), missing_ssl CRITICAL with 50-point deduction, zero tolerance policy |
-| veritas/agents/judge/strategies/saas_subscription.py | SaaSSubscriptionScoringStrategy | VERIFIED | Temporal weight 0.15, hidden_cancel CRITICAL, roach_motel CRITICAL |
-| veritas/agents/judge/strategies/company_portfolio.py | CompanyPortfolioScoringStrategy | VERIFIED | Graph weight 0.30 (entity verification focus) |
-| veritas/agents/judge/strategies/news_blog.py | NewsBlogScoringStrategy | VERIFIED | Meta weight 0.25 (source credibility focus) |
-| veritas/agents/judge/strategies/social_media.py | SocialMediaScoringStrategy | VERIFIED | Graph weight 0.30 (account verification) |
-| veritas/agents/judge/strategies/education.py | EducationScoringStrategy | VERIFIED | Graph weight 0.25 (institutional verification) |
-| veritas/agents/judge/strategies/healthcare.py | HealthcareScoringStrategy | VERIFIED | Graph weight 0.35 (medical credentialing), missing_ssl_healthcare CRITICAL |
-| veritas/agents/judge/strategies/government.py | GovernmentScoringStrategy | VERIFIED | Graph weight 0.40 (official verification), fake_gov_domain CRITICAL |
-| veritas/agents/judge/strategies/gaming.py | GamingScoringStrategy | VERIFIED | Balanced weights, pay_to_win_patterns MEDIUM |
-| veritas/agents/judge/strategies/darknet_suspicious.py | DarknetSuspiciousScoringStrategy | VERIFIED | Security weight 0.30, onion_links CRITICAL, ALL findings minimum HIGH, "PARANOIA MODE" severity upgrade |
-| veritas/cwe/registry.py | CWE category mapping | VERIFIED | 14 CWE entries in CWE_REGISTRY including CW-787, CWE-79, CWE-352, CWE-287; find_cwe_by_category() and map_finding_to_cwe() functions |
-| veritas/cwe/cvss_calculator.py | CVSS v4.0 calculator | VERIFIED | CWMetricStatus enum, CVSSMetrics dataclass with 8 metric fields, calculate_score() method returns 0.0-10.0 |
-| veritas/core/timeout_manager.py | TimeoutManager with historical tracking | VERIFIED | ComplexityMetrics.calculate_complexity_score() returns 0.0-1.0; TIMEOUT_STRATEGIES with FAST/STANDARD/CONSERVATIVE configs; record_execution() tracks historical data |
-| veritas/core/circuit_breaker.py | CircuitBreaker with 3 states | VERIFIED | CircuitState enum (CLOSED/OPEN/HALF_OPEN), CircuitBreaker.call() with state machine transitions, ResultWithFallback wrapper |
-| veritas/core/degradation.py | FallbackManager with DegradedResult | VERIFIED | FallbackMode enum (5 values), DegradedResult always has result_data dict, execute_with_fallback() uses circuit protection |
-| veritas/core/complexity_analyzer.py | ComplexityAnalyzer for metrics | VERIFIED | analyze_page() extracts 15 metrics from Scout/Vision/Security, get_timeout_suggestion() returns FAST/STANDARD/CONSERVATIVE based on complexity score |
-| veritas/core/progress/rate_limiter.py | TokenBucketRateLimiter | VERIFIED | RateLimiterConfig (max_rate=5.0, burst=10), acquire() uses token-bucket algorithm, handles queue with priority dropping |
-| veritas/core/progress/event_priority.py | EventPriority enum | VERIFIED | 4 levels: CRITICAL=0, HIGH=1, MEDIUM=2, LOW=3 |
-| veritas/core/progress/emitter.py | ProgressEmitter | VERIFIED | emit_screenshot() with 200x150 JPEG thumbnail via PIL, emit_finding() batches 5, emit_progress(), emit_agent_status(), emit_error(), emit_heartbeat(), emit_interesting_highlight() |
-| veritas/core/progress/estimator.py | CompletionTimeEstimator | VERIFIED | EMA calculation (alpha=0.2), start_agent()/complete_agent(), estimate_remaining() uses EMA or hardcoded defaults |
-| veritas/agents/judge.py | Refactored JudgeAgent | VERIFIED | Imports DualVerdict, VerdictTechnical, VerdictNonTechnical, get_strategy; use_dual_verdict parameter in analyze(); _build_dual_verdict() method populates both tiers |
-| veritas/core/orchestrator.py | Integrated progress streaming | VERIFIED | use_adaptive_timeout/use_circuit_breaker parameters in __init__; _timeout_manager and _fallback_manager initialized conditionally; progress_emitter integration |
+| elliot/agents/judge/verdict/base.py | DualVerdict base class | VERIFIED | Contains SeverityLevel, IOC, VerdictTechnical, VerdictNonTechnical, DualVerdict with to_dict(), is_safe, hasCriticalThreats properties |
+| elliot/agents/judge/verdict/technical.py | VerdictTechnical with CWE/CVSS | VERIFIED | Integrated into base.py with cvss_metrics, cvss_score, cwe_entries fields |
+| elliot/agents/judge/verdict/non_technical.py | VerdictNonTechnical with plain English | VERIFIED | Integrated into base.py with risk_level, summary, key_findings, recommendations, warnings, green_flags fields |
+| elliot/agents/judge/strategies/base.py | ScoringStrategy abstract base | VERIFIED | Has ExtendedSiteType enum (11 values), ScoringContext (17 fields), ScoringAdjustment, ScoringStrategy ABC with abstract properties/methods |
+| elliot/agents/judge/strategies/ecommerce.py | EcommerceScoringStrategy | VERIFIED | Extends ScoringStrategy, visual weight 0.25, custom_findings for dark patterns, narrative template |
+| elliot/agents/judge/strategies/financial.py | FinancialScoringStrategy | VERIFIED | Security weight 0.30 (highest), missing_ssl CRITICAL with 50-point deduction, zero tolerance policy |
+| elliot/agents/judge/strategies/saas_subscription.py | SaaSSubscriptionScoringStrategy | VERIFIED | Temporal weight 0.15, hidden_cancel CRITICAL, roach_motel CRITICAL |
+| elliot/agents/judge/strategies/company_portfolio.py | CompanyPortfolioScoringStrategy | VERIFIED | Graph weight 0.30 (entity verification focus) |
+| elliot/agents/judge/strategies/news_blog.py | NewsBlogScoringStrategy | VERIFIED | Meta weight 0.25 (source credibility focus) |
+| elliot/agents/judge/strategies/social_media.py | SocialMediaScoringStrategy | VERIFIED | Graph weight 0.30 (account verification) |
+| elliot/agents/judge/strategies/education.py | EducationScoringStrategy | VERIFIED | Graph weight 0.25 (institutional verification) |
+| elliot/agents/judge/strategies/healthcare.py | HealthcareScoringStrategy | VERIFIED | Graph weight 0.35 (medical credentialing), missing_ssl_healthcare CRITICAL |
+| elliot/agents/judge/strategies/government.py | GovernmentScoringStrategy | VERIFIED | Graph weight 0.40 (official verification), fake_gov_domain CRITICAL |
+| elliot/agents/judge/strategies/gaming.py | GamingScoringStrategy | VERIFIED | Balanced weights, pay_to_win_patterns MEDIUM |
+| elliot/agents/judge/strategies/darknet_suspicious.py | DarknetSuspiciousScoringStrategy | VERIFIED | Security weight 0.30, onion_links CRITICAL, ALL findings minimum HIGH, "PARANOIA MODE" severity upgrade |
+| elliot/cwe/registry.py | CWE category mapping | VERIFIED | 14 CWE entries in CWE_REGISTRY including CW-787, CWE-79, CWE-352, CWE-287; find_cwe_by_category() and map_finding_to_cwe() functions |
+| elliot/cwe/cvss_calculator.py | CVSS v4.0 calculator | VERIFIED | CWMetricStatus enum, CVSSMetrics dataclass with 8 metric fields, calculate_score() method returns 0.0-10.0 |
+| elliot/core/timeout_manager.py | TimeoutManager with historical tracking | VERIFIED | ComplexityMetrics.calculate_complexity_score() returns 0.0-1.0; TIMEOUT_STRATEGIES with FAST/STANDARD/CONSERVATIVE configs; record_execution() tracks historical data |
+| elliot/core/circuit_breaker.py | CircuitBreaker with 3 states | VERIFIED | CircuitState enum (CLOSED/OPEN/HALF_OPEN), CircuitBreaker.call() with state machine transitions, ResultWithFallback wrapper |
+| elliot/core/degradation.py | FallbackManager with DegradedResult | VERIFIED | FallbackMode enum (5 values), DegradedResult always has result_data dict, execute_with_fallback() uses circuit protection |
+| elliot/core/complexity_analyzer.py | ComplexityAnalyzer for metrics | VERIFIED | analyze_page() extracts 15 metrics from Scout/Vision/Security, get_timeout_suggestion() returns FAST/STANDARD/CONSERVATIVE based on complexity score |
+| elliot/core/progress/rate_limiter.py | TokenBucketRateLimiter | VERIFIED | RateLimiterConfig (max_rate=5.0, burst=10), acquire() uses token-bucket algorithm, handles queue with priority dropping |
+| elliot/core/progress/event_priority.py | EventPriority enum | VERIFIED | 4 levels: CRITICAL=0, HIGH=1, MEDIUM=2, LOW=3 |
+| elliot/core/progress/emitter.py | ProgressEmitter | VERIFIED | emit_screenshot() with 200x150 JPEG thumbnail via PIL, emit_finding() batches 5, emit_progress(), emit_agent_status(), emit_error(), emit_heartbeat(), emit_interesting_highlight() |
+| elliot/core/progress/estimator.py | CompletionTimeEstimator | VERIFIED | EMA calculation (alpha=0.2), start_agent()/complete_agent(), estimate_remaining() uses EMA or hardcoded defaults |
+| elliot/agents/judge.py | Refactored JudgeAgent | VERIFIED | Imports DualVerdict, VerdictTechnical, VerdictNonTechnical, get_strategy; use_dual_verdict parameter in analyze(); _build_dual_verdict() method populates both tiers |
+| elliot/core/orchestrator.py | Integrated progress streaming | VERIFIED | use_adaptive_timeout/use_circuit_breaker parameters in __init__; _timeout_manager and _fallback_manager initialized conditionally; progress_emitter integration |
 
 ### Key Link Verification
 

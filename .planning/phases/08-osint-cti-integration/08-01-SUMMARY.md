@@ -41,20 +41,20 @@ tech_patterns:
   - Dynamic model imports: Avoid circular dependency between cache and models
 
 # Key Files Created
-- veritas/osint/__init__.py
-- veritas/osint/sources/__init__.py
-- veritas/osint/types.py
-- veritas/osint/sources/dns_lookup.py
-- veritas/osint/sources/whois_lookup.py
-- veritas/osint/sources/ssl_verify.py
-- veritas/osint/cache.py
+- elliot/osint/__init__.py
+- elliot/osint/sources/__init__.py
+- elliot/osint/types.py
+- elliot/osint/sources/dns_lookup.py
+- elliot/osint/sources/whois_lookup.py
+- elliot/osint/sources/ssl_verify.py
+- elliot/osint/cache.py
 
 # Key Files Modified
-- veritas/db/models.py
+- elliot/db/models.py
 
 # Key Decisions
 - [1] Use asyncio.to_thread() for wrapping blocking DNS/WHOIS/SSL operations instead of manual ThreadPoolExecutor
-- [2] SQLite for OSINT cache (reuses existing veritas.db infrastructure)
+- [2] SQLite for OSINT cache (reuses existing elliot.db infrastructure)
 - [3] Dynamic import of OSINTCache model in cache.py to avoid circular dependency
 - [4] Source-specific TTLs balance freshness with API rate limits (WHOIS 7d, SSL 30d, DNS 24h)
 
@@ -70,7 +70,7 @@ DNS, WHOIS, SSL sources with async wrappers using asyncio.to_thread(), SQLite pe
 ## What Was Built
 
 ### OSINT Module Structure (Task 1)
-Created veritas/osint/ module with standardized data types:
+Created elliot/osint/ module with standardized data types:
 - `SourceStatus` enum: SUCCESS, ERROR, TIMEOUT, RATE_LIMITED
 - `OSINTCategory` enum: DNS, WHOIS, SSL, THREAT_INTEL, REPUTATION, SOCIAL
 - `OSINTResult` dataclass: source, category, query_type, query_value, status, data, confidence_score, cached_at, error_message
@@ -110,7 +110,7 @@ Created `OSINTCache` class with:
 - Uses dynamic import of OSINTCache model to avoid circular dependency
 
 ### OSINTCache Database Model (Task 6)
-Added `OSINTCache` SQLAlchemy model to veritas/db/models.py:
+Added `OSINTCache` SQLAlchemy model to elliot/db/models.py:
 - Table name: osint_cache
 - Columns: id, query_key (unique), source, category, result (JSON), confidence_score, cached_at, expires_at
 - 4 indexes: idx_osint_query_key, idx_osint_source, idx_osint_expires_at, idx_osint_category
@@ -130,21 +130,21 @@ Added `OSINTCache` SQLAlchemy model to veritas/db/models.py:
 - **Found during:** Task 2 verification
 - **Issue:** NXDOMAIN was imported from dns.exception but it's in dns.resolver
 - **Fix:** Changed import to use dns.resolver.NXDOMAIN and updated exception handling
-- **Files modified:** veritas/osint/sources/dns_lookup.py
+- **Files modified:** elliot/osint/sources/dns_lookup.py
 - **Commit:** Included in af57f7a
 
 **3. [Rule 1 - Bug] Fixed SSL subjectAltName parsing**
 - **Found during:** Task 4 verification
 - **Issue:** Error "'tuple' object has no attribute 'startswith'" - subjectAltName may contain tuples
 - **Fix:** Updated parsing to handle both tuple format ('DNS', 'example.com') and string format ("DNS:example.com")
-- **Files modified:** veritas/osint/sources/ssl_verify.py
+- **Files modified:** elliot/osint/sources/ssl_verify.py
 - **Commit:** Included in c7a7299
 
 **4. [Rule 2 - Feature] Rewrote WHOIS source for correct API**
 - **Found during:** Task 3 verification
 - **Issue:** Original implementation assumed pythonwhois.get_whois() API but package is python-whois (with whois module)
 - **Fix:** Rewrote WHOISSource to use whois.whois() with attribute-style access to results
-- **Files modified:** veritas/osint/sources/whois_lookup.py
+- **Files modified:** elliot/osint/sources/whois_lookup.py
 - **Commit:** Included in 89fd286
 
 ## Performance Metrics
@@ -182,7 +182,7 @@ Note: Additional sources (URLVoid, AbuseIPDB) will be added in 08-02, bringing t
 
 ## Extension Points
 
-- New OSINT sources can be added by creating new classes in veritas/osint/sources/
+- New OSINT sources can be added by creating new classes in elliot/osint/sources/
 - Each source must implement async query() method returning OSINTResult
 - Sources are auto-discovered by OSINTOrchestrator in later plan (08-02)
 - SOURCE_TTLS can be extended for new source types
@@ -211,13 +211,13 @@ None - all OSINT sources in this plan work without API keys (locked decision fro
 ## Self-Check: PASSED
 
 All created files verified:
-- veritas/osint/__init__.py: FOUND
-- veritas/osint/sources/__init__.py: FOUND
-- veritas/osint/types.py: FOUND
-- veritas/osint/sources/dns_lookup.py: FOUND
-- veritas/osint/sources/whois_lookup.py: FOUND
-- veritas/osint/sources/ssl_verify.py: FOUND
-- veritas/osint/cache.py: FOUND
+- elliot/osint/__init__.py: FOUND
+- elliot/osint/sources/__init__.py: FOUND
+- elliot/osint/types.py: FOUND
+- elliot/osint/sources/dns_lookup.py: FOUND
+- elliot/osint/sources/whois_lookup.py: FOUND
+- elliot/osint/sources/ssl_verify.py: FOUND
+- elliot/osint/cache.py: FOUND
 - 08-01-SUMMARY.md: FOUND
 
 All commits verified:

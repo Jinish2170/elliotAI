@@ -11,7 +11,7 @@
 
 ### Current State (Pre-Phase)
 
-**Scout Agent (`veritas/agents/scout.py`):**
+**Scout Agent (`elliot/agents/scout.py`):**
 - Single-page investigation only (landing page)
 - Temporal screenshot capture (t0 and t+delay)
 - Full-page screenshot via Playwright
@@ -21,7 +21,7 @@
 - CAPTCHA detection and stealth browser features
 - Human simulation (scroll patterns, mouse jitter)
 
-**Vision Agent (`veritas/agents/vision.py`) from Phase 6:**
+**Vision Agent (`elliot/agents/vision.py`) from Phase 6:**
 - 5-pass VLM pipeline with temporal analysis and content type detection
 - Pass-specific prompts and adaptive SSIM thresholds
 - Progress event streaming to frontend
@@ -92,7 +92,7 @@
 
 **Implementation Tasks:**
 ```python
-# veritas/agents/scout/scroll_orchestrator.py (new file)
+# elliot/agents/scout/scroll_orchestrator.py (new file)
 class ScrollOrchestrator:
     """Manages intelligent scrolling with lazy-load detection."""
 
@@ -144,7 +144,7 @@ class ScrollOrchestrator:
 
 **Implementation Tasks:**
 ```python
-# veritas/agents/scout/link_explorer.py (new file)
+# elliot/agents/scout/link_explorer.py (new file)
 class LinkExplorer:
     """Discovers and prioritizes navigation links for multi-page exploration."""
 
@@ -192,7 +192,7 @@ class LinkExplorer:
 
 **Implementation Tasks:**
 ```python
-# veritas/quality/consensus_engine.py (new file)
+# elliot/quality/consensus_engine.py (new file)
 class ConsensusEngine:
     """Multi-factor consensus system with conflict detection."""
 
@@ -246,10 +246,10 @@ class ConsensusEngine:
 **Requirements:** SCROLL-01, SCROLL-03
 
 **Files:**
-- `veritas/agents/scout/scroll_orchestrator.py` (new file)
-- `veritas/agents/scout/lazy_load_detector.py` (new file)
-- `veritas/agents/scout.py` (extend investigate() method)
-- `veritas/core/types.py` (add ScrollResult, ScrollState dataclasses)
+- `elliot/agents/scout/scroll_orchestrator.py` (new file)
+- `elliot/agents/scout/lazy_load_detector.py` (new file)
+- `elliot/agents/scout.py` (extend investigate() method)
+- `elliot/core/types.py` (add ScrollResult, ScrollState dataclasses)
 
 **Wave:** 1 (can execute in parallel with 7.2)
 
@@ -476,9 +476,9 @@ async def investigate(
 **Requirements:** SCROLL-02
 
 **Files:**
-- `veritas/agents/scout/link_explorer.py` (new file)
-- `veritas/agents/scout.py` (new method: explore_multi_page())
-- `veritas/core/types.py` (add LinkInfo, ExplorationResult dataclasses)
+- `elliot/agents/scout/link_explorer.py` (new file)
+- `elliot/agents/scout.py` (new method: explore_multi_page())
+- `elliot/core/types.py` (add LinkInfo, ExplorationResult dataclasses)
 
 **Wave:** 1 (can execute in parallel with 7.1)
 
@@ -758,9 +758,9 @@ async def _navigate_with_timeout(self, page: Page, url: str, timeout_ms: int) ->
 **Related Plans:** 7.3 (Consensus Engine) + 7.4 (Confidence Scoring & Validation)
 
 **Files:**
-- `veritas/quality/consensus_engine.py` (new file)
-- `veritas/core/types.py` (add FindingSource, ConsensusResult, FindingStatus enum)
-- `veritas/quality/__init__.py` (new package - extended in 7.4)
+- `elliot/quality/consensus_engine.py` (new file)
+- `elliot/core/types.py` (add FindingSource, ConsensusResult, FindingStatus enum)
+- `elliot/quality/__init__.py` (new package - extended in 7.4)
 
 **Wave:** 2 (depends on 7.1 and 7.2 for complete findings data)
 

@@ -18,12 +18,12 @@ tech_stack:
   patterns: ["async unit test pattern", "fixture-based testing"]
 key_files:
   created:
-    - path: "veritas/tests/test_security_agent.py"
+    - path: "elliot/tests/test_security_agent.py"
       description: "23 unit tests for SecurityAgent"
-    - path: "veritas/tests/test_security_dataclasses.py"
+    - path: "elliot/tests/test_security_dataclasses.py"
       description: "29 unit tests for security dataclasses"
   modified:
-    - path: "veritas/agents/security_agent.py"
+    - path: "elliot/agents/security_agent.py"
       description: "Fixed __aenter__ method (removed await from _discover_modules)"
 decisions:
   - key: async-test-decorator
@@ -52,9 +52,9 @@ Unit tests created for SecurityAgent class and security dataclasses (SecurityRes
 
 | Task | Commit | Files | Description |
 |------|--------|-------|-------------|
-| Create test_security_agent.py | 2091670 | veritas/tests/test_security_agent.py | 23 unit tests for SecurityAgent |
-| Create test_security_dataclasses.py | 6b7ac62 | veritas/tests/test_security_dataclasses.py | 29 unit tests for dataclasses |
-| Fix SecurityAgent.__aenter__ | d94a21a | veritas/agents/security_agent.py | Removed await from _discover_modules |
+| Create test_security_agent.py | 2091670 | elliot/tests/test_security_agent.py | 23 unit tests for SecurityAgent |
+| Create test_security_dataclasses.py | 6b7ac62 | elliot/tests/test_security_dataclasses.py | 29 unit tests for dataclasses |
+| Fix SecurityAgent.__aenter__ | d94a21a | elliot/agents/security_agent.py | Removed await from _discover_modules |
 
 ## Test Coverage Summary
 
@@ -143,7 +143,7 @@ Unit tests created for SecurityAgent class and security dataclasses (SecurityRes
 - **Found during:** test_async_context_manager execution
 - **Issue:** _discover_modules() is not async but was being awaited
 - **Fix:** Removed await from _discover_modules() call in __aenter__
-- **Files modified:** veritas/agents/security_agent.py
+- **Files modified:** elliot/agents/security_agent.py
 - **Commit:** d94a21a
 
 ### Rule 2 - Critical: Added @pytest.mark.asyncio decorator to tests
@@ -175,11 +175,11 @@ Unit tests created for SecurityAgent class and security dataclasses (SecurityRes
 ## Files Created/Modified
 
 ### Created
-- `veritas/tests/test_security_agent.py` (372 lines)
-- `veritas/tests/test_security_dataclasses.py` (465 lines)
+- `elliot/tests/test_security_agent.py` (372 lines)
+- `elliot/tests/test_security_dataclasses.py` (465 lines)
 
 ### Modified
-- `veritas/agents/security_agent.py` (1 line changed - __aenter__ fix)
+- `elliot/agents/security_agent.py` (1 line changed - __aenter__ fix)
 
 ## Commits
 
@@ -190,7 +190,7 @@ Unit tests created for SecurityAgent class and security dataclasses (SecurityRes
 ## Test Execution Results
 
 ```
-cd veritas && python -m pytest tests/test_security_agent.py tests/test_security_dataclasses.py -v
+cd elliot && python -m pytest tests/test_security_agent.py tests/test_security_dataclasses.py -v
 ============================== 52 passed in 29.07s ==============================
 ```
 

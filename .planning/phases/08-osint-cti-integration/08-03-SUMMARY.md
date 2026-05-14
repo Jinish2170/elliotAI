@@ -39,11 +39,11 @@ tech_patterns:
   - OSINT confidence scoring: 60% agreement + status boost + conflict penalty
 
 # Key Files Created
-- veritas/osint/reputation.py
+- elliot/osint/reputation.py
 
 # Key Files Modified
-- veritas/quality/consensus_engine.py
-- veritas/quality/confidence_scorer.py
+- elliot/quality/consensus_engine.py
+- elliot/quality/confidence_scorer.py
 
 # Key Decisions
 - [1] Weighted reputation formula: (base_accuracy * 0.6) + (recent_factor * 0.2) + (fn_penalty * 0.2)
@@ -64,7 +64,7 @@ SourceReputation tracks accuracy/false positives/negatives with weighted scoring
 ## What Was Built
 
 ### SourceReputation System (Task 1)
-Created veritas/osint/reputation.py with three classes and one enum:
+Created elliot/osint/reputation.py with three classes and one enum:
 
 **VerdictType enum:**
 - MALICIOUS, SAFE, SUSPICIOUS, UNKNOWN
@@ -92,7 +92,7 @@ Created veritas/osint/reputation.py with three classes and one enum:
 - get_confidence_thresholds(): Returns per-source min confidence (0.3-0.7 based on reputation)
 
 ### ConsensusEngine OSINT Extension (Task 2)
-Added OSINT-specific consensus methods to veritas/quality/consensus_engine.py:
+Added OSINT-specific consensus methods to elliot/quality/consensus_engine.py:
 
 **compute_osint_consensus(results, min_sources=3, exception_high_trust=True):**
 - Filters to SUCCESS status results
@@ -122,7 +122,7 @@ Added OSINT-specific consensus methods to veritas/quality/consensus_engine.py:
 - Format: "CONFIRMED malicious: 3/4 sources agree (75%) - meets 3+ source threshold"
 
 ### OSINT Confidence Scoring (Task 3)
-Added OSINT-specific scoring to veritas/quality/confidence_scorer.py:
+Added OSINT-specific scoring to elliot/quality/confidence_scorer.py:
 
 **calculate_osint_confidence(consensus_result, reputation_manager=None):**
 - Extracts status, agreement_count, total_sources, has_conflict
@@ -201,7 +201,7 @@ None - this plan focused on existing OSINT sources and reputation tracking infra
 ## Self-Check: PASSED
 
 All created files verified:
-- veritas/osint/reputation.py: FOUND
+- elliot/osint/reputation.py: FOUND
 - 08-03-SUMMARY.md: FOUND
 
 All commits verified:
@@ -210,5 +210,5 @@ All commits verified:
 - faefbbb: FOUND
 
 All modified files verified:
-- veritas/quality/consensus_engine.py: FOUND
-- veritas/quality/confidence_scorer.py: FOUND
+- elliot/quality/consensus_engine.py: FOUND
+- elliot/quality/confidence_scorer.py: FOUND

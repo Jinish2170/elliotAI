@@ -1,4 +1,4 @@
-# Domain Pitfalls: VERITAS v2.0 Masterpiece Features
+# Domain Pitfalls: ELLIOT v2.0 Masterpiece Features
 
 **Domain:** Forensic Web Auditing Platform Enhancement
 **Researched:** 2026-02-23

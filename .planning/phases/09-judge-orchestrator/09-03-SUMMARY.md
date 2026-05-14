@@ -8,14 +8,14 @@ completed: true
 objective: Implement real-time progress streaming with token-bucket rate limiting, progressive screenshot delivery, and user engagement pacing (5-10s activity signals).
 
 files_modified:
-  - veritas/core/progress/__init__.py
-  - veritas/core/progress/rate_limiter.py
-  - veritas/core/progress/event_priority.py
-  - veritas/core/progress/emitter.py
-  - veritas/core/progress/estimator.py
-  - veritas/core/orchestrator.py
-  - veritas/agents/scout.py
-  - veritas/agents/vision.py
+  - elliot/core/progress/__init__.py
+  - elliot/core/progress/rate_limiter.py
+  - elliot/core/progress/event_priority.py
+  - elliot/core/progress/emitter.py
+  - elliot/core/progress/estimator.py
+  - elliot/core/orchestrator.py
+  - elliot/agents/scout.py
+  - elliot/agents/vision.py
 
 tasks: 6
 requirements:
@@ -50,16 +50,16 @@ tech_patterns:
   - "Optional injection: progress_emitter parameter with backward compatibility"
 
 key_files_created:
-  - "veritas/core/progress/rate_limiter.py"
-  - "veritas/core/progress/event_priority.py"
-  - "veritas/core/progress/emitter.py"
-  - "veritas/core/progress/estimator.py"
-  - "veritas/core/progress/__init__.py"
+  - "elliot/core/progress/rate_limiter.py"
+  - "elliot/core/progress/event_priority.py"
+  - "elliot/core/progress/emitter.py"
+  - "elliot/core/progress/estimator.py"
+  - "elliot/core/progress/__init__.py"
 
 key_files_modified:
-  - "veritas/core/orchestrator.py"
-  - "veritas/agents/scout.py"
-  - "veritas/agents/vision.py"
+  - "elliot/core/orchestrator.py"
+  - "elliot/agents/scout.py"
+  - "elliot/agents/vision.py"
 
 decisions:
   - "Token-bucket rate limiting: 5 events/sec max with burst=10 for WebSocket throttling"
@@ -89,7 +89,7 @@ Implemented a comprehensive real-time progress streaming system for long-running
 
 ## Key Components
 
-### TokenBucketRateLimiter (`veritas/core/progress/rate_limiter.py`)
+### TokenBucketRateLimiter (`elliot/core/progress/rate_limiter.py`)
 
 - Classic token-bucket algorithm with burst capacity (10 tokens)
 - Max rate: 5 events/second
@@ -97,14 +97,14 @@ Implemented a comprehensive real-time progress streaming system for long-running
 - Thread-safe with asyncio.Lock
 - Statistics: tokens_remaining, queue_size, dropped_events
 
-### EventPriority (`veritas/core/progress/event_priority.py`)
+### EventPriority (`elliot/core/progress/event_priority.py`)
 
 - CRITICAL (0): Agent failures, circuit breaker trips (never dropped)
 - HIGH (1): Findings, phase completions
 - MEDIUM (2): Screenshots, progress updates
 - LOW (3): Info messages, heartbeats
 
-### ProgressEmitter (`veritas/core/progress/emitter.py`)
+### ProgressEmitter (`elliot/core/progress/emitter.py`)
 
 - WebSocket event streaming with integrated rate limiting
 - Screenshot emission with thumbnail compression (200x150 JPEG Q70)
@@ -113,7 +113,7 @@ Implemented a comprehensive real-time progress streaming system for long-running
 - Error emission with recoverable flag
 - User engagement: heartbeat and interesting highlights
 
-### CompletionTimeEstimator (`veritas/core/progress/estimator.py`)
+### CompletionTimeEstimator (`elliot/core/progress/estimator.py`)
 
 - EMA-based execution time tracking per (site_type, agent)
 - Default times: scout=20s, vision=30s, graph=10s, judge=10s, osint=25s
@@ -122,7 +122,7 @@ Implemented a comprehensive real-time progress streaming system for long-running
 
 ## Agent Integration
 
-### Scout Agent (`veritas/agents/scout.py`)
+### Scout Agent (`elliot/agents/scout.py`)
 
 - Agent status at start and completion
 - Screenshot streaming with thumbnail compression
@@ -130,7 +130,7 @@ Implemented a comprehensive real-time progress streaming system for long-running
 - Error emission for CAPTCHA (recoverable=False) and navigation failures
 - Progress during scroll cycles
 
-### Vision Agent (`veritas/agents/vision.py`)
+### Vision Agent (`elliot/agents/vision.py`)
 
 - Pass-by-pass progress (Pass 1: 10%, Pass 2: 30%, Pass 3: 50%, Pass 4: 70%, Pass 5: 90%)
 - Finding streaming for dark patterns in Pass 2
@@ -138,7 +138,7 @@ Implemented a comprehensive real-time progress streaming system for long-running
 - Error handling for VLM and temporal analysis failures
 - Skip detection with progress updates
 
-### Orchestrator (`veritas/core/orchestrator.py`)
+### Orchestrator (`elliot/core/orchestrator.py`)
 
 - Overall progress tracking (0%, 5%, 10%, 25%, 30%, 50%, 70%, 75%, 90%, 100%)
 - Agent status for all agents (Scout, Security, Vision, Graph, Judge)
@@ -160,17 +160,17 @@ None - plan executed exactly as written.
 
 ## Files Created
 
-1. `veritas/core/progress/__init__.py` - Module exports
-2. `veritas/core/progress/rate_limiter.py` - TokenBucketRateLimiter (158 lines)
-3. `veritas/core/progress/event_priority.py` - EventPriority enum (24 lines)
-4. `veritas/core/progress/emitter.py` - ProgressEmitter (240 lines)
-5. `veritas/core/progress/estimator.py` - CompletionTimeEstimator (239 lines)
+1. `elliot/core/progress/__init__.py` - Module exports
+2. `elliot/core/progress/rate_limiter.py` - TokenBucketRateLimiter (158 lines)
+3. `elliot/core/progress/event_priority.py` - EventPriority enum (24 lines)
+4. `elliot/core/progress/emitter.py` - ProgressEmitter (240 lines)
+5. `elliot/core/progress/estimator.py` - CompletionTimeEstimator (239 lines)
 
 ## Files Modified
 
-1. `veritas/agents/scout.py` - Progress streaming hooks (90 additions)
-2. `veritas/agents/vision.py` - Progress streaming hooks (100 additions)
-3. `veritas/core/orchestrator.py` - Progress streaming hooks (116 additions)
+1. `elliot/agents/scout.py` - Progress streaming hooks (90 additions)
+2. `elliot/agents/vision.py` - Progress streaming hooks (100 additions)
+3. `elliot/core/orchestrator.py` - Progress streaming hooks (116 additions)
 
 ## Commits
 
@@ -196,14 +196,14 @@ None - plan executed exactly as written.
 To enable progress streaming:
 
 ```python
-from veritas.core.progress import ProgressEmitter
-from veritas.core import VeritasOrchestrator
+from elliot.core.progress import ProgressEmitter
+from elliot.core import ElliotOrchestrator
 
 # Create progress emitter with WebSocket connection
 emitter = ProgressEmitter(websocket=ws_connection)
 
 # Run orchestrator with progress streaming enabled
-orchestrator = VeritasOrchestrator(
+orchestrator = ElliotOrchestrator(
     use_progress_streaming=True,
     progress_emitter=emitter
 )
@@ -233,10 +233,10 @@ All 6 tasks completed and committed:
 - Task 6: Orchestrator integration (67de0dc)
 
 All files created and verified:
-- veritas/core/progress/__init__.py
-- veritas/core/progress/rate_limiter.py
-- veritas/core/progress/event_priority.py
-- veritas/core/progress/emitter.py
-- veritas/core/progress/estimator.py
+- elliot/core/progress/__init__.py
+- elliot/core/progress/rate_limiter.py
+- elliot/core/progress/event_priority.py
+- elliot/core/progress/emitter.py
+- elliot/core/progress/estimator.py
 
 All commits verified in git log.

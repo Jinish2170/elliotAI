@@ -1,4 +1,4 @@
-# VERITAS Backend - Files Reference
+# ELLIOT Backend - Files Reference
 
 **Version:** 2.0.0
 **Last Updated:** 2026-03-08
@@ -30,7 +30,7 @@ backend/
 │   └── test_audit_runner_queue.py
 └── test_imports.py
 
-veritas/
+elliot/
 ├── .env                      # Environment variables
 ├── core/
 │   ├── ipc.py                # Inter-process communication
@@ -209,7 +209,7 @@ veritas/
 #### audit_runner.py
 **Purpose:** Audit orchestration and WebSocket event streaming
 
-**Why Needed:** Wraps the VeritasOrchestrator to convert progress markers into structured WebSocket events for the frontend. Handles subprocess execution for Windows compatibility.
+**Why Needed:** Wraps the ElliotOrchestrator to convert progress markers into structured WebSocket events for the frontend. Handles subprocess execution for Windows compatibility.
 
 **Key Classes:**
 - `AuditRunner` - Runs audit in subprocess, streams events via callback
@@ -230,7 +230,7 @@ veritas/
 
 ---
 
-### Database (`veritas/db/`)
+### Database (`elliot/db/`)
 
 #### config.py
 **Purpose:** Database configuration
@@ -265,7 +265,7 @@ veritas/
 
 ---
 
-### Agents (`veritas/agents/`)
+### Agents (`elliot/agents/`)
 
 #### scout.py
 **Purpose:** Web navigation and page analysis
@@ -387,7 +387,7 @@ veritas/
 
 ---
 
-### Analysis (`veritas/analysis/`)
+### Analysis (`elliot/analysis/`)
 
 #### pattern_matcher.py
 **Purpose:** Dark pattern detection
@@ -485,7 +485,7 @@ veritas/
 
 ---
 
-### CWE/CVSS (`veritas/cwe/`)
+### CWE/CVSS (`elliot/cwe/`)
 
 #### cvss_calculator.py
 **Purpose:** CVSS v4.0 scoring
@@ -501,7 +501,7 @@ veritas/
 
 ---
 
-### OSINT (`veritas/osint/`)
+### OSINT (`elliot/osint/`)
 
 #### orchestrator.py
 **Purpose:** OSINT query orchestration
@@ -552,7 +552,7 @@ veritas/
 
 ---
 
-### Darknet (`veritas/darknet/`)
+### Darknet (`elliot/darknet/`)
 
 #### onion_detector.py
 **Purpose:** .onion domain detection
@@ -575,7 +575,7 @@ veritas/
 
 ---
 
-### Screenshots (`veritas/screenshots/`)
+### Screenshots (`elliot/screenshots/`)
 
 #### storage.py
 **Purpose:** Screenshot filesystem storage
@@ -584,7 +584,7 @@ veritas/
 
 ---
 
-### Configuration (`veritas/config/`)
+### Configuration (`elliot/config/`)
 
 #### settings.py
 **Purpose:** Application settings
@@ -628,7 +628,7 @@ veritas/
 
 ---
 
-### Core (`veritas/core/`)
+### Core (`elliot/core/`)
 
 #### ipc.py
 **Purpose:** Inter-process communication

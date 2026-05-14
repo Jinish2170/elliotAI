@@ -1,8 +1,8 @@
-# VERITAS Masterpiece Upgrade Plan
+# ELLIOT Masterpiece Upgrade Plan
 
 ## Executive Summary
 
-Transform VERITAS from a functional prototype into a **production-grade forensic web auditor** with:
+Transform ELLIOT from a functional prototype into a **production-grade forensic web auditor** with:
 - Consistent, high-accuracy results
 - Deep technical analysis (covering darknet-level sites)
 - Mature site-type-specific auditing
@@ -1432,4 +1432,4 @@ class EvidenceLedger:
 
 ---
 
-*Ready to transform VERITAS into a masterpiece? Let me know if this plan aligns with your vision and we'll start building!*
+*Ready to transform ELLIOT into a masterpiece? Let me know if this plan aligns with your vision and we'll start building!*

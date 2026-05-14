@@ -1,4 +1,4 @@
-# VERITAS Backend - Services Reference
+# ELLIOT Backend - Services Reference
 
 **Version:** 2.0.0
 **Last Updated:** 2026-03-08
@@ -7,7 +7,7 @@
 
 ## Overview
 
-This document describes the core services in the VERITAS backend and their purposes.
+This document describes the core services in the ELLIOT backend and their purposes.
 
 ---
 
@@ -20,9 +20,9 @@ FastAPI Routes Layer
     ↓
 AuditRunner Service
     ↓
-Veritas Orchestrator (Core Logic)
+Elliot Orchestrator (Core Logic)
     ↓
-Veritas Analysis Modules
+Elliot Analysis Modules
 ```
 
 ---
@@ -30,7 +30,7 @@ Veritas Analysis Modules
 ## 1. AuditRunner Service (`backend/services/audit_runner.py`)
 
 ### Purpose
-Wraps the VeritasOrchestrator for WebSocket streaming. Captures progress markers and converts them into typed WebSocket events for the frontend.
+Wraps the ElliotOrchestrator for WebSocket streaming. Captures progress markers and converts them into typed WebSocket events for the frontend.
 
 ### Key Responsibilities
 - Execute audit in subprocess for Windows compatibility
@@ -117,7 +117,7 @@ The service emits the following events:
 
 ---
 
-## 2. Veritas Orchestrator (Core Logic)
+## 2. Elliot Orchestrator (Core Logic)
 
 ### Purpose
 The main coordinator that orchestrates all 5 agents and manages the audit lifecycle.
@@ -140,11 +140,11 @@ The main coordinator that orchestrates all 5 agents and manages the audit lifecy
 ```
 
 ### Entry Point
-Located in `veritas/core/` (implementation varies by project structure).
+Located in `elliot/core/` (implementation varies by project structure).
 
 ---
 
-## 3. Screenshot Storage Service (`veritas/screenshots/storage.py`)
+## 3. Screenshot Storage Service (`elliot/screenshots/storage.py`)
 
 ### Purpose
 Store screenshots to the filesystem and provide metadata access.
@@ -171,19 +171,19 @@ storage/
 
 ---
 
-## 4. Database Service (`veritas/db/`)
+## 4. Database Service (`elliot/db/`)
 
 ### Purpose
 Provide persistence for audit records, findings, and screenshots.
 
 ### Components
 
-#### Database Config (`veritas/db/config.py`)
+#### Database Config (`elliot/db/config.py`)
 - Database URL configuration
 - Session management
 - Async engine setup
 
-#### Database Models (`veritas/db/models.py`)
+#### Database Models (`elliot/db/models.py`)
 Defines SQLAlchemy ORM models:
 
 ```python
@@ -235,7 +235,7 @@ class AuditStatus(Enum):
     ERROR = "error"
 ```
 
-#### Database Repository (`veritas/db/repositories.py`)
+#### Database Repository (`elliot/db/repositories.py`)
 Data access layer:
 
 ```python
@@ -248,7 +248,7 @@ class AuditRepository:
                          risk_level_filter: Optional[str]) -> List[Audit]
 ```
 
-#### Database Initialization (`veritas/db/__init__.py`)
+#### Database Initialization (`elliot/db/__init__.py`)
 
 ```python
 async def init_database() -> None:
@@ -260,14 +260,14 @@ async def get_db() -> AsyncSession:
 
 ---
 
-## 5. OSINT Services (`veritas/osint/`)
+## 5. OSINT Services (`elliot/osint/`)
 
 ### Purpose
 Provide Open Source Intelligence data from 15+ external sources.
 
 ### Components
 
-#### OSINT Orchestrator (`veritas/osint/orchestrator.py`)
+#### OSINT Orchestrator (`elliot/osint/orchestrator.py`)
 Coordinates OSINT queries across multiple sources.
 
 ```python
@@ -277,7 +277,7 @@ class OSINTOrchestrator:
     async def query_url(self, url: str) -> OSINTResult
 ```
 
-#### IOC Detector (`veritas/osint/ioc_detector.py`)
+#### IOC Detector (`elliot/osint/ioc_detector.py`)
 Detects indicators of compromise:
 
 ```python
@@ -286,7 +286,7 @@ class IOCDetector:
     def is_malicious_ioc(self, ioc: IOC) -> bool
 ```
 
-#### Threat Intelligence (`veritas/osint/cti.py`)
+#### Threat Intelligence (`elliot/osint/cti.py`)
 Provides cyber threat intelligence:
 
 ```python
@@ -296,7 +296,7 @@ class CTIService:
     async def attribute_threat(self, indicators: List) -> ThreatAttribution
 ```
 
-#### OSINT Sources (`veritas/osint/sources/`)
+#### OSINT Sources (`elliot/osint/sources/`)
 Individual OSINT data providers:
 
 | Source | File | Purpose |
@@ -315,14 +315,14 @@ Individual OSINT data providers:
 
 ---
 
-## 6. CWE/CVSS Service (`veritas/cwe/`)
+## 6. CWE/CVSS Service (`elliot/cwe/`)
 
 ### Purpose
 Provide CVE/CWE database and CVSS scoring capabilities.
 
 ### Components
 
-#### CVSS Calculator (`veritas/cwe/cvss_calculator.py`)
+#### CVSS Calculator (`elliot/cwe/cvss_calculator.py`)
 Calculates CVSS v4.0 scores:
 
 ```python
@@ -333,7 +333,7 @@ class CVSSCalculator:
     def get_severity(self, score: float) -> str
 ```
 
-#### CWE Registry (`veritas/cwe/registry.py`)
+#### CWE Registry (`elliot/cwe/registry.py`)
 CVE/CWE database access:
 
 ```python
@@ -346,14 +346,14 @@ class CWERegistry:
 
 ---
 
-## 7. Analysis Services (`veritas/analysis/`)
+## 7. Analysis Services (`elliot/analysis/`)
 
 ### Purpose
 Security and behavioral analysis modules.
 
 ### Components
 
-#### Dark Pattern Matcher (`veritas/analysis/pattern_matcher.py`)
+#### Dark Pattern Matcher (`elliot/analysis/pattern_matcher.py`)
 Detects dark patterns in text and elements:
 
 ```python
@@ -363,7 +363,7 @@ class PatternMatcher:
     def countdown_patterns() -> List[str]
 ```
 
-#### JavaScript Analyzer (`veritas/analysis/js_analyzer.py`)
+#### JavaScript Analyzer (`elliot/analysis/js_analyzer.py`)
 Analyzes JavaScript code:
 
 ```python
@@ -373,7 +373,7 @@ class JSAnalyzer:
     def detect_tracking(self, js_code: str) -> List[str]
 ```
 
-#### Phishing Checker (`veritas/analysis/phishing_checker.py`)
+#### Phishing Checker (`elliot/analysis/phishing_checker.py`)
 Detects phishing indicators:
 
 ```python
@@ -383,7 +383,7 @@ class PhishingChecker:
     def check_suspicious_tld(self, url: str) -> bool
 ```
 
-#### Form Validator (`veritas/analysis/form_validator.py`)
+#### Form Validator (`elliot/analysis/form_validator.py`)
 Validates form security:
 
 ```python
@@ -393,7 +393,7 @@ class FormValidator:
     def check_input_validation(self, fields: list) -> bool
 ```
 
-#### Security Analysis (`veritas/analysis/security/`)
+#### Security Analysis (`elliot/analysis/security/`)
 Security-specific analysis modules:
 
 | Module | File | Purpose |
@@ -404,7 +404,7 @@ Security-specific analysis modules:
 | GDPR | `gdpr.py` | GDPR compliance check |
 | TLS/SSL | `tls_ssl.py` | TLS/SSL validation |
 
-#### OWASP Modules (`veritas/analysis/security/owasp/`)
+#### OWASP Modules (`elliot/analysis/security/owasp/`)
 OWASP Top 10 vulnerability scanners:
 
 | Module | File | OWASP Category |
@@ -420,7 +420,7 @@ OWASP Top 10 vulnerability scanners:
 | A09 | `a09_logging_failures.py` | Logging Failures |
 | A10 | `a10_ssrf.py` | Server-Side Request Forgery |
 
-#### Exploitation Advisor (`veritas/analysis/exploitation_advisor.py`)
+#### Exploitation Advisor (`elliot/analysis/exploitation_advisor.py`)
 Generates exploitation advisories:
 
 ```python
@@ -430,7 +430,7 @@ class ExploitationAdvisor:
     def get_remediation(self, CVE: CVEEntry) -> dict
 ```
 
-#### Scenario Generator (`veritas/analysis/scenario_generator.py`)
+#### Scenario Generator (`elliot/analysis/scenario_generator.py`)
 Constructs attack scenarios:
 
 ```python
@@ -442,14 +442,14 @@ class ScenarioGenerator:
 
 ---
 
-## 8. Darknet Services (`veritas/darknet/`)
+## 8. Darknet Services (`elliot/darknet/`)
 
 ### Purpose
 Access and monitor darknet marketplaces.
 
 ### Components
 
-#### Onion Detector (`veritas/darknet/onion_detector.py`)
+#### Onion Detector (`elliot/darknet/onion_detector.py`)
 Detects .onion domains:
 
 ```python
@@ -458,7 +458,7 @@ class OnionDetector:
     def detect_tor_exit_node(self, ip_address: str) -> bool
 ```
 
-#### Tor Client (`veritas/darknet/tor_client.py`)
+#### Tor Client (`elliot/darknet/tor_client.py`)
 Tor network client:
 
 ```python
@@ -467,7 +467,7 @@ class TorClient:
     def set_proxy(self, proxy_address: str) -> None
 ```
 
-#### Threat Scraper (`veritas/darknet/threat_scraper.py`)
+#### Threat Scraper (`elliot/darknet/threat_scraper.py`)
 Scrapes darknet threats:
 
 ```python
@@ -478,7 +478,7 @@ class ThreatScraper:
 
 ---
 
-## 9. Configuration Services (`veritas/config/`)
+## 9. Configuration Services (`elliot/config/`)
 
 ### Purpose
 Provide configuration and rule definitions.
@@ -505,7 +505,7 @@ Routes (audit.py)
     ↓
 AuditRunner (audit_runner.py)
     ↓
-Veritas Orchestrator (core logic)
+Elliot Orchestrator (core logic)
     ├→ Scout Agent
     │   ├→ Scroll Orchestrator
     │   ├→ Lazy Load Detector

@@ -13,14 +13,14 @@ duration_min: 5
 
 ## Implementation Overview
 
-Added two compliance security modules to the Veritas analysis framework, each detecting specific regulatory violations in web applications. Both modules only report findings when relevant data collection or payment forms are detected to minimize false positives.
+Added two compliance security modules to the Elliot analysis framework, each detecting specific regulatory violations in web applications. Both modules only report findings when relevant data collection or payment forms are detected to minimize false positives.
 
 ### Deliverables
 
 | File | Tier | Provides | Exports |
 |------|------|----------|---------|
-| `veritas/analysis/security/pci_dss.py` | MEDIUM | PCI DSS compliance checking (3.3, 3.4, 4.1, 6.5.1, 8.2) | `PCIDSSComplianceModule` |
-| `veritas/analysis/security/gdpr.py` | MEDIUM | GDPR compliance checking (Art. 7, 17, 25, 32, 35) | `GDPRComplianceModule` |
+| `elliot/analysis/security/pci_dss.py` | MEDIUM | PCI DSS compliance checking (3.3, 3.4, 4.1, 6.5.1, 8.2) | `PCIDSSComplianceModule` |
+| `elliot/analysis/security/gdpr.py` | MEDIUM | GDPR compliance checking (Art. 7, 17, 25, 32, 35) | `GDPRComplianceModule` |
 
 ### Technical Approach
 
@@ -128,9 +128,9 @@ None - plan executed exactly as specified.
 ## Dependencies
 
 **Requires:**
-- `veritas.analysis.security.base.SecurityModule`
-- `veritas.cwe.cvss_calculator` (PRESET_METRICS)
-- `veritas.cwe.registry` (map_finding_to_cwe)
+- `elliot.analysis.security.base.SecurityModule`
+- `elliot.cwe.cvss_calculator` (PRESET_METRICS)
+- `elliot.cwe.registry` (map_finding_to_cwe)
 
 **Provides:**
 - PCI DSS compliance checking (req 3.3, 3.4, 4.1, 6.5.1, 8.2)
@@ -140,11 +140,11 @@ None - plan executed exactly as specified.
 
 **Automated verification:**
 ```python
-from veritas.analysis.security.pci_dss import PCIDSSComplianceModule
+from elliot.analysis.security.pci_dss import PCIDSSComplianceModule
 m = PCIDSSComplianceModule()
 # Output: pci_dss, tier: SecurityTier.MEDIUM, timeout: 12
 
-from veritas.analysis.security.gdpr import GDPRComplianceModule
+from elliot.analysis.security.gdpr import GDPRComplianceModule
 m = GDPRComplianceModule()
 # Output: gdpr, tier: SecurityTier.MEDIUM, timeout: 12
 ```
@@ -186,4 +186,4 @@ Both modules follow the header normalization pattern (lowercase keys) for HTTP R
 
 ## Next Steps
 
-Consider updating `veritas/analysis/security/__init__.py` to export the new modules for easier imports, enabling auto-discovery via `get_all_security_modules()`.
+Consider updating `elliot/analysis/security/__init__.py` to export the new modules for easier imports, enabling auto-discovery via `get_all_security_modules()`.

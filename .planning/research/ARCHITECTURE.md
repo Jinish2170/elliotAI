@@ -1,4 +1,4 @@
-# Architecture Patterns: VERITAS v2.0 Enhancement
+# Architecture Patterns: ELLIOT v2.0 Enhancement
 
 **Domain:** Forensic Web Auditing Platform Enhancement  
 **Researched:** 2026-02-23
@@ -7,11 +7,11 @@
 
 ## Recommended Architecture
 
-VERITAS v2.0 extends the existing agent-based architecture with new capabilities while maintaining the established patterns. The architecture follows a microservices-inspired approach where each agent is an independent module communicating through shared state models.
+ELLIOT v2.0 extends the existing agent-based architecture with new capabilities while maintaining the established patterns. The architecture follows a microservices-inspired approach where each agent is an independent module communicating through shared state models.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                           VERITAS v2.0 Architecture                          │
+│                           ELLIOT v2.0 Architecture                          │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
 │  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐    ┌─────────────┐ │
@@ -64,7 +64,7 @@ VERITAS v2.0 extends the existing agent-based architecture with new capabilities
 
 **Example:**
 ```python
-from veritas.agents.vision import VisionAgent
+from elliot.agents.vision import VisionAgent
 
 class EnhancedVisionAgent(VisionAgent):
   def __init__(self, nim_client: NimClient):
@@ -123,7 +123,7 @@ async def check_virus_total(domain):
 
 ## Sources
 
-- VERITAS PROJECT.md (existing agent architecture)
-- VERITAS IMPLEMENTATION_PLAN.md (enhancement plans)
+- ELLIOT PROJECT.md (existing agent architecture)
+- ELLIOT IMPLEMENTATION_PLAN.md (enhancement plans)
 - LangGraph documentation (state machine patterns)
 - FastAPI best practices (async/await patterns)

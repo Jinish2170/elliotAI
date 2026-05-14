@@ -1,4 +1,4 @@
-# Industrial Level Audit - VERITAS Project
+# Industrial Level Audit - ELLIOT Project
 
 **Audit Date:** 2026-03-16
 **Branch:** frontend-adding
@@ -6,7 +6,7 @@
 
 ## Executive Summary
 
-Comprehensive audit of the VERITAS multi-modal forensic web auditing platform. The project has a solid foundation with QA-01 fixes applied (sequence, data flow, green flags), but requires several critical fixes before production deployment.
+Comprehensive audit of the ELLIOT multi-modal forensic web auditing platform. The project has a solid foundation with QA-01 fixes applied (sequence, data flow, green flags), but requires several critical fixes before production deployment.
 
 ---
 
@@ -129,13 +129,13 @@ NEXT_PUBLIC_WS_URL=ws://localhost:8000
 async def health_check():
     checks = {
         "status": "ok",
-        "service": "veritas-api",
+        "service": "elliot-api",
         "version": "2.0.0",
     }
 
     # Check database
     try:
-        from veritas.db import get_db
+        from elliot.db import get_db
         async for db in get_db():
             await db.execute("SELECT 1")
             checks["database"] = "connected"
@@ -148,7 +148,7 @@ async def health_check():
 ```
 
 ### 7. RELIABILITY: No Retry Logic for NIM API Calls
-- **File:** `veritas/core/nim_client.py` (inferred from settings.py)
+- **File:** `elliot/core/nim_client.py` (inferred from settings.py)
 - **Issue:** While retry count is configured, retry logic may not handle all failure modes
 - **Fix:** Ensure exponential backoff and circuit breaker are fully utilized
 
@@ -165,7 +165,7 @@ async def health_check():
 - **Fix:** Either wire these fields from backend or remove unused type definitions
 
 ### 9. PERFORMANCE: Missing Database Index on risk_level
-- **File:** `veritas/db/models.py:94-100`
+- **File:** `elliot/db/models.py:94-100`
 - **Issue:** `idx_audits_trust_score` exists but no index on `risk_level` which is used in filtering
 - **Fix:** Add index in `__table_args__`:
 ```python
@@ -187,7 +187,7 @@ Index("idx_audits_risk_level", "risk_level"),
 - **Fix:** Add error boundary component around critical sections
 
 ### 12. CODE QUALITY: Hardcoded Default Values
-- **File:** `veritas/config/settings.py:97`
+- **File:** `elliot/config/settings.py:97`
 - **Issue:** Tesseract path hardcoded for Windows
 - **Fix:** Make configurable or auto-detect:
 ```python
@@ -218,7 +218,7 @@ ws.onerror = (event) => {
 - **Fix:** Run `python -m py_compile` and linters to identify
 
 ### 15. SECURITY: API Key Environment Variable Defaults Empty
-- **File:** `veritas/config/settings.py:44-75`
+- **File:** `elliot/config/settings.py:44-75`
 - **Issue:** Multiple API keys default to empty string `""` without warning
 - **Fix:** Add validation at startup:
 ```python
@@ -235,15 +235,15 @@ for key in required_keys:
 ```python
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    print("Veritas API - Online")
-    from veritas.db import init_database
+    print("Elliot API - Online")
+    from elliot.db import init_database
     await init_database()
 
     yield
 
-    print("Veritas API - Shutting down")
+    print("Elliot API - Shutting down")
     # Cleanup resources
-    from veritas.db import close_pool
+    from elliot.db import close_pool
     await close_pool()
 ```
 
@@ -252,7 +252,7 @@ async def lifespan(app: FastAPI):
 ## Low Priority / Nice to Have
 
 ### 17. TESTING: No Unit Tests for Critical Paths
-- **Status:** Has some tests in `backend/tests/` and `veritas/tests/`
+- **Status:** Has some tests in `backend/tests/` and `elliot/tests/`
 - **Issue:** Coverage gaps in:
   - Audit workflow start/complete/error
   - WebSocket streaming
@@ -264,7 +264,7 @@ async def lifespan(app: FastAPI):
 - **Fix:** Add E2E tests for audit flow
 
 ### 19. CODE QUALITY: Duplicate Code in Graph Density Calculation
-- **Files:** `veritas/core/orchestrator.py:251`, `veritas/core/orchestrator.py:679`, `veritas/core/orchestrator.py:712`
+- **Files:** `elliot/core/orchestrator.py:251`, `elliot/core/orchestrator.py:679`, `elliot/core/orchestrator.py:712`
 - **Issue:** Same density calculation repeated 3 times
 - **Fix:** Create utility function:
 ```python

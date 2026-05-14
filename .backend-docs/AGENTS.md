@@ -1,4 +1,4 @@
-# VERITAS Agent Reference
+# ELLIOT Agent Reference
 
 **Last updated:** 2026-03-09
 **Scope:** canonical backend-facing agent contracts
@@ -17,7 +17,7 @@ The orchestrator is the source of truth for the final merged result. The backend
 
 ## 1. Scout Agent
 
-**Primary file:** `veritas/agents/scout.py`
+**Primary file:** `elliot/agents/scout.py`
 
 ### Canonical outputs consumed by the backend
 
@@ -28,12 +28,12 @@ The orchestrator is the source of truth for the final merged result. The backend
 
 ### Notes
 
-- `veritas/agents/scout_nav/*` remains helper code behind the main scout path.
+- `elliot/agents/scout_nav/*` remains helper code behind the main scout path.
 - The backend derives screenshot events from scout screenshot paths in the final result.
 
 ## 2. Vision Agent
 
-**Primary file:** `veritas/agents/vision.py`
+**Primary file:** `elliot/agents/vision.py`
 
 ### Canonical outputs consumed by the backend
 
@@ -52,7 +52,7 @@ The orchestrator is the source of truth for the final merged result. The backend
 
 ## 3. Security Agent
 
-**Primary file:** `veritas/agents/security_agent.py`
+**Primary file:** `elliot/agents/security_agent.py`
 
 ### Canonical outputs consumed by the backend
 
@@ -75,7 +75,7 @@ The orchestrator is the source of truth for the final merged result. The backend
 
 ## 4. Graph Investigator
 
-**Primary file:** `veritas/agents/graph_investigator.py`
+**Primary file:** `elliot/agents/graph_investigator.py`
 
 ### Canonical outputs consumed by the backend
 
@@ -94,7 +94,7 @@ The orchestrator is the source of truth for the final merged result. The backend
 
 ## 5. Judge Agent
 
-**Primary file:** `veritas/agents/judge.py`
+**Primary file:** `elliot/agents/judge.py`
 
 ### Canonical outputs consumed by the backend
 

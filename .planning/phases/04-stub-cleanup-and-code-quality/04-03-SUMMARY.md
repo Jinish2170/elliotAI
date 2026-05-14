@@ -13,10 +13,10 @@ depends_on:
   - "04-02"
 
 affects:
-  - system: "VERITAS Core Engine"
+  - system: "ELLIOT Core Engine"
     impact: "Stub cleanup verified by comprehensive test coverage"
     files:
-      - "veritas/tests/test_stub_cleanup.py"
+      - "elliot/tests/test_stub_cleanup.py"
 
 tech-stack:
   added:
@@ -29,7 +29,7 @@ tech-stack:
 
 key-files:
   created:
-    - "veritas/tests/test_stub_cleanup.py"
+    - "elliot/tests/test_stub_cleanup.py"
 
 decisions:
   - "Test file structure follows project patterns (test_ipc_queue.py, test_security_dataclasses.py)"
@@ -53,7 +53,7 @@ metrics:
 
 ## One-liner
 
-Created comprehensive test suite `veritas/tests/test_stub_cleanup.py` with 11 exception tests covering all stub locations from Plans 01 and 02, using pytest.raises() pattern and mock dataclasses for isolation.
+Created comprehensive test suite `elliot/tests/test_stub_cleanup.py` with 11 exception tests covering all stub locations from Plans 01 and 02, using pytest.raises() pattern and mock dataclasses for isolation.
 
 ## Deviations from Plan
 
@@ -63,7 +63,7 @@ None - plan executed exactly as written. Test suite created during Wave 2 execut
 
 ## Summary of Changes
 
-Created new test file `veritas/tests/test_stub_cleanup.py` (340 lines) with comprehensive exception test coverage:
+Created new test file `elliot/tests/test_stub_cleanup.py` (340 lines) with comprehensive exception test coverage:
 
 ### Test Class Structure
 
@@ -97,7 +97,7 @@ Created new test file `veritas/tests/test_stub_cleanup.py` (340 lines) with comp
 
 ### Test Suite Execution
 ```bash
-pytest veritas/tests/test_stub_cleanup.py -v
+pytest elliot/tests/test_stub_cleanup.py -v
 ```
 
 Results:
@@ -183,7 +183,7 @@ The test suite ensures:
 
 ## Files Created
 
-- `veritas/tests/test_stub_cleanup.py` (340 lines)
+- `elliot/tests/test_stub_cleanup.py` (340 lines)
   - 11 comprehensive exception tests
   - 4 test classes covering all stub locations
   - Mock dataclasses for isolation

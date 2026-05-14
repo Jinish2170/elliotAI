@@ -22,9 +22,9 @@ tech-stack:
 key-files:
   created: []
   modified:
-    - veritas/config/dark_patterns.py - Added VISION_PASS_PROMPTS with 5 pass-specific prompts
-    - veritas/agents/vision.py - Added get_confidence_tier() and get_pass_prompt() functions
-    - veritas/agents/vision/__init__.py - Fixed namespace collision to export vision.py symbols
+    - elliot/config/dark_patterns.py - Added VISION_PASS_PROMPTS with 5 pass-specific prompts
+    - elliot/agents/vision.py - Added get_confidence_tier() and get_pass_prompt() functions
+    - elliot/agents/vision/__init__.py - Fixed namespace collision to export vision.py symbols
 
 key-decisions:
   - "5 distinct prompts optimized for each analysis target (quick threat, dark pattern taxonomy, temporal, entity verification, synthesis)"
@@ -74,9 +74,9 @@ completed: 2026-02-24
 
 ## Files Created/Modified
 
-- `veritas/config/dark_patterns.py` - Added VISION_PASS_PROMPTS dictionary with 5 specialized prompts for passes 1-5
-- `veritas/agents/vision.py` - Added get_confidence_tier() and get_pass_prompt() functions for confidence mapping and prompt selection with context injection
-- `veritas/agents/vision/__init__.py` - Fixed namespace collision by importing and exporting symbols from sibling vision.py file
+- `elliot/config/dark_patterns.py` - Added VISION_PASS_PROMPTS dictionary with 5 specialized prompts for passes 1-5
+- `elliot/agents/vision.py` - Added get_confidence_tier() and get_pass_prompt() functions for confidence mapping and prompt selection with context injection
+- `elliot/agents/vision/__init__.py` - Fixed namespace collision by importing and exporting symbols from sibling vision.py file
 
 ## Decisions Made
 
@@ -92,9 +92,9 @@ completed: 2026-02-24
 **1. [Rule 3 - Blocking Issue] Fixed vision.py and vision/ subdirectory namespace collision**
 - **Found during:** Task 3 verification
 - **Issue:** The vision/ subdirectory shadows vision.py, making get_confidence_tier() and get_pass_prompt() inaccessible via standard imports used by orchestrator.py
-- **Fix:** Updated veritas/agents/vision/__init__.py to dynamically load and export symbols from the sibling vision.py module
-- **Files modified:** veritas/agents/vision/__init__.py
-- **Verification:** Verified imports work from backend directory: `from veritas.agents.vision import get_confidence_tier, get_pass_prompt`
+- **Fix:** Updated elliot/agents/vision/__init__.py to dynamically load and export symbols from the sibling vision.py module
+- **Files modified:** elliot/agents/vision/__init__.py
+- **Verification:** Verified imports work from backend directory: `from elliot.agents.vision import get_confidence_tier, get_pass_prompt`
 - **Committed in:** `869a61f` (fix commit)
 
 ---

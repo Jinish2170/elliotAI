@@ -5,7 +5,7 @@
 
 ## Phase Boundary
 
-Replace fragile stdout marker parsing (`##PROGRESS:`) with multiprocessing.Queue for structured subprocess communication between backend and Veritas subprocess. Maintain fallback capability for instant rollback during gradual rollout.
+Replace fragile stdout marker parsing (`##PROGRESS:`) with multiprocessing.Queue for structured subprocess communication between backend and Elliot subprocess. Maintain fallback capability for instant rollback during gradual rollout.
 
 ## Implementation Decisions
 

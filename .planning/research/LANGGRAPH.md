@@ -12,7 +12,7 @@ The current implementation bypasses LangGraph's `ainvoke()` method in favor of s
 **Current State:**
 - Proper LangGraph StateGraph is built and compiled in `build_audit_graph()`
 - Compiled graph (`self._compiled`) is never used via `ainvoke()`
-- `VeritasOrchestrator.audit()` manually executes nodes sequentially in a for-loop
+- `ElliotOrchestrator.audit()` manually executes nodes sequentially in a for-loop
 - Comment at line 939 explicitly documents the workaround: "This bypasses LangGraph's ainvoke to avoid Python 3.14 asyncio CancelledError issues"
 
 **Impact:**
@@ -30,7 +30,7 @@ Current limitation: Manual routing function calls, serialized state updates, no 
 
 ### Built but Unused LangGraph Graph
 
-**Location:** `veritas/core/orchestrator.py:861-906`
+**Location:** `elliot/core/orchestrator.py:861-906`
 
 The `build_audit_graph()` function creates a proper LangGraph StateGraph:
 
@@ -58,9 +58,9 @@ START → scout → [route_after_scout] → security → vision → graph → ju
 
 ### Sequential Execution Workaround
 
-**Location:** `veritas/core/orchestrator.py:929-1113`
+**Location:** `elliot/core/orchestrator.py:929-1113`
 
-The `VeritasOrchestrator.audit()` method manually replicates graph execution:
+The `ElliotOrchestrator.audit()` method manually replicates graph execution:
 
 ```python
 async def audit(self, url: str, tier: str = "standard_audit", ...):
@@ -117,7 +117,7 @@ async def audit(self, url: str, tier: str = "standard_audit", ...):
 
 ### The CancelledError Issue
 
-**Documented in code:** `veritas/core/orchestrator.py:939`
+**Documented in code:** `elliot/core/orchestrator.py:939`
 
 ```python
 """
@@ -177,7 +177,7 @@ This suggests the CancelledError issue is likely:
 
 **Goal:** Create minimal test case that reproduces the CancelledError
 
-**Test script:** `veritas/tests/test_langgraph_py314.py`
+**Test script:** `elliot/tests/test_langgraph_py314.py`
 
 ```python
 """
@@ -267,20 +267,20 @@ if __name__ == "__main__":
 
 **Expected outcomes:**
 - If ainvoke fails with CancelledError → reproduces issue
-- If ainvoke succeeds → issue is in VERITAS-specific code (NIMClient, complex state)
+- If ainvoke succeeds → issue is in ELLIOT-specific code (NIMClient, complex state)
 - If manual always works → confirms sequential workaround is viable
 
-### Phase 2: VERITAS-Specific Reproduction
+### Phase 2: ELLIOT-Specific Reproduction
 
 **Goal:** Test with actual NIMClient to isolate external async calls
 
-**Test script:** `veritas/tests/test_ainvoke_with_nim.py`
+**Test script:** `elliot/tests/test_ainvoke_with_nim.py`
 
 ```python
 """
 Test LangGraph ainvoke with NIMClient async calls.
 """
-from veritas.core.nim_client import NIMClient
+from elliot.core.nim_client import NIMClient
 from langgraph.graph import StateGraph, END
 
 class NIMTestState(TypedDict):
@@ -328,7 +328,7 @@ if __name__ == "__main__":
 **Expected outcomes:**
 - If Python 3.12/3.13 → `ainvoke()` works → Python 3.14 compatibility issue
 - If all versions → `ainvoke()` fails → LangGraph bug unrelated to Python version
-- If Python 3.14 → works → Issue is VERITAS-specific (NIMClient or complex graph)
+- If Python 3.14 → works → Issue is ELLIOT-specific (NIMClient or complex graph)
 
 ## Proper LangGraph Execution Pattern
 
@@ -337,7 +337,7 @@ if __name__ == "__main__":
 **Replacement for sequential execution:**
 
 ```python
-class VeritasOrchestrator:
+class ElliotOrchestrator:
     def __init__(self):
         self._graph = build_audit_graph()
         self._compiled = self._graph.compile()
@@ -416,7 +416,7 @@ class VeritasOrchestrator:
 # Save checkpoint after each iteration
 from langgraph.checkpoint.memory import MemorySaver
 
-class VeritasOrchestrator:
+class ElliotOrchestrator:
     def __init__(self):
         self._graph = build_audit_graph()
         self._memory = MemorySaver()
@@ -498,7 +498,7 @@ def build_parallel_graph():
 
 ```python
 # Enable human-in-the-loop debugging
-class VeritasOrchestrator:
+class ElliotOrchestrator:
     async def audit_interactive(self, url: str):
         """Run audit with step-through debugging."""
         config = {"configurable": {"thread_id": f"debug_{url}"}}
@@ -520,7 +520,7 @@ class VeritasOrchestrator:
 **Best if:** ainvoke() cannot be fixed quickly, but want traceability
 
 ```python
-class VeritasOrchestrator:
+class ElliotOrchestrator:
     def __init__(self):
         self._graph = build_audit_graph()
         self._compiled = self._graph.compile()
@@ -598,7 +598,7 @@ class VeritasOrchestrator:
 **Best if:** Want parallel execution for independent nodes without full ainvoke()
 
 ```python
-class VeritasOrchestrator:
+class ElliotOrchestrator:
     async def audit_hybrid(self, url: str, tier: str) -> AuditState:
         """Hybrid execution: parallel where safe, sequential elsewhere."""
         state = self._initialize_state(url, tier)
@@ -682,8 +682,8 @@ FROM python:3.13-slim
 COPY requirements.txt .
 RUN pip install -r requirements.txt
 
-# Run VERITAS
-CMD ["python", "-m", "veritas"]
+# Run ELLIOT
+CMD ["python", "-m", "elliot"]
 ```
 
 ```toml
@@ -715,7 +715,7 @@ python-version = "3.13"
 **Test 1: Minimal graph ainvoke()**
 
 ```python
-# veritas/tests/test_langgraph_minimal.py
+# elliot/tests/test_langgraph_minimal.py
 import pytest
 import asyncio
 from langgraph.graph import StateGraph, END
@@ -764,16 +764,16 @@ async def test_conditional_routing_ainvoke():
     assert result["count"] == 3
 ```
 
-**Test 2: VERITAS-style graph ainvoke()**
+**Test 2: ELLIOT-style graph ainvoke()**
 
 ```python
-# veritas/tests/test_langgraph_veritas.py
+# elliot/tests/test_langgraph_elliot.py
 @pytest.mark.asyncio
-async def test_veritas_graph_ainvoke_mock():
-    """Test VERITAS-style graph with mocked nodes."""
+async def test_elliot_graph_ainvoke_mock():
+    """Test ELLIOT-style graph with mocked nodes."""
     # Mock agents to avoid NIM calls
-    with mock.patch('veritas.agents.scout.StealthScout') as mock_scout:
-        with mock.patch('veritas.agents.vision.VisionAgent') as mock_vision:
+    with mock.patch('elliot.agents.scout.StealthScout') as mock_scout:
+        with mock.patch('elliot.agents.vision.VisionAgent') as mock_vision:
             mock_scout.return_value.__aenter__.return_value = mock.Mock()
             mock_vision.return_value = mock.Mock()
 
@@ -817,7 +817,7 @@ async def test_veritas_graph_ainvoke_mock():
 **Test 3: Full audit ainvoke() vs sequential**
 
 ```python
-# veritas/tests/test_audit_execution_comparison.py
+# elliot/tests/test_audit_execution_comparison.py
 @pytest.mark.integration
 @pytest.mark.asyncio
 async def test_ainvoke_vs_sequential():
@@ -825,12 +825,12 @@ async def test_ainvoke_vs_sequential():
     url = "https://example.com"
 
     # Run with sequential (current)
-    orchestrator_seq = VeritasOrchestratorSequential()
+    orchestrator_seq = ElliotOrchestratorSequential()
     result_seq = await orchestrator_seq.audit(url, tier="quick_scan")
 
     # Run with ainvoke (if available)
     try:
-        orchestrator_ainv = VeritasOrchestratorAInvoke()
+        orchestrator_ainv = ElliotOrchestratorAInvoke()
         result_ainv = await orchestrator_ainv.audit(url, tier="quick_scan")
 
         # Compare results
@@ -861,7 +861,7 @@ except asyncio.CancelledError:
 # CORRECT - logs and tracks the issue, can disable fallback for testing
 from typing import Optional
 
-class VeritasOrchestrator:
+class ElliotOrchestrator:
     def __init__(self, use_sequential_fallback: bool = True):
         self._use_fallback = use_sequential_fallback
         self._graph = build_audit_graph()
@@ -941,7 +941,7 @@ except RecursionError:
 ### Immediate Actions (Phase 3 of Roadmap)
 
 1. **Create isolated reproduction test** (1-2 days)
-   - Write `veritas/tests/test_langgraph_minimal.py`
+   - Write `elliot/tests/test_langgraph_minimal.py`
    - Test on current Python 3.14 environment
    - Document CancelledError behavior
 
@@ -1009,7 +1009,7 @@ except RecursionError:
 
 ### Gaps to Address
 
-- **Python 3.14 CancelledError root cause**: Need isolated reproduction test to determine if LangGraph internal issue or VERITAS-specific — handle by Phase 1 investigation (minimal graph test)
+- **Python 3.14 CancelledError root cause**: Need isolated reproduction test to determine if LangGraph internal issue or ELLIOT-specific — handle by Phase 1 investigation (minimal graph test)
 - **NIMClient async compatibility**: Need test with actual async HTTP calls to see if external AI client triggers issue — handle by Phase 2 investigation (NIM test)
 - **Python version comparison**: Need test on Python 3.12/3.13 to isolate version as factor — handle by virtual environment or Docker testing
 - **LangGraph upstream status**: Unknown if LangGraph community has reported Python 3.14 issues — handle by GitHub issue search and possibly filing bug report
@@ -1019,7 +1019,7 @@ except RecursionError:
 ### Primary (HIGH confidence)
 - **LangGraph tutorial and documentation** (web fetch failed, but concept well-understood from LangChain ecosystem) — https://langchain-ai.github.io/langgraph/
 - **Python 3.14 Release Notes** — Asyncio introspection APIs, create_task() changes — https://docs.python.org/3.14/whatsnew/3.14.html
-- **VERITAS codebase** — orchestrator.py with explicit ainvoke() bypass comment
+- **ELLIOT codebase** — orchestrator.py with explicit ainvoke() bypass comment
 
 ### Secondary (MEDIUM confidence)
 - **LangGraph async execution patterns** — StateGraph ainvoke(), config options, checkpointing (general LangChain knowledge)
@@ -1042,7 +1042,7 @@ except RecursionError:
 
 ---
 
-*LangGraph Research for: VERITAS async execution investigation*
+*LangGraph Research for: ELLIOT async execution investigation*
 *Researched: 2026-02-20*
 *Confidence: MEDIUM*
 *Web search limitation: API errors prevented live data retrieval, research based on Python docs and code analysis*

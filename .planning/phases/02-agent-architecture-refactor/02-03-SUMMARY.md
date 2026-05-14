@@ -24,10 +24,10 @@ tech-stack:
 key-files:
   created: []
   modified:
-    - veritas/config/settings.py - Rollout helpers (get_security_agent_rollout, should_use_security_agent)
-    - veritas/core/ipc.py - SecurityModeStarted and SecurityModeCompleted events
-    - veritas/agents/security_agent.py - Mode selection methods (is_enabled, get_env_mode, initialize)
-    - veritas/core/orchestrator.py - security_node_with_agent wrapper routing logic
+    - elliot/config/settings.py - Rollout helpers (get_security_agent_rollout, should_use_security_agent)
+    - elliot/core/ipc.py - SecurityModeStarted and SecurityModeCompleted events
+    - elliot/agents/security_agent.py - Mode selection methods (is_enabled, get_env_mode, initialize)
+    - elliot/core/orchestrator.py - security_node_with_agent wrapper routing logic
 
 key-decisions:
   - "Consistent hash-based routing (MD5 from URL) ensures same URL always gets same mode"
@@ -81,10 +81,10 @@ Each task was committed atomically:
 
 ## Files Created/Modified
 
-- `veritas/config/settings.py` - Added `get_security_agent_rollout()` and `should_use_security_agent(url)` functions with consistent hash-based routing; imported hashlib and logging
-- `veritas/core/ipc.py` - Added `SecurityModeStarted` and `SecurityModeCompleted` progress event dataclasses for monitoring security mode selection and execution
-- `veritas/agents/security_agent.py` - Added `is_enabled()` class method, `get_env_mode()` static method, and `initialize()` async method for mode detection and pre-analysis setup
-- `veritas/core/orchestrator.py` - Added `security_node_with_agent()` wrapper with feature flag routing, auto-fallback mechanism, and mode tracking; updated graph builder and audit method to use new wrapper
+- `elliot/config/settings.py` - Added `get_security_agent_rollout()` and `should_use_security_agent(url)` functions with consistent hash-based routing; imported hashlib and logging
+- `elliot/core/ipc.py` - Added `SecurityModeStarted` and `SecurityModeCompleted` progress event dataclasses for monitoring security mode selection and execution
+- `elliot/agents/security_agent.py` - Added `is_enabled()` class method, `get_env_mode()` static method, and `initialize()` async method for mode detection and pre-analysis setup
+- `elliot/core/orchestrator.py` - Added `security_node_with_agent()` wrapper with feature flag routing, auto-fallback mechanism, and mode tracking; updated graph builder and audit method to use new wrapper
 
 ## Decisions Made
 
@@ -106,7 +106,7 @@ None - plan executed exactly as specified. All tasks completed without requiring
 - Consistent hash routing verified: same URL always gets same mode decision
 - SecurityModeStarted and SecurityModeCompleted events create successfully
 - security_node_with_agent function callable and accessible
-- All 42 existing tests passing (IPC tests, config tests, veritas tests)
+- All 42 existing tests passing (IPC tests, config tests, elliot tests)
 - Feature flag verification tests all passed
 
 ## Issues Encountered

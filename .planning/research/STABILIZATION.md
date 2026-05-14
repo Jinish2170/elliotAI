@@ -1,13 +1,13 @@
 # Brownfield Project Stabilization Research
 
-**Project:** VERITAS Forensic Web Auditing Platform
+**Project:** ELLIOT Forensic Web Auditing Platform
 **Domain:** Brownfield legacy code stabilization
 **Researched:** 2026-02-20
 **Overall Confidence:** MEDIUM
 
 ## Executive Summary
 
-VERITAS is a functional forensic web auditing platform with significant technical debt accumulated during rapid development. The codebase exhibits classic brownfield stabilization challenges: architectural violations (security_node as function), fragile inter-process communication (stdout parsing), unused framework infrastructure (LangGraph ainvoke bypassed), and incomplete implementations masking bugs.
+ELLIOT is a functional forensic web auditing platform with significant technical debt accumulated during rapid development. The codebase exhibits classic brownfield stabilization challenges: architectural violations (security_node as function), fragile inter-process communication (stdout parsing), unused framework infrastructure (LangGraph ainvoke bypassed), and incomplete implementations masking bugs.
 
 Stabilization should follow the **Strangler Fig pattern** with **feature-flagged refactoring**. The approach systematically replaces fragile components with robust alternatives while maintaining existing functionality through parallel implementations. This minimizes risk by keeping the old code working alongside new code until complete migration is verified.
 
@@ -76,7 +76,7 @@ Based on research, suggested phase structure:
 
 ## Current System Overview
 
-The VERITAS platform implements a **3-tier Async Event-Stream Architecture** with subprocess isolation for Python 3.14 compatibility:
+The ELLIOT platform implements a **3-tier Async Event-Stream Architecture** with subprocess isolation for Python 3.14 compatibility:
 
 ```
 ┌────────────────────────────────────────────────────────────────────┐
@@ -104,7 +104,7 @@ The VERITAS platform implements a **3-tier Async Event-Stream Architecture** wit
                subprocess.Popen()
                             │
 ├───────────────────────────┼──────────────────────────────────────┤
-│              Orchestration Layer (Veritas Engine)                │
+│              Orchestration Layer (Elliot Engine)                │
 │        LangGraph StateGraph (manual execution, not ainvoke)      │
 │  ┌────────┐ ┌──────────┐ ┌───────┐ ┌──────┐ ┌──────┐           │
 │  │ Scout  │ │ Security │ │Vision │ │Graph │ │Judge │           │
@@ -159,9 +159,9 @@ class AuditRunner:
 **SecurityAgent Refactor Example:**
 
 ```python
-# veritas/core/orchestrator.py
+# elliot/core/orchestrator.py
 
-USE_SECURITY_AGENT_CLASS = os.getenv("VERITAS_SECURITY_AGENT_CLASS", "false").lower() == "true"
+USE_SECURITY_AGENT_CLASS = os.getenv("ELLIOT_SECURITY_AGENT_CLASS", "false").lower() == "true"
 
 async def security_node(state: AuditState) -> dict:
     url = state.get("url", "")
@@ -263,7 +263,7 @@ class SQLiteAuditRepository(AuditRepository):
 # In backend/routes/audit.py
 repository: AuditRepository
 
-if os.getenv("VERITAS_USE_SQLITE_STORAGE", "false").lower() == "true":
+if os.getenv("ELLIOT_USE_SQLITE_STORAGE", "false").lower() == "true":
     repository = SQLiteAuditRepository()
 else:
     repository = InMemoryAuditRepository()
@@ -362,7 +362,7 @@ else:
 |-----------|----------------|------------------------|
 | **AuditRunner** | Subprocess spawning, event serialization | LangGraph Orchestrator (via IPC) |
 | **SecurityAgent** | Security module orchestration | Orchestrator, analysis modules |
-| **SQLite IPC** | Structured message queue between backend and veritas | AuditRunner, Orchestrator |
+| **SQLite IPC** | Structured message queue between backend and elliot | AuditRunner, Orchestrator |
 | **AuditRepository** | Audit result persistence | Backend API routes |
 | **LangGraph Graph** | State machine definition and execution | All agents, routing functions |
 
@@ -383,7 +383,7 @@ else:
           ↓
 [Backend creates SQLitePoller coroutine]
           ↑                    ↓
-[AuditRunner] ←─────── SQLite poll reads messages ───────→ [Veritas CLI]
+[AuditRunner] ←─────── SQLite poll reads messages ───────→ [Elliot CLI]
           ↓                    ↓
 [WebSocket.send_json()] ←─ Type conversion ──────────────────┘
           ↓
@@ -418,7 +418,7 @@ else:
 
 1. **Create SQLite IPC Schema:**
 ```python
-# veritas/core/ipc_db.py
+# elliot/core/ipc_db.py
 class IPCDatabase:
     def __init__(self, audit_id: str, db_path: str = "ipc"):
         self._audit_id = audit_id
@@ -482,8 +482,8 @@ class IPCDatabase:
 
 2. **Update Orchestrator to Emit to SQLite:**
 ```python
-# veritas/core/orchestrator.py
-class VeritasOrchestrator:
+# elliot/core/orchestrator.py
+class ElliotOrchestrator:
     def __init__(self, use_ipc_db: bool = False):
         self._use_ipc_db = use_ipc_db
         if use_ipc_db:
@@ -511,7 +511,7 @@ class AuditRunner:
         self.audit_id = audit_id
         self._use_ipc_db = use_ipc_db
         if use_ipc_db:
-            from veritas.core.ipc_db import IPCDatabase
+            from elliot.core.ipc_db import IPCDatabase
             self._ipc_db = IPCDatabase(audit_id)
 
     async def run(self, send):
@@ -535,7 +535,7 @@ class AuditRunner:
 4. **Add Feature Flag:**
 ```python
 # backend/main.py
-USE_SQLITE_IPC = os.getenv("VERITAS_USE_SQLITE_IPC", "false").lower() == "true"
+USE_SQLITE_IPC = os.getenv("ELLIOT_USE_SQLITE_IPC", "false").lower() == "true"
 
 # In audit start route
 if USE_SQLITE_IPC:
@@ -557,7 +557,7 @@ else:
 
 1. **Create SecurityAgent class structure:**
 ```python
-# veritas/agents/security_agent.py (new file)
+# elliot/agents/security_agent.py (new file)
 @dataclass
 class SecurityResult:
     """Result from security analysis."""
@@ -650,7 +650,7 @@ class SecurityAgent:
 
 2. **Update orchestrator security_node with feature flag:**
 ```python
-USE_SECURITY_AGENT_CLASS = os.getenv("VERITAS_SECURITY_AGENT_CLASS", "false").lower() == "true"
+USE_SECURITY_AGENT_CLASS = os.getenv("ELLIOT_SECURITY_AGENT_CLASS", "false").lower() == "true"
 
 async def security_node(state: AuditState) -> dict:
     url = state.get("url", "")
@@ -747,16 +747,16 @@ if __name__ == "__main__":
 1. **Audit all empty return statements:**
 ```bash
 # Find all problematic patterns
-grep -rn "return \[\]" veritas/agents/*.py
-grep -rn "return \{\}" veritas/agents/*.py
-grep -rn "return \[\]" veritas/analysis/*.py
-grep -rn "return \{\}" veritas/analysis/*.py
-grep -rn "return \[\]" veritas/core/evidence_store.py
+grep -rn "return \[\]" elliot/agents/*.py
+grep -rn "return \{\}" elliot/agents/*.py
+grep -rn "return \[\]" elliot/analysis/*.py
+grep -rn "return \{\}" elliot/analysis/*.py
+grep -rn "return \[\]" elliot/core/evidence_store.py
 ```
 
 2. **Create a helper for TODO features:**
 ```python
-# veritas/utils.py
+# elliot/utils.py
 class NotYetImplementedError(NotImplementedError):
     """For features under active development."""
     pass
@@ -771,7 +771,7 @@ def raise_not_implemented(feature: str, context: str = ""):
 
 3. **Replace empty returns systematically:**
 
-**Example: veritas/agents/judge.py (Line 943, 960)**
+**Example: elliot/agents/judge.py (Line 943, 960)**
 ```python
 # BEFORE:
 def _extract_verdict_from_vlm(self, prompt: str) -> JudgeDecision:
@@ -787,7 +787,7 @@ def _extract_verdict_from_vlm(self, prompt: str) -> JudgeDecision:
     )
 ```
 
-**Example: veritas/core/evidence_store.py (multiple locations)**
+**Example: elliot/core/evidence_store.py (multiple locations)**
 ```python
 # BEFORE:
 def find_similar_cases(self, vector: list[float], top_k: int = 5) -> list[Evidence]:
@@ -845,7 +845,7 @@ async def migrate_memory_audits_to_sqlite():
 4. **Add feature flag:**
 ```python
 # backend/main.py
-USE_SQLITE_STORAGE = os.getenv("VERITAS_USE_SQLITE_STORAGE", "false").lower() == "true"
+USE_SQLITE_STORAGE = os.getenv("ELLIOT_USE_SQLITE_STORAGE", "false").lower() == "true"
 
 if USE_SQLITE_STORAGE:
     audit_repository = SQLiteAuditRepository()
@@ -901,7 +901,7 @@ Create tests that document current behavior:
 ```python
 # tests/test_security_node_characterization.py
 import pytest
-from veritas.core.orchestrator import security_node, AuditState
+from elliot.core.orchestrator import security_node, AuditState
 
 @pytest.mark.skipif(not os.getenv("RUN_CHARACTERIZATION_TESTS"), reason="expensive")
 async def test_security_node_characterization():
@@ -962,7 +962,7 @@ Tests that verify entire flow works:
 async def test_ipc_sqlite_audit_completes():
     """Full audit runs successfully with SQLite IPC."""
     from backend.services.audit_runner import AuditRunner
-    from veritas.core.ipc_db import IPCDatabase
+    from elliot.core.ipc_db import IPCDatabase
     import tempfile
 
     audit_id = "test_sqlite_ipc"
@@ -1019,5 +1019,5 @@ async def test_concurrent_audits_with_sqlite_ipc():
 
 ---
 
-*Stabilization research for: VERITAS Brownfield Forensic Auditing Platform*
+*Stabilization research for: ELLIOT Brownfield Forensic Auditing Platform*
 *Researched: 2026-02-20*
