@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 from typing import TYPE_CHECKING
+from urllib.parse import urljoin, urlparse
 
 from elliot.agents.scout import ScoutResult, StealthScout
 from elliot.config import settings
@@ -16,6 +17,84 @@ if TYPE_CHECKING:
     from elliot.core.orchestrator import AuditState
 
 logger = logging.getLogger("elliot.orchestrator")
+
+# Pages most likely to carry trust-relevant evidence (entity claims, policies,
+# dark patterns). Used to rank internal links for first-pass prefetch.
+_PREFETCH_PRIORITY_PATTERNS = (
+    "/about", "/contact", "/terms", "/privacy", "/pricing",
+    "/refund", "/cancel", "/team", "/legal", "/faq",
+)
+
+
+def _serialize_scout_result(result: ScoutResult) -> dict:
+    """Serialize a ScoutResult into the plain-dict form stored in AuditState."""
+    return {
+        "url": result.url,
+        "status": result.status,
+        "screenshots": result.screenshots,
+        "screenshot_timestamps": result.screenshot_timestamps,
+        "screenshot_labels": result.screenshot_labels,
+        "page_title": result.page_title,
+        "page_metadata": result.page_metadata,
+        "links": result.links,
+        "forms_detected": result.forms_detected,
+        "captcha_detected": result.captcha_detected,
+        "error_message": result.error_message,
+        "navigation_time_ms": result.navigation_time_ms,
+        "viewport_used": result.viewport_used,
+        "user_agent_used": result.user_agent_used,
+        "trust_modifier": result.trust_modifier,
+        "trust_notes": result.trust_notes,
+        # V2 fields
+        "site_type": getattr(result, "site_type", ""),
+        "site_type_confidence": getattr(result, "site_type_confidence", 0.0),
+        "dom_analysis": getattr(result, "dom_analysis", {}),
+        "form_validation": getattr(result, "form_validation", {}),
+        # Phase 12 darknet fields
+        "ioc_detected": getattr(result, "ioc_detected", False),
+        "ioc_indicators": getattr(result, "ioc_indicators", []),
+        "onion_detected": getattr(result, "onion_detected", False),
+        "onion_addresses": getattr(result, "onion_addresses", []),
+        # Phase 13-01: Real page content and response headers
+        "page_content": getattr(result, "page_content", ""),
+        "response_headers": getattr(result, "response_headers", {}),
+        # Phase 17: Scroll & section screenshot metadata
+        "scroll_result": getattr(result, "scroll_result", {}),
+    }
+
+
+def _select_prefetch_urls(base_url: str, primary_result: ScoutResult, limit: int) -> list[str]:
+    """Pick up to `limit` priority internal links from the primary page, so the
+    first Vision/Graph pass has multi-page evidence without the Judge looping."""
+    if limit <= 0:
+        return []
+    metadata = primary_result.page_metadata or {}
+    raw_links = metadata.get("internal_links") or []
+    if not isinstance(raw_links, list):
+        return []
+
+    base_host = urlparse(base_url).netloc
+    seen: set[str] = {base_url.rstrip("/")}
+    priority: list[str] = []
+    other: list[str] = []
+    for link in raw_links:
+        if not isinstance(link, str) or not link:
+            continue
+        absolute = urljoin(base_url, link)
+        # Stay on the same host — never prefetch off-domain.
+        if urlparse(absolute).netloc != base_host:
+            continue
+        key = absolute.rstrip("/")
+        if key in seen:
+            continue
+        seen.add(key)
+        if any(p in absolute.lower() for p in _PREFETCH_PRIORITY_PATTERNS):
+            priority.append(absolute)
+        else:
+            other.append(absolute)
+
+    # Priority pages first; backfill with other on-domain links if needed.
+    return (priority + other)[:limit]
 
 
 async def scout_node(state: AuditState) -> dict:
@@ -56,54 +135,46 @@ async def scout_node(state: AuditState) -> dict:
         baseline_per_page = 3
         max_sections = max(0, per_page_budget - baseline_per_page)
 
+        prefetch_results: list[ScoutResult] = []
         async with StealthScout(use_tor=use_tor) as scout:
             # First URL gets full temporal investigation
             if len(investigated) == 0:
                 result = await scout.investigate(
                     url, progress_emitter=state.get("_progress_emitter"), max_sections=max_sections
                 )
+                # Eagerly fetch a few priority internal links on the first pass so
+                # Vision and Graph have multi-page evidence before the first Judge
+                # call — instead of the Judge looping just to gather it.
+                if result.status == "SUCCESS":
+                    prefetch_urls = _select_prefetch_urls(
+                        url, result, settings.SCOUT_PREFETCH_LINKS
+                    )
+                    for sub_url in prefetch_urls:
+                        try:
+                            sub_result = await scout.navigate_subpage(
+                                sub_url,
+                                progress_emitter=state.get("_progress_emitter"),
+                                max_sections=min(max_sections, 2),
+                            )
+                            prefetch_results.append(sub_result)
+                            logger.info(
+                                f"Scout prefetched: {sub_url} | status={sub_result.status}"
+                            )
+                        except Exception as sub_e:
+                            # Prefetch is best-effort — never fail the audit over it.
+                            logger.warning(f"Scout prefetch failed for {sub_url}: {sub_e}")
             else:
                 result = await scout.navigate_subpage(
                     url, progress_emitter=state.get("_progress_emitter"), max_sections=max_sections
                 )
 
-        # Serialize ScoutResult for state storage
-        result_dict = {
-            "url": result.url,
-            "status": result.status,
-            "screenshots": result.screenshots,
-            "screenshot_timestamps": result.screenshot_timestamps,
-            "screenshot_labels": result.screenshot_labels,
-            "page_title": result.page_title,
-            "page_metadata": result.page_metadata,
-            "links": result.links,
-            "forms_detected": result.forms_detected,
-            "captcha_detected": result.captcha_detected,
-            "error_message": result.error_message,
-            "navigation_time_ms": result.navigation_time_ms,
-            "viewport_used": result.viewport_used,
-            "user_agent_used": result.user_agent_used,
-            "trust_modifier": result.trust_modifier,
-            "trust_notes": result.trust_notes,
-            # V2 fields
-            "site_type": getattr(result, 'site_type', ''),
-            "site_type_confidence": getattr(result, 'site_type_confidence', 0.0),
-            "dom_analysis": getattr(result, 'dom_analysis', {}),
-            "form_validation": getattr(result, 'form_validation', {}),
-            # Phase 12 darknet fields
-            "ioc_detected": getattr(result, 'ioc_detected', False),
-            "ioc_indicators": getattr(result, 'ioc_indicators', []),
-            "onion_detected": getattr(result, 'onion_detected', False),
-            "onion_addresses": getattr(result, 'onion_addresses', []),
-            # Phase 13-01: Real page content and response headers
-            "page_content": getattr(result, 'page_content', ''),
-            "response_headers": getattr(result, 'response_headers', {}),
-            # Phase 17: Scroll & section screenshot metadata
-            "scroll_result": getattr(result, 'scroll_result', {}),
-        }
+        # Serialize primary + any prefetched results for state storage
+        result_dict = _serialize_scout_result(result)
+        prefetch_dicts = [_serialize_scout_result(r) for r in prefetch_results]
+        prefetched_urls = [r.url for r in prefetch_results]
 
-        new_scout_results = scout_results + [result_dict]
-        new_investigated = investigated + [url]
+        new_scout_results = scout_results + [result_dict] + prefetch_dicts
+        new_investigated = investigated + [url] + prefetched_urls
 
         # Extract site_type from primary (first) scout result
         update = {
@@ -116,7 +187,10 @@ async def scout_node(state: AuditState) -> dict:
             update["site_type_confidence"] = getattr(result, 'site_type_confidence', 0.0)
 
         if result.status == "SUCCESS":
-            logger.info(f"Scout SUCCESS: {url} | screenshots={len(result.screenshots)}")
+            logger.info(
+                f"Scout SUCCESS: {url} | screenshots={len(result.screenshots)}"
+                + (f" | prefetched {len(prefetch_dicts)} priority pages" if prefetch_dicts else "")
+            )
             update["scout_failures"] = 0
             update["iteration"] = state.get("iteration", 0)
             return update

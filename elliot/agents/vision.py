@@ -46,8 +46,8 @@ logger = logging.getLogger("elliot.vision")
 class VisionPassPriority(enum.Enum):
     """Priority levels for Vision Agent VLM passes to enable intelligent skipping."""
 
-    CRITICAL = 1      # Always run: Pass 1 (quick threat), Pass 5 (final synthesis)
-    CONDITIONAL = 2   # Run if prior findings exist: Pass 2 (dark patterns), Pass 4 (cross-reference)
+    CRITICAL = 1      # Always run: Pass 1 (quick threat), Pass 2 (dark patterns), Pass 5 (final synthesis)
+    CONDITIONAL = 2   # Run if prior findings exist: Pass 4 (cross-reference)
     EXPENSIVE = 3     # Run only if temporal changes detected: Pass 3 (temporal dynamics)
 
 
@@ -67,9 +67,12 @@ def should_run_pass(
     Returns:
         True if the pass should execute, False to skip
     """
+    # Pass 2 (dark-pattern detection) is the core forensic pass — it must run on
+    # every page, not be gated on Pass 1's quick scan finding something. Gating it
+    # made clean-looking sites get a shallow look, which forced the Judge to loop.
     pass_priority = {
         1: VisionPassPriority.CRITICAL,
-        2: VisionPassPriority.CONDITIONAL,
+        2: VisionPassPriority.CRITICAL,
         3: VisionPassPriority.EXPENSIVE,
         4: VisionPassPriority.CONDITIONAL,
         5: VisionPassPriority.CRITICAL

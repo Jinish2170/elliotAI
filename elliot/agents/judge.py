@@ -313,6 +313,24 @@ class JudgeAgent:
                 )
                 return True
 
+            # Early-exit confidence gate: vision and graph both ran and they
+            # AGREE confidently (both clearly safe, or both clearly malicious).
+            # Crawling the rest of the page budget can't change a conclusive
+            # verdict — render now instead of burning 5-8 iterations.
+            confidence_floor = thresholds["early_exit_confidence"]
+            min_iter = thresholds["early_exit_min_iteration"]
+            if evidence.iteration >= min_iter:
+                both_safe = min(vision_score, graph_score) >= confidence_floor
+                both_unsafe = max(vision_score, graph_score) <= (1.0 - confidence_floor)
+                if both_safe or both_unsafe:
+                    verdict = "safe" if both_safe else "malicious"
+                    logger.info(
+                        f"Early exit: vision={vision_score:.2f} graph={graph_score:.2f} "
+                        f"agree confidently ({verdict}, iter={evidence.iteration}) — "
+                        f"rendering verdict without exhausting page budget"
+                    )
+                    return False
+
         # Advanced Tier investigation: Always investigate more if we have budget!
         # This addresses the problem where it stops at 2 pages maximum.
         if evidence.pages_investigated < evidence.max_pages and evidence.iteration < evidence.max_iterations:

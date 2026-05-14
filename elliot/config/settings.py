@@ -118,6 +118,11 @@ MAX_ITERATIONS: int = int(os.getenv("MAX_ITERATIONS", "5"))
 MAX_PAGES_PER_AUDIT: int = int(os.getenv("MAX_PAGES_PER_AUDIT", "10"))
 SCREENSHOT_TIMEOUT: int = int(os.getenv("SCREENSHOT_TIMEOUT", "25"))
 TEMPORAL_DELAY: int = int(os.getenv("TEMPORAL_DELAY", "10"))
+# On the first Scout pass, eagerly fetch this many priority internal links
+# (/about, /contact, /terms, ...) so Vision and Graph have multi-page evidence
+# before the first Judge call — instead of the Judge having to loop to get it.
+# Set to 0 to disable prefetch and restore single-page first-pass behavior.
+SCOUT_PREFETCH_LINKS: int = int(os.getenv("SCOUT_PREFETCH_LINKS", "3"))
 CONFIDENCE_THRESHOLD: float = float(os.getenv("CONFIDENCE_THRESHOLD", "0.6"))
 MIN_EVIDENCE_COUNT: int = int(os.getenv("MIN_EVIDENCE_COUNT", "3"))
 
@@ -296,6 +301,15 @@ JUDGE_THRESHOLDS: dict = {
     "signal_conflict_max_iteration": 3,
     # If graph data is still missing, allow extra iterations up to this cap.
     "no_graph_max_iteration": 2,
+    # Early-exit confidence gate: once vision+graph have both run and agree
+    # (both clearly safe OR both clearly malicious past this confidence), stop
+    # investigating even if page budget remains. Without this the deep-scan
+    # block below burns the full 5-8 page budget on already-conclusive audits.
+    # Deep tiers can disable by overriding to >1.0 via AUDIT_TIERS[tier]["judge"].
+    "early_exit_confidence": 0.75,
+    # Don't early-exit before this iteration — guarantees at least one
+    # post-vision/graph investigation pass before we allow a fast verdict.
+    "early_exit_min_iteration": 1,
     # Deep scan only walks external links when the tier allows at least this
     # many pages. Avoids quick_scan tier accidentally crawling off-domain.
     "deep_scan_external_links_min_pages": 8,

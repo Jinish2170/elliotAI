@@ -45,8 +45,15 @@ async def graph_node(state: AuditState) -> dict:
             page_texts.append(meta["description"])
     page_text = "\n".join(page_texts)
 
-    # External links
-    external_links = primary.get("links", [])
+    # External links — aggregate across all scouted pages. Prefetched subpages
+    # (/about, /contact, ...) often carry the real outbound links (socials,
+    # partners, payment processors) that entity verification cross-checks.
+    external_links: list = []
+    for sr in scout_results:
+        links = sr.get("links", [])
+        if isinstance(links, list):
+            external_links.extend(links)
+    external_links = list(dict.fromkeys(external_links))
 
     # Tier-aware OSINT depth
     audit_tier = state.get("audit_tier", "standard_audit")
