@@ -1,0 +1,457 @@
+"""
+Elliot — Global Configuration
+
+Extends RAGv5 centralized config pattern (Rag_v5.0.0/rag-core/config/settings.py)
+with all Elliot-specific settings: NIM endpoints, audit budgets, concurrency,
+browser tuning, and tier definitions.
+
+All values are overridable via environment variables (.env file).
+Directories are auto-created on import.
+"""
+
+import hashlib
+import logging
+import os
+from pathlib import Path
+
+from dotenv import load_dotenv
+
+logger = logging.getLogger("elliot.settings")
+
+# Load .env from elliot root
+_elliot_root = Path(__file__).resolve().parent.parent
+load_dotenv(_elliot_root / ".env")
+
+# ============================================================
+# Paths
+# ============================================================
+BASE_DIR = _elliot_root
+DATA_DIR = BASE_DIR / "data"
+EVIDENCE_DIR = DATA_DIR / "evidence"
+REPORTS_DIR = DATA_DIR / "reports"
+CACHE_DIR = DATA_DIR / "cache"
+VECTORDB_DIR = DATA_DIR / "vectordb"
+TEMPLATES_DIR = BASE_DIR / "reporting" / "templates"
+
+# Auto-create all data directories
+for _dir in [EVIDENCE_DIR, REPORTS_DIR, CACHE_DIR, VECTORDB_DIR]:
+    _dir.mkdir(parents=True, exist_ok=True)
+
+
+# ============================================================
+# NVIDIA NIM — Inference API
+# ============================================================
+NIM_API_KEY: str = os.getenv("NVIDIA_NIM_API_KEY", "")
+NIM_BASE_URL: str = os.getenv("NVIDIA_NIM_ENDPOINT", "https://integrate.api.nvidia.com/v1")
+
+# Vision models (for Agent 2: Visual Forensics)
+NIM_VISION_MODEL: str = os.getenv("NIM_VISION_MODEL", "meta/llama-3.2-90b-vision-instruct")
+NIM_VISION_FALLBACK: str = os.getenv("NIM_VISION_FALLBACK", "microsoft/phi-3.5-vision-instruct")
+
+# LLM model (for Agent 4: Judge)
+NIM_LLM_MODEL: str = os.getenv("NIM_LLM_MODEL", "meta/llama-3.1-70b-instruct")
+
+# API tuning
+NIM_TIMEOUT: int = int(os.getenv("NIM_TIMEOUT", "90"))
+NIM_RETRY_COUNT: int = int(os.getenv("NIM_RETRY_COUNT", "4"))
+NIM_REQUESTS_PER_MINUTE: int = int(os.getenv("NIM_REQUESTS_PER_MINUTE", "40"))
+
+
+# ============================================================
+# Tavily — External Search for Entity Verification
+# ============================================================
+TAVILY_API_KEY: str = os.getenv("TAVILY_API_KEY", "")
+TAVILY_REQUESTS_PER_MINUTE: int = int(os.getenv("TAVILY_REQUESTS_PER_MINUTE", "5"))
+
+
+# ============================================================
+# OSINT / CTI APIs — Threat Intelligence Sources
+# ============================================================
+# URLVoid API key (free tier: 500 requests/day)
+URLVOID_API_KEY: str = os.getenv("URLVOID_API_KEY", "")
+URLVOID_REQUESTS_PER_MINUTE: int = int(os.getenv("URLVOID_REQUESTS_PER_MINUTE", "20"))
+
+# AbuseIPDB API key (free tier: 1000 requests/day)
+ABUSEIPDB_API_KEY: str = os.getenv("ABUSEIPDB_API_KEY", "")
+ABUSEIPDB_REQUESTS_PER_MINUTE: int = int(os.getenv("ABUSEIPDB_REQUESTS_PER_MINUTE", "15"))
+
+
+# ============================================================
+# Graph Intelligence Timeouts / Concurrency
+# ============================================================
+GRAPH_PHASE_TIMEOUT_S: int = int(os.getenv("GRAPH_PHASE_TIMEOUT_S", "150"))
+GRAPH_WHOIS_TIMEOUT_S: int = int(os.getenv("GRAPH_WHOIS_TIMEOUT_S", "20"))
+GRAPH_DNS_TIMEOUT_S: int = int(os.getenv("GRAPH_DNS_TIMEOUT_S", "12"))
+GRAPH_SSL_TIMEOUT_S: int = int(os.getenv("GRAPH_SSL_TIMEOUT_S", "20"))
+GRAPH_META_TIMEOUT_S: int = int(os.getenv("GRAPH_META_TIMEOUT_S", "30"))
+GRAPH_VERIFY_TIMEOUT_S: int = int(os.getenv("GRAPH_VERIFY_TIMEOUT_S", "30"))
+GRAPH_SEARCH_TIMEOUT_S: int = int(os.getenv("GRAPH_SEARCH_TIMEOUT_S", "25"))
+GRAPH_VERIFY_CONCURRENCY: int = int(os.getenv("GRAPH_VERIFY_CONCURRENCY", "5"))
+GRAPH_SEARCH_FOLLOW_LINKS: bool = os.getenv("GRAPH_SEARCH_FOLLOW_LINKS", "false").lower() == "true"
+
+# ============================================================
+# Tesseract OCR (Level 3 fallback)
+# ============================================================
+TESSERACT_CMD: str = os.getenv(
+    "TESSERACT_CMD",
+    r"C:\Program Files\Tesseract-OCR\tesseract.exe" if os.name == "nt" else "tesseract",
+)
+
+
+# ============================================================
+# Graph OSINT/CTI Configuration
+# ============================================================
+# OSINT integration feature flags
+GRAPH_ENABLE_OSINT: bool = os.getenv("GRAPH_ENABLE_OSINT", "true").lower() == "true"
+GRAPH_OSINT_TIMEOUT_S: int = int(os.getenv("GRAPH_OSINT_TIMEOUT_S", "45"))
+GRAPH_OSINT_MAX_PARALLEL: int = int(os.getenv("GRAPH_OSINT_MAX_PARALLEL", "5"))
+
+# CTI integration feature flags
+GRAPH_ENABLE_CTI: bool = os.getenv("GRAPH_ENABLE_CTI", "true").lower() == "true"
+GRAPH_CTI_MIN_CONFIDENCE: float = float(os.getenv("GRAPH_CTI_MIN_CONFIDENCE", "0.3"))
+
+
+# ============================================================
+# Audit Budget Controls
+# ============================================================
+MAX_ITERATIONS: int = int(os.getenv("MAX_ITERATIONS", "5"))
+MAX_PAGES_PER_AUDIT: int = int(os.getenv("MAX_PAGES_PER_AUDIT", "10"))
+SCREENSHOT_TIMEOUT: int = int(os.getenv("SCREENSHOT_TIMEOUT", "25"))
+TEMPORAL_DELAY: int = int(os.getenv("TEMPORAL_DELAY", "10"))
+CONFIDENCE_THRESHOLD: float = float(os.getenv("CONFIDENCE_THRESHOLD", "0.6"))
+MIN_EVIDENCE_COUNT: int = int(os.getenv("MIN_EVIDENCE_COUNT", "3"))
+
+
+# ============================================================
+# Concurrency (tuned for 8GB RAM)
+# ============================================================
+MAX_CONCURRENT_AUDITS: int = int(os.getenv("MAX_CONCURRENT_AUDITS", "2"))
+MAX_CONCURRENT_BROWSER_PAGES: int = int(os.getenv("MAX_CONCURRENT_BROWSER_PAGES", "3"))
+INTER_REQUEST_DELAY_MS: int = int(os.getenv("INTER_REQUEST_DELAY_MS", "500"))
+
+
+# ============================================================
+# Embedding Model (local, lightweight — ~90MB)
+# ============================================================
+EMBEDDING_MODEL: str = os.getenv("EMBEDDING_MODEL", "all-MiniLM-L6-v2")
+
+
+# ============================================================
+# Playwright Browser
+# ============================================================
+BROWSER_HEADLESS: bool = os.getenv("BROWSER_HEADLESS", "true").lower() == "true"
+BROWSER_VIEWPORT_WIDTH: int = int(os.getenv("BROWSER_VIEWPORT_WIDTH", "1920"))
+BROWSER_VIEWPORT_HEIGHT: int = int(os.getenv("BROWSER_VIEWPORT_HEIGHT", "1080"))
+MOBILE_VIEWPORT_WIDTH: int = int(os.getenv("MOBILE_VIEWPORT_WIDTH", "390"))
+MOBILE_VIEWPORT_HEIGHT: int = int(os.getenv("MOBILE_VIEWPORT_HEIGHT", "844"))
+
+
+# ============================================================
+# Security Modules — toggleable checks
+# ============================================================
+ENABLED_SECURITY_MODULES: list[str] = os.getenv("ENABLED_SECURITY_MODULES", "security_headers,phishing_db,tls_ssl,csp,gdpr,pci_dss,cookies,dom_analyzer,js_analysis,redirect_chain,social_engineering").split(",")
+
+# Google Safe Browsing API key (optional, free tier = 10K lookups/day)
+SAFE_BROWSING_API_KEY: str = os.getenv("GOOGLE_SAFE_BROWSING_KEY", "")
+
+
+# ============================================================
+# SecurityAgent Configuration (Agent-based refactoring)
+# ============================================================
+# Feature flag: Use agent-based implementation vs function-based
+USE_SECURITY_AGENT: bool = os.getenv("USE_SECURITY_AGENT", "true").lower() == "true"
+
+# Gradual rollout: 0.0 to 1.0 (100%), random users below this threshold use agent
+SECURITY_AGENT_ROLLOUT: float = float(os.getenv("SECURITY_AGENT_ROLLOUT", "1.0"))
+
+# Timeout per security module (seconds)
+SECURITY_AGENT_TIMEOUT: int = int(os.getenv("SECURITY_AGENT_TIMEOUT", "15"))
+
+# Retry attempts for failed modules
+SECURITY_AGENT_RETRY_COUNT: int = int(os.getenv("SECURITY_AGENT_RETRY_COUNT", "2"))
+
+# Fail fast mode: stop on first module failure if True
+SECURITY_AGENT_FAIL_FAST: bool = os.getenv("SECURITY_AGENT_FAIL_FAST", "false").lower() == "true"
+
+# Tier execution is the default V2 security path when tier modules are available.
+SECURITY_USE_TIER_EXECUTION: bool = os.getenv("SECURITY_USE_TIER_EXECUTION", "true").lower() == "true"
+
+
+# ============================================================
+# Database Persistence (Plan 04-04 - Dual-write migration)
+# ============================================================
+# Feature flag: Enable persistent database storage for audits
+USE_DB_PERSISTENCE: bool = os.getenv("USE_DB_PERSISTENCE", "true").lower() == "true"
+
+
+# ============================================================
+# Verdict Mode — user experience level
+# ============================================================
+DEFAULT_VERDICT_MODE: str = os.getenv("DEFAULT_VERDICT_MODE", "expert")  # "simple" or "expert"
+
+
+# ============================================================
+# Tor / .onion Support (experimental)
+# ============================================================
+TOR_ENABLED: bool = os.getenv("TOR_ENABLED", "false").lower() == "true"
+TOR_SOCKS_HOST: str = os.getenv("TOR_SOCKS_HOST", "127.0.0.1")
+TOR_SOCKS_PORT: int = int(os.getenv("TOR_SOCKS_PORT", "9050"))
+
+
+# ============================================================
+# Audit Tiers — Budget per scan type
+# ============================================================
+DEFAULT_TIER: str = os.getenv("DEFAULT_AUDIT_TIER", "standard_audit")
+
+# NIM budget breakdown:
+#   - vision_nim: VLM calls for dark pattern detection (1 per screenshot per pass)
+#   - judge_nim:  LLM calls for narrative generation (always needs 2: expert + simple)
+#   - nim_calls:  Total budget (vision_nim + judge_nim), kept for backward compat
+#
+# Based on NVIDIA NIM API testing (Mar 2026):
+#   - Free tier: 1000 credits, ~1 credit/call
+#   - Average latency: ~1s per LLM call, ~2-3s per VLM call
+#   - Effective rate: ~60 calls/min (no hard rate limit hit at 10 RPM)
+
+AUDIT_TIERS: dict = {
+    "quick_scan": {
+        "description": "Homepage-only fast check",
+        "pages": 2,
+        "screenshots": 6,
+        "nim_calls": 16,
+        "vision_nim": 10,
+        "judge_nim": 6,
+        "estimated_credits": 20,
+        "max_verifications": 5,
+        "enable_tavily": True,
+        "enable_osint": True,
+        "graph_timeout_s": 180,
+        "vision_passes": 2,
+        "target_duration_s": 300,
+    },
+    "standard_audit": {
+        "description": "Default multi-page audit",
+        "pages": 8,
+        "screenshots": 20,
+        "nim_calls": 50,
+        "vision_nim": 35,
+        "judge_nim": 15,
+        "estimated_credits": 60,
+        "max_verifications": 15,
+        "enable_tavily": True,
+        "enable_osint": True,
+        "graph_timeout_s": 300,
+        "vision_passes": 4,
+        "target_duration_s": 480,
+    },
+    "deep_forensic": {
+        "description": "Full investigation with entity verification",
+        "pages": 15,
+        "screenshots": 40,
+        "nim_calls": 100,
+        "vision_nim": 75,
+        "judge_nim": 25,
+        "estimated_credits": 120,
+        "max_verifications": 25,
+        "enable_tavily": True,
+        "enable_osint": True,
+        "enable_osint_deep": True,
+        "graph_timeout_s": 480,
+        "vision_passes": 6,
+        "target_duration_s": 720,
+    },
+    "darknet_investigation": {
+        "description": "Deep forensic + darknet threat intelligence and TOR routing",
+        "pages": 20,
+        "screenshots": 50,
+        "nim_calls": 140,
+        "vision_nim": 105,
+        "judge_nim": 35,
+        "estimated_credits": 180,
+        "max_verifications": 30,
+        "enable_darknet": True,
+        "enable_tor": True,
+        "enable_osint_deep": True,
+        "enable_tavily": True,
+        "enable_osint": True,
+        "graph_timeout_s": 600,
+        "vision_passes": 8,
+        "target_duration_s": 900,
+    },
+}
+
+
+# ============================================================
+# Judge Deliberation Thresholds
+# ============================================================
+# Knobs that previously lived as magic numbers inside JudgeAgent._should_investigate_more
+# and friends. Defaults match the prior hardcoded behavior. Per-tier overrides can
+# be provided via AUDIT_TIERS[tier]["judge"] = {...} without touching code.
+JUDGE_THRESHOLDS: dict = {
+    # Vision/graph score disagreement that forces another investigation pass.
+    # Range: 0.0 (any disagreement) .. 1.0 (never).
+    "signal_conflict_delta": 0.4,
+    # Stop forcing re-investigation on signal conflict after this iteration —
+    # otherwise persistently-conflicting signals would burn the whole budget.
+    "signal_conflict_max_iteration": 3,
+    # If graph data is still missing, allow extra iterations up to this cap.
+    "no_graph_max_iteration": 2,
+    # Deep scan only walks external links when the tier allows at least this
+    # many pages. Avoids quick_scan tier accidentally crawling off-domain.
+    "deep_scan_external_links_min_pages": 8,
+    # URL batch sizes per investigate-more request.
+    "investigation_batch_small": 2,
+    "investigation_batch_large": 4,
+    # Tier page count at/under which we use the small batch.
+    "investigation_batch_small_pages_threshold": 5,
+}
+
+
+def get_judge_thresholds(tier: str) -> dict:
+    """Return JUDGE_THRESHOLDS merged with optional per-tier overrides."""
+    base = dict(JUDGE_THRESHOLDS)
+    tier_cfg = AUDIT_TIERS.get(tier, {})
+    overrides = tier_cfg.get("judge") or {}
+    if isinstance(overrides, dict):
+        base.update(overrides)
+    return base
+
+
+# ============================================================
+# State Machine Transitions (for LangGraph orchestrator)
+# ============================================================
+STATE_TRANSITIONS: dict = {
+    "START": ["SCOUT"],
+    "SCOUT": ["VISION", "RETRY_SCOUT", "ABORT"],
+    "RETRY_SCOUT": ["SCOUT", "ABORT"],
+    "VISION": ["GRAPH", "JUDGE"],
+    "GRAPH": ["JUDGE", "SCOUT"],
+    "JUDGE": ["REPORT", "SCOUT"],
+    "REPORT": ["END"],
+    "ABORT": ["PARTIAL_REPORT"],
+    "PARTIAL_REPORT": ["END"],
+}
+
+
+# ============================================================
+# SecurityAgent Rollout Helpers (Plan 02-03)
+# ============================================================
+
+
+def get_security_agent_rollout() -> float:
+    """Get SecurityAgent rollout percentage from environment.
+
+    Reads SECURITY_AGENT_ROLLOUT env var (float 0.0-1.0), defaults to 1.0 (100%).
+    Clamps to valid range.
+
+    Returns:
+        float: Rollout percentage between 0.0 and 1.0
+    """
+    rollout = os.getenv("SECURITY_AGENT_ROLLOUT", "1.0")
+    try:
+        percentage = float(rollout)
+    except ValueError:
+        percentage = 1.0
+
+    # Clamp to 0.0-1.0 range
+    return max(0.0, min(1.0, percentage))
+
+
+def should_use_security_agent(url: str = "") -> bool:
+    """Determine if SecurityAgent should be used for this URL.
+
+    Implements consistent hash-based rollout:
+    - If USE_SECURITY_AGENT=true → always use agent
+    - If USE_SECURITY_AGENT=false → always use function
+    - If USE_SECURITY_AGENT=auto → use rollout percentage with hash consistency
+
+    Consistent hash routing ensures same URL always gets same mode (important for debugging).
+
+    Args:
+        url: Target URL (if empty, simple random selection)
+
+    Returns:
+        bool: True if SecurityAgent should be used, False for function mode
+    """
+    # Override: force agent mode
+    if USE_SECURITY_AGENT:
+        return True
+
+    # Override: force function mode
+    mode = os.getenv("USE_SECURITY_AGENT", "true").lower()
+    if mode == "false":
+        return False
+
+    # Auto mode: use rollout percentage with consistent hash
+    rollout = get_security_agent_rollout()
+
+    if url:
+        # Consistent hash: same URL always gets same decision
+        hash_value = int(hashlib.md5(url.lower().encode()).hexdigest()[:8], 16)
+        normalized = hash_value / (2**32 - 1)
+        return normalized < rollout
+    else:
+        # No URL provided: simple random selection
+        import random
+        return random.random() < rollout
+
+
+# Log rollout configuration on startup
+_rollout_pct = get_security_agent_rollout()
+logger.info(
+    f"SecurityAgent: USE_SECURITY_AGENT={USE_SECURITY_AGENT}, "
+    f"ROLLOUT={_rollout_pct:.0%}"
+)
+
+
+# ============================================================
+# Database Persistence Helpers (Plan 05-04)
+# ============================================================
+
+
+def should_use_db_persistence() -> bool:
+    """Determine if database persistence should be used.
+
+    Simply returns the USE_DB_PERSISTENCE flag value.
+    This function provides a consistent API similar to should_use_security_agent()
+    for future rollout capabilities.
+
+    Returns:
+        bool: True if database persistence enabled, False for in-memory only
+    """
+    return USE_DB_PERSISTENCE
+
+
+# Log database persistence configuration on startup
+logger.info(
+    f"Database Persistence: USE_DB_PERSISTENCE={USE_DB_PERSISTENCE}"
+)
+
+
+# ============================================================
+# Startup Validation (Critical Environment Variables)
+# ============================================================
+def _validate_environment() -> list[str]:
+    """Validate required environment variables at startup.
+
+    Returns:
+        List of missing required variable names (empty if all present).
+    """
+    missing: list[str] = []
+
+    # Critical API keys that must be set for functionality
+    if not NIM_API_KEY:
+        missing.append("NVIDIA_NIM_API_KEY")
+        logger.warning("Missing required environment variable: NVIDIA_NIM_API_KEY")
+
+    return missing
+
+
+# Run validation at module import time
+_missing_vars = _validate_environment()
+if _missing_vars:
+    logger.warning(
+        f"ELLIOT started with {len(_missing_vars)} missing required environment variables. "
+        f"Some features may not work correctly. Missing: {_missing_vars}"
+    )
+

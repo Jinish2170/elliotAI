@@ -1,0 +1,1566 @@
+"""
+Elliot Agent 4 — The Judge (Orchestrator's Brain)
+
+The "Brain" of Elliot. Synthesizes evidence from all other agents into
+a final verdict with Trust Score, risk level, and actionable recommendations.
+
+Responsibilities:
+    1. Receive evidence from Scout (metadata), Vision (dark patterns), Graph (entity verification)
+    2. Determine if more investigation is needed (request additional pages)
+    3. Compute the final Trust Score via trust_weights.compute_trust_score()
+    4. Generate a forensic narrative explaining the verdict
+    5. Produce structured report data for the reporting module
+
+Decision Logic:
+    - If confidence < threshold AND iteration budget remains → REQUEST_MORE_INVESTIGATION
+    - If all evidence gathered OR budget exhausted → RENDER_VERDICT
+    - Multi-model voting: Vision says trusted but Graph says fraud → Graph wins
+"""
+
+import json
+import logging
+import sys
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Optional
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from elliot.agents.graph_investigator import GraphResult
+from elliot.agents.scout import ScoutResult
+from elliot.agents.vision import VisionResult
+from elliot.config import settings
+from elliot.config.trust_weights import (DEFAULT_WEIGHTS, RiskLevel, SignalWeights,
+                                  SubSignal, TrustScoreResult,
+                                  compute_trust_score)
+from elliot.core.nim_client import NIMClient
+
+# Dual-verdict imports (V2 feature)
+# These are imported conditionally to avoid dependency issues
+try:
+    from elliot.agents.judge_core.verdict import (
+        DualVerdict,
+        RiskLevel,
+        SeverityLevel,
+        VerdictNonTechnical,
+        VerdictTechnical,
+        IOC,
+    )
+    from elliot.agents.judge_core.strategies import (
+        ExtendedSiteType,
+        ScoringContext,
+        get_strategy,
+    )
+    from elliot.cwe import map_finding_to_cwe
+    DUAL_VERDICT_AVAILABLE = True
+except ImportError:
+    DUAL_VERDICT_AVAILABLE = False
+
+# Quality/consensus imports (Phase 7 feature)
+try:
+    from elliot.quality.consensus_engine import ConsensusEngine
+    CONSENSUS_AVAILABLE = True
+except ImportError:
+    CONSENSUS_AVAILABLE = False
+
+logger = logging.getLogger("elliot.judge")
+
+
+# ============================================================
+# Data Structures
+# ============================================================
+
+@dataclass
+class JudgeDecision:
+    """The Judge's decision: either request more investigation or render a verdict."""
+    action: str               # "RENDER_VERDICT" | "REQUEST_MORE_INVESTIGATION"
+    reason: str               # Why this decision was made
+
+    # Only for REQUEST_MORE_INVESTIGATION
+    investigate_urls: list[str] = field(default_factory=list)
+    investigate_reason: str = ""
+
+    # Only for RENDER_VERDICT
+    trust_score_result: Optional[TrustScoreResult] = None
+    forensic_narrative: str = ""
+    simple_narrative: str = ""          # Plain-language narrative for non-technical users
+    recommendations: list[str] = field(default_factory=list)
+    simple_recommendations: list[str] = field(default_factory=list)  # Jargon-free recommendations
+    dark_pattern_summary: list[dict] = field(default_factory=list)
+    entity_verification_summary: list[dict] = field(default_factory=list)
+    evidence_timeline: list[dict] = field(default_factory=list)
+    site_type: str = ""                # Detected site type
+    verdict_mode: str = "expert"       # "simple" | "expert"
+
+    # Dual-tier verdict (V2 feature)
+    use_dual_verdict: bool = False     # Whether dual-tier verdict was requested
+    dual_verdict: Optional[dict] = None   # Serialized DualVerdict object
+
+    @property
+    def final_score(self) -> int:
+        if self.trust_score_result:
+            return self.trust_score_result.final_score
+        return -1
+
+    @property
+    def risk_level(self) -> Optional[RiskLevel]:
+        if self.trust_score_result:
+            return self.trust_score_result.risk_level
+        return None
+
+
+@dataclass
+class AuditEvidence:
+    """All evidence collected during an audit, passed to the Judge."""
+    url: str
+    scout_results: list[ScoutResult] = field(default_factory=list)
+    vision_result: Optional[VisionResult] = None
+    graph_result: Optional[GraphResult] = None
+    iteration: int = 0
+    max_iterations: int = 5
+    max_pages: int = 5                 # Page budget from tier config
+    pages_investigated: int = 0       # Pages already visited
+
+    # Extended fields for v2
+    site_type: str = ""                # From scout classification
+    site_type_confidence: float = 0.0
+    verdict_mode: str = "expert"       # "simple" | "expert"
+    security_results: dict = field(default_factory=dict)   # From security modules
+    audit_tier: str = "standard_audit"  # Tier name — used to look up judge thresholds
+
+
+# ============================================================
+# Judge Agent
+# ============================================================
+
+class JudgeAgent:
+    """
+    Agent 4: Synthesizes all evidence into a verdict.
+
+    Usage:
+        judge = JudgeAgent()
+
+        evidence = AuditEvidence(
+            url="https://suspicious-site.com",
+            scout_results=[scout_result],
+            vision_result=vision_result,
+            graph_result=graph_result,
+            iteration=1,
+            max_iterations=5,
+        )
+
+        decision = await judge.deliberate(evidence)
+
+        if decision.action == "RENDER_VERDICT":
+            print(f"Score: {decision.final_score}")
+            print(decision.forensic_narrative)
+        elif decision.action == "REQUEST_MORE_INVESTIGATION":
+            print(f"Need to check: {decision.investigate_urls}")
+    """
+
+    def __init__(self, nim_client: Optional[NIMClient] = None):
+        self._nim = nim_client or NIMClient()
+
+    # ================================================================
+    # Public: Main Deliberation
+    # ================================================================
+
+    async def deliberate(self, evidence: AuditEvidence) -> JudgeDecision:
+        """
+        Main entry point. Examines all evidence and decides next action.
+
+        Decision tree:
+        1. Check if we have minimum evidence to judge
+        2. If evidence is thin AND budget allows → request more investigation
+        3. Otherwise → compute trust score and render verdict
+        """
+        logger.info(
+            f"Judge deliberating on {evidence.url} | "
+            f"iteration={evidence.iteration}/{evidence.max_iterations} | "
+            f"scout_pages={len(evidence.scout_results)} | "
+            f"has_vision={evidence.vision_result is not None} | "
+            f"has_graph={evidence.graph_result is not None}"
+        )
+
+        # -----------------------------------------------------------
+        # Check: Do we need more investigation?
+        # -----------------------------------------------------------
+        if self._should_investigate_more(evidence):
+            return await self._request_more_investigation(evidence)
+
+        # -----------------------------------------------------------
+        # We have enough evidence — render verdict
+        # -----------------------------------------------------------
+        return await self._render_verdict(evidence)
+
+    async def analyze(self, evidence: AuditEvidence, use_dual_verdict: bool = False, emitter=None) -> JudgeDecision:
+        """
+        Analyze evidence and return a verdict.
+
+        This is the main public API for the Judge Agent, providing optional
+        dual-tier verdict generation for security professionals and end users.
+
+        Args:
+            evidence: AuditEvidence containing all collected findings
+            use_dual_verdict: If True, generates technical (CWE/CVSS) and non-technical (plain English) verdicts
+            emitter: Progress emitter for streaming UI updates
+
+        Returns:
+            JudgeDecision with verdict data and optional dual_verdict dict
+
+        Backward compatible: When use_dual_verdict=False (default), returns existing TrustScoreResult format.
+        """
+        logger.info(
+            f"Judge analyzing {evidence.url} | use_dual_verdict={use_dual_verdict} | "
+            f"site_type={evidence.site_type}"
+        )
+
+        # Use existing deliberation logic
+        decision = await self.deliberate(evidence)
+
+        # If dual verdict requested and verdict was rendered, build dual-tier verdict
+        if use_dual_verdict and decision.action == "RENDER_VERDICT" and DUAL_VERDICT_AVAILABLE:
+            try:
+                dual_verdict = self._build_dual_verdict(evidence, decision)
+                decision.use_dual_verdict = True
+                decision.dual_verdict = dual_verdict.to_dict()
+                logger.info(f"Dual-tier verdict generated for {evidence.url}")
+                logger.warning(f"----- JUDGE EMITTER PRESENT? {emitter is not None} -----")
+                open("judge_debug.txt", "w").write(f"Emitter: {emitter is not None} CVSS: {bool(dual_verdict.technical.cvss_metrics)}")
+                logger.warning(f"----- CVSS DICT PRESENT? {bool(dual_verdict.technical.cvss_metrics)} -----")
+                
+                # Emit CVSS metrics directly to frontend if emitter present
+                if emitter and dual_verdict.technical and dual_verdict.technical.cvss_metrics:
+                    from elliot.core.progress.event_priority import EventPriority
+                    
+                    cvss_dict = dual_verdict.technical.cvss_metrics
+                    cvss_arr = []
+                    _metric_keys = ['attack_vector', 'attack_complexity', 'privileges_required', 
+                                   'user_interaction', 'scope', 'confidentiality', 'integrity', 'availability']
+                    
+                    for k in _metric_keys:
+                        if k in cvss_dict:
+                            cvss_arr.append({
+                                "name": k,
+                                "value": str(cvss_dict[k]),
+                                "severity": "HIGH" if cvss_dict.get('base_score', 0) > 6 else "MEDIUM" # simplified severity mapping
+                            })
+                    await emitter.emit_event(
+                        event_type="cvss_metrics",
+                        priority=EventPriority.MEDIUM,
+                        metrics=cvss_arr,
+                        base_score=cvss_dict.get('base_score', 0.0)
+                    )
+                    
+            except Exception as e:
+                logger.warning(f"Failed to generate dual verdict: {e}", exc_info=True)
+                decision.use_dual_verdict = False
+
+        return decision
+
+    # ================================================================
+    # Private: Decision Logic
+    # ================================================================
+
+    def _should_investigate_more(self, evidence: AuditEvidence) -> bool:
+        """
+        Determine if more investigation is needed.
+
+        Conditions for requesting more:
+        1. Haven't hit max iterations
+        2. Haven't analyzed enough pages yet
+        3. Evidence is ambiguous (conflicting signals)
+
+        Thresholds (signal-conflict delta, iteration caps, deep-scan link gates)
+        are not hardcoded — they come from settings.get_judge_thresholds(tier)
+        so they can be tuned per audit tier without code changes.
+        """
+        thresholds = settings.get_judge_thresholds(evidence.audit_tier)
+
+        # Budget exhausted — must judge now
+        if evidence.iteration >= evidence.max_iterations:
+            logger.info("Iteration budget exhausted — rendering verdict")
+            return False
+
+        # Page budget exhausted — no more pages to investigate
+        if evidence.pages_investigated >= evidence.max_pages:
+            logger.info(
+                f"Page budget exhausted ({evidence.pages_investigated}/{evidence.max_pages}) — "
+                f"rendering verdict with available evidence"
+            )
+            return False
+
+        # No vision data yet — can't judge without eyes
+        if evidence.vision_result is None:
+            return True
+
+        # No graph data yet — can't judge without background check
+        if evidence.graph_result is None and evidence.iteration < thresholds["no_graph_max_iteration"]:
+            return True
+
+        # Check for ambiguous signals (vision says safe but only checked homepage)
+        if evidence.vision_result and evidence.graph_result:
+            vision_score = evidence.vision_result.visual_score
+            graph_score = evidence.graph_result.graph_score
+            delta_gate = thresholds["signal_conflict_delta"]
+            iter_gate = thresholds["signal_conflict_max_iteration"]
+
+            # If vision and graph strongly disagree, investigate more
+            if abs(vision_score - graph_score) > delta_gate and evidence.iteration < iter_gate:
+                logger.info(
+                    f"Signal conflict: vision={vision_score:.2f} vs graph={graph_score:.2f} "
+                    f"(delta>{delta_gate}, iter<{iter_gate}) — requesting more investigation"
+                )
+                return True
+
+        # Advanced Tier investigation: Always investigate more if we have budget!
+        # This addresses the problem where it stops at 2 pages maximum.
+        if evidence.pages_investigated < evidence.max_pages and evidence.iteration < evidence.max_iterations:
+            # Only loop if we have found some meaningful links to follow
+            scout = evidence.scout_results[-1]
+            logger.info(f"Checking for deep scan. scout.status={scout.status}, has_metadata={bool(scout.page_metadata)}")
+            if scout.status == "SUCCESS" and scout.page_metadata:
+                links = scout.page_metadata.get("internal_links", [])
+                ext_links = scout.page_metadata.get("external_links", [])
+                links_alt = getattr(scout, 'links', [])
+                ext_min_pages = thresholds["deep_scan_external_links_min_pages"]
+                logger.info(f"Found internal_links={len(links)} alt_links={len(links_alt)} ext_links={len(ext_links)}")
+                if isinstance(links, list) and len(links) > 0:
+                    logger.info(f"Budget allows more investigation ({evidence.pages_investigated}/{evidence.max_pages}). Requesting deeper scan.")
+                    return True
+                elif links_alt:
+                    logger.info(f"Using fallback scout.links len={len(links_alt)}")
+                    return True
+                elif isinstance(ext_links, list) and len(ext_links) > 0 and evidence.max_pages > ext_min_pages:
+                    logger.info("No internal links but deep scan enabled. Falling back to external links.")
+                    return True
+                else:
+                    logger.warning("No links found on this page. Stopping deep scan.")
+            else:
+                logger.warning(f"Scout status was not SUCCESS or no metadata. status={scout.status}")
+        else:
+            logger.info(f"Not checking deep scan: pages_investigated={evidence.pages_investigated}/{evidence.max_pages}, "
+                        f"iteration={evidence.iteration}/{evidence.max_iterations}")
+
+        return False
+
+    async def _request_more_investigation(
+        self, evidence: AuditEvidence,
+    ) -> JudgeDecision:
+        """
+        Generate a request for more investigation with specific URLs.
+        Uses NIM LLM to intelligently select which pages to check next.
+        """
+        # Collect available links from scout results
+        available_links = []
+        for scout in evidence.scout_results:
+            if scout.page_metadata:
+                internal_links = scout.page_metadata.get("internal_links", [])
+                if isinstance(internal_links, int):
+                    internal_links = []
+                available_links.extend(internal_links)
+            available_links.extend(getattr(scout, "links", []) or [])
+
+        # Deduplicate
+        seen_urls = {s.url for s in evidence.scout_results}
+        candidate_urls = [u for u in set(available_links) if u not in seen_urls]
+
+        thresholds = settings.get_judge_thresholds(evidence.audit_tier)
+        # If zero candidate URLs and deep scan, optionally sample a couple of external links just to keep scanning context
+        if not candidate_urls and evidence.max_pages > thresholds["deep_scan_external_links_min_pages"]:
+            for scout in evidence.scout_results:
+                if scout.page_metadata and getattr(scout, "status", "") == "SUCCESS":
+                    ext = scout.page_metadata.get("external_links", [])
+                    if isinstance(ext, list) and ext:
+                        candidate_urls.extend([u for u in ext[:2] if u not in seen_urls])
+
+        if not candidate_urls:
+            # No more URLs to check — force verdict
+            return await self._render_verdict(evidence)
+
+        # Priority pages for fraud investigation
+        priority_patterns = [
+            "/about", "/contact", "/terms", "/privacy", "/cancel",
+            "/unsubscribe", "/refund", "/pricing", "/checkout",
+            "/team", "/leadership", "/legal",
+        ]
+
+        priority_urls = []
+        other_urls = []
+        for url in candidate_urls:
+            url_lower = url.lower()
+            if any(p in url_lower for p in priority_patterns):
+                priority_urls.append(url)
+            else:
+                other_urls.append(url)
+
+        # Batch size capped per tier (see JUDGE_THRESHOLDS) so the graph doesn't queue
+        # infinitely in one state, while tier iteration budget limits total work.
+        if evidence.max_pages <= thresholds["investigation_batch_small_pages_threshold"]:
+            max_batch = thresholds["investigation_batch_small"]
+        else:
+            max_batch = thresholds["investigation_batch_large"]
+        investigate = (priority_urls + other_urls)[:max_batch]
+
+        reason = self._build_investigation_reason(evidence)
+
+        logger.info(f"Judge requesting investigation of: {investigate} | reason: {reason}")
+
+        return JudgeDecision(
+            action="REQUEST_MORE_INVESTIGATION",
+            reason=reason,
+            investigate_urls=investigate,
+            investigate_reason=reason,
+        )
+
+    def _build_investigation_reason(self, evidence: AuditEvidence) -> str:
+        """Build a human-readable reason for requesting more investigation."""
+        reasons = []
+
+        if evidence.vision_result is None:
+            reasons.append("No visual analysis completed yet")
+        if evidence.graph_result is None:
+            reasons.append("No entity verification completed yet")
+        if len(evidence.scout_results) == 1:
+            reasons.append("Only homepage analyzed — need subpages for thorough audit")
+
+        if evidence.vision_result and evidence.graph_result:
+            v = evidence.vision_result.visual_score
+            g = evidence.graph_result.graph_score
+            delta_gate = settings.get_judge_thresholds(evidence.audit_tier)["signal_conflict_delta"]
+            if abs(v - g) > delta_gate:
+                reasons.append(
+                    f"Conflicting signals (visual={v:.2f}, graph={g:.2f}) — "
+                    f"need more evidence to resolve"
+                )
+
+        return "; ".join(reasons) if reasons else "Standard multi-page audit protocol"
+
+    # ================================================================
+    # Private: Verdict Rendering
+    # ================================================================
+
+    def _build_dual_verdict(self, evidence: AuditEvidence, decision: JudgeDecision) -> 'DualVerdict':
+        """
+        Build dual-tier verdict combining technical and non-technical explanations.
+
+        Uses site-type-specific scoring strategies from the Strategy Pattern.
+
+        Args:
+            evidence: AuditEvidence with all available data
+            decision: JudgeDecision with trust_score_result already computed
+
+        Returns:
+            DualVerdict with technical (CWE/CVSS/IOCs) and non-technical (plain English) tiers
+        """
+        if not DUAL_VERDICT_AVAILABLE:
+            raise RuntimeError("Dual verdict requires elliot.agents.judge_core.verdict module")
+
+        trust_result = decision.trust_score_result
+        if not trust_result:
+            raise ValueError("TrustScoreResult is required for dual verdict")
+
+        # -----------------------------------------------------------
+        # Step 1: Build ScoringContext with all evidence
+        # -----------------------------------------------------------
+        # Map site type string to ExtendedSiteType enum
+        try:
+            site_type = ExtendedSiteType(evidence.site_type.replace("-", "_"))
+        except ValueError:
+            site_type = ExtendedSiteType.ECOMMERCE  # Default fallback
+
+        ctx_kwargs = {
+            "url": evidence.url,
+            "site_type": site_type,
+            "site_type_confidence": evidence.site_type_confidence,
+        }
+
+        # Fill in visual scores
+        if evidence.vision_result:
+            vr = evidence.vision_result
+            ctx_kwargs["visual_score"] = vr.visual_score * 100
+            ctx_kwargs["temporal_score"] = vr.temporal_score * 100
+            ctx_kwargs["has_dark_patterns"] = vr.total_patterns_found > 0
+            if vr.dark_patterns:
+                ctx_kwargs["dark_pattern_types"] = tuple(p.pattern_type for p in vr.dark_patterns[:10])
+            ctx_kwargs["script_count"] = getattr(vr, 'js_analysis', {}).get('script_count', 0)
+            ctx_kwargs["dom_depth"] = getattr(vr, 'dom_analysis', {}).get('depth', 0)
+            ctx_kwargs["screenshot_count"] = vr.screenshots_analyzed
+
+        # Fill in structural scores
+        if evidence.graph_result:
+            gr = evidence.graph_result
+            ctx_kwargs["structural_score"] = getattr(gr, 'structural_score', 0.65) * 100
+            ctx_kwargs["graph_score"] = gr.graph_score * 100
+            ctx_kwargs["has_ssl"] = gr.has_ssl
+            ctx_kwargs["domain_age_days"] = gr.domain_age_days if gr.domain_age_days >= 0 else None
+            ctx_kwargs["has_lazy_load"] = getattr(gr, 'has_lazy_load', False)
+            if "screenshot_count" in ctx_kwargs:
+                ctx_kwargs["screenshot_count"] = min(ctx_kwargs["screenshot_count"], getattr(gr, 'screenshot_count', 1))
+            else:
+                ctx_kwargs["screenshot_count"] = getattr(gr, 'screenshot_count', 1)
+
+        # Fill in scores from SubSignals
+        signals = {s.name: s for s in decision.trust_score_result.sub_signals} if decision.trust_score_result else {}
+        if "meta" in signals:
+            ctx_kwargs["meta_score"] = signals["meta"].raw_score * 100
+        if "security" in signals:
+            ctx_kwargs["security_score"] = signals["security"].raw_score * 100
+
+        # Fill in security results
+        sec = evidence.security_results or {}
+        phishing = sec.get("phishing_db") or sec.get("phishing", {})
+        ctx_kwargs["has_phishing_hits"] = phishing.get("is_phishing", False)
+        js = sec.get("js_analysis", {})
+        ctx_kwargs["js_risk_score"] = js.get("risk_score", 0.0)
+
+        # Check for cross-domain forms
+        for scout in evidence.scout_results:
+            fv = getattr(scout, 'form_validation', {})
+            if fv and fv.get("has_cross_domain", False):
+                ctx_kwargs["has_cross_domain_forms"] = True
+                ctx_kwargs["form_validation_score"] = fv.get("score", 50.0)
+                break
+                
+        ctx = ScoringContext(**ctx_kwargs)
+
+        # -----------------------------------------------------------
+        # Step 2: Select and apply site-type specific strategy
+        # -----------------------------------------------------------
+        strategy = get_strategy(site_type)
+        if strategy:
+            adjustments = strategy.calculate_adjustments(ctx)
+            logger.info(
+                f"Using strategy={strategy.name} for site_type={site_type.value} | "
+                f"adjustments={len(adjustments.custom_findings)} custom findings"
+            )
+        else:
+            # Fallback: no strategy available
+            adjustments = ScoringAdjustment(
+                weight_adjustments={
+                    "visual": 0.16, "structural": 0.16, "temporal": 0.16,
+                    "graph": 0.16, "meta": 0.16, "security": 0.16,
+                },
+                explanation="No site-type strategy available - using balanced weights"
+            )
+        # -----------------------------------------------------------
+        # Step 3: Build VerdictTechnical tier (CWE/CVSS/IOCs)
+        # -----------------------------------------------------------
+        # Map findings to CWE entries
+        cwe_entries = []
+        if evidence.vision_result:
+            for pattern in evidence.vision_result.dark_patterns[:5]:
+                cwe = map_finding_to_cwe(pattern.pattern_type, pattern.severity)
+                if cwe:
+                    cwe_entries.append({
+                        "cwe_id": cwe.cwe_id,
+                        "name": cwe.name,
+                        "score": cwe.score,
+                    })
+
+        # Build threat indicators from security results
+        threat_indicators = []
+        if ctx.has_phishing_hits:
+            threat_indicators.append({
+                "type": "phishing",
+                "source": "security_results",
+                "severity": "CRITICAL",
+            })
+        if ctx.js_risk_score > 70:
+            threat_indicators.append({
+                "type": "malicious_js",
+                "source": "js_analysis",
+                "severity": "HIGH",
+                "value": ctx.js_risk_score,
+            })
+
+        # Build IOCs from graph result
+        iocs = []
+        if evidence.graph_result and evidence.graph_result.domain_intel:
+            di = evidence.graph_result.domain_intel
+            if di.ip_address:
+                iocs.append(IOC(type="ip", value=di.ip_address, source="graph_intel", severity=SeverityLevel.LOW))
+
+        # Compute a real CVSS v3.1 base score from the actual findings rather
+        # than reverse-engineering it from the risk-level bucket. The new
+        # builder also emits a canonical vector string (CVSS:3.1/AV:N/...)
+        # which is what SIEMs / ticketing systems expect.
+        cvss_score = 0.0
+        cvss_metrics = None
+        try:
+            from elliot.cwe.cvss_v31 import build_cvss_report
+
+            dark_patterns_list = (
+                evidence.vision_result.dark_patterns if evidence.vision_result else []
+            )
+            # Surface credential-capture and malware-distribution signals from
+            # the dark-pattern types we already detect.
+            dp_types = " ".join(
+                (getattr(p, "pattern_type", "") or "").lower()
+                for p in dark_patterns_list
+            )
+            credential_capture = any(
+                k in dp_types for k in (
+                    "credential", "login_capture", "fake_login",
+                    "password_capture", "form_grabbing",
+                )
+            )
+            malware_distribution = any(
+                k in dp_types for k in (
+                    "malware", "drive_by", "drive-by", "exploit_kit",
+                )
+            )
+            js_obfuscation = any(
+                k in dp_types for k in ("obfuscat", "js_obfuscat")
+            )
+            domain_abuse = bool(
+                evidence.graph_result
+                and (
+                    getattr(evidence.graph_result, "threat_level", "none") not in ("none", "")
+                    or getattr(evidence.graph_result, "osint_indicators", None)
+                )
+            )
+
+            cvss_report = build_cvss_report(
+                dark_patterns=dark_patterns_list,
+                has_ssl=ctx.has_ssl,
+                phishing_flag=ctx.has_phishing_hits,
+                credential_capture=credential_capture,
+                malware_distribution=malware_distribution,
+                js_obfuscation=js_obfuscation,
+                js_risk_score=float(ctx.js_risk_score or 0.0),
+                domain_abuse=domain_abuse,
+            )
+            cvss_score = float(cvss_report["base_score"])
+            cvss_metrics = cvss_report
+        except Exception as cvss_err:
+            logger.warning(f"CVSS v3.1 derivation failed: {cvss_err}")
+            # Fall back to the old risk-level bucket scoring so a CVSS-builder
+            # bug never silently strips scores from the verdict.
+            r_val = trust_result.risk_level.value if hasattr(trust_result.risk_level, 'value') else str(trust_result.risk_level)
+            if r_val in ("likely_fraudulent", "high_risk", "dangerous"):
+                cvss_score = 8.5
+            elif r_val == "suspicious":
+                cvss_score = 6.5
+            elif r_val in ("low_risk", "safe", "trusted", "probably_safe"):
+                cvss_score = 3.5
+            if cvss_score > 0:
+                cvss_metrics = {"base_score": cvss_score, "metric_level": "fallback_legacy"}
+
+        verdict_technical = VerdictTechnical(
+            cwe_entries=cwe_entries,
+            cvss_metrics=cvss_metrics,
+            cvss_score=cvss_score,
+            iocs=iocs,
+            threat_indicators=threat_indicators,
+        )
+
+        # -----------------------------------------------------------
+        # Step 4: Build VerdictNonTechnical tier (plain English)
+        # -----------------------------------------------------------
+        # Extract high-severity findings
+        key_findings = []
+        if evidence.vision_result:
+            critical_patterns = [p.pattern_type for p in evidence.vision_result.critical_patterns]
+            if critical_patterns:
+                key_findings.extend([f"Critical: {p}" for p in critical_patterns[:3]])
+            high_patterns = [p.pattern_type for p in evidence.vision_result.dark_patterns if p.severity == "high"]
+            if high_patterns:
+                key_findings.extend([f"High risk: {p}" for p in high_patterns[:3]])
+
+        # Build recommendations
+        recommendations = decision.simple_recommendations or decision.recommendations
+
+        # Warnings from critical triggers
+        warnings = []
+        if not ctx.has_ssl:
+            warnings.append("This site is not using secure HTTPS connection")
+        if ctx.has_phishing_hits:
+            warnings.append("External security services have flagged this as potentially phishing")
+        if ctx.js_risk_score > 70:
+            warnings.append("Site contains potentially malicious JavaScript")
+
+        # Green flags from positive indicators
+        green_flags = []
+        if ctx.security_score > 80:
+            green_flags.append("Strong security measures detected")
+        if ctx.graph_score > 80:
+            green_flags.append("Entity verification passed")
+        if evidence.graph_result and evidence.graph_result.domain_age_days > 365:
+            green_flags.append("Domain is over 1 year old")
+
+        try:
+            rl_enum = RiskLevel(trust_result.risk_level.value.lower()) if hasattr(trust_result.risk_level, 'value') else RiskLevel(str(trust_result.risk_level).lower())
+        except Exception:
+            rl_enum = RiskLevel.SUSPICIOUS
+
+        # Simple explanation based on risk level
+        simple_explanation = {
+            RiskLevel.TRUSTED: "This site appears safe and legitimate. No major concerns detected.",
+            RiskLevel.PROBABLY_SAFE: "This site looks reasonably safe. Verify before sharing sensitive info.",
+            RiskLevel.SUSPICIOUS: "Be cautious with this site. Check for reviews and verify authenticity.",
+            RiskLevel.HIGH_RISK: "This site has warning signs. Don't enter personal information here.",
+            RiskLevel.DANGEROUS: "This site has high severity threats. Do not use this site.",
+            RiskLevel.LIKELY_FRAUDULENT: "This site is likely a scam. Avoid it completely.",
+        }.get(rl_enum, "Unable to determine safety.")
+
+        # Use strategy narrative if available
+        summary = adjustments.narrative_template or decision.simple_narrative[:200]
+
+        verdict_non_technical = VerdictNonTechnical(
+            risk_level=rl_enum,
+            summary=summary,
+            key_findings=key_findings[:5],
+            recommendations=recommendations[:5],
+            warnings=warnings[:3],
+            green_flags=green_flags[:3],
+            simple_explanation=simple_explanation,
+        )
+
+        # -----------------------------------------------------------
+        # Step 5: Build and return DualVerdict
+        # -----------------------------------------------------------
+        return DualVerdict(
+            trust_score=trust_result.final_score,
+            technical=verdict_technical,
+            non_technical=verdict_non_technical,
+            site_type=evidence.site_type,
+        )
+
+    async def _render_verdict(self, evidence: AuditEvidence) -> JudgeDecision:
+        """
+        Compute Trust Score, generate forensic narrative, and produce final verdict.
+        """
+        # -----------------------------------------------------------
+        # Step 1: Build sub-signals for trust score computation
+        # -----------------------------------------------------------
+        signals = self._build_signals(evidence)
+
+        # -----------------------------------------------------------
+        # Step 2: Gather metadata for override rules
+        # -----------------------------------------------------------
+        domain_age_days = None
+        ssl_status = None
+        is_blacklisted = False
+        scout_status = "SUCCESS"
+        temporal_findings = []
+        fake_badges_count = 0
+        verified_badges_count = 0
+
+        if evidence.graph_result:
+            domain_age_days = evidence.graph_result.domain_age_days
+            ssl_status = evidence.graph_result.has_ssl
+
+        if evidence.scout_results:
+            primary_scout = evidence.scout_results[0]
+            scout_status = primary_scout.status
+            if primary_scout.page_metadata:
+                ssl_from_scout = primary_scout.page_metadata.get("has_ssl")
+                if ssl_status is None:
+                    ssl_status = ssl_from_scout
+
+        if evidence.vision_result:
+            temporal_findings = evidence.vision_result.temporal_finding_ids
+            # Count badge findings
+            for p in evidence.vision_result.dark_patterns:
+                if p.pattern_type == "fake_badges":
+                    fake_badges_count += 1
+
+        # -----------------------------------------------------------
+        # Step 3: Compute Trust Score — with site-type weight overrides
+        # -----------------------------------------------------------
+        # Apply site-type weight overrides if available
+        weights = DEFAULT_WEIGHTS
+        paranoia_mode = False
+        try:
+            from elliot.config.site_types import SITE_TYPE_PROFILES, SiteType
+            if evidence.site_type:
+                st = SiteType(evidence.site_type)
+                profile = SITE_TYPE_PROFILES.get(st)
+                if profile and profile.weight_overrides:
+                    weights = SignalWeights.from_overrides(profile.weight_overrides)
+                    logger.info(f"Using weight overrides for site_type={evidence.site_type}")
+                if st == SiteType.DARKNET_SUSPICIOUS:
+                    paranoia_mode = True
+        except Exception:
+            pass
+
+        # Gather paranoia params from security results
+        is_phishing = False
+        js_risk_score = 0.0
+        is_privacy_protected = False
+        has_cross_domain_forms = False
+
+        sec = evidence.security_results
+        if sec:
+            phishing = sec.get("phishing_db") or sec.get("phishing", {})
+            is_phishing = phishing.get("is_phishing", False)
+            js = sec.get("js_analysis", {})
+            js_risk_score = js.get("risk_score", 0.0)
+        if evidence.graph_result and evidence.graph_result.domain_intel:
+            is_privacy_protected = evidence.graph_result.domain_intel.is_privacy_protected
+
+        # Check form validation from scout
+        for scout in evidence.scout_results:
+            fv = getattr(scout, 'form_validation', {})
+            if fv and fv.get("critical_count", 0) > 0:
+                has_cross_domain_forms = True
+
+        trust_result = compute_trust_score(
+            signals=signals,
+            weights=weights,
+            domain_age_days=domain_age_days,
+            ssl_status=ssl_status,
+            temporal_findings=temporal_findings,
+            is_blacklisted=is_blacklisted,
+            scout_status=scout_status,
+            fake_badges_count=fake_badges_count,
+            verified_badges_count=verified_badges_count,
+            paranoia_mode=paranoia_mode,
+            is_phishing=is_phishing,
+            js_risk_score=js_risk_score,
+            is_privacy_protected=is_privacy_protected,
+            has_cross_domain_sensitive_forms=has_cross_domain_forms,
+        )
+
+        logger.info(
+            f"Trust Score computed: {trust_result.final_score}/100 "
+            f"({trust_result.risk_level.value}) | "
+            f"pre_override={trust_result.pre_override_score} | "
+            f"overrides={[r.name for r in trust_result.overrides_applied]}"
+        )
+
+        # -----------------------------------------------------------
+        # Step 3b: Multi-agent consensus cross-validation (Phase 7)
+        # Aggregates Vision + Security + Graph findings to identify
+        # CONFIRMED (2+ sources) vs UNCONFIRMED (1 source) vs CONFLICTED.
+        # -----------------------------------------------------------
+        consensus_summary = {}
+        if CONSENSUS_AVAILABLE:
+            try:
+                consensus_engine = ConsensusEngine(min_sources=2)
+
+                # Add vision dark-pattern findings
+                if evidence.vision_result:
+                    for pattern in evidence.vision_result.dark_patterns:
+                        finding_key = f"vision:{pattern.pattern_type}"
+                        consensus_engine.add_finding(
+                            finding_key=finding_key,
+                            agent_type="vision",
+                            finding_id=pattern.pattern_type,
+                            severity=pattern.severity.upper(),
+                            confidence=pattern.confidence,
+                        )
+
+                # Add security findings
+                sec_findings = evidence.security_results or {}
+                for check_name, check_data in sec_findings.items():
+                    if isinstance(check_data, dict) and check_data.get("is_phishing") or check_data.get("risk_score", 0) > 50:
+                        severity = "HIGH" if check_data.get("risk_score", 0) > 70 else "MEDIUM"
+                        consensus_engine.add_finding(
+                            finding_key=f"security:{check_name}",
+                            agent_type="security",
+                            finding_id=check_name,
+                            severity=severity,
+                            confidence=min(1.0, check_data.get("risk_score", 50) / 100.0),
+                        )
+
+                # Add graph inconsistency findings
+                if evidence.graph_result:
+                    gr = evidence.graph_result
+                    if hasattr(gr, 'inconsistencies') and gr.inconsistencies:
+                        for incon in gr.inconsistencies:
+                            finding_key = f"graph:{incon.get('type', 'inconsistency')}"
+                            consensus_engine.add_finding(
+                                finding_key=finding_key,
+                                agent_type="graph",
+                                finding_id=incon.get('type', 'inconsistency'),
+                                severity=incon.get('severity', 'MEDIUM').upper(),
+                                confidence=incon.get('confidence', 0.6),
+                            )
+
+                confirmed = consensus_engine.get_confirmed_findings()
+                conflicted = consensus_engine.get_conflicted_findings()
+                consensus_summary = {
+                    "confirmed_count": len(confirmed),
+                    "conflicted_count": len(conflicted),
+                    "total_findings": len(consensus_engine.findings),
+                    "confirmed_keys": [r.finding_key for r in confirmed],
+                }
+                logger.info(
+                    f"Consensus: confirmed={len(confirmed)}, "
+                    f"conflicted={len(conflicted)}, "
+                    f"total={len(consensus_engine.findings)}"
+                )
+            except Exception as e:
+                logger.warning(f"Consensus engine error (non-fatal): {e}")
+
+        # -----------------------------------------------------------
+        # Step 4: Generate forensic narrative via NIM LLM
+        #         ALWAYS generate expert narrative
+        # -----------------------------------------------------------
+        narrative = await self._generate_narrative(evidence, trust_result)
+
+        # Append consensus cross-validation summary to narrative
+        if consensus_summary.get("total_findings", 0) > 0:
+            confirmed_n = consensus_summary["confirmed_count"]
+            conflicted_n = consensus_summary["conflicted_count"]
+            if confirmed_n > 0:
+                narrative += (
+                    f"\n\n[MULTI-AGENT CONSENSUS] {confirmed_n} finding(s) CONFIRMED by 2+ independent agents"
+                )
+                if consensus_summary.get("confirmed_keys"):
+                    narrative += f": {', '.join(consensus_summary['confirmed_keys'][:5])}"
+            if conflicted_n > 0:
+                narrative += (
+                    f"\n[MULTI-AGENT CONSENSUS] {conflicted_n} finding(s) CONFLICTED between agents — "
+                    f"manual review recommended."
+                )
+
+        # -----------------------------------------------------------
+        # Step 4b: Generate simple-mode narrative
+        #          (always generated so both modes are available)
+        # -----------------------------------------------------------
+        simple_narrative = await self._generate_simple_narrative(evidence, trust_result)
+
+        # -----------------------------------------------------------
+        # Step 5: Generate recommendations (both expert and simple)
+        # -----------------------------------------------------------
+        recommendations = self._generate_recommendations(trust_result, evidence)
+        simple_recs = self._generate_simple_recommendations(trust_result, evidence)
+
+        # -----------------------------------------------------------
+        # Step 6: Build evidence summaries for the report
+        # -----------------------------------------------------------
+        dark_pattern_summary = self._summarize_dark_patterns(evidence)
+        entity_summary = self._summarize_entity_verification(evidence)
+        timeline = self._build_evidence_timeline(evidence)
+
+        return JudgeDecision(
+            action="RENDER_VERDICT",
+            reason=f"Trust Score: {trust_result.final_score}/100 ({trust_result.risk_level.value})",
+            trust_score_result=trust_result,
+            forensic_narrative=narrative,
+            simple_narrative=simple_narrative,
+            recommendations=recommendations,
+            simple_recommendations=simple_recs,
+            dark_pattern_summary=dark_pattern_summary,
+            entity_verification_summary=entity_summary,
+            evidence_timeline=timeline,
+            site_type=evidence.site_type,
+            verdict_mode=evidence.verdict_mode,
+        )
+
+    # ================================================================
+    # Private: Signal Construction
+    # ================================================================
+
+    def _build_signals(self, evidence: AuditEvidence) -> dict[str, SubSignal]:
+        """Build SubSignal objects from all collected evidence."""
+        signals = {}
+
+        # --- Visual Signal ---
+        if evidence.vision_result:
+            vr = evidence.vision_result
+            signals["visual"] = SubSignal(
+                name="visual",
+                raw_score=vr.visual_score,
+                confidence=0.85 if not vr.fallback_used else 0.5,
+                evidence_count=vr.total_patterns_found,
+                details={
+                    "patterns_found": vr.total_patterns_found,
+                    "critical_patterns": len(vr.critical_patterns),
+                    "screenshots_analyzed": vr.screenshots_analyzed,
+                    "fallback_used": vr.fallback_used,
+                },
+            )
+        else:
+            signals["visual"] = SubSignal(
+                name="visual", raw_score=0.5, confidence=0.2,
+                details={"note": "No visual analysis available"},
+            )
+
+        # --- Temporal Signal ---
+        if evidence.vision_result and evidence.vision_result.temporal_findings:
+            vr = evidence.vision_result
+            signals["temporal"] = SubSignal(
+                name="temporal",
+                raw_score=vr.temporal_score,
+                confidence=0.9 if vr.has_fake_timers else 0.7,
+                evidence_count=len(vr.temporal_findings),
+                details={
+                    "has_fake_timers": vr.has_fake_timers,
+                    "findings": [
+                        {"type": tf.finding_type, "suspicious": tf.is_suspicious}
+                        for tf in vr.temporal_findings
+                    ],
+                },
+            )
+        else:
+            signals["temporal"] = SubSignal(
+                name="temporal", raw_score=0.5, confidence=0.3,
+                details={"note": "No temporal data — single screenshot or no timers detected"},
+            )
+
+        # --- Graph Signal ---
+        if evidence.graph_result:
+            gr = evidence.graph_result
+            # Confidence grows with evidence volume:
+            #   base 0.5 + 0.1 per verification + 0.05 per OSINT source
+            osint_src_count = len(gr.osint_sources) if gr.osint_sources else 0
+            # Don't count the _consensus meta-key as a real source
+            if isinstance(gr.osint_sources, dict):
+                osint_src_count = len([k for k in gr.osint_sources if k != "_consensus"])
+            graph_confidence = min(
+                0.95,
+                0.5 + len(gr.verifications) * 0.1 + osint_src_count * 0.05,
+            )
+            signals["graph"] = SubSignal(
+                name="graph",
+                raw_score=gr.graph_score,
+                confidence=graph_confidence,
+                evidence_count=len(gr.verifications) + len(gr.inconsistencies),
+                details={
+                    "verifications": len(gr.verifications),
+                    "inconsistencies": len(gr.inconsistencies),
+                    "confirmed": sum(1 for v in gr.verifications if v.status == "confirmed"),
+                    "denied": sum(1 for v in gr.verifications if v.status in ("denied", "contradicted")),
+                    "graph_nodes": gr.graph_node_count,
+                    "graph_edges": gr.graph_edge_count,
+                },
+            )
+        else:
+            signals["graph"] = SubSignal(
+                name="graph", raw_score=0.5, confidence=0.2,
+                details={"note": "No graph investigation completed"},
+            )
+
+        # --- Meta Signal ---
+        if evidence.graph_result:
+            gr = evidence.graph_result
+            signals["meta"] = SubSignal(
+                name="meta",
+                raw_score=gr.meta_score,
+                confidence=0.85,
+                evidence_count=1,
+                details={
+                    "domain_age_days": gr.domain_age_days,
+                    "has_ssl": gr.has_ssl,
+                    "whois_available": gr.domain_intel is not None,
+                },
+            )
+        else:
+            signals["meta"] = SubSignal(
+                name="meta", raw_score=0.5, confidence=0.3,
+                details={"note": "No domain intelligence available"},
+            )
+
+        # --- Structural Signal (from Scout DOM analysis) ---
+        structural_score = self._compute_structural_score(evidence)
+        signals["structural"] = structural_score
+
+        # --- Security Signal (from security modules) ---
+        sec = evidence.security_results
+        if sec:
+            sec_score = 1.0  # Innocent until proven guilty
+            sec_details = {}
+            sec_evidence_count = 0
+
+            # Security headers
+            headers = sec.get("security_headers", {})
+            if headers:
+                h_score = headers.get("score", 1.0)
+                sec_score -= (1.0 - h_score) * 0.2  # Max 20% penalty for bad headers
+                sec_details["headers_score"] = h_score
+                sec_details["missing_headers"] = headers.get("missing_headers", [])
+                sec_evidence_count += 1
+
+            # Phishing
+            phishing = sec.get("phishing_db") or sec.get("phishing", {})
+            if phishing:
+                if phishing.get("is_phishing"):
+                    sec_score -= 0.6
+                    sec_details["phishing_alert"] = True
+                sec_details["phishing_flags"] = phishing.get("flags", [])
+                sec_evidence_count += 1
+
+            # Redirect analysis
+            redirects = sec.get("redirect_chain") or sec.get("redirects", {})
+            if redirects:
+                if redirects.get("is_suspicious"):
+                    sec_score -= 0.3
+                    sec_details["suspicious_redirects"] = True
+                sec_details["redirect_hops"] = redirects.get("total_hops", 0)
+                sec_evidence_count += 1
+
+            # JS analysis
+            js = sec.get("js_analysis", {})
+            if js:
+                js_risk = js.get("risk_score", 0.0)
+                if js_risk > 0.5:
+                    sec_score -= (js_risk * 0.4)
+                sec_details["js_risk_score"] = js_risk
+                sec_evidence_count += 1
+
+            signals["security"] = SubSignal(
+                name="security",
+                raw_score=round(max(0.0, min(1.0, sec_score)), 3),
+                confidence=0.85 if sec_evidence_count >= 2 else max(0.6, 0.4 + sec_evidence_count * 0.2),
+                evidence_count=sec_evidence_count,
+                details=sec_details,
+            )
+        else:
+            signals["security"] = SubSignal(
+                name="security", raw_score=0.9, confidence=0.3,
+                details={"note": "No security modules were run"},
+            )
+
+        return signals
+
+    def _compute_structural_score(self, evidence: AuditEvidence) -> SubSignal:
+        """
+        Compute structural trust signal from Scout's DOM metadata.
+        Factors: SSL, forms with passwords, script count, external links ratio.
+        """
+        score = 0.95  # Start high, deduct for bad structural signs
+        details = {}
+        evidence_count = 0
+
+        for scout in evidence.scout_results:
+            if scout.status != "SUCCESS":
+                continue
+
+            meta = scout.page_metadata
+            if not meta:
+                continue
+
+            evidence_count += 1
+
+            # SSL from browser
+            if meta.get("has_ssl"):
+                details["ssl"] = True
+            else:
+                score -= 0.3
+                details["ssl"] = False
+
+            # Password forms without SSL → critical
+            forms = meta.get("forms", [])
+            has_password_form = any(
+                f.get("hasPassword") for f in forms if isinstance(f, dict)
+            )
+            if has_password_form and not meta.get("has_ssl"):
+                score -= 0.4
+                details["password_without_ssl"] = True
+
+            # Credit card forms → check SSL
+            has_cc_form = any(
+                f.get("hasCreditCard") for f in forms if isinstance(f, dict)
+            )
+            if has_cc_form:
+                if not meta.get("has_ssl"):
+                    score -= 0.5
+                    details["credit_card_without_ssl"] = True
+                else:
+                    details["has_payment_form"] = True
+
+            # Excessive external scripts → potential trackers/malware
+            ext_scripts = meta.get("external_scripts", [])
+            if isinstance(ext_scripts, list) and len(ext_scripts) > 20:
+                score -= 0.1
+                details["excessive_scripts"] = len(ext_scripts)
+
+            # External links ratio
+            int_links = meta.get("internal_links_count", 0)
+            ext_links = meta.get("external_links_count", 0)
+            if isinstance(int_links, int) and isinstance(ext_links, int):
+                if int_links + ext_links > 0:
+                    ext_ratio = ext_links / (int_links + ext_links)
+                    if ext_ratio > 0.8:
+                        score -= 0.15
+                        details["high_external_link_ratio"] = round(ext_ratio, 2)
+
+            # Apply scout-level trust modifiers
+            score += scout.trust_modifier
+
+        score = max(0.0, min(1.0, score))
+
+        return SubSignal(
+            name="structural",
+            raw_score=round(score, 3),
+            confidence=0.85 if evidence_count > 0 else 0.2,
+            evidence_count=evidence_count,
+            details=details,
+        )
+
+    # ================================================================
+    # Private: Forensic Narrative
+    # ================================================================
+
+    async def _generate_narrative(
+        self, evidence: AuditEvidence, trust_result: TrustScoreResult,
+    ) -> str:
+        """
+        Generate a forensic narrative using NIM LLM.
+        Written in professional auditor tone, citing specific evidence.
+        """
+        # Build evidence summary for the LLM
+        evidence_summary = self._build_evidence_summary_text(evidence, trust_result)
+
+        prompt = (
+            "Write a forensic audit narrative (200-400 words) for this website investigation.\n\n"
+            "STRUCTURE:\n"
+            "1. Opening: What was audited + final trust score + risk verdict\n"
+            "2. Visual Analysis: Dark patterns found (cite specific types + confidence)\n"
+            "3. Entity Verification: Claims confirmed/denied/unverifiable (cite evidence)\n"
+            "4. Domain Intelligence: Age, SSL, WHOIS anomalies\n"
+            "5. Conclusion: Overall risk assessment + key recommendation\n\n"
+            "RULES:\n"
+            "- Cite specific scores and confidence values from the evidence\n"
+            "- Use numbers: 'found 3 dark patterns (2 high-severity)' not 'found some issues'\n"
+            "- Every claim must reference evidence below. Do NOT add information not in evidence.\n"
+            "- Neutral, professional tone. No speculation, no emotional language.\n\n"
+            f"Evidence:\n{evidence_summary}"
+        )
+
+        result = await self._nim.generate_text(
+            prompt=prompt,
+            system_prompt=(
+                "You are a digital forensic auditor. Write precise, evidence-based audit reports. "
+                "Always cite specific findings with their confidence scores. "
+                "Never fabricate findings or speculate beyond the provided evidence. "
+                "If evidence is limited, say so explicitly rather than filling gaps."
+            ),
+            max_tokens=800,
+            temperature=0.2,
+        )
+
+        response = result.get("response", "")
+
+        # If LLM failed, generate a templated narrative
+        if not response or result.get("fallback_mode"):
+            response = self._generate_template_narrative(evidence, trust_result)
+
+        return response
+
+    def _build_evidence_summary_text(
+        self, evidence: AuditEvidence, trust_result: TrustScoreResult,
+    ) -> str:
+        """Build a structured text summary of all evidence for the LLM."""
+        sections = []
+
+        sections.append(f"URL: {evidence.url}")
+        sections.append(f"Trust Score: {trust_result.final_score}/100 ({trust_result.risk_level.value})")
+        sections.append(f"Pages analyzed: {len(evidence.scout_results)}")
+
+        # Vision findings
+        if evidence.vision_result:
+            vr = evidence.vision_result
+            sections.append(f"\nVisual Analysis:")
+            sections.append(f"  Dark patterns found: {vr.total_patterns_found}")
+            sections.append(f"  Critical patterns: {len(vr.critical_patterns)}")
+            sections.append(f"  Fake timers detected: {vr.has_fake_timers}")
+            for p in vr.dark_patterns[:5]:
+                sections.append(f"  - {p.category_id}/{p.pattern_type}: {p.evidence[:100]} (conf={p.confidence:.0%})")
+
+        # Graph findings
+        if evidence.graph_result:
+            gr = evidence.graph_result
+            sections.append(f"\nEntity Verification:")
+            sections.append(f"  Domain age: {gr.domain_age_days} days")
+            sections.append(f"  Inconsistencies: {len(gr.inconsistencies)}")
+            for v in gr.verifications:
+                sections.append(f"  - {v.claim.entity_type}='{v.claim.entity_value}': {v.status} (conf={v.confidence:.0%})")
+            for inc in gr.inconsistencies:
+                sections.append(f"  - INCONSISTENCY ({inc.severity}): {inc.explanation[:100]}")
+
+        # Overrides
+        if trust_result.overrides_applied:
+            sections.append(f"\nOverride Rules Applied:")
+            for r in trust_result.overrides_applied:
+                sections.append(f"  - {r.name}: {r.description}")
+
+        return "\n".join(sections)
+
+    def _generate_template_narrative(
+        self, evidence: AuditEvidence, trust_result: TrustScoreResult,
+    ) -> str:
+        """Fallback: generate a templated narrative without LLM."""
+        score = trust_result.final_score
+        risk = trust_result.risk_level.value.replace("_", " ").title()
+
+        parts = [
+            f"Elliot Forensic Audit of {evidence.url}\n",
+            f"The automated forensic audit of this website concluded with a Trust Score "
+            f"of {score}/100, categorized as '{risk}'.\n",
+        ]
+
+        if evidence.vision_result:
+            vr = evidence.vision_result
+            count = vr.total_patterns_found
+            if count > 0:
+                parts.append(
+                    f"Visual analysis identified {count} potential dark pattern(s) "
+                    f"across {vr.screenshots_analyzed} screenshots. "
+                    f"{len(vr.critical_patterns)} were rated as critical severity."
+                )
+            else:
+                parts.append("Visual analysis found no significant dark patterns.")
+
+        if evidence.graph_result:
+            gr = evidence.graph_result
+            parts.append(
+                f"Domain intelligence shows the domain is {gr.domain_age_days} days old. "
+                f"{len(gr.inconsistencies)} inconsistencies were detected between "
+                f"website claims and external evidence."
+            )
+
+        if trust_result.overrides_applied:
+            names = [r.name for r in trust_result.overrides_applied]
+            parts.append(f"Override rules applied: {', '.join(names)}.")
+
+        return "\n".join(parts)
+
+    # ================================================================
+    # Private: Recommendations
+    # ================================================================
+
+    def _generate_recommendations(
+        self, trust_result: TrustScoreResult, evidence: AuditEvidence,
+    ) -> list[str]:
+        """Generate actionable recommendations based on the verdict."""
+        recs = []
+        risk = trust_result.risk_level
+
+        if risk in (RiskLevel.LIKELY_FRAUDULENT, RiskLevel.HIGH_RISK):
+            recs.append("DO NOT enter personal information or payment details on this site.")
+            recs.append("Report this site to relevant authorities (FTC, local consumer protection).")
+            recs.append("If you've already transacted, monitor your accounts for unauthorized activity.")
+
+        if risk == RiskLevel.SUSPICIOUS:
+            recs.append("Exercise caution. Verify the business through independent channels before transacting.")
+            recs.append("Check for the business on official registries (Better Business Bureau, etc.).")
+
+        # Specific recommendations based on findings
+        if evidence.vision_result:
+            if evidence.vision_result.has_fake_timers:
+                recs.append("Fake urgency timers detected — do not feel pressured by countdown timers on this site.")
+            for p in evidence.vision_result.dark_patterns:
+                if p.pattern_type == "pre_selected_options":
+                    recs.append("Check all checkboxes and pre-selected options carefully before completing any purchase.")
+                    break
+                if p.pattern_type == "hidden_costs":
+                    recs.append("Verify the total price including all fees before completing checkout.")
+                    break
+
+        if evidence.graph_result:
+            if evidence.graph_result.domain_age_days >= 0 and evidence.graph_result.domain_age_days < 30:
+                recs.append("This is a very new website. New domains carry higher risk for scam operations.")
+
+        if not recs:
+            recs.append("No immediate concerns identified. Standard online safety practices apply.")
+
+        return list(dict.fromkeys(recs))  # Deduplicate while preserving order
+
+    # ================================================================
+    # Private: Simple-Mode Narrative (jargon-free)
+    # ================================================================
+
+    async def _generate_simple_narrative(
+        self, evidence: AuditEvidence, trust_result: TrustScoreResult,
+    ) -> str:
+        """
+        Generate a plain-language narrative for non-technical users.
+        Avoids jargon like SSL, WHOIS, DNS, VLM, etc.
+        """
+        evidence_summary = self._build_evidence_summary_text(evidence, trust_result)
+
+        prompt = (
+            "Rewrite these technical findings into a simple, friendly explanation (100-200 words).\n\n"
+            "TRANSLATION GUIDE:\n"
+            "- SSL certificate → secure connection padlock\n"
+            "- WHOIS → website registration records\n"
+            "- Dark patterns → tricks to mislead you\n"
+            "- Domain age → how long this website has existed\n"
+            "- CSP/HSTS → security settings\n\n"
+            "ANSWER THREE QUESTIONS:\n"
+            "1. Is this website safe to use? (clear yes/maybe/no)\n"
+            "2. What should I watch out for?\n"
+            "3. What did we find that was good or bad?\n\n"
+            "Use everyday language. Be warm but honest. No jargon.\n\n"
+            f"Technical findings:\n{evidence_summary}"
+        )
+
+        result = await self._nim.generate_text(
+            prompt=prompt,
+            system_prompt=(
+                "You are a friendly security advisor explaining website safety to a non-technical person. "
+                "Use simple words, short sentences, and analogies. Never use technical jargon. "
+                "Be honest — don't sugarcoat real risks, but don't be alarmist about minor issues."
+            ),
+            max_tokens=400,
+            temperature=0.3,
+        )
+
+        response = result.get("response", "")
+
+        if not response or result.get("fallback_mode"):
+            # Fallback: generate simple template
+            score = trust_result.final_score
+            if score >= 70:
+                response = (
+                    f"We checked this website thoroughly and it looks reasonably safe "
+                    f"(scored {score} out of 100). The website appears to be what it "
+                    f"claims to be, and we didn't find major tricks or scams."
+                )
+            elif score >= 40:
+                response = (
+                    f"We found some concerns with this website (scored {score} out of 100). "
+                    f"Be careful when using it — double check prices, read the fine print, "
+                    f"and don't rush into any decisions."
+                )
+            else:
+                response = (
+                    f"This website raised serious red flags (scored only {score} out of 100). "
+                    f"We strongly recommend not entering any personal information or "
+                    f"payment details here. Several warning signs point to possible fraud."
+                )
+
+        return response
+
+    def _generate_simple_recommendations(
+        self, trust_result: TrustScoreResult, evidence: AuditEvidence,
+    ) -> list[str]:
+        """Generate jargon-free recommendations for non-technical users."""
+        recs = []
+        risk = trust_result.risk_level
+
+        if risk in (RiskLevel.LIKELY_FRAUDULENT, RiskLevel.HIGH_RISK):
+            recs.append("Don't enter your credit card or personal details on this site.")
+            recs.append("If you've already made a purchase, check your bank statements carefully.")
+            recs.append("Look for the same product/service on well-known websites instead.")
+        elif risk == RiskLevel.SUSPICIOUS:
+            recs.append("Be careful — this site has some warning signs.")
+            recs.append("Search for reviews of this website before buying anything.")
+            recs.append("If prices seem too good to be true, they probably are.")
+        else:
+            recs.append("This website looks okay, but always be mindful online.")
+
+        # Specific plain-language warnings
+        if evidence.vision_result:
+            if evidence.vision_result.has_fake_timers:
+                recs.append("The countdown timers on this site are fake — don't let them rush you.")
+            for p in evidence.vision_result.dark_patterns:
+                if "hidden" in p.pattern_type:
+                    recs.append("Watch out for hidden fees — check the total price carefully at checkout.")
+                    break
+                if "pre_selected" in p.pattern_type:
+                    recs.append("Uncheck any boxes that were already ticked for you — they might add unwanted charges.")
+                    break
+
+        if evidence.graph_result:
+            if evidence.graph_result.domain_age_days >= 0 and evidence.graph_result.domain_age_days < 30:
+                recs.append("This website is very new — brand new sites are more commonly used for scams.")
+
+        return list(dict.fromkeys(recs))
+
+    # ================================================================
+    # Private: Report Summaries
+    # ================================================================
+
+    def _summarize_dark_patterns(self, evidence: AuditEvidence) -> list[dict]:
+        """Build a report-ready summary of dark pattern findings."""
+        if not evidence.vision_result:
+            raise RuntimeError(
+                "_summarize_dark_patterns(): Cannot summarize dark patterns without vision_result. "
+                "Ensure visual analysis completed before summarization."
+            )
+
+        summary = []
+        for p in evidence.vision_result.dark_patterns:
+            summary.append({
+                "category": p.category_id,
+                "pattern": p.pattern_type,
+                "severity": p.severity,
+                "confidence": round(p.confidence, 2),
+                "evidence": p.evidence[:200],
+                "screenshot": p.screenshot_path,
+            })
+        return summary
+
+    def _summarize_entity_verification(self, evidence: AuditEvidence) -> list[dict]:
+        """Build a report-ready summary of entity verification results."""
+        if not evidence.graph_result:
+            raise RuntimeError(
+                "_summarize_entity_verification(): Cannot summarize entity verification without graph_result. "
+                "Ensure graph investigation completed before summarization."
+            )
+
+        summary = []
+        for v in evidence.graph_result.verifications:
+            summary.append({
+                "entity_type": v.claim.entity_type,
+                "claimed_value": v.claim.entity_value,
+                "status": v.status,
+                "confidence": round(v.confidence, 2),
+                "evidence": v.evidence_detail[:200],
+            })
+
+        for inc in evidence.graph_result.inconsistencies:
+            summary.append({
+                "entity_type": "inconsistency",
+                "claimed_value": inc.claim_text,
+                "status": inc.inconsistency_type,
+                "confidence": round(inc.confidence, 2),
+                "evidence": inc.explanation[:200],
+            })
+
+        return summary
+
+    def _build_evidence_timeline(self, evidence: AuditEvidence) -> list[dict]:
+        """Build a chronological timeline of evidence collection."""
+        timeline = []
+
+        for i, scout in enumerate(evidence.scout_results):
+            timeline.append({
+                "step": len(timeline) + 1,
+                "agent": "Scout",
+                "action": f"Navigated to {scout.url}",
+                "status": scout.status,
+                "result": f"{len(scout.screenshots)} screenshots, {scout.forms_detected} forms",
+                "duration_ms": scout.navigation_time_ms,
+            })
+
+        if evidence.vision_result:
+            vr = evidence.vision_result
+            timeline.append({
+                "step": len(timeline) + 1,
+                "agent": "Vision",
+                "action": f"Analyzed {vr.screenshots_analyzed} screenshots",
+                "status": "COMPLETE",
+                "result": f"{vr.total_patterns_found} dark patterns, {len(vr.temporal_findings)} temporal checks",
+            })
+
+        if evidence.graph_result:
+            gr = evidence.graph_result
+            timeline.append({
+                "step": len(timeline) + 1,
+                "agent": "Graph",
+                "action": f"Investigated {len(gr.claims_extracted)} entity claims",
+                "status": "COMPLETE",
+                "result": (
+                    f"{len(gr.verifications)} verified, "
+                    f"{len(gr.inconsistencies)} inconsistencies, "
+                    f"domain age={gr.domain_age_days}d"
+                ),
+            })
+
+        timeline.append({
+            "step": len(timeline) + 1,
+            "agent": "Judge",
+            "action": "Rendered final verdict",
+            "status": "COMPLETE",
+        })
+
+        return timeline
+
+
