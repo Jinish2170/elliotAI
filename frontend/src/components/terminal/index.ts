@@ -7,6 +7,7 @@ export { SysLogStream } from "./SysLogStream";
 export { AgentProcState } from "./AgentProcState";
 export { ScoutImagery } from "./ScoutImagery";
 export { KnowledgeGraph } from "./KnowledgeGraph";
+export { NodeDetailPanel } from "./NodeDetailPanel";
 export { VisionIntelligence } from "./VisionIntelligence";
 export { ThreatIntelligenceMatrix } from "./ThreatIntelligenceMatrix";
 export { ScoutTelemetry } from "./ScoutTelemetry";

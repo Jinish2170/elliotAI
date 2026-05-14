@@ -1,4 +1,4 @@
-# VERITAS — Implementation Tracker
+# ELLIOT — Implementation Tracker
 
 > **Single source of truth for build progress. Update checkboxes as tasks complete.**
 > **Rule: Never advance to next phase until the Phase Gate is ✅**
@@ -42,7 +42,7 @@
 | Rate limiter + disk cache + retry decorator | `Rag_v5.0.0/rag-core/ingestion/scrapers.py` | ~80 lines | ✅ Excellent — use for nim_client.py |
 | Content extraction via JS DOM cloning | `Rag_v5.0.0/rag-core/ingestion/scrapers.py` → `_extract_with_js()` | ~40 lines | ✅ Good — use for dom_analyzer.py |
 | LangChain prompt template pattern | `Rag_v5.0.0/rag-core/retrieval/qa.py` | ~50 lines | ✅ Good — use for judge prompts |
-| Centralized config with dotenv | `Rag_v5.0.0/rag-core/config/settings.py` | ~25 lines | ✅ Good — extend for veritas config |
+| Centralized config with dotenv | `Rag_v5.0.0/rag-core/config/settings.py` | ~25 lines | ✅ Good — extend for elliot config |
 | Streaming response pattern | `glass-box-portal/backend/main.py` | ~20 lines | 🟡 Later — for Streamlit SSE |
 
 ---
@@ -51,13 +51,13 @@
 
 ### Tasks
 
-- [ ] **P0.1** Create `veritas/` root directory with `__init__.py`
+- [ ] **P0.1** Create `elliot/` root directory with `__init__.py`
 - [ ] **P0.2** Create all sub-packages: `agents/`, `core/`, `analysis/`, `reporting/`, `ui/`, `tests/`, `data/`
-- [ ] **P0.3** Create `veritas/requirements.txt` — all deps with minimum versions, verified for 8GB RAM
-- [ ] **P0.4** Create `veritas/.env.template` — all required and optional env vars documented
-- [ ] **P0.5** Create `veritas/config/settings.py` — centralized config extending RAGv5 pattern
-- [ ] **P0.6** Create `veritas/config/dark_patterns.py` — full taxonomy with 5 categories + VLM prompts
-- [ ] **P0.7** Create `veritas/config/trust_weights.py` — scoring weights, override rules, tier thresholds
+- [ ] **P0.3** Create `elliot/requirements.txt` — all deps with minimum versions, verified for 8GB RAM
+- [ ] **P0.4** Create `elliot/.env.template` — all required and optional env vars documented
+- [ ] **P0.5** Create `elliot/config/settings.py` — centralized config extending RAGv5 pattern
+- [ ] **P0.6** Create `elliot/config/dark_patterns.py` — full taxonomy with 5 categories + VLM prompts
+- [ ] **P0.7** Create `elliot/config/trust_weights.py` — scoring weights, override rules, tier thresholds
 - [ ] **P0.8** Create `data/` subdirectories: `evidence/`, `reports/`, `cache/`, `vectordb/`
 - [ ] **P0.9** Verify all imports resolve and directory auto-creation works
 
@@ -100,10 +100,10 @@
 ### Verification Commands
 ```bash
 # Test NIM client (requires API key in .env)
-cd veritas && python -c "import asyncio; from core.nim_client import NIMClient; c = NIMClient(); print(asyncio.run(c.generate_text('Hello')))"
+cd elliot && python -c "import asyncio; from core.nim_client import NIMClient; c = NIMClient(); print(asyncio.run(c.generate_text('Hello')))"
 
 # Test Scout (requires playwright install)
-cd veritas && python -c "import asyncio; from agents.scout import StealthScout
+cd elliot && python -c "import asyncio; from agents.scout import StealthScout
 async def test():
     async with StealthScout() as s:
         r = await s.investigate('https://example.com', temporal_delay=3)
@@ -246,62 +246,62 @@ config/trust_weights.py ──┤
 ## File Checklist (All Planned Files)
 
 ### Config Layer
-- [ ] `veritas/__init__.py`
-- [ ] `veritas/config/__init__.py`
-- [ ] `veritas/config/settings.py`
-- [ ] `veritas/config/dark_patterns.py`
-- [ ] `veritas/config/trust_weights.py`
+- [ ] `elliot/__init__.py`
+- [ ] `elliot/config/__init__.py`
+- [ ] `elliot/config/settings.py`
+- [ ] `elliot/config/dark_patterns.py`
+- [ ] `elliot/config/trust_weights.py`
 
 ### Agent Layer
-- [ ] `veritas/agents/__init__.py`
-- [ ] `veritas/agents/scout.py`
-- [ ] `veritas/agents/vision.py`
-- [ ] `veritas/agents/graph_investigator.py`
-- [ ] `veritas/agents/judge.py`
+- [ ] `elliot/agents/__init__.py`
+- [ ] `elliot/agents/scout.py`
+- [ ] `elliot/agents/vision.py`
+- [ ] `elliot/agents/graph_investigator.py`
+- [ ] `elliot/agents/judge.py`
 
 ### Core Layer
-- [ ] `veritas/core/__init__.py`
-- [ ] `veritas/core/nim_client.py`
-- [ ] `veritas/core/trust_scorer.py`
-- [ ] `veritas/core/evidence_store.py`
-- [ ] `veritas/core/knowledge_graph.py`
-- [ ] `veritas/core/orchestrator.py`
+- [ ] `elliot/core/__init__.py`
+- [ ] `elliot/core/nim_client.py`
+- [ ] `elliot/core/trust_scorer.py`
+- [ ] `elliot/core/evidence_store.py`
+- [ ] `elliot/core/knowledge_graph.py`
+- [ ] `elliot/core/orchestrator.py`
 
 ### Analysis Layer
-- [ ] `veritas/analysis/__init__.py`
-- [ ] `veritas/analysis/dom_analyzer.py`
-- [ ] `veritas/analysis/temporal_analyzer.py`
-- [ ] `veritas/analysis/meta_analyzer.py`
-- [ ] `veritas/analysis/pattern_matcher.py`
+- [ ] `elliot/analysis/__init__.py`
+- [ ] `elliot/analysis/dom_analyzer.py`
+- [ ] `elliot/analysis/temporal_analyzer.py`
+- [ ] `elliot/analysis/meta_analyzer.py`
+- [ ] `elliot/analysis/pattern_matcher.py`
 
 ### Reporting Layer
-- [ ] `veritas/reporting/__init__.py`
-- [ ] `veritas/reporting/report_generator.py`
-- [ ] `veritas/reporting/visualizations.py`
-- [ ] `veritas/reporting/templates/audit_report.html`
+- [ ] `elliot/reporting/__init__.py`
+- [ ] `elliot/reporting/report_generator.py`
+- [ ] `elliot/reporting/visualizations.py`
+- [ ] `elliot/reporting/templates/audit_report.html`
 
 ### UI Layer
-- [ ] `veritas/ui/app.py`
-- [ ] `veritas/ui/components/live_log.py`
-- [ ] `veritas/ui/components/score_gauge.py`
-- [ ] `veritas/ui/components/evidence_viewer.py`
+- [ ] `elliot/ui/app.py`
+- [ ] `elliot/ui/components/live_log.py`
+- [ ] `elliot/ui/components/score_gauge.py`
+- [ ] `elliot/ui/components/evidence_viewer.py`
 
 ### Tests
-- [ ] `veritas/tests/__init__.py`
-- [ ] `veritas/tests/test_scout.py`
-- [ ] `veritas/tests/test_vision.py`
-- [ ] `veritas/tests/test_graph.py`
-- [ ] `veritas/tests/test_trust_scorer.py`
-- [ ] `veritas/tests/test_integration.py`
-- [ ] `veritas/tests/test_sites/` (5 HTML files)
+- [ ] `elliot/tests/__init__.py`
+- [ ] `elliot/tests/test_scout.py`
+- [ ] `elliot/tests/test_vision.py`
+- [ ] `elliot/tests/test_graph.py`
+- [ ] `elliot/tests/test_trust_scorer.py`
+- [ ] `elliot/tests/test_integration.py`
+- [ ] `elliot/tests/test_sites/` (5 HTML files)
 
 ### Infrastructure
-- [ ] `veritas/requirements.txt`
-- [ ] `veritas/.env.template`
-- [ ] `veritas/data/evidence/.gitkeep`
-- [ ] `veritas/data/reports/.gitkeep`
-- [ ] `veritas/data/cache/.gitkeep`
-- [ ] `veritas/data/vectordb/.gitkeep`
+- [ ] `elliot/requirements.txt`
+- [ ] `elliot/.env.template`
+- [ ] `elliot/data/evidence/.gitkeep`
+- [ ] `elliot/data/reports/.gitkeep`
+- [ ] `elliot/data/cache/.gitkeep`
+- [ ] `elliot/data/vectordb/.gitkeep`
 
 ---
 

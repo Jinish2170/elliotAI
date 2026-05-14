@@ -15,13 +15,13 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.services.audit_runner import AuditRunner, generate_audit_id
-from veritas.config.settings import should_use_db_persistence
-from veritas.db import get_db
-from veritas.db.models import Audit, AuditFinding, AuditScreenshot, AuditStatus
-from veritas.db.repositories import AuditRepository
-from veritas.screenshots.storage import ScreenshotStorage
+from elliot.config.settings import should_use_db_persistence
+from elliot.db import get_db
+from elliot.db.models import Audit, AuditFinding, AuditScreenshot, AuditStatus
+from elliot.db.repositories import AuditRepository
+from elliot.screenshots.storage import ScreenshotStorage
 
-logger = logging.getLogger("veritas.routes.audit")
+logger = logging.getLogger("elliot.routes.audit")
 
 # Screenshot storage instance
 screenshot_storage = ScreenshotStorage()

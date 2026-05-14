@@ -48,18 +48,18 @@ build/
 # But allow .env.example for documentation
 !.env.example
 
-# Ignore data folders (veritas)
-veritas/data/cache/
-veritas/data/evidence/
-veritas/data/reports/
-veritas/data/vectordb/
+# Ignore data folders (elliot)
+elliot/data/cache/
+elliot/data/evidence/
+elliot/data/reports/
+elliot/data/vectordb/
 
 # Evidence & screenshots (all locations)
 data/evidence/
 data/screenshots/
 backend/data/screenshots/
 testing/data/screenshots/
-veritas/screenshots/
+elliot/screenshots/
 
 # Database files
 *.db
@@ -132,4 +132,4 @@ _compile_test.py
 _test_ws.py
 
 # Marketplace threat data
-veritas/data/*.json
+elliot/data/*.json

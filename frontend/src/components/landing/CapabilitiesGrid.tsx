@@ -2,7 +2,7 @@
 
 /* ========================================
    CapabilitiesGrid — System Capabilities
-   Compact grid showing what Veritas detects.
+   Compact grid showing what Elliot detects.
    Internal-tool feel, no marketing copy.
    ======================================== */
 

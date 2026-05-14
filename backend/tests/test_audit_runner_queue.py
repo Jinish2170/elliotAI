@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, Mock, patch
 import pytest
 
 from backend.services.audit_runner import AuditRunner
-from veritas.core.ipc import IPC_MODE_QUEUE, IPC_MODE_STDOUT, ProgressEvent, create_queue
+from elliot.core.ipc import IPC_MODE_QUEUE, IPC_MODE_STDOUT, ProgressEvent, create_queue
 
 
 def _sample_result(screenshot_path: str) -> dict:

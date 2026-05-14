@@ -144,7 +144,7 @@ export default function ReportPage({ params }: { params: Promise<{ id: string }>
             </Link>
             <div>
               <h1 className="text-[13px] font-semibold text-[var(--v-text)]">
-                Veritas Intelligence Report
+                Elliot Intelligence Report
               </h1>
               <p className="text-[10px] font-mono text-[var(--v-text-tertiary)]">
                 {result.url} · {date}
@@ -284,7 +284,7 @@ export default function ReportPage({ params }: { params: Promise<{ id: string }>
       {/* Footer */}
       <footer className="border-t border-[rgba(255,255,255,0.04)] py-6 text-center">
         <p className="text-[10px] font-mono text-[var(--v-text-tertiary)]">
-          VERITAS · Trust, Verified · Report ID: {id}
+          ELLIOT · Trust, Verified · Report ID: {id}
         </p>
       </footer>
     </div>

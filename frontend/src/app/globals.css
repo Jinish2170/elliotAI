@@ -36,7 +36,7 @@
   --radius-2xl: calc(var(--radius) + 8px);
 }
 
-/* ========== VERITAS DARK THEME ========== */
+/* ========== ELLIOT DARK THEME ========== */
 :root {
   --radius: 0.625rem;
 
@@ -406,30 +406,43 @@
   --t-green: #00FF41;
   --t-amber: #FFB000;
   --t-red: #FF003C;
+  --t-cyan: #00B4FF;
   --t-dim: #444444;
 }
 
 /* Hard reset for the terminal layout to prevent Tailwind from rounding things */
-.veritas-terminal {
+.elliot-terminal {
   box-sizing: border-box !important;
   font-family: var(--font-geist-mono) !important;
   color: var(--t-text) !important;
   background-color: var(--t-base) !important;
-  /* Hard Viewport Lock to prevent responsive wrapping */
-  min-width: 1280px;
-  height: 100vh;
-  padding-top: 48px; /* Height of the floating Navbar */
+  height: calc(100dvh - 48px); /* Fill viewport below the Navbar */
   overflow: hidden;
   display: flex;
   flex-direction: column;
 }
 
-.veritas-terminal *::-webkit-scrollbar {
-  display: none; /* Chrome/Safari */
+.elliot-terminal *::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+.elliot-terminal *::-webkit-scrollbar-track {
+  background: transparent;
+}
+.elliot-terminal *::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.08);
+  border-radius: 2px;
+}
+.elliot-terminal *::-webkit-scrollbar-thumb:hover {
+  background: rgba(255,255,255,0.15);
+}
+.elliot-terminal * {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.08) transparent;
 }
 
 /* Zone Structure */
-.veritas-terminal-grid {
+.elliot-terminal-grid {
   display: flex;
   flex: 1;
   min-height: 0;
@@ -447,6 +460,7 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  min-height: 0; /* Critical: allows flex children to shrink below content size */
 }
 
 /* Title bars for panels */

@@ -20,11 +20,11 @@ import sys
 from pathlib import Path as Pathlib
 backend_root = Pathlib(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(backend_root))
-sys.path.insert(0, str(backend_root / "veritas"))
+sys.path.insert(0, str(backend_root / "elliot"))
 
-from veritas.db.models import Audit, AuditStatus
-from veritas.db.repositories import AuditRepository
-from veritas.db.config import Base
+from elliot.db.models import Audit, AuditStatus
+from elliot.db.repositories import AuditRepository
+from elliot.db.config import Base
 
 
 @pytest_asyncio.fixture

@@ -1,4 +1,4 @@
-# Veritas — Independent Module Testing Plan
+# Elliot — Independent Module Testing Plan
 
 **Created:** 2026-03-11  
 **Purpose:** Test each module/agent independently to see its full potential without API budget limits  
@@ -24,17 +24,17 @@ Instead of running the full orchestrator (which masks individual module behavior
 
 | # | Module | File | What We Test | API Key Needed? |
 |---|--------|------|-------------|-----------------|
-| T1.1 | DNS Lookup | `veritas/osint/sources/dns_lookup.py` | All record types (A, AAAA, MX, TXT, NS, SOA, CNAME) for avrut.com | No |
-| T1.2 | WHOIS Lookup | `veritas/osint/sources/whois_lookup.py` | Full WHOIS data (registrar, dates, nameservers, privacy) | No |
-| T1.3 | SSL Certificate | `veritas/osint/sources/ssl_verify.py` | Certificate chain, issuer, SAN domains, expiry | No |
-| T1.4 | IOC Detector | `veritas/osint/ioc_detector.py` | Extract IOCs from avrut.com page HTML | No |
-| T1.5 | Attack Pattern Mapper | `veritas/osint/attack_patterns.py` | Map IOCs to MITRE ATT&CK techniques | No |
-| T1.6 | CTI (Cyber Threat Intel) | `veritas/osint/cti.py` | Full threat assessment with IOC + ATT&CK | No |
-| T1.7 | URLVoid | `veritas/osint/sources/urlvoid.py` | Domain reputation (AV engine detections) | **Yes** — `URLVOID_API_KEY` |
-| T1.8 | AbuseIPDB | `veritas/osint/sources/abuseipdb.py` | IP abuse confidence score | **Yes** — `ABUSEIPDB_API_KEY` |
-| T1.9 | OSINT Orchestrator | `veritas/osint/orchestrator.py` | All sources together via `query_all()` per category | Partial |
-| T1.10 | Phishing Checker | `veritas/analysis/phishing_checker.py` | Google Safe Browsing + heuristic patterns | Optional key |
-| T1.11 | Meta Analyzer | `veritas/analysis/meta_analyzer.py` | Quick domain trust (WHOIS age, SSL, DNS, headers) | No |
+| T1.1 | DNS Lookup | `elliot/osint/sources/dns_lookup.py` | All record types (A, AAAA, MX, TXT, NS, SOA, CNAME) for avrut.com | No |
+| T1.2 | WHOIS Lookup | `elliot/osint/sources/whois_lookup.py` | Full WHOIS data (registrar, dates, nameservers, privacy) | No |
+| T1.3 | SSL Certificate | `elliot/osint/sources/ssl_verify.py` | Certificate chain, issuer, SAN domains, expiry | No |
+| T1.4 | IOC Detector | `elliot/osint/ioc_detector.py` | Extract IOCs from avrut.com page HTML | No |
+| T1.5 | Attack Pattern Mapper | `elliot/osint/attack_patterns.py` | Map IOCs to MITRE ATT&CK techniques | No |
+| T1.6 | CTI (Cyber Threat Intel) | `elliot/osint/cti.py` | Full threat assessment with IOC + ATT&CK | No |
+| T1.7 | URLVoid | `elliot/osint/sources/urlvoid.py` | Domain reputation (AV engine detections) | **Yes** — `URLVOID_API_KEY` |
+| T1.8 | AbuseIPDB | `elliot/osint/sources/abuseipdb.py` | IP abuse confidence score | **Yes** — `ABUSEIPDB_API_KEY` |
+| T1.9 | OSINT Orchestrator | `elliot/osint/orchestrator.py` | All sources together via `query_all()` per category | Partial |
+| T1.10 | Phishing Checker | `elliot/analysis/phishing_checker.py` | Google Safe Browsing + heuristic patterns | Optional key |
+| T1.11 | Meta Analyzer | `elliot/analysis/meta_analyzer.py` | Quick domain trust (WHOIS age, SSL, DNS, headers) | No |
 
 **Expected Output:** Complete OSINT profile of avrut.com — we see exactly which sources work, which fail, and what data each provides.
 
@@ -45,11 +45,11 @@ Instead of running the full orchestrator (which masks individual module behavior
 
 | # | Module | File | What We Test | Needs |
 |---|--------|------|-------------|-------|
-| T2.1 | Scout Basic | `veritas/agents/scout.py` | Navigate avrut.com, capture screenshots, extract metadata, DOM analysis | Playwright |
-| T2.2 | Link Explorer | `veritas/agents/scout_nav/link_explorer.py` | Discover all navigable links from avrut.com landing page | Playwright |
-| T2.3 | Scroll Orchestrator | `veritas/agents/scout_nav/scroll_orchestrator.py` | Full scroll with lazy-load detection (15 cycles max) | Playwright |
-| T2.4 | Lazy Load Detector | `veritas/agents/scout_nav/lazy_load_detector.py` | MutationObserver injection and DOM change tracking | Playwright |
-| T2.5 | Scout Multi-Page | `veritas/agents/scout.py` `explore_multi_page()` | Visit all discovered pages (up to 8) with scroll on each | Playwright |
+| T2.1 | Scout Basic | `elliot/agents/scout.py` | Navigate avrut.com, capture screenshots, extract metadata, DOM analysis | Playwright |
+| T2.2 | Link Explorer | `elliot/agents/scout_nav/link_explorer.py` | Discover all navigable links from avrut.com landing page | Playwright |
+| T2.3 | Scroll Orchestrator | `elliot/agents/scout_nav/scroll_orchestrator.py` | Full scroll with lazy-load detection (15 cycles max) | Playwright |
+| T2.4 | Lazy Load Detector | `elliot/agents/scout_nav/lazy_load_detector.py` | MutationObserver injection and DOM change tracking | Playwright |
+| T2.5 | Scout Multi-Page | `elliot/agents/scout.py` `explore_multi_page()` | Visit all discovered pages (up to 8) with scroll on each | Playwright |
 
 **Expected Output:** Full navigation map of avrut.com — all pages visited, all screenshots captured, scroll behavior documented, link priorities listed.
 
@@ -60,13 +60,13 @@ Instead of running the full orchestrator (which masks individual module behavior
 
 | # | Module | File | What We Test | Input From |
 |---|--------|------|-------------|-----------|
-| T3.1 | DOM Analyzer | `veritas/analysis/dom_analyzer.py` | Hidden elements, pre-selected checkboxes, tracking scripts, privacy links | Scout page |
-| T3.2 | Form Validator | `veritas/analysis/form_validator.py` | Cross-domain actions, password fields, autocomplete, payment processors | Scout page |
-| T3.3 | JS Analyzer | `veritas/analysis/js_analyzer.py` | eval(), Base64, crypto miners, obfuscation, WebSocket mining | Scout page |
-| T3.4 | Redirect Analyzer | `veritas/analysis/redirect_analyzer.py` | Redirect chains, cross-domain hops, HTTPS downgrade | URL |
-| T3.5 | Security Headers | `veritas/analysis/security_headers.py` | CSP, HSTS, X-Frame-Options, X-Content-Type-Options | Scout headers |
-| T3.6 | Temporal Analyzer (Heuristic) | `veritas/analysis/temporal_analyzer.py` | Pixel comparison between t0 and t+delay screenshots | Scout screenshots |
-| T3.7 | Pattern Matcher | `veritas/analysis/pattern_matcher.py` | Dark pattern taxonomy matching on DOM/temporal findings | Findings |
+| T3.1 | DOM Analyzer | `elliot/analysis/dom_analyzer.py` | Hidden elements, pre-selected checkboxes, tracking scripts, privacy links | Scout page |
+| T3.2 | Form Validator | `elliot/analysis/form_validator.py` | Cross-domain actions, password fields, autocomplete, payment processors | Scout page |
+| T3.3 | JS Analyzer | `elliot/analysis/js_analyzer.py` | eval(), Base64, crypto miners, obfuscation, WebSocket mining | Scout page |
+| T3.4 | Redirect Analyzer | `elliot/analysis/redirect_analyzer.py` | Redirect chains, cross-domain hops, HTTPS downgrade | URL |
+| T3.5 | Security Headers | `elliot/analysis/security_headers.py` | CSP, HSTS, X-Frame-Options, X-Content-Type-Options | Scout headers |
+| T3.6 | Temporal Analyzer (Heuristic) | `elliot/analysis/temporal_analyzer.py` | Pixel comparison between t0 and t+delay screenshots | Scout screenshots |
+| T3.7 | Pattern Matcher | `elliot/analysis/pattern_matcher.py` | Dark pattern taxonomy matching on DOM/temporal findings | Findings |
 
 **Expected Output:** Complete analysis profile — every security signal, dark pattern indicator, and form risk detected from avrut.com.
 
@@ -77,7 +77,7 @@ Instead of running the full orchestrator (which masks individual module behavior
 
 | # | Module | File | What We Test |
 |---|--------|------|-------------|
-| T4.1 | Security Agent (Full) | `veritas/agents/security_agent.py` | All tiers: FAST + MEDIUM + DEEP (cookies, CSP, TLS, OWASP A01-A10, GDPR, PCI DSS, darknet indicators) |
+| T4.1 | Security Agent (Full) | `elliot/agents/security_agent.py` | All tiers: FAST + MEDIUM + DEEP (cookies, CSP, TLS, OWASP A01-A10, GDPR, PCI DSS, darknet indicators) |
 
 **Expected Output:** Complete security assessment with CVSS scores, CWE mappings, compliance status.
 
@@ -88,9 +88,9 @@ Instead of running the full orchestrator (which masks individual module behavior
 
 | # | Module | File | What We Test | NIM Calls |
 |---|--------|------|-------------|-----------|
-| T5.1 | Vision 5-Pass Pipeline | `veritas/agents/vision.py` | All 5 passes on ALL screenshots (no budget cutoff) | ~5 per screenshot |
-| T5.2 | Vision Temporal | `veritas/agents/vision/temporal_analysis.py` | SSIM + optical flow between t0/t+delay | 2 per pair |
-| T5.3 | Vision Static Analysis | `veritas/agents/vision.py` | Static dark pattern detection on each screenshot | Varies |
+| T5.1 | Vision 5-Pass Pipeline | `elliot/agents/vision.py` | All 5 passes on ALL screenshots (no budget cutoff) | ~5 per screenshot |
+| T5.2 | Vision Temporal | `elliot/agents/vision/temporal_analysis.py` | SSIM + optical flow between t0/t+delay | 2 per pair |
+| T5.3 | Vision Static Analysis | `elliot/agents/vision.py` | Static dark pattern detection on each screenshot | Varies |
 
 **Expected Output:** Full dark pattern analysis — every pass result, temporal findings, confidence per category. We see exactly what Vision Agent finds when unconstrained.
 
@@ -101,8 +101,8 @@ Instead of running the full orchestrator (which masks individual module behavior
 
 | # | Module | File | What We Test |
 |---|--------|------|-------------|
-| T6.1 | Graph Investigation | `veritas/agents/graph_investigator.py` | Full entity extraction, OSINT integration, Tavily search verification, knowledge graph |
-| T6.2 | Graph + All OSINT | `veritas/agents/graph_investigator.py` | `_run_osint_investigation()` with ALL categories (DNS, WHOIS, SSL, THREAT_INTEL, REPUTATION, SOCIAL) |
+| T6.1 | Graph Investigation | `elliot/agents/graph_investigator.py` | Full entity extraction, OSINT integration, Tavily search verification, knowledge graph |
+| T6.2 | Graph + All OSINT | `elliot/agents/graph_investigator.py` | `_run_osint_investigation()` with ALL categories (DNS, WHOIS, SSL, THREAT_INTEL, REPUTATION, SOCIAL) |
 
 **Expected Output:** Complete knowledge graph of avrut.com entities — verified vs unverifiable vs contradicted, with all OSINT data integrated.
 
@@ -113,9 +113,9 @@ Instead of running the full orchestrator (which masks individual module behavior
 
 | # | Module | File | What We Test |
 |---|--------|------|-------------|
-| T7.1 | Judge Scoring | `veritas/agents/judge.py` | Site type detection, strategy selection, trust score calculation with full evidence |
-| T7.2 | Judge Verdict | `veritas/agents/judge.py` | Dual verdict (technical + non-technical) with full narrative |
-| T7.3 | Judge Strategies | `veritas/agents/judge/strategies/*.py` | Scoring weights and adjustments for detected site type |
+| T7.1 | Judge Scoring | `elliot/agents/judge.py` | Site type detection, strategy selection, trust score calculation with full evidence |
+| T7.2 | Judge Verdict | `elliot/agents/judge.py` | Dual verdict (technical + non-technical) with full narrative |
+| T7.3 | Judge Strategies | `elliot/agents/judge/strategies/*.py` | Scoring weights and adjustments for detected site type |
 
 **Expected Output:** Full verdict document — trust score breakdown, risk level, recommendations, CWE/CVSS entries.
 
@@ -126,7 +126,7 @@ Instead of running the full orchestrator (which masks individual module behavior
 
 | # | Module | File | What We Test |
 |---|--------|------|-------------|
-| T8.1 | Full Orchestrator | `veritas/core/orchestrator.py` | Complete audit of avrut.com — all agents, all pages, no budget limits |
+| T8.1 | Full Orchestrator | `elliot/core/orchestrator.py` | Complete audit of avrut.com — all agents, all pages, no budget limits |
 
 **Expected Output:** Complete audit result compared against individual module outputs to verify nothing is lost in the pipeline.
 

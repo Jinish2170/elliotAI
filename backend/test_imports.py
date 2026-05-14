@@ -17,27 +17,27 @@ except Exception as e:
     errors.append(f'audit_runner service: {e}')
 
 try:
-    import veritas.config.settings
+    import elliot.config.settings
 except Exception as e:
     errors.append(f'verititas.config.settings: {e}')
 
 try:
-    from veritas.db import get_db
+    from elliot.db import get_db
 except Exception as e:
     errors.append(f'verititas.db.get_db: {e}')
 
 try:
-    from veritas.db.models import Audit, AuditFinding, AuditScreenshot, AuditStatus
+    from elliot.db.models import Audit, AuditFinding, AuditScreenshot, AuditStatus
 except Exception as e:
     errors.append(f'verititas.db.models: {e}')
 
 try:
-    from veritas.db.repositories import AuditRepository
+    from elliot.db.repositories import AuditRepository
 except Exception as e:
     errors.append(f'verititas.db.repositories: {e}')
 
 try:
-    from veritas.screenshots.storage import ScreenshotStorage
+    from elliot.screenshots.storage import ScreenshotStorage
 except Exception as e:
     errors.append(f'verititas.screenshots.storage: {e}')
 

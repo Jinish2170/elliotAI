@@ -1,5 +1,5 @@
 /* ========================================
-   Veritas — Educational Content
+   Elliot — Educational Content
    Facts, terminology, and safety tips
    ======================================== */
 

@@ -27,7 +27,7 @@ export function ScoutImagery({
 	const srcPrefix = currentImg.data ? "data:image/jpeg;base64," : "";
 
 	return (
-		<div className="relative w-full h-[300px] border border-[var(--t-border)] overflow-hidden flex flex-col items-center justify-center p-2 bg-[#050505]">
+		<div className="relative w-full h-full border border-[var(--t-border)] overflow-hidden flex flex-col items-center justify-center p-2 bg-[#050505]">
 			{/* Target Crosshairs styling */}
 			<div className="absolute top-2 left-2 w-4 h-4 border-t border-l border-[var(--t-green)] opacity-50 z-10"></div>
 			<div className="absolute top-2 right-2 w-4 h-4 border-t border-r border-[var(--t-green)] opacity-50 z-10"></div>

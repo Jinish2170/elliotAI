@@ -1,8 +1,8 @@
-# VERITAS FRONTEND REVAMP — MASTER PLAN v2.1
+# ELLIOT FRONTEND REVAMP — MASTER PLAN v2.1
 
 ## Direction: Bloomberg War Room — Institutional Intelligence Terminal
 
-**Philosophy**: Veritas is a **real-time forensic intelligence terminal** — not a dashboard, not a marketing site, not a toy. It's the workstation that appears when 5 AI agents are performing a live, adversarial audit of a website. Think Bloomberg Terminal meets a Tier-1 SOC (Security Operations Center). Every panel is live. Every number ticks. Data density is a feature, not a bug. Empty space means broken UI.
+**Philosophy**: Elliot is a **real-time forensic intelligence terminal** — not a dashboard, not a marketing site, not a toy. It's the workstation that appears when 5 AI agents are performing a live, adversarial audit of a website. Think Bloomberg Terminal meets a Tier-1 SOC (Security Operations Center). Every panel is live. Every number ticks. Data density is a feature, not a bug. Empty space means broken UI.
 
 **Design DNA:**
 - **Bloomberg Terminal** — dense multi-pane layouts, monospace ticking figures, data walls with no wasted pixels, panel chrome with title bars + close/minimize/expand controls, keyboard shortcuts shown inline
@@ -42,7 +42,7 @@
 
 Every UI decision maps to a known cognitive mechanism — not aesthetic opinion.
 
-| Principle | Source | Application in Veritas |
+| Principle | Source | Application in Elliot |
 |---|---|---|
 | **Aesthetic-Usability Effect** | Don Norman, 2004 | Premium institutional visuals = perceived trust in the tool's accuracy. Bloomberg feels trustworthy because it looks expensive |
 | **Progressive Disclosure** | Nielsen Norman Group | Don't dump 50 findings at once. Reveal in layers: summary panel → detail expansion → raw JSON/evidence drill-down |
@@ -198,7 +198,7 @@ Every panel at T2+ gets a **title bar** — a 28px-tall header strip:
 | **Size — agent tile** | 20px | In agent identity cards |
 | **Size — hero** | 28px | Landing page feature icons, report section icons |
 | **Container** | 32px rounded-square (`border-radius: 8px`) | Every agent icon sits inside a subtle container with the agent's color as bg at 10% opacity and border at 20% opacity |
-| **Icon library** | Lucide React (exclusively) | One library. No mixing. No custom SVGs except the Veritas logo |
+| **Icon library** | Lucide React (exclusively) | One library. No mixing. No custom SVGs except the Elliot logo |
 
 ### 3.2 Agent Icon Assignments
 
@@ -240,11 +240,11 @@ Every panel at T2+ gets a **title bar** — a 28px-tall header strip:
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────────────┐
-│  ◉ VERITAS   ·   v3.2.1   ·   [5 agents online]   ·   [GPU: NVIDIA ████ OK]  │  ← Status bar
+│  ◉ ELLIOT   ·   v3.2.1   ·   [5 agents online]   ·   [GPU: NVIDIA ████ OK]  │  ← Status bar
 ├──────────────────────────────────────────────────────────────────────────────────┤
 │                                                                                  │
 │                                                                                  │
-│                           VERITAS INTELLIGENCE ENGINE                             │
+│                           ELLIOT INTELLIGENCE ENGINE                             │
 │                        Real-time website forensic analysis                        │
 │                                                                                  │
 │               ┌──────────────────────────────────────────────┐                   │
@@ -281,7 +281,7 @@ Every panel at T2+ gets a **title bar** — a 28px-tall header strip:
 │  └───────────────────────────────────────────────────────────────────────────┘  │
 │                                                                                  │
 ├──────────────────────────────────────────────────────────────────────────────────┤
-│  © 2025 Veritas Intelligence · v3.2.1 · MIT License                             │
+│  © 2025 Elliot Intelligence · v3.2.1 · MIT License                             │
 └──────────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -303,11 +303,11 @@ Every panel at T2+ gets a **title bar** — a 28px-tall header strip:
 
 ### Scene 2: WAR ROOM (Audit Page — Live)
 
-**The heart of Veritas.** This is where the Bloomberg Terminal density peaks. Four distinct panels + a metric ticker + a log stream. All live during the audit. Each panel has chrome (title bar, controls, item count).
+**The heart of Elliot.** This is where the Bloomberg Terminal density peaks. Four distinct panels + a metric ticker + a log stream. All live during the audit. Each panel has chrome (title bar, controls, item count).
 
 ```
 ┌───────────────────────────────────────────────────────────────────────────────────────────────────┐
-│ ◉ VERITAS  ·  AUDITING: suspicious-shop.io  ·  TIER: Deep  ·  ELAPSED: 01:23  ·  ████▒▒ 67%    │ ← Header bar
+│ ◉ ELLIOT  ·  AUDITING: suspicious-shop.io  ·  TIER: Deep  ·  ELAPSED: 01:23  ·  ████▒▒ 67%    │ ← Header bar
 ├───────────────────────────────────────────────────────────────────────────────────────────────────┤
 │ PAGES: 7  ·  LINKS: 34  ·  FINDINGS: 12  ·  SCREENSHOTS: 4  ·  HEADERS: ✓  ·  SSL: ✓  ·  DNS: ✓│ ← Metric ticker
 ├────────────────────┬───────────────────────────────────────────────────┬───────────────────────────┤
@@ -464,7 +464,7 @@ The report is a **scrollable, section-navigated intelligence dossier**. Not a st
 
 ```
 ┌───────────────────────────────────────────────────────────────────────────────────────────────────┐
-│ ◉ VERITAS  ·  REPORT: suspicious-shop.io  ·  Score: 23/100 SUSPICIOUS  ·  [PDF ↓] [JSON ↓]      │
+│ ◉ ELLIOT  ·  REPORT: suspicious-shop.io  ·  Score: 23/100 SUSPICIOUS  ·  [PDF ↓] [JSON ↓]      │
 ├───────────────┬───────────────────────────────────────────────────────────────────────────────────┤
 │               │                                                                                   │
 │  SECTIONS     │  ┌─ EXECUTIVE SUMMARY ───────────────────────────────────────────────────────┐  │

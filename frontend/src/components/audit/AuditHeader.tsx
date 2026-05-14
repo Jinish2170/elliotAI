@@ -49,7 +49,7 @@ export function AuditHeader({ url, status, auditId, elapsed }: AuditHeaderProps)
         </Link>
         <div>
           <h1 className="text-sm font-bold text-[var(--v-text)] flex items-center gap-2">
-            Veritas Audit
+            Elliot Audit
             <span className={`text-[10px] font-medium ${statusStyles[status] || ""}`}>
               {status === "running" ? "● LIVE" : status.toUpperCase()}
             </span>

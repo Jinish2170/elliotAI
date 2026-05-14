@@ -1,5 +1,5 @@
 /* ========================================
-   Veritas — Zustand Audit Store
+   Elliot — Zustand Audit Store
    Global state for the live audit session
    ======================================== */
 

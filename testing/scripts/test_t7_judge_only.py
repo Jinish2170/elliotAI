@@ -45,11 +45,11 @@ def format_output(data) -> str:
 
 async def main():
     from dotenv import load_dotenv
-    load_dotenv(ROOT / "veritas" / ".env")
+    load_dotenv(ROOT / "elliot" / ".env")
 
-    from veritas.agents.judge import JudgeAgent, AuditEvidence
-    from veritas.agents.vision import VisionResult
-    from veritas.agents.graph_investigator import GraphResult
+    from elliot.agents.judge import JudgeAgent, AuditEvidence
+    from elliot.agents.vision import VisionResult
+    from elliot.agents.graph_investigator import GraphResult
 
     print("Building AuditEvidence from saved data...")
 

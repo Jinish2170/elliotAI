@@ -1,5 +1,5 @@
 """
-Veritas Independent Module Testing — Phase T3: Analysis Modules
+Elliot Independent Module Testing — Phase T3: Analysis Modules
 ================================================================
 Tests DOM, form, JS, redirect, security headers, temporal, pattern matcher,
 and exploitation advisor independently. No NIM calls.
@@ -96,7 +96,7 @@ async def test_t3_1_dom():
     start = time.time()
     try:
         from playwright.async_api import async_playwright
-        from veritas.analysis.dom_analyzer import DOMAnalyzer
+        from elliot.analysis.dom_analyzer import DOMAnalyzer
 
         analyzer = DOMAnalyzer()
 
@@ -162,7 +162,7 @@ async def test_t3_2_form():
     start = time.time()
     try:
         from playwright.async_api import async_playwright
-        from veritas.analysis.form_validator import FormActionValidator
+        from elliot.analysis.form_validator import FormActionValidator
 
         validator = FormActionValidator()
 
@@ -231,7 +231,7 @@ async def test_t3_3_js():
     start = time.time()
     try:
         from playwright.async_api import async_playwright
-        from veritas.analysis.js_analyzer import JSObfuscationDetector
+        from elliot.analysis.js_analyzer import JSObfuscationDetector
 
         analyzer = JSObfuscationDetector()
 
@@ -298,7 +298,7 @@ async def test_t3_4_redirect():
 
     start = time.time()
     try:
-        from veritas.analysis.redirect_analyzer import RedirectAnalyzer
+        from elliot.analysis.redirect_analyzer import RedirectAnalyzer
 
         analyzer = RedirectAnalyzer(max_hops=10)
         result = await analyzer.analyze(TARGET_URL, timeout=15)
@@ -357,10 +357,10 @@ async def test_t3_5_headers():
     try:
         # Try common class name patterns
         try:
-            from veritas.analysis.security_headers import SecurityHeaderAnalyzer
+            from elliot.analysis.security_headers import SecurityHeaderAnalyzer
             analyzer = SecurityHeaderAnalyzer()
         except (ImportError, AttributeError):
-            from veritas.analysis import security_headers
+            from elliot.analysis import security_headers
             # Find the analyzer class
             for name in dir(security_headers):
                 obj = getattr(security_headers, name)
@@ -423,7 +423,7 @@ async def test_t3_6_temporal():
 
     start = time.time()
     try:
-        from veritas.analysis.temporal_analyzer import TemporalAnalyzer
+        from elliot.analysis.temporal_analyzer import TemporalAnalyzer
 
         analyzer = TemporalAnalyzer()
 
@@ -511,7 +511,7 @@ async def test_t3_7_pattern():
 
     start = time.time()
     try:
-        from veritas.analysis.pattern_matcher import PatternMatcher
+        from elliot.analysis.pattern_matcher import PatternMatcher
 
         matcher = PatternMatcher()
 
@@ -584,7 +584,7 @@ async def test_t3_8_exploit():
 
     start = time.time()
     try:
-        from veritas.analysis.exploitation_advisor import ExploitationAdvisor
+        from elliot.analysis.exploitation_advisor import ExploitationAdvisor
 
         advisor = ExploitationAdvisor()
 
@@ -638,7 +638,7 @@ async def test_t3_8_exploit():
 # ============================================================
 async def main():
     print("=" * 60)
-    print("VERITAS — Phase T3: Analysis Modules")
+    print("ELLIOT — Phase T3: Analysis Modules")
     print(f"Target: {TARGET_DOMAIN}")
     print(f"Started: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print("=" * 60)

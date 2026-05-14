@@ -7,9 +7,9 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from sqlalchemy.pool import StaticPool
 
 from backend.routes.audit import audit_status, on_audit_completed, on_audit_started
-from veritas.db.config import Base
-from veritas.db.models import AuditStatus
-from veritas.db.repositories import AuditRepository
+from elliot.db.config import Base
+from elliot.db.models import AuditStatus
+from elliot.db.repositories import AuditRepository
 
 
 @pytest_asyncio.fixture

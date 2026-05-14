@@ -82,7 +82,7 @@ export function ScoutTelemetry({ explorationPath, formDetections, captchaResults
               <div key={i} className="text-[9px] flex flex-col gap-1 bg-[#111] p-1.5 border-l border-[var(--t-amber)]">
                 {formEvent.forms.map((f, j) => (
                   <div key={j} className="flex justify-between">
-                    <span className="font-bold">{f.method.toUpperCase()} FORM</span>
+                    <span className="font-bold">{typeof f.method === 'string' ? f.method.toUpperCase() : 'POST'} FORM</span>
                     <span className="opacity-70">Inputs: {f.inputs} {f.has_password && "(PWD)"}</span>
                   </div>
                 ))}
@@ -97,7 +97,7 @@ export function ScoutTelemetry({ explorationPath, formDetections, captchaResults
           <div className="flex flex-col gap-1">
             {captchaResults?.map((captcha, i) => (
               <div key={i} className="text-[9px] bg-[#111] p-1.5 border-l border-[var(--t-red)]">
-                <span className="font-bold">{captcha.captcha_type?.toUpperCase() || "UNKNOWN"}</span>
+                <span className="font-bold">{typeof captcha.captcha_type === 'string' ? captcha.captcha_type.toUpperCase() : "UNKNOWN"}</span>
                 <span className="opacity-70 block">Status: {captcha.detected ? "DETECTED" : "CLEARED"}</span>
               </div>
             ))}

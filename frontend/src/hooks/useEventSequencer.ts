@@ -1,5 +1,5 @@
 /* ========================================
-   Veritas — Event Sequencer Hook
+   Elliot — Event Sequencer Hook
    Buffers and reorders WebSocket events by sequence number
    ======================================== */
 

@@ -1,4 +1,4 @@
-# VERITAS: Complete Implementation Strategy Document
+# ELLIOT: Complete Implementation Strategy Document
 
 **Author:** Jinish Kathiriya
 **Date:** February 7, 2026
@@ -14,7 +14,7 @@ Your `ragv5` project is a **multi-modal RAG pipeline** with the following proven
 
 #### Existing Capabilities (Directly Reusable)
 
-| Component | File | What It Does | Reuse in Veritas |
+| Component | File | What It Does | Reuse in Elliot |
 |-----------|------|-------------|------------------|
 | **Hybrid Retrieval** | `rag_engine.py` | BM25 + Dense (FAISS) + Cross-Encoder reranking | ✅ Core of evidence retrieval |
 | **Chunking Pipeline** | `chunker.py` | Recursive + Semantic chunking with overlap | ✅ For processing scraped web content |
@@ -63,7 +63,7 @@ def _decompose_query(self, query: str) -> list:
 
 #### What We Need to Change/Upgrade
 
-| RAGv5 Component | Problem for Veritas | Solution |
+| RAGv5 Component | Problem for Elliot | Solution |
 |----------------|---------------------|----------|
 | FAISS vector store | In-memory, crashes on 8GB RAM with large crawls | Migrate to **LanceDB** (disk-based, same API pattern) |
 | Tesseract OCR | Slow, low accuracy on web screenshots | Replace with **NVIDIA NIM VLM** as primary, keep Tesseract as fallback |
@@ -79,7 +79,7 @@ Your `glass_box` project is a **stealth web auditor** with the following proven 
 
 #### Existing Capabilities (Directly Reusable)
 
-| Component | File | What It Does | Reuse in Veritas |
+| Component | File | What It Does | Reuse in Elliot |
 |-----------|------|-------------|------------------|
 | **Stealth Browser** | `browser.py` | Playwright with full anti-detection (CDP patches, navigator.webdriver=false, timezone/locale spoofing) | ✅ **Direct reuse — this is Agent 1** |
 | **Page Analyzer** | `analyzer.py` | DOM structure analysis, link extraction, text extraction, metadata parsing | ✅ Core of pre-VLM analysis |
@@ -134,7 +134,7 @@ async def analyze_page(self, page):
 
 #### What Glass Box Lacks (Our Upgrade Path)
 
-| Missing Capability | Impact | Veritas Solution |
+| Missing Capability | Impact | Elliot Solution |
 |-------------------|--------|-----------------|
 | No Vision/VLM | Cannot "see" dark patterns, only reads DOM | Add **NVIDIA NIM VLM** agent |
 | No entity graph | Cannot cross-reference real-world entities | Add **NetworkX** knowledge graph |
@@ -149,7 +149,7 @@ async def analyze_page(self, page):
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                    PROJECT VERITAS                        │
+│                    PROJECT ELLIOT                        │
 │                                                          │
 │  ┌──────────────┐          ┌──────────────────┐         │
 │  │  GLASS_BOX   │          │     RAGv5        │         │
@@ -222,7 +222,7 @@ This uses the same weighted pattern from your RAGv5 confidence calculation — p
 
 **Problem:** The VLM needs structured categories to detect against. "Find dark patterns" is too vague.
 
-**Solution — Veritas Dark Pattern Classification Taxonomy:**
+**Solution — Elliot Dark Pattern Classification Taxonomy:**
 
 ```
 DARK_PATTERN_TAXONOMY = {
@@ -330,7 +330,7 @@ Fallback2: Local Tesseract OCR + Heuristic rules → No API needed
 Fallback3: DOM-only analysis (glass_box analyzer) → Zero AI, pure structural
 ```
 
-This ensures Veritas **always produces a report**, even if all AI services are down.
+This ensures Elliot **always produces a report**, even if all AI services are down.
 
 ---
 
@@ -358,10 +358,10 @@ Use documented scam URLs from:
 - [PhishTank](https://www.phishtank.com/)
 - FTC enforcement action databases
 
-Compare Veritas Trust Score against known-bad status.
+Compare Elliot Trust Score against known-bad status.
 
 **Tier 3: Legitimate Sites (False Positive Check)**
-Run Veritas against:
+Run Elliot against:
 - amazon.com (has some dark patterns — should flag them)
 - wikipedia.org (should score 90+)
 - stripe.com (should score 85+)
@@ -388,7 +388,7 @@ Latency            = Time from URL input to report generation
 - **Structure:**
 
 ```
-VERITAS FORENSIC AUDIT REPORT
+ELLIOT FORENSIC AUDIT REPORT
 ├── Header (URL, Date, Audit Duration, Agent Version)
 ├── Executive Summary (1 paragraph + Trust Score gauge visual)
 ├── Evidence Timeline
@@ -473,7 +473,7 @@ Use `asyncio.Semaphore` for all external calls — already a pattern you're comf
 
 **Problem:** "Build a knowledge graph" is vague. What are the node/edge types?
 
-**Solution — Veritas Entity Graph Schema:**
+**Solution — Elliot Entity Graph Schema:**
 
 ```
 NODE TYPES:
@@ -501,9 +501,9 @@ EXAMPLE GRAPH:
 ## PART 3: FINAL PROJECT FILE STRUCTURE
 
 ```
-veritas/
+elliot/
 ├── README.md
-├── VERITAS_STRATEGY.md          # This document
+├── ELLIOT_STRATEGY.md          # This document
 ├── requirements.txt
 ├── .env                         # NIM API keys, Tavily key
 ├── config/
@@ -790,7 +790,7 @@ class RateLimitedClient:
 | **Darkpatterns.org** | Manual dark pattern catalogue | No automation at all |
 | **URLVoid** | Blacklist checking | No visual or structural analysis |
 
-**Veritas is the FIRST tool that combines:**
+**Elliot is the FIRST tool that combines:**
 1. Visual dark pattern detection via VLM ← **novel application**
 2. Temporal fraud detection (timer manipulation) ← **novel technique**
 3. Graph-based entity cross-referencing ← **novel in web audit context**
@@ -857,4 +857,4 @@ pydantic>=2.5.0
 
 ---
 
-*This document is the single source of truth for Project Veritas implementation. All dilemmas are resolved. All gaps are filled. Start building.*
+*This document is the single source of truth for Project Elliot implementation. All dilemmas are resolved. All gaps are filled. Start building.*

@@ -1,4 +1,4 @@
-# VERITAS Advanced Integration - Context for Resume
+# ELLIOT Advanced Integration - Context for Resume
 
 **Last Updated:** 2026-03-07
 **Project Phase:** v2.0 Masterpiece Features - Advanced Data Integration
@@ -8,7 +8,7 @@
 
 ## Project Overview
 
-VERITAS is an autonomous multi-modal forensic web auditing platform with 5 specialized AI agents (Scout, Security, Vision, Graph, Judge). This session focused on integrating **ALL advanced backend data** to the frontend Agent Theater.
+ELLIOT is an autonomous multi-modal forensic web auditing platform with 5 specialized AI agents (Scout, Security, Vision, Graph, Judge). This session focused on integrating **ALL advanced backend data** to the frontend Agent Theater.
 
 ### Goal
 Get the system backend to emit ALL its advanced process data to the frontend theater, specifically focusing on **premium darknet audit features** that were missing.
@@ -296,28 +296,28 @@ Verify complete data flow:
 
 ### Backend Python
 - **Audit Runner:** `backend/services/audit_runner.py` (advanced event emission added)
-- **Vision Agent:** `veritas/agents/vision.py`
-- **Scout Agent:** `veritas/agents/scout.py`
-- **Security Agent:** `veritas/agents/security.py`
-- **Graph Agent:** `veritas/agents/graph.py`
-- **Judge Agent:** `veritas/agents/judge.py`
+- **Vision Agent:** `elliot/agents/vision.py`
+- **Scout Agent:** `elliot/agents/scout.py`
+- **Security Agent:** `elliot/agents/security.py`
+- **Graph Agent:** `elliot/agents/graph.py`
+- **Judge Agent:** `elliot/agents/judge.py`
 
 ### Darknet Modules
-- **Darknet Analysis:** `veritas/analysis/security/darknet.py`
-- **Onion Detector:** `veritas/darknet/onion_detector.py`
-- **Darknet Rules:** `veritas/config/darknet_rules.py`
-- **Empire Monitor:** `veritas/osint/sources/darknet_empire.py`
-- **Tor2Web Monitor:** `veritas/osint/sources/darknet_tor2web.py`
+- **Darknet Analysis:** `elliot/analysis/security/darknet.py`
+- **Onion Detector:** `elliot/darknet/onion_detector.py`
+- **Darknet Rules:** `elliot/config/darknet_rules.py`
+- **Empire Monitor:** `elliot/osint/sources/darknet_empire.py`
+- **Tor2Web Monitor:** `elliot/osint/sources/darknet_tor2web.py`
 
 ### CVSS/CVE
-- **CVSS Calculator:** `veritas/cwe/cvss_calculator.py`
-- **Attack Patterns:** `veritas/osint/attack_patterns.py`
-- **Scenario Generator:** `veritas/analysis/scenario_generator.py`
+- **CVSS Calculator:** `elliot/cwe/cvss_calculator.py`
+- **Attack Patterns:** `elliot/osint/attack_patterns.py`
+- **Scenario Generator:** `elliot/analysis/scenario_generator.py`
 
 ### Planning
 - **Plan:** `.planning/IMPLEMENTATION_PLAN.md`
 - **Project:** `.planning/PROJECT.md`
-- **Masterpiece:** `.planning/VERITAS_MASTERPIECE_PLAN.md`
+- **Masterpiece:** `.planning/ELLIOT_MASTERPIECE_PLAN.md`
 
 ### Documentation (Created This Session)
 - **Complete Reference:** `ADVANCED_DATA_TYPES_COMPLETE.md` (comprehensive type reference)

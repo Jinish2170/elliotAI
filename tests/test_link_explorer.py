@@ -5,8 +5,8 @@ Tests for Link Explorer and multi-page exploration functionality.
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from veritas.agents.scout_nav.link_explorer import LinkExplorer
-from veritas.core.types import LinkInfo, PageVisit, ExplorationResult, ScrollResult
+from elliot.agents.scout_nav.link_explorer import LinkExplorer
+from elliot.core.types import LinkInfo, PageVisit, ExplorationResult, ScrollResult
 
 
 @pytest.fixture

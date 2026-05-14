@@ -7,7 +7,7 @@ import { ParticleField } from "@/components/ambient/ParticleField";
 
 export default function Home() {
   return (
-    <div className="relative min-h-screen bg-[var(--t-base)] flex flex-col justify-center items-center">
+    <div className="relative min-h-[calc(100vh-48px)] bg-[var(--t-base)] flex flex-col justify-center items-center">
       <ParticleField color="cyan" particleCount={15} />
 
       <main className="relative z-10 w-full max-w-4xl px-4 flex flex-col gap-8">
@@ -25,7 +25,7 @@ export default function Home() {
 
       <footer className="absolute bottom-4 text-center w-full">
         <p className="text-[10px] font-mono text-[var(--t-dim)] uppercase tracking-widest">
-          VERITAS /// AUTONOMOUS FORENSIC WEB AUDITOR
+          ELLIOT /// AUTONOMOUS FORENSIC WEB AUDITOR
         </p>
       </footer>
     </div>

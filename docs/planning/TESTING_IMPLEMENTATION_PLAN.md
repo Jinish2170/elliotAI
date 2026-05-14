@@ -1,4 +1,4 @@
-# VERITAS - Testing & Implementation Plan
+# ELLIOT - Testing & Implementation Plan
 ## Date: 2026-03-05
 
 ---
@@ -751,7 +751,7 @@ export function DarknetAuditor() {
 
 - [ ] Backend server running on port 8000 (`cd backend && uvicorn main:app --reload`)
 - [ ] Frontend server running on port 3000 (`cd frontend && npm run dev`)
-- [ ] NVIDIA_NIM_API_KEY configured in `veritas/.env`
+- [ ] NVIDIA_NIM_API_KEY configured in `elliot/.env`
 - [ ] Playwright MCP server available
 - [ ] Test URLs ready (wikipedia.org, safe commerce site, test scam site)
 

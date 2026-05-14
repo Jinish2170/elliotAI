@@ -1,3 +1,3 @@
 """
-Test suite for Veritas.
+Test suite for Elliot.
 """

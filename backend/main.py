@@ -1,5 +1,5 @@
 """
-Veritas Backend — FastAPI Application
+Elliot Backend — FastAPI Application
 
 Provides REST + WebSocket API for the Next.js frontend.
 Routes:
@@ -17,8 +17,8 @@ from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-# Load .env from veritas directory
-env_path = Path(__file__).resolve().parent.parent / "veritas" / ".env"
+# Load .env from elliot directory
+env_path = Path(__file__).resolve().parent.parent / "elliot" / ".env"
 if env_path.exists():
     load_dotenv(env_path)
 else:
@@ -29,27 +29,27 @@ else:
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 # Backend dir (for "from services.xxx" / "from routes.xxx" style imports)
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-# Veritas module root (for veritas package imports)
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "veritas"))
+# Elliot module root (for elliot package imports)
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "elliot"))
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Startup / shutdown lifecycle."""
-    print("Veritas API - Online")
+    print("Elliot API - Online")
 
-    # Lazy import of veritas.db to ensure sys.path modifications take effect
-    from veritas.db import init_database
+    # Lazy import of elliot.db to ensure sys.path modifications take effect
+    from elliot.db import init_database
 
     # Initialize SQLite database with WAL mode and create tables
     await init_database()
 
     yield
-    print("Veritas API - Shutting down")
+    print("Elliot API - Shutting down")
 
 
 app = FastAPI(
-    title="Veritas API",
+    title="Elliot API",
     description="Autonomous Forensic Web Auditor — Backend",
     version="2.0.0",
     lifespan=lifespan,

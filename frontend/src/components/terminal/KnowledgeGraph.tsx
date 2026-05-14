@@ -1,6 +1,7 @@
 "use client";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useMemo } from "react";
 import { GhostPanel } from "./TerminalPanel";
+import { NodeDetailPanel } from "./NodeDetailPanel";
 import { Finding } from "@/lib/types";
 
 interface AdvancedGraphProps {
@@ -14,9 +15,30 @@ export function KnowledgeGraph({ findings = [], knowledgeGraph = null }: Advance
   const [simNodes, setSimNodes] = useState<any[]>([]);
   const [simLinks, setSimLinks] = useState<any[]>([]);
   const [selectedNode, setSelectedNode] = useState<any | null>(null);
+  const [hoveredNode, setHoveredNode] = useState<any | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterType, setFilterType] = useState<string | null>(null);
   const animationRef = useRef<number>(0);
 
-  // Initialize nodes based on real graph data OR fallback to findings
+  // Memoize display nodes based on search/filter
+  const displayNodes = useMemo(() => {
+    return simNodes.filter((n) => {
+      if (filterType && n.type !== filterType) return false;
+      if (
+        searchQuery &&
+        !n.label.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+        return false;
+      return true;
+    });
+  }, [simNodes, searchQuery, filterType]);
+
+  // Get unique node types for filter dropdown
+  const nodeTypes = useMemo(() => {
+    const types = new Set<string>();
+    simNodes.forEach((n) => types.add(n.type));
+    return Array.from(types).sort();
+  }, [simNodes]);
   useEffect(() => {
     let rawNodes: any[] = [];
     let rawEdges: any[] = [];
@@ -142,29 +164,62 @@ export function KnowledgeGraph({ findings = [], knowledgeGraph = null }: Advance
       for(let y=0; y<H; y+=20) { ctx.moveTo(0,y); ctx.lineTo(W,y); }
       ctx.stroke();
 
-        // Draw links
+      // Determine which nodes/edges should be highlighted
+      const connectedNodeIds = new Set<string>();
+      if (hoveredNode || selectedNode) {
+        const targetNode = selectedNode || hoveredNode;
+        connectedNodeIds.add(targetNode.id);
+        for (const link of simLinks) {
+          if ((link.source?.id === targetNode.id || link.source === targetNode.id) ||
+              (link.target?.id === targetNode.id || link.target === targetNode.id)) {
+            if (link.source?.id) connectedNodeIds.add(link.source.id);
+            else if (typeof link.source === "string") connectedNodeIds.add(link.source);
+            if (link.target?.id) connectedNodeIds.add(link.target.id);
+            else if (typeof link.target === "string") connectedNodeIds.add(link.target);
+          }
+        }
+      }
+
+      // Draw links with highlighting
       ctx.lineWidth = 1.0;
       for (const link of simLinks) {
         if (!link.target || !link.source) continue;
         if (!Number.isFinite(link.source.x) || !Number.isFinite(link.target.x) || !Number.isFinite(link.source.y) || !Number.isFinite(link.target.y)) continue;
         
-        ctx.strokeStyle = "rgba(0,255,65,0.2)";
-        if (link.type === "has_vulnerability") ctx.strokeStyle = "rgba(239, 68, 68, 0.4)";
-        else if (link.type === "resolves_to" || link.type === "associated_with") ctx.strokeStyle = "rgba(56, 189, 248, 0.3)";
+        const sourceId = link.source?.id || link.source;
+        const targetId = link.target?.id || link.target;
+        const isHighlighted = connectedNodeIds.has(sourceId) || connectedNodeIds.has(targetId);
+        
+        ctx.strokeStyle = "rgba(0,255,65,0.15)";
+        if (link.type === "has_vulnerability") ctx.strokeStyle = "rgba(239, 68, 68, 0.25)";
+        else if (link.type === "resolves_to" || link.type === "associated_with") ctx.strokeStyle = "rgba(56, 189, 248, 0.2)";
+        
+        if (isHighlighted) {
+          ctx.lineWidth = 2.5;
+          if (link.type === "has_vulnerability") ctx.strokeStyle = "rgba(239, 68, 68, 0.7)";
+          else if (link.type === "resolves_to" || link.type === "associated_with") ctx.strokeStyle = "rgba(56, 189, 248, 0.6)";
+          else ctx.strokeStyle = "rgba(0,255,65,0.6)";
+        }
 
         ctx.beginPath();
         ctx.moveTo(link.source.x, link.source.y);
         ctx.lineTo(link.target.x, link.target.y);
         ctx.stroke();
 
-        // Flow dots mapping
-        const flowPos = (time * 0.4 + Math.random()*0.05) % 1;
-        const dotX = link.source.x + (link.target.x - link.source.x) * flowPos;
-        const dotY = link.source.y + (link.target.y - link.source.y) * flowPos;
-        ctx.fillStyle = ctx.strokeStyle;
-        ctx.beginPath();
-        ctx.arc(dotX, dotY, 2, 0, Math.PI*2);
-        ctx.fill();
+        if (isHighlighted) {
+          ctx.lineWidth = 1.0;
+        }
+
+        // Flow dots mapping for highlighted edges
+        if (isHighlighted) {
+          const flowPos = (time * 0.5 + Math.random()*0.05) % 1;
+          const dotX = link.source.x + (link.target.x - link.source.x) * flowPos;
+          const dotY = link.source.y + (link.target.y - link.source.y) * flowPos;
+          ctx.fillStyle = ctx.strokeStyle;
+          ctx.beginPath();
+          ctx.arc(dotX, dotY, 2.5, 0, Math.PI*2);
+          ctx.fill();
+        }
       }
 
       // Draw nodes
@@ -178,77 +233,122 @@ export function KnowledgeGraph({ findings = [], knowledgeGraph = null }: Advance
           n.y = Math.max(15, Math.min(H - 15, n.y));
         }
 
+        const isSelected = selectedNode?.id === n.id;
+        const isHovered = hoveredNode?.id === n.id;
+        const isConnected = connectedNodeIds.has(n.id);
+        const shouldShowLabel = n.isRoot || (simNodes.length < 25) || isSelected || isHovered || isConnected;
+        
         const colorStr = getComputedStyle(document.documentElement).getPropertyValue(n.color.replace('var(', '').replace(')', '')) || "#00FF41";
         
-          let iconChar = "●";
-          let iconFont = "12px 'JetBrains Mono', monospace";
-          if (n.type === "IOCNode") iconChar = "⚡";
-          else if (n.type === "MITRETacticNode") iconChar = "⚔️";
-          else if (n.type === "OSINTSourceNode") iconChar = "🌐";
-          else if (n.type === "EntityNode") iconChar = "👤";
-          else if (n.type === "threat") iconChar = "💀";
-          else if (n.isRoot) iconChar = "🎯";
+        let iconChar = "●";
+        let iconFont = "12px 'JetBrains Mono', monospace";
+        if (n.type === "IOCNode") iconChar = "⚡";
+        else if (n.type === "MITRETacticNode") iconChar = "⚔️";
+        else if (n.type === "OSINTSourceNode") iconChar = "🌐";
+        else if (n.type === "EntityNode") iconChar = "👤";
+        else if (n.type === "threat") iconChar = "💀";
+        else if (n.isRoot) iconChar = "🎯";
 
-          ctx.shadowColor = colorStr;
-          ctx.shadowBlur = n.isRoot ? 25 : 15;
+        ctx.shadowColor = colorStr;
+        ctx.shadowBlur = isSelected ? 35 : isHovered ? 25 : n.isRoot ? 20 : 12;
 
-          const size = n.isRoot ? 12 : 7;
-          
-          // Outer Glow Tech Bracket
-          ctx.strokeStyle = colorStr;
-          ctx.lineWidth = 1.5;
+        const size = isSelected ? 14 : isHovered ? 10 : n.isRoot ? 12 : 7;
+        
+        // Outer Glow Tech Bracket
+        let bracketColor = colorStr;
+        let bracketWidth = 1.5;
+        if (isSelected) {
+          bracketColor = "#00FF00";
+          bracketWidth = 2.5;
+        } else if (isHovered || isConnected) {
+          bracketColor = "#00FFFF";
+          bracketWidth = 2.0;
+        }
+        
+        ctx.strokeStyle = bracketColor;
+        ctx.lineWidth = bracketWidth;
+        ctx.beginPath();
+        ctx.moveTo(n.x - size, n.y - size/2);
+        ctx.lineTo(n.x - size, n.y - size);
+        ctx.lineTo(n.x - size/2, n.y - size);
+        ctx.stroke();
+
           ctx.beginPath();
-          ctx.moveTo(n.x - size, n.y - size/2);
-          ctx.lineTo(n.x - size, n.y - size);
-          ctx.lineTo(n.x - size/2, n.y - size);
-          ctx.stroke();
+        ctx.moveTo(n.x + size, n.y + size/2);
+        ctx.lineTo(n.x + size, n.y + size);
+        ctx.lineTo(n.x + size/2, n.y + size);
+        ctx.stroke();
 
-          ctx.beginPath();
-          ctx.moveTo(n.x + size, n.y + size/2);
-          ctx.lineTo(n.x + size, n.y + size);
-          ctx.lineTo(n.x + size/2, n.y + size);
-          ctx.stroke();
+        // Central fill
+        ctx.fillStyle = "rgba(0,0,0,0.8)";
+        ctx.beginPath();
+        ctx.rect(n.x - size + 2, n.y - size + 2, size*2 - 4, size*2 - 4);
+        ctx.fill();
+        
+        ctx.fillStyle = isSelected ? "#00FF00" : colorStr;
+        ctx.globalAlpha = isSelected ? 0.4 : isHovered ? 0.35 : 0.2;
+        ctx.fill();
+        ctx.globalAlpha = 1.0;
 
-          // Central fill
-          ctx.fillStyle = "rgba(0,0,0,0.8)";
-          ctx.beginPath();
-          ctx.rect(n.x - size + 2, n.y - size + 2, size*2 - 4, size*2 - 4);
-          ctx.fill();
-          
-          ctx.fillStyle = colorStr;
-          ctx.globalAlpha = 0.2;
-          ctx.fill();
-          ctx.globalAlpha = 1.0;
+        ctx.shadowBlur = 0; // reset
 
-          ctx.shadowBlur = 0; // reset
+        // Draw icon
+        ctx.fillStyle = isSelected ? "#00FF00" : colorStr;
+        ctx.font = iconFont;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(iconChar, n.x, n.y);
 
-          // Draw icon
-          ctx.fillStyle = colorStr;
-          ctx.font = iconFont;
+        // Draw label with better logic
+        if (shouldShowLabel) {
+          ctx.fillStyle = isSelected ? "rgba(0,255,0,1)" : isHovered ? "rgba(0,255,255,0.9)" : "rgba(255,255,255,0.8)";
+          ctx.font = isSelected ? "bold 12px 'JetBrains Mono', monospace" : isHovered ? "bold 11px 'JetBrains Mono', monospace" : n.isRoot ? "bold 11px 'JetBrains Mono', monospace" : "10px 'JetBrains Mono', monospace";
           ctx.textAlign = "center";
-          ctx.textBaseline = "middle";
-          ctx.fillText(iconChar, n.x, n.y);
-
-          if (n.isRoot || simNodes.length < 25) {
-            ctx.fillStyle = "rgba(255,255,255,0.8)";
-            ctx.font = n.isRoot ? "bold 11px 'JetBrains Mono', monospace" : "11px 'JetBrains Mono', monospace";
-            ctx.textAlign = "center";
-            ctx.fillText(n.label.substring(0,14), n.x, n.y + size + 10);
-            if (n.label.length > 14) {
-              ctx.fillText("...", n.x, n.y + size + 18);
-            }
+          const labelText = n.label.substring(0, 16);
+          ctx.fillText(labelText, n.x, n.y + size + 12);
+          if (n.label.length > 16) {
+            ctx.fillText("...", n.x, n.y + size + 22);
           }
         }
+      }
 
-        animationRef.current = requestAnimationFrame(tick);
-      };
+      animationRef.current = requestAnimationFrame(tick);
+    };
 
-      tick();
-      return () => cancelAnimationFrame(animationRef.current);
-    }, [simNodes, simLinks]);
+    tick();
+    return () => cancelAnimationFrame(animationRef.current);
+  }, [simNodes, simLinks, selectedNode, hoveredNode]);
 
-    const totalNodes = simNodes.length;
-    if (totalNodes === 0) return <GhostPanel message="AWAITING TOPOLOGY MAP" />;
+  const totalNodes = simNodes.length;
+  const visibleCount = displayNodes.length;
+  
+  if (totalNodes === 0) return <GhostPanel message="AWAITING TOPOLOGY MAP" />;
+
+  const handleCanvasMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    // Find nearest node within hover radius
+    let nearest = null;
+    let minDist = 25 * 25; // 25px radius hover tolerance
+    for (const n of simNodes) {
+      if (!Number.isFinite(n.x) || !Number.isFinite(n.y)) continue;
+      const dx = n.x - x;
+      const dy = n.y - y;
+      const distSq = dx * dx + dy * dy;
+      if (distSq < minDist) {
+        minDist = distSq;
+        nearest = n;
+      }
+    }
+    setHoveredNode(nearest);
+    if (canvasRef.current) {
+      canvasRef.current.style.cursor = nearest ? "pointer" : "crosshair";
+    }
+  };
 
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
@@ -259,12 +359,12 @@ export function KnowledgeGraph({ findings = [], knowledgeGraph = null }: Advance
 
     // Find nearest node
     let nearest = null;
-    let minDist = 20 * 20; // 20px radius click tolerance
+    let minDist = 25 * 25; // 25px radius click tolerance
     for (const n of simNodes) {
       if (!Number.isFinite(n.x) || !Number.isFinite(n.y)) continue;
       const dx = n.x - x;
       const dy = n.y - y;
-      const distSq = dx*dx + dy*dy;
+      const distSq = dx * dx + dy * dy;
       if (distSq < minDist) {
         minDist = distSq;
         nearest = n;
@@ -273,73 +373,62 @@ export function KnowledgeGraph({ findings = [], knowledgeGraph = null }: Advance
     setSelectedNode(nearest);
   };
 
+  const handleCanvasLeave = () => {
+    setHoveredNode(null);
+    if (canvasRef.current) {
+      canvasRef.current.style.cursor = "crosshair";
+    }
+  };
+
   return (
     <div className="w-full h-full relative bg-[#050505] overflow-hidden group">
-      <div className="absolute top-2 left-2 text-[11px] text-[var(--t-dim)] z-10 select-none uppercase font-mono bg-black/60 p-1 border border-white/5 rounded-sm">
-        <div className="text-[var(--t-green)]">TOPOLOGY.DETECT</div>
-        NODES: {totalNodes} <br />
-        LINKS: {simLinks.length}
+      {/* Stats Panel */}
+      <div className="absolute top-2 left-2 text-[11px] text-[var(--t-dim)] z-10 select-none uppercase font-mono bg-black/70 p-2 border border-[var(--t-green)]/30 rounded-sm">
+        <div className="text-[var(--t-green)] font-bold mb-1">TOPOLOGY.DETECT</div>
+        <div>NODES: <span className="text-[var(--t-cyan)]">{totalNodes}</span> <span className="text-[var(--t-dim)]">(Visible: {visibleCount})</span></div>
+        <div>LINKS: <span className="text-[var(--t-amber)]">{simLinks.length}</span></div>
       </div>
-      <canvas ref={canvasRef} onClick={handleCanvasClick} className="w-full h-full block cursor-pointer" />
 
-      {/* NODE DETAIL SLIDE-OVER */}
-      <div 
-        className={`absolute top-0 right-0 w-80 h-full bg-[#0a0a0a]/95 backdrop-blur-md border-l border-[var(--t-border)] p-4 shadow-[-5px_0_15px_rgba(0,0,0,0.8)] z-20 flex flex-col font-mono overflow-y-auto transition-transform duration-300 ${selectedNode ? 'translate-x-0' : 'translate-x-full'}`}
-      >
-        {selectedNode && (
-          <>
-            <div className="flex justify-between items-center mb-4 border-b border-[var(--t-border)] pb-2 shrink-0">
-              <h3 className="text-[var(--t-cyan)] text-[12px] uppercase font-bold tracking-widest flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-[var(--t-cyan)] animate-pulse"></span>
-                NODE.INSPECT
-              </h3>
-              <button
-                onClick={() => setSelectedNode(null)}
-                className="text-[var(--t-dim)] hover:text-white transition-colors text-[14px]"
-              >
-                [X]
-              </button>
-            </div>
-
-            <div className="text-[14px] text-white font-bold mb-2 break-words">
-              {selectedNode.label}
-            </div>
-            <div className="text-[11px] text-[var(--t-dim)] mb-6">
-              CLASS: <span className="text-[var(--t-amber)] bg-[var(--t-amber)]/10 px-1 py-0.5 rounded uppercase">{selectedNode.type}</span>
-            </div>
-
-              <div className="flex-1 overflow-y-auto pr-1">
-                <div className="text-[11px] uppercase text-[var(--t-dim)] mb-2 border-b border-[var(--t-border)] pb-1">METADATA</div>
-                {selectedNode.raw ? (
-                  <div className="text-[11px] text-[var(--t-dim)] whitespace-pre-wrap break-words flex flex-col gap-3">
-                    {(() => {
-                      const entries = Object.entries(selectedNode.raw).filter(([key, val]) => 
-                        !["id", "label", "type", "node_type"].includes(key) &&
-                        val !== null && val !== undefined && val !== ""
-                      );
-                      
-                      if (entries.length === 0) {
-                        return <div className="text-[11px] text-[var(--t-dim)] italic">No additional detailed properties.</div>;
-                      }
-
-                      return entries.map(([key, val]) => {
-                        const displayValue = typeof val === "object" ? JSON.stringify(val, null, 2) : String(val);
-                        return (
-                          <div key={key} className="bg-black/30 p-2 border border-white/5 rounded-sm">
-                            <div className="text-[var(--t-cyan)] uppercase mb-1 text-[11px] tracking-wider">{key}</div>
-                            <div className="text-[var(--t-text)] font-sans opacity-90">{displayValue}</div>
-                          </div>
-                        );
-                      });
-                    })()}
-                  </div>
-                ) : (
-                  <div className="text-[11px] text-[var(--t-dim)] italic">No additional metadata available.</div>
-                )}
-              </div>
-          </>
-        )}
+      {/* Search & Filter Panel */}
+      <div className="absolute bottom-2 left-2 max-w-[220px] text-[11px] z-10 select-none uppercase font-mono bg-black/70 p-2 border border-[var(--t-border)] rounded-sm space-y-2">
+        <input
+          type="text"
+          placeholder="Search nodes..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="w-full bg-black/60 border border-white/10 rounded px-2 py-1 text-[var(--t-text)] placeholder:text-[var(--t-dim)] text-[10px] focus:outline-none focus:border-[var(--t-cyan)]/50"
+        />
+        <select
+          value={filterType || ""}
+          onChange={(e) => setFilterType(e.target.value || null)}
+          className="w-full bg-black/60 border border-white/10 rounded px-2 py-1 text-[var(--t-text)] text-[10px] focus:outline-none focus:border-[var(--t-cyan)]/50"
+        >
+          <option value="">All Types</option>
+          {nodeTypes.map((type) => (
+            <option key={type} value={type}>
+              {type}
+            </option>
+          ))}
+        </select>
       </div>
+
+      {/* Canvas */}
+      <canvas
+        ref={canvasRef}
+        onMouseMove={handleCanvasMouseMove}
+        onClick={handleCanvasClick}
+        onMouseLeave={handleCanvasLeave}
+        className="w-full h-full block"
+      />
+
+      {/* NODE DETAIL PANEL */}
+      <NodeDetailPanel
+        node={selectedNode}
+        allNodes={simNodes}
+        allEdges={simLinks}
+        onClose={() => setSelectedNode(null)}
+        onSelectNode={setSelectedNode}
+      />
     </div>
   );
 }

@@ -1,5 +1,5 @@
 /* ========================================
-   Veritas — Agent Personality System
+   Elliot — Agent Personality System
    Character-based communication for Agent Theater
    ======================================== */
 

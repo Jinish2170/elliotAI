@@ -1,7 +1,7 @@
 """
-Veritas Independent Module Testing — Phase T8: Full Pipeline
+Elliot Independent Module Testing — Phase T8: Full Pipeline
 =============================================================
-Runs the complete audit orchestrator end-to-end via `python -m veritas`.
+Runs the complete audit orchestrator end-to-end via `python -m elliot`.
 Uses standard_audit tier to test full integration.
 
 Usage:
@@ -67,11 +67,11 @@ async def test_t8_1_full_pipeline():
     start = time.time()
     try:
         from dotenv import load_dotenv
-        load_dotenv(ROOT / "veritas" / ".env")
+        load_dotenv(ROOT / "elliot" / ".env")
 
-        from veritas.core.orchestrator import VeritasOrchestrator
+        from elliot.core.orchestrator import ElliotOrchestrator
 
-        orchestrator = VeritasOrchestrator()
+        orchestrator = ElliotOrchestrator()
 
         result = await orchestrator.audit(
             url=TARGET_URL,
@@ -124,7 +124,7 @@ async def test_t8_1_full_pipeline():
         verdict = f"Full Pipeline: trust_score={trust_score if isinstance(result, dict) else '?'}, completed in {duration:.0f}s"
 
         write_report(test_id, "Full Pipeline (standard_audit)", duration, status,
-                     f"URL: `{TARGET_URL}`\nTier: standard_audit\nVerdict mode: expert\nMethod: VeritasOrchestrator().audit()",
+                     f"URL: `{TARGET_URL}`\nTier: standard_audit\nVerdict mode: expert\nMethod: ElliotOrchestrator().audit()",
                      output[:25000], "\n".join(analysis_lines), verdict)
         return status
 
@@ -139,7 +139,7 @@ async def test_t8_1_full_pipeline():
 
 async def main():
     print("=" * 60)
-    print("VERITAS — Phase T8: Full Pipeline")
+    print("ELLIOT — Phase T8: Full Pipeline")
     print(f"Target: {TARGET_DOMAIN}")
     print(f"Started: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print("=" * 60)

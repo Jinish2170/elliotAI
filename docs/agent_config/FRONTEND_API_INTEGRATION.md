@@ -2,7 +2,7 @@
 
 > **Version**: 2.0 | **Last updated**: 2026-03-12
 > **Backend**: FastAPI 0.115.0 + WebSocket streaming
-> **Target audience**: Frontend developers integrating Veritas audit system
+> **Target audience**: Frontend developers integrating Elliot audit system
 
 ---
 
@@ -30,7 +30,7 @@ GET /api/health
 ```json
 {
   "status": "ok",
-  "service": "veritas-api",
+  "service": "elliot-api",
   "version": "2.0.0"
 }
 ```

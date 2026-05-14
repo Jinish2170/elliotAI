@@ -731,7 +731,7 @@ function Navbar() {
             V
           </div>
           <span className="font-bold text-sm tracking-widest text-[var(--v-text)]">
-            VERITAS
+            ELLIOT
           </span>
         </a>
 

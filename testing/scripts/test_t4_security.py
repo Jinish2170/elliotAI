@@ -1,5 +1,5 @@
 """
-Veritas Independent Module Testing — Phase T4: Security Agent
+Elliot Independent Module Testing — Phase T4: Security Agent
 ==============================================================
 Tests the SecurityAgent with full rule-based analysis (no NIM).
 Feeds it real data from T2/T3 (HTML, headers, DOM metadata).
@@ -97,7 +97,7 @@ async def test_t4_1_security_full():
 
     start = time.time()
     try:
-        from veritas.agents.security_agent import SecurityAgent
+        from elliot.agents.security_agent import SecurityAgent
 
         # Load real data from T2 if available
         html_path = HTML_DIR / "avrut_landing.html"
@@ -193,7 +193,7 @@ async def test_t4_2_security_with_page():
     start = time.time()
     try:
         from playwright.async_api import async_playwright
-        from veritas.agents.security_agent import SecurityAgent
+        from elliot.agents.security_agent import SecurityAgent
 
         agent = SecurityAgent(nim_client=None)
 
@@ -264,7 +264,7 @@ async def test_t4_2_security_with_page():
 # ============================================================
 async def main():
     print("=" * 60)
-    print("VERITAS — Phase T4: Security Agent")
+    print("ELLIOT — Phase T4: Security Agent")
     print(f"Target: {TARGET_DOMAIN}")
     print(f"Started: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print("=" * 60)

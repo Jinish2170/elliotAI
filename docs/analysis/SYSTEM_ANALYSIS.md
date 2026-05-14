@@ -1,11 +1,11 @@
-# VERITAS - Complete System Architecture Analysis
+# ELLIOT - Complete System Architecture Analysis
 ## Date: 2026-03-05
 
 ---
 
 ## EXECUTIVE SUMMARY
 
-Veritas is a multi-modal forensic web auditing platform with 5 specialized AI agents, 25+ analysis modules, and a tier-based security analysis architecture. The system consists of:
+Elliot is a multi-modal forensic web auditing platform with 5 specialized AI agents, 25+ analysis modules, and a tier-based security analysis architecture. The system consists of:
 
 - **Backend**: Python 3.11+ with FastAPI, LangGraph orchestration, NVIDIA NIM integration
 - **Frontend**: Next.js 15 with TypeScript, WebSocket streaming for real-time updates
@@ -15,7 +15,7 @@ Veritas is a multi-modal forensic web auditing platform with 5 specialized AI ag
 
 ## 1. AGENT LAYER (Core Analysis Engines)
 
-### 1.1 Scout Agent (`veritas/agents/scout.py`)
+### 1.1 Scout Agent (`elliot/agents/scout.py`)
 **Role**: Browser reconnaissance and evidence capture
 **Input**: URL, tier configuration, viewport settings
 **Output**: `ScoutResult` containing:
@@ -41,7 +41,7 @@ Veritas is a multi-modal forensic web auditing platform with 5 specialized AI ag
 
 ---
 
-### 1.2 Vision Agent (`veritas/agents/vision.py`)
+### 1.2 Vision Agent (`elliot/agents/vision.py`)
 **Role**: Visual dark pattern detection using NVIDIA NIM VLM
 **Input**: Screenshot file paths, VLM prompts from taxonomy
 **Output**: `VisionResult` containing:
@@ -59,7 +59,7 @@ Veritas is a multi-modal forensic web auditing platform with 5 specialized AI ag
 
 ---
 
-### 1.3 Graph Investigator (`veritas/agents/graph_investigator.py`)
+### 1.3 Graph Investigator (`elliot/agents/graph_investigator.py`)
 **Role**: Entity verification through knowledge graphs
 **Input**: Domain, meta_analysis from Scout
 **Output**: `GraphResult` containing:
@@ -79,7 +79,7 @@ Veritas is a multi-modal forensic web auditing platform with 5 specialized AI ag
 
 ---
 
-### 1.4 Judge Agent (`veritas/agents/judge.py`)
+### 1.4 Judge Agent (`elliot/agents/judge.py`)
 **Role**: Evidence synthesis and trust scoring
 **Input**: `AuditEvidence` (all agent outputs)
 **Output**: `JudgeDecision` containing:
@@ -102,7 +102,7 @@ Veritas is a multi-modal forensic web auditing platform with 5 specialized AI ag
 
 ---
 
-### 1.5 Security Agent (`veritas/agents/security_agent.py`)
+### 1.5 Security Agent (`elliot/agents/security_agent.py`)
 **Role**: Tier-based security analysis with 25+ modules
 **Input**: URL, page_content, headers, dom_meta
 **Output**: `SecurityResult` containing:
@@ -128,7 +128,7 @@ Veritas is a multi-modal forensic web auditing platform with 5 specialized AI ag
 
 ## 2. ANALYSIS MODULES (Detailed Sub-systems)
 
-### 2.1 Core Analysis Modules (`veritas/analysis/`)
+### 2.1 Core Analysis Modules (`elliot/analysis/`)
 
 | Module | Input | Output | Description |
 |--------|-------|--------|-------------|
@@ -144,7 +144,7 @@ Veritas is a multi-modal forensic web auditing platform with 5 specialized AI ag
 
 ---
 
-### 2.2 Security Modules (`veritas/analysis/security/`)
+### 2.2 Security Modules (`elliot/analysis/security/`)
 
 #### FAST Tier (< 5s timeout)
 | Module | CWE | Checks |
@@ -159,7 +159,7 @@ Veritas is a multi-modal forensic web auditing platform with 5 specialized AI ag
 | `gdpr.py` | GDPR compliance | Cookie consent, privacy policy links |
 | `pci_dss.py` | PCI DSS 4.0 | Form security, HTTPS, card data handling |
 
-#### OWASP Top 10 Modules (`veritas/analysis/security/owasp/`)
+#### OWASP Top 10 Modules (`elliot/analysis/security/owasp/`)
 | Module | OWASP | CWE | Checks |
 |--------|-------|-----|--------|
 | `a01_broken_access_control.py` | A01:2021 | CWE-284 | IDOR, privilege escalation |
@@ -173,14 +173,14 @@ Veritas is a multi-modal forensic web auditing platform with 5 specialized AI ag
 | `a09_logging_failures.py` | A09:2021 | CWE-201 | Error expose, logging issues |
 | `a10_ssrf.py` | A10:2021 | CWE-918 | SSRF indicators in forms/params |
 
-#### Darknet Module (`veritas/analysis/security/darknet.py`)
+#### Darknet Module (`elliot/analysis/security/darknet.py`)
 - `.onion` address detection
 - Darknet threat correlation
 - Suspicious marketplace indicators
 
 ---
 
-### 2.3 OSINT Components (`veritas/osint/`)
+### 2.3 OSINT Components (`elliot/osint/`)
 
 | Module | Input | Output | Description |
 |--------|-------|--------|-------------|
@@ -198,7 +198,7 @@ Veritas is a multi-modal forensic web auditing platform with 5 specialized AI ag
 
 ---
 
-## 3. CONFIGURATION LAYER (`veritas/config/`)
+## 3. CONFIGURATION LAYER (`elliot/config/`)
 
 | File | Purpose |
 |------|---------|
@@ -415,7 +415,7 @@ interface AuditResult {
 
 ## 7. TEST INFRASTRUCTURE
 
-### 7.1 Backend Tests (`veritas/tests/`)
+### 7.1 Backend Tests (`elliot/tests/`)
 - `test_ioc_detector.py` - 32 tests for IOC detection
 - `test_scout.py` - Scout agent tests
 - `test_vision.py` - Vision agent tests
@@ -485,7 +485,7 @@ USE_DB_PERSISTENCE=true # Enable DB persistence
 
 ## 11. DEPENDENCIES
 
-### Python (veritas/requirements.txt)
+### Python (elliot/requirements.txt)
 - FastAPI, Uvicorn, WebSockets
 - LangChain, LangGraph
 - Playwright, BeautifulSoup4

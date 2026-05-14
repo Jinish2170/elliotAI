@@ -1,5 +1,5 @@
 /* ========================================
-   Veritas — TypeScript Type Definitions
+   Elliot — TypeScript Type Definitions
    ======================================== */
 
 export type Phase = "init" | "scout" | "security" | "vision" | "graph" | "judge";

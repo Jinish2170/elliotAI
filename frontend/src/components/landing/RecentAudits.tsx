@@ -13,7 +13,7 @@ interface AuditRecord {
   tier: string;
 }
 
-const STORAGE_KEY = "veritas_recent_audits";
+const STORAGE_KEY = "elliot_recent_audits";
 
 export function saveAuditToHistory(record: AuditRecord) {
   if (typeof window === "undefined") return;

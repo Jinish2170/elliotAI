@@ -28,7 +28,7 @@ function TerminalHeader({ url, elapsed }: { url?: string, elapsed: number }) {
   return (
     <div className="h-10 shrink-0 border-b border-[var(--t-border)] flex items-center justify-between px-4 bg-[var(--t-panel)] text-[11px] uppercase tracking-widest text-[var(--t-dim)] font-mono">
       <div className="flex gap-4 items-center">
-        <span className="text-[var(--t-text)] font-bold">VERITAS TERM /// 9.4.0</span>
+        <span className="text-[var(--t-text)] font-bold">ELLIOT TERM /// 9.4.0</span>
         {url && (
           <>
             <span>TARGET:</span>
@@ -53,7 +53,7 @@ function MobileBlocker() {
       <div className="border border-[var(--t-red)] p-6 bg-[var(--t-panel)] max-w-sm">
         <div className="text-[var(--t-red)] font-mono text-sm mb-4">[SYS.ERR] INSUFFICIENT VIEWPORT</div>
         <p className="text-[var(--t-text)] text-sm font-mono">
-          VERITAS requires a full operator terminal display (min-width: 1280px).
+          ELLIOT requires a full operator terminal display (min-width: 1280px).
           Please maximize your window or switch to a workstation to proceed with the audit overview.
         </p>
       </div>
@@ -106,12 +106,12 @@ function AuditPageContent({ id }: { id: string }) {
         </div>
       ) : null}
 
-      <div className="veritas-terminal">
+      <div className="elliot-terminal">
         {/* ZONE 1: TACTICAL HEADER */}
         <TerminalHeader url={store.url || undefined} elapsed={store.stats.elapsed_seconds} />
 
         {store.status === "complete" && !showReport && (
-          <div className="absolute top-12 right-4 z-40">
+          <div className="absolute top-2 right-4 z-40">
             <button 
               onClick={() => setShowReport(true)}
               className="bg-[var(--t-cyan)] text-black px-4 py-2 text-[11px] font-bold tracking-widest uppercase animate-pulse border border-[var(--t-cyan)] hover:bg-black hover:text-[var(--t-cyan)] transition-colors shadow-[0_0_15px_rgba(0,180,255,0.4)]"
@@ -122,17 +122,17 @@ function AuditPageContent({ id }: { id: string }) {
         )}
 
         {/* ZONE 4 (Rails) & ZONES 2/3 (Center) contained in grid */}
-        <div className="veritas-terminal-grid overflow-hidden">
+        <div className="elliot-terminal-grid overflow-hidden">
 
           {/* Left Rail (Investigative Matrices + Proc State) */}
-          <div className="flex flex-col gap-2 flex-[3] min-w-[300px] min-h-0">
+          <div className="flex flex-col gap-2 flex-[3] min-w-0 min-h-0">
             <div className="flex-1 grid grid-rows-3 gap-2 min-h-0">
               {(!store.cvssMetrics?.length && store.corporateEntities?.length > 0) ? (
-                <TerminalPanel title="CORP.INTEGRITY.VERIFICATION" className="h-full">
+                <TerminalPanel title="CORP.INTEGRITY.VERIFICATION" className="min-h-0">
                   <CorporateEntitiesPanel entities={store.corporateEntities} status={store.status} />
                 </TerminalPanel>
               ) : (
-                <TerminalPanel title="CVSS.RADAR" className="h-full">
+                <TerminalPanel title="CVSS.RADAR" className="min-h-0">
                   <CvssRadar 
                     metrics={store.cvssMetrics?.length ? store.cvssMetrics : ((store.result as any)?.security_results?.cvss_metrics as any[]) || []}
                     status={store.status}
@@ -140,13 +140,13 @@ function AuditPageContent({ id }: { id: string }) {
                 </TerminalPanel>
               )}
               
-              <TerminalPanel title="MITRE.ATTACK.GRID" className="h-full">
+              <TerminalPanel title="MITRE.ATTACK.GRID" className="min-h-0">
                 <MitreGrid
                   techniques={store.mitreTechniques?.length ? store.mitreTechniques : ((store.result as any)?.security_results?.mitre_mappings as any[]) || []}
                   status={store.status}
                 />
               </TerminalPanel>
-              <TerminalPanel title="THREAT.MATRIX" className="h-full">
+              <TerminalPanel title="THREAT.MATRIX" className="min-h-0">
                 <ThreatIntelligenceMatrix
                   osintResults={store.osintResults || []}
                   marketplaceThreats={store.marketplaceThreats || []}
@@ -154,17 +154,17 @@ function AuditPageContent({ id }: { id: string }) {
                 />
               </TerminalPanel>
             </div>
-            <TerminalPanel title="AGENT.PROC.STATE" className="h-[25%] shrink-0">
+            <TerminalPanel title="AGENT.PROC.STATE" className="flex-none max-h-[180px]">
               <AgentProcState phases={store.phases} activePhase={store.currentPhase || undefined} status={store.status} />
             </TerminalPanel>
           </div>
 
           {/* Center Column (Verdict / Active Intel & SysLog.Stream) */}
-          <div className="flex flex-col gap-2 flex-[5] min-h-0">
+          <div className="flex flex-col gap-2 flex-[5] min-w-0 min-h-0">
 
             {/* Dynamic Telemetry OR Verdict Matrix */}
             {store.status === "complete" ? (
-              <TerminalPanel title="VERDICT.MATRIX" className="flex-[2] min-h-0 flex flex-col p-2">
+              <TerminalPanel title="VERDICT.MATRIX" className="flex-[2] min-h-0">
                 <VerdictPanel
                   verdict={store.dualVerdict ? {
                     verdict_technical: {
@@ -181,23 +181,23 @@ function AuditPageContent({ id }: { id: string }) {
                 />
               </TerminalPanel>
             ) : (
-              <TerminalPanel title="LIVE.TELEMETRY.STREAM" className="shrink-0">
-                <div className="flex w-full min-h-[120px] p-2 gap-4 justify-around items-center bg-[#050505]">
-                  <div className="flex flex-col items-center justify-center p-4 border border-[var(--t-border)] bg-[#0a0a0a] rounded flex-1 h-[100px]">
+              <TerminalPanel title="LIVE.TELEMETRY.STREAM" className="flex-none">
+                <div className="flex w-full p-2 gap-4 justify-around items-center bg-[#050505]">
+                  <div className="flex flex-col items-center justify-center p-3 border border-[var(--t-border)] bg-[#0a0a0a] rounded flex-1">
                     <span className="text-[var(--t-dim)] text-[11px] uppercase tracking-widest mb-2 font-bold">Findings Detected</span>
-                    <span className="text-[var(--t-red)] font-mono text-4xl glow-text-red">{store.stats?.findings || 0}</span>
+                    <span className="text-[var(--t-red)] font-mono text-3xl glow-text-red">{store.stats?.findings || 0}</span>
                   </div>
-                  <div className="flex flex-col items-center justify-center p-4 border border-[var(--t-border)] bg-[#0a0a0a] rounded flex-1 h-[100px]">
+                  <div className="flex flex-col items-center justify-center p-3 border border-[var(--t-border)] bg-[#0a0a0a] rounded flex-1">
                     <span className="text-[var(--t-dim)] text-[11px] uppercase tracking-widest mb-2 font-bold">Pages Mapped</span>
-                    <span className="text-[var(--t-cyan)] font-mono text-4xl" style={{textShadow: "0 0 5px var(--t-cyan)"}}>{store.stats?.pages_scanned || 0}</span>
+                    <span className="text-[var(--t-cyan)] font-mono text-3xl" style={{textShadow: "0 0 5px var(--t-cyan)"}}>{store.stats?.pages_scanned || 0}</span>
                   </div>
-                  <div className="flex flex-col items-center justify-center p-4 border border-[var(--t-border)] bg-[#0a0a0a] rounded flex-1 h-[100px]">
+                  <div className="flex flex-col items-center justify-center p-3 border border-[var(--t-border)] bg-[#0a0a0a] rounded flex-1">
                     <span className="text-[var(--t-dim)] text-[11px] uppercase tracking-widest mb-2 font-bold">Neural Casts</span>
-                    <span className="text-[var(--t-green)] font-mono text-4xl glow-text-green">{store.stats?.ai_calls || 0}</span>
+                    <span className="text-[var(--t-green)] font-mono text-3xl glow-text-green">{store.stats?.ai_calls || 0}</span>
                   </div>
-                  <div className="flex flex-col items-center justify-center p-4 border border-[var(--t-border)] bg-[#0a0a0a] rounded flex-1 h-[100px]">
+                  <div className="flex flex-col items-center justify-center p-3 border border-[var(--t-border)] bg-[#0a0a0a] rounded flex-1">
                     <span className="text-[var(--t-dim)] text-[11px] uppercase tracking-widest mb-2 font-bold">Sec Checks</span>
-                    <span className="text-[var(--t-amber)] font-mono text-4xl glow-text-amber">{store.stats?.security_checks || 0}</span>
+                    <span className="text-[var(--t-amber)] font-mono text-3xl glow-text-amber">{store.stats?.security_checks || 0}</span>
                   </div>
                 </div>
                 <div className="absolute top-2 right-4 text-[11px] text-[var(--t-amber)] font-mono animate-pulse">
@@ -207,7 +207,7 @@ function AuditPageContent({ id }: { id: string }) {
             )}
 
             {/* GREEN FLAGS - Positive Indicators */}
-            <TerminalPanel title="GREEN.FLAGS" className="shrink-0 min-h-[50px]">
+            <TerminalPanel title="GREEN.FLAGS" className="flex-none">
               <div className="flex flex-wrap gap-2 p-2">
                 {store.green_flags?.length ? (
                   store.green_flags.slice(0, 5).map((flag: any) => (
@@ -223,7 +223,7 @@ function AuditPageContent({ id }: { id: string }) {
               </div>
             </TerminalPanel>
 
-            <TerminalPanel title="SCOUT.TELEMETRY" className="h-[25%] shrink-0">
+            <TerminalPanel title="SCOUT.TELEMETRY" className="flex-none h-[180px]">
               <ScoutTelemetry 
                 explorationPath={store.explorationPath}
                 formDetections={store.formDetections || []}
@@ -233,25 +233,25 @@ function AuditPageContent({ id }: { id: string }) {
               />
             </TerminalPanel>
 
-            {/* Zone Center Bottom: Log Stream (Replacing Investigative Matrices) */}
-              <TerminalPanel title="SYS.LOG.STREAM" className="flex-1 min-h-[150px]">
+            {/* Zone Center Bottom: Log Stream */}
+            <TerminalPanel title="SYS.LOG.STREAM" className="flex-1 min-h-[120px]">
               <SysLogStream logs={store.logs} />
             </TerminalPanel>
           </div>
 
           {/* Right Rail (Evidence, Graphs) */}
-          <div className="flex flex-col gap-2 flex-[2.5] min-w-[250px] min-h-0">
-            <TerminalPanel title="SCOUT.IMAGERY" className="h-[25%] shrink-0">
+          <div className="flex flex-col gap-2 flex-[2.5] min-w-0 min-h-0">
+            <TerminalPanel title="SCOUT.IMAGERY" className="flex-none h-[220px]">
               <ScoutImagery screenshots={store.screenshots} />
             </TerminalPanel>
-            <TerminalPanel title="VISION.INTELLIGENCE" className="h-[35%] shrink-0">
+            <TerminalPanel title="VISION.INTELLIGENCE" className="flex-1 min-h-[160px]">
               <VisionIntelligence
                  darkPatterns={store.darkPatternFindings || []}
                  temporal={store.temporalFindings || []}
                  status={store.status}
               />
             </TerminalPanel>
-            <TerminalPanel title="KNOWLEDGE.GRAPH" className="flex-1">
+            <TerminalPanel title="KNOWLEDGE.GRAPH" className="flex-1 min-h-[180px]">
               <KnowledgeGraph findings={store.findings || []} knowledgeGraph={store.knowledgeGraph} />
             </TerminalPanel>
           </div>

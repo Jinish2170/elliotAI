@@ -1,9 +1,9 @@
 #!/bin/bash
-# VERITAS v2 - Complete Dependency Installation Script
+# ELLIOT v2 - Complete Dependency Installation Script
 # Run this to install all required dependencies for v2 features
 
 echo "=========================================="
-echo "VERITAS v2 - Installing Dependencies"
+echo "ELLIOT v2 - Installing Dependencies"
 echo "=========================================="
 
 # Check if pip is available
@@ -53,7 +53,7 @@ echo "Installation Complete!"
 echo "=========================================="
 echo ""
 echo "Next steps:"
-echo "1. Copy veritas/.env.example to veritas/.env"
-echo "2. Add your API keys to veritas/.env"
-echo "3. Run: python -m veritas --help"
+echo "1. Copy elliot/.env.example to elliot/.env"
+echo "2. Add your API keys to elliot/.env"
+echo "3. Run: python -m elliot --help"
 echo ""

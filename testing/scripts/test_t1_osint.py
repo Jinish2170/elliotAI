@@ -1,5 +1,5 @@
 """
-Veritas Independent Module Testing — Phase T1: OSINT & Data Sources
+Elliot Independent Module Testing — Phase T1: OSINT & Data Sources
 ===================================================================
 Tests each OSINT source independently against avrut.com.
 No budget limits, no orchestrator — raw module output.
@@ -92,7 +92,7 @@ async def test_t1_1_dns():
 
     start = time.time()
     try:
-        from veritas.osint.sources.dns_lookup import DNSSource
+        from elliot.osint.sources.dns_lookup import DNSSource
 
         source = DNSSource()
         result = await source.query(TARGET_DOMAIN)
@@ -145,7 +145,7 @@ async def test_t1_2_whois():
 
     start = time.time()
     try:
-        from veritas.osint.sources.whois_lookup import WHOISSource
+        from elliot.osint.sources.whois_lookup import WHOISSource
 
         source = WHOISSource()
         result = await source.query(TARGET_DOMAIN)
@@ -195,7 +195,7 @@ async def test_t1_3_ssl():
 
     start = time.time()
     try:
-        from veritas.osint.sources.ssl_verify import SSLSource
+        from elliot.osint.sources.ssl_verify import SSLSource
 
         source = SSLSource()
         result = await source.query(TARGET_DOMAIN)
@@ -245,7 +245,7 @@ async def test_t1_4_ioc():
 
     start = time.time()
     try:
-        from veritas.osint.ioc_detector import IOCDetector
+        from elliot.osint.ioc_detector import IOCDetector
         import aiohttp
 
         # Fetch the actual page HTML to analyze
@@ -322,8 +322,8 @@ async def test_t1_5_attack_patterns():
 
     start = time.time()
     try:
-        from veritas.osint.attack_patterns import AttackPatternMapper
-        from veritas.osint.ioc_detector import IOCDetector
+        from elliot.osint.attack_patterns import AttackPatternMapper
+        from elliot.osint.ioc_detector import IOCDetector
         import aiohttp
 
         # Get IOCs first (dependency on T1.4 data)
@@ -388,7 +388,7 @@ async def test_t1_6_cti():
 
     start = time.time()
     try:
-        from veritas.osint.cti import CThreatIntelligence
+        from elliot.osint.cti import CThreatIntelligence
         import aiohttp
 
         async with aiohttp.ClientSession() as session:
@@ -446,17 +446,17 @@ async def test_t1_7_urlvoid():
 
     start = time.time()
     try:
-        from veritas.config.settings import URLVOID_API_KEY
+        from elliot.config.settings import URLVOID_API_KEY
         if not URLVOID_API_KEY:
             duration = time.time() - start
             write_report(test_id, "URLVoid (URLVoidSource)", duration, "SKIPPED",
                          f"Domain: `{TARGET_DOMAIN}`",
                          "No URLVOID_API_KEY configured in .env",
-                         "- URLVOID_API_KEY is empty — cannot test without API key\n- Set URLVOID_API_KEY in veritas/.env to enable",
+                         "- URLVOID_API_KEY is empty — cannot test without API key\n- Set URLVOID_API_KEY in elliot/.env to enable",
                          "SKIPPED — no API key configured")
             return "SKIPPED"
 
-        from veritas.osint.sources.urlvoid import URLVoidSource
+        from elliot.osint.sources.urlvoid import URLVoidSource
         source = URLVoidSource(api_key=URLVOID_API_KEY)
         result = await source.query(TARGET_DOMAIN)
         duration = time.time() - start
@@ -502,13 +502,13 @@ async def test_t1_8_abuseipdb():
 
     start = time.time()
     try:
-        from veritas.config.settings import ABUSEIPDB_API_KEY
+        from elliot.config.settings import ABUSEIPDB_API_KEY
         if not ABUSEIPDB_API_KEY:
             duration = time.time() - start
             write_report(test_id, "AbuseIPDB (AbuseIPDBSource)", duration, "SKIPPED",
                          f"Domain: `{TARGET_DOMAIN}`",
                          "No ABUSEIPDB_API_KEY configured in .env",
-                         "- ABUSEIPDB_API_KEY is empty — cannot test without API key\n- Set ABUSEIPDB_API_KEY in veritas/.env to enable",
+                         "- ABUSEIPDB_API_KEY is empty — cannot test without API key\n- Set ABUSEIPDB_API_KEY in elliot/.env to enable",
                          "SKIPPED — no API key configured")
             return "SKIPPED"
 
@@ -516,7 +516,7 @@ async def test_t1_8_abuseipdb():
         ip_address = socket.gethostbyname(TARGET_DOMAIN)
         print(f"  Resolved {TARGET_DOMAIN} → {ip_address}")
 
-        from veritas.osint.sources.abuseipdb import AbuseIPDBSource
+        from elliot.osint.sources.abuseipdb import AbuseIPDBSource
         source = AbuseIPDBSource(api_key=ABUSEIPDB_API_KEY)
         result = await source.check_ip(ip_address)
         duration = time.time() - start
@@ -564,8 +564,8 @@ async def test_t1_9_osint_orchestrator():
 
     start = time.time()
     try:
-        from veritas.osint.orchestrator import OSINTOrchestrator
-        from veritas.osint.types import OSINTCategory
+        from elliot.osint.orchestrator import OSINTOrchestrator
+        from elliot.osint.types import OSINTCategory
 
         orch = OSINTOrchestrator()
 
@@ -657,8 +657,8 @@ async def test_t1_10_phishing():
 
     start = time.time()
     try:
-        from veritas.analysis.phishing_checker import PhishingChecker
-        from veritas.config.settings import SAFE_BROWSING_API_KEY
+        from elliot.analysis.phishing_checker import PhishingChecker
+        from elliot.config.settings import SAFE_BROWSING_API_KEY
 
         checker = PhishingChecker(safe_browsing_key=SAFE_BROWSING_API_KEY)
         result = await checker.check(TARGET_URL)
@@ -704,7 +704,7 @@ async def test_t1_11_meta():
 
     start = time.time()
     try:
-        from veritas.analysis.meta_analyzer import MetaAnalyzer
+        from elliot.analysis.meta_analyzer import MetaAnalyzer
 
         analyzer = MetaAnalyzer()
         result = await analyzer.analyze(TARGET_DOMAIN)
@@ -744,7 +744,7 @@ async def test_t1_11_meta():
 # ============================================================
 async def main():
     print("=" * 60)
-    print("VERITAS — Phase T1: OSINT & Data Sources")
+    print("ELLIOT — Phase T1: OSINT & Data Sources")
     print(f"Target: {TARGET_DOMAIN}")
     print(f"Started: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print("=" * 60)

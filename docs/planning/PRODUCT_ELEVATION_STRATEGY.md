@@ -1,7 +1,7 @@
-# Veritas Product Elevation Strategy
+# Elliot Product Elevation Strategy
 
 ## 1. The Core Problem
-The underlying AI engine (Veritas) is powerful, but the current implementation fails to deliver the promised "expert-level" product experience. 
+The underlying AI engine (Elliot) is powerful, but the current implementation fails to deliver the promised "expert-level" product experience. 
 1. **UI/UX Disconnect**: The recent shift to a "Bloomberg terminal" style made the UI feel like an "old broken box" rather than a sleek, modern, enterprise-grade AI security tool.
 2. **Missing "Wow" Factor**: The removal of the "Theater" view destroyed the visibility of real-time AI processing. Users need to *see* the AI working (scraping, judging, analyzing) in an impressive way.
 3. **Fragile Data Pipelines**: The WebSocket connection between the Python backend and Next.js frontend has mismatched data schemas. Findings get lost, metrics don't update linearly, and markdown isn't rendering correctly.

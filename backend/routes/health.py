@@ -6,7 +6,7 @@ from typing import Any
 from fastapi import APIRouter
 from sqlalchemy import text
 
-logger = logging.getLogger("veritas.routes.health")
+logger = logging.getLogger("elliot.routes.health")
 
 router = APIRouter(tags=["health"])
 
@@ -22,15 +22,15 @@ async def health_check() -> dict[str, Any]:
     """
     health: dict[str, Any] = {
         "status": "ok",
-        "service": "veritas-api",
+        "service": "elliot-api",
         "version": "2.0.0",
     }
 
     # Check database connectivity if persistence is enabled
     try:
-        from veritas.config.settings import should_use_db_persistence
+        from elliot.config.settings import should_use_db_persistence
         if should_use_db_persistence():
-            from veritas.db import get_db
+            from elliot.db import get_db
             async for db in get_db():
                 await db.execute(text("SELECT 1"))
                 health["database"] = "connected"
@@ -42,7 +42,7 @@ async def health_check() -> dict[str, Any]:
 
     # Check critical configuration
     try:
-        from veritas.config.settings import NIM_API_KEY
+        from elliot.config.settings import NIM_API_KEY
         health["nim_configured"] = bool(NIM_API_KEY)
 
         if not NIM_API_KEY:

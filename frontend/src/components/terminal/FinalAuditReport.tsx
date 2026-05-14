@@ -18,7 +18,7 @@ export function FinalAuditReport({ url, findings, advancedData, onClose, trustSc
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ url, findings, advancedData, trustScore, riskLevel }, null, 2));
     const downloadAnchorNode = document.createElement('a');
     downloadAnchorNode.setAttribute("href", dataStr);
-    downloadAnchorNode.setAttribute("download", "veritas_audit_report.json");
+    downloadAnchorNode.setAttribute("download", "elliot_audit_report.json");
     document.body.appendChild(downloadAnchorNode); 
     downloadAnchorNode.click();
     downloadAnchorNode.remove();
@@ -142,7 +142,7 @@ export function FinalAuditReport({ url, findings, advancedData, onClose, trustSc
         )}
 
         <div className="text-center text-[10px] text-[var(--t-dim)] uppercase tracking-widest mt-12 pb-8">
-          END OF REPORT / {new Date().toISOString()} / VERITAS SYSTEM.
+          END OF REPORT / {new Date().toISOString()} / ELLIOT SYSTEM.
         </div>
       </div>
     </div>

@@ -14,7 +14,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "VERITAS — Autonomous Forensic Web Auditor",
+  title: "ELLIOT — Autonomous Forensic Web Auditor",
   description:
     "See what websites don't want you to see. AI-powered dark pattern detection, trust scoring, and forensic web analysis.",
 };
@@ -30,7 +30,7 @@ export default function RootLayout({
         className={`${inter.variable} ${jetbrainsMono.variable} antialiased min-h-screen bg-[var(--v-deep)]`}
       >
         <Navbar />
-        <main>{children}</main>
+        <main className="pt-12">{children}</main>
       </body>
     </html>
   );

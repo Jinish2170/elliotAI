@@ -15,9 +15,9 @@ from typing import Callable, Optional
 
 project_root = Path(__file__).resolve().parent.parent.parent
 
-from veritas.core.ipc import IPC_MODE_QUEUE, IPC_MODE_STDOUT, determine_ipc_mode, serialize_queue
+from elliot.core.ipc import IPC_MODE_QUEUE, IPC_MODE_STDOUT, determine_ipc_mode, serialize_queue
 
-logger = logging.getLogger("veritas.audit_runner")
+logger = logging.getLogger("elliot.audit_runner")
 
 
 def _find_venv_python() -> str:
@@ -112,7 +112,7 @@ class AuditRunner:
         await send({"type": "phase_start", "phase": "scout", "message": "Pre-flight verification..."})
         try:
             # 15-second DNS/HEAD check to fail fast for garbage URLs
-            req = urllib.request.Request(self.url, method="HEAD", headers={'User-Agent': 'Veritas/(+https://github.com)'})
+            req = urllib.request.Request(self.url, method="HEAD", headers={'User-Agent': 'Elliot/(+https://github.com)'})
             await asyncio.to_thread(urllib.request.urlopen, req, timeout=15.0)
         except (URLError, TimeoutError, OSError) as e:
             # Revert to standard GET in case HEAD is blocked
@@ -124,7 +124,7 @@ class AuditRunner:
                     # Server is slow but might be reachable — let Playwright try
                     logger.warning(f"[{self.audit_id}] Pre-flight HEAD timed out for {self.url}, proceeding anyway")
                 else:
-                    req = urllib.request.Request(self.url, headers={'User-Agent': 'Veritas/(+https://github.com)'})
+                    req = urllib.request.Request(self.url, headers={'User-Agent': 'Elliot/(+https://github.com)'})
                     await asyncio.to_thread(urllib.request.urlopen, req, timeout=15.0)
             except TimeoutError:
                 # Timeout on GET fallback — still let Playwright try
@@ -140,7 +140,7 @@ class AuditRunner:
         cmd = [
             _find_venv_python(),
             "-m",
-            "veritas",
+            "elliot",
             self.url,
             "--tier",
             self.tier,

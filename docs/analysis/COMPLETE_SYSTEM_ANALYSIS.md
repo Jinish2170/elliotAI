@@ -1,11 +1,11 @@
-# VERITAS - Complete System Functionality Analysis
+# ELLIOT - Complete System Functionality Analysis
 ## Date: 2026-03-05
 
 ---
 
 ## EXECUTIVE SUMMARY
 
-This document provides a comprehensive analysis of the VERITAS (Autonomous Multi-Modal Forensic Web Auditor) project, including all functionalities, agent inputs/outputs, categories, implementation phases, frontend integration status, and a plan for testing and completion.
+This document provides a comprehensive analysis of the ELLIOT (Autonomous Multi-Modal Forensic Web Auditor) project, including all functionalities, agent inputs/outputs, categories, implementation phases, frontend integration status, and a plan for testing and completion.
 
 ---
 
@@ -45,7 +45,7 @@ This document provides a comprehensive analysis of the VERITAS (Autonomous Multi
 └───────────────────────┬───────────────────────────────────────┘
                         │ Subprocess
 ┌───────────────────────▼───────────────────────────────────────┐
-│                 Veritas Python Engine                         │
+│                 Elliot Python Engine                         │
 │                                                                │
 │  ┌─────────┐  ┌──────────┐  ┌────────┐  ┌───────────┐        │
 │  │  Scout   │→│Security  │→│ Vision │→│   Graph    │          │
@@ -83,7 +83,7 @@ This document provides a comprehensive analysis of the VERITAS (Autonomous Multi
 
 ## 2. AGENT LAYER
 
-### 2.1 Scout Agent (`veritas/agents/scout.py`)
+### 2.1 Scout Agent (`elliot/agents/scout.py`)
 
 **Purpose:** Browser reconnaissance and evidence capture using stealth browsing.
 
@@ -125,7 +125,7 @@ This document provides a comprehensive analysis of the VERITAS (Autonomous Multi
 
 ---
 
-### 2.2 Vision Agent (`veritas/agents/vision.py`)
+### 2.2 Vision Agent (`elliot/agents/vision.py`)
 
 **Purpose:** Visual dark pattern detection using NVIDIA NIM Vision Language Model.
 
@@ -164,7 +164,7 @@ This document provides a comprehensive analysis of the VERITAS (Autonomous Multi
 
 ---
 
-### 2.3 Graph Investigator (`veritas/agents/graph_investigator.py`)
+### 2.3 Graph Investigator (`elliot/agents/graph_investigator.py`)
 
 **Purpose:** Entity verification through knowledge graphs and OSINT.
 
@@ -198,7 +198,7 @@ This document provides a comprehensive analysis of the VERITAS (Autonomous Multi
 
 ---
 
-### 2.4 Judge Agent (`veritas/agents/judge.py`)
+### 2.4 Judge Agent (`elliot/agents/judge.py`)
 
 **Purpose:** Evidence synthesis and trust scoring with dual verdict modes.
 
@@ -241,7 +241,7 @@ This document provides a comprehensive analysis of the VERITAS (Autonomous Multi
 
 ---
 
-### 2.5 Security Agent (`veritas/agents/security_agent.py`)
+### 2.5 Security Agent (`elliot/agents/security_agent.py`)
 
 **Purpose:** Tier-based security analysis with 25+ modules.
 
@@ -279,7 +279,7 @@ This document provides a comprehensive analysis of the VERITAS (Autonomous Multi
 
 ## 3. ANALYSIS MODULES
 
-### 3.1 Core Analysis Modules (`veritas/analysis/`)
+### 3.1 Core Analysis Modules (`elliot/analysis/`)
 
 | Module | File | Input | Output | Frontend |
 |--------|------|-------|--------|----------|

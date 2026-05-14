@@ -1,5 +1,5 @@
 /* ========================================
-   Veritas — Agent Configuration
+   Elliot — Agent Configuration
    Centralized agent identity, colors, and icon assignments
    Used by ChromaticProvider, AgentIcon, AgentTile, etc.
    ======================================== */

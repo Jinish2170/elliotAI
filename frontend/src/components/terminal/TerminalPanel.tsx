@@ -68,7 +68,7 @@ export function TerminalPanel({ title, status, children, className = "" }: Termi
         </div>
         <PanelErrorBoundary>
           {/* We use flex-1 and hidden overflow so inner content can scroll if needed */}
-          <div className="flex-1 overflow-hidden flex flex-col relative w-full h-full p-2 bg-[#050505]/50 outline-none">
+          <div className="flex-1 overflow-auto flex flex-col relative w-full h-full p-2 bg-[#050505]/50 outline-none">
             {children}
           </div>
         </PanelErrorBoundary>

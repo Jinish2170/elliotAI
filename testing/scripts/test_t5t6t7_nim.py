@@ -1,5 +1,5 @@
 """
-Veritas Independent Module Testing — Phases T5-T7: NIM-Powered Agents
+Elliot Independent Module Testing — Phases T5-T7: NIM-Powered Agents
 ======================================================================
 Tests Vision (T5), Graph Investigator (T6), and Judge (T7) agents.
 These use NIM API credits — the .env NVIDIA_NIM_API_KEY is required.
@@ -110,7 +110,7 @@ async def test_t5_1_vision():
 
     start = time.time()
     try:
-        from veritas.agents.vision import VisionAgent
+        from elliot.agents.vision import VisionAgent
 
         # Gather T2 screenshots
         all_screenshots = sorted(SCREENSHOTS_DIR.glob("*.jpg")) + sorted(SCREENSHOTS_DIR.glob("*.png"))
@@ -205,7 +205,7 @@ async def test_t6_1_graph():
 
     start = time.time()
     try:
-        from veritas.agents.graph_investigator import GraphInvestigator
+        from elliot.agents.graph_investigator import GraphInvestigator
 
         # Load T2 metadata
         scout_path = METADATA_DIR / "avrut_scout_result.json"
@@ -301,7 +301,7 @@ async def test_t7_1_judge():
 
     start = time.time()
     try:
-        from veritas.agents.judge import JudgeAgent, AuditEvidence
+        from elliot.agents.judge import JudgeAgent, AuditEvidence
 
         # Build AuditEvidence from previous phase results
         evidence_kwargs = {
@@ -389,7 +389,7 @@ async def test_t7_1_judge():
 # ============================================================
 async def main():
     print("=" * 60)
-    print("VERITAS — Phases T5-T7: NIM-Powered Agents")
+    print("ELLIOT — Phases T5-T7: NIM-Powered Agents")
     print(f"Target: {TARGET_DOMAIN}")
     print(f"Started: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print("=" * 60)
@@ -397,7 +397,7 @@ async def main():
     # Check NIM key
     from dotenv import load_dotenv
     import os
-    env_path = ROOT / "veritas" / ".env"
+    env_path = ROOT / "elliot" / ".env"
     if env_path.exists():
         load_dotenv(env_path)
     nim_key = os.environ.get("NVIDIA_NIM_API_KEY", "")

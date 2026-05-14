@@ -1,4 +1,4 @@
-# VERITAS System State Assessment & Critical Fixes
+# ELLIOT System State Assessment & Critical Fixes
 
 > Generated: 2026-03-07
 > Assessment Scope: All Phases 6-12 Implementation
@@ -27,7 +27,7 @@
 
 ### Immediate Fixes Needed
 
-1. **Add vision pass event emission** in `veritas/agents/vision.py`:
+1. **Add vision pass event emission** in `elliot/agents/vision.py`:
    ```python
    # Emit vision_pass_start for each pass
    await emit_event({

@@ -1,87 +1,98 @@
 <p align="center">
-  <img src="frontend/public/file.svg" width="80" alt="Veritas Logo" />
+  <img src="frontend/public/file.svg" width="80" alt="Elliot Logo" />
 </p>
 
-<h1 align="center">VERITAS</h1>
+<h1 align="center">ELLIOT</h1>
 <p align="center">
   <strong>Autonomous Multi-Modal Forensic Web Auditor</strong>
 </p>
 
 <p align="center">
-  <a href="#features">Features</a> · 
-  <a href="#architecture">Architecture</a> · 
-  <a href="#quick-start">Quick Start</a> · 
-  <a href="#api-reference">API</a> · 
-  <a href="#testing">Testing</a> · 
-  <a href="#configuration">Configuration</a>
+  <a href="#features">Features</a> ·
+  <a href="#architecture">Architecture</a> ·
+  <a href="#quick-start">Quick Start</a> ·
+  <a href="#api-reference">API</a> ·
+  <a href="#configuration">Configuration</a> ·
+  <a href="#testing">Testing</a>
 </p>
 
 ---
 
-Veritas is an AI-powered forensic web auditing platform that analyzes websites for trust, safety, dark patterns, and security vulnerabilities. It combines **5 specialized AI agents** with **visual analysis**, **graph investigation**, and **multi-signal scoring** to produce comprehensive trust reports.
+Elliot is an AI-powered forensic web auditing platform that analyzes websites for trust, safety, dark patterns, and security vulnerabilities. It combines **5 specialized AI agents** with **visual analysis**, **graph investigation**, **OSINT/darknet intelligence**, and **multi-signal scoring** to produce comprehensive, real-time forensic reports.
 
 ---
 
 ## Features
 
-- **5-Phase Autonomous Pipeline** — Scout → Security → Vision → Graph Investigation → Judge  
-- **NVIDIA NIM Integration** — LLM reasoning + Vision Language Model for screenshot analysis  
-- **22 Analysis Modules** — DOM parsing, form validation, dark pattern detection, phishing checks, redirect tracing, temporal analysis, security headers, meta tag analysis, JavaScript behavior analysis  
-- **Real-Time WebSocket Streaming** — Live progress, findings, and screenshots streamed to the browser  
-- **Trust Score Engine** — Weighted multi-signal scoring (0–100) with risk classification  
-- **Dark Pattern Detection** — 5 categories: Urgency, Misdirection, Social Proof, Obstruction, Sneaking  
-- **Next.js 15 Frontend** — Animated three-column live audit view, interactive report with Simple/Expert modes  
-- **LanceDB Vector Store** — Evidence persistence and similarity search  
-- **Playwright Browser Automation** — Headless screenshot capture, DOM extraction, interaction testing  
+- **5-Phase Autonomous Pipeline** — Scout → Security → Vision → Graph Investigation → Judge
+- **4 Audit Tiers** — `quick_scan`, `standard_audit`, `deep_forensic`, `darknet_investigation`
+- **Dual Verdict System** — Parallel Forensic Analysis (technical) + Executive Summary (non-technical), both rendered live with typewriter effects
+- **NVIDIA NIM Integration** — LLM reasoning + Vision Language Models for screenshot analysis
+- **22+ Analysis Modules** — DOM, form validation, dark pattern detection, phishing heuristics, redirect tracing, temporal analysis, security headers, JS behavior analysis, JS obfuscation detection, meta tag analysis
+- **OSINT Intelligence Engine** — IOC detection, Cyber Threat Intelligence (CTI), reputation checking, attack pattern recognition, MITRE ATT&CK technique mapping, CVSS scoring
+- **Darknet Integration** — Onion domain detector, Tor threat scraper, marketplace threat data
+- **Quality Consensus Engine** — Multi-agent confidence scoring and validation consensus layer
+- **Database Persistence** — SQLAlchemy async ORM (SQLite by default) with full audit history, findings, and screenshots stored
+- **Real-Time WebSocket Streaming** — Live events with sequence-ordered delivery and at-least-once delivery guarantee
+- **Audit History & Compare** — Browse past audits, compare trust scores / risk deltas between runs
+- **Chromatic UI Theming** — Active agent context drives ambient UI color changes (ChromaticProvider)
+- **16 Specialized Terminal Panels** — CVSS Radar, MITRE ATT&CK Grid, Knowledge Graph, Threat Matrix, Scout Imagery, Vision Intelligence, Scout Telemetry, Corporate Entities, Verdict Matrix, and more
+- **Next.js 15 Frontend** — 5-route app with animated terminal-style live audit view, history browser, multi-audit comparison
+- **LanceDB Vector Store** — Evidence persistence and similarity search
+- **Playwright Browser Automation** — Headless screenshot capture, DOM extraction, interaction testing, CAPTCHA detection, form discovery
 
 ---
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                    Next.js Frontend                      │
-│  Landing ──→ Live Audit (WebSocket) ──→ Report           │
-│  Port 3000                                               │
-└────────────────────┬────────────────────────────────────┘
-                     │ HTTP + WebSocket
-┌────────────────────▼────────────────────────────────────┐
-│                   FastAPI Backend                         │
-│  POST /api/audit/start   WS /api/audit/stream/{id}       │
-│  GET  /api/audit/{id}/status   GET /api/health            │
-│  Port 8000                                               │
-└────────────────────┬────────────────────────────────────┘
-                     │ Subprocess + stdout
-┌────────────────────▼────────────────────────────────────┐
-│                  Veritas Python Engine                    │
-│                                                          │
-│  ┌─────────┐  ┌──────────┐  ┌────────┐  ┌───────────┐  │
-│  │  Scout   │→│ Security │→│ Vision │→│   Graph    │   │
-│  │  Agent   │  │  Agent   │  │ Agent  │  │Investigator│  │
-│  └─────────┘  └──────────┘  └────────┘  └─────┬─────┘  │
-│                                                 │        │
-│  ┌──────────────────────────────────────────────▼─────┐  │
-│  │                  Judge Agent                        │  │
-│  │  Weighted scoring · Risk classification · Report    │  │
-│  └────────────────────────────────────────────────────┘  │
-│                                                          │
-│  NVIDIA NIM (LLM + VLM) · Playwright · LanceDB          │
-└──────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│                     Next.js 15 Frontend                       │
+│  Landing  ──▶  Live Audit (WS)  ──▶  Final Report            │
+│  History  ──▶  Compare (multi-audit diff)                     │
+│  Port 3000                                                    │
+└─────────────────────┬────────────────────────────────────────┘
+                      │ HTTP REST + WebSocket
+┌─────────────────────▼────────────────────────────────────────┐
+│                    FastAPI Backend                             │
+│  POST /api/audit/start          WS /api/audit/stream/{id}    │
+│  GET  /api/audit/{id}/status    GET /api/audits/history       │
+│  POST /api/audits/compare       GET /api/health               │
+│  Port 8000                                                    │
+│                   SQLAlchemy + SQLite DB                      │
+└─────────────────────┬────────────────────────────────────────┘
+                      │ Subprocess + IPC (Queue or Stdout)
+┌─────────────────────▼────────────────────────────────────────┐
+│                  Elliot Python Engine                         │
+│                                                               │
+│  ┌──────────┐  ┌──────────┐  ┌────────┐  ┌───────────────┐  │
+│  │  Scout   │→ │ Security │→ │ Vision │→ │ Graph Invest. │  │
+│  │  Agent   │  │  Agent   │  │ Agent  │  │    Agent      │  │
+│  └──────────┘  └──────────┘  └────────┘  └──────┬────────┘  │
+│                                                   │           │
+│  ┌────────────────────────────────────────────────▼────────┐  │
+│  │                     Judge Agent                          │  │
+│  │   Weighted Scoring · Risk Classification · Dual Verdict  │  │
+│  └──────────────────────────────────────────────────────────┘  │
+│                                                               │
+│  OSINT Engine · Darknet Module · Quality Consensus Engine    │
+│  NVIDIA NIM (LLM + VLM) · Playwright · LanceDB              │
+└───────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
 ## Prerequisites
 
-| Requirement | Minimum Version | Recommended |
-|-------------|----------------|-------------|
+| Requirement | Minimum | Recommended |
+|---|---|---|
 | **Python** | 3.12 | 3.13+ |
 | **Node.js** | 20.x | 22+ |
 | **npm** | 9.x | 10+ |
 | **Git** | 2.x | Latest |
 | **NVIDIA NIM API Key** | — | Required |
 
-> **Windows users**: Use PowerShell or CMD. Git Bash works too.  
+> **Windows users**: Use PowerShell or CMD. Git Bash works too.
 > **Linux/macOS users**: All commands work as-is.
 
 ---
@@ -91,14 +102,13 @@ Veritas is an AI-powered forensic web auditing platform that analyzes websites f
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/your-org/veritas.git
-cd veritas
+git clone https://github.com/your-org/elliot.git
+cd elliot
 ```
 
 ### 2. Set Up Python Environment
 
 ```bash
-# Create virtual environment
 python -m venv .venv
 
 # Activate (Windows)
@@ -108,7 +118,7 @@ python -m venv .venv
 source .venv/bin/activate
 
 # Install Python engine dependencies
-pip install -r veritas/requirements.txt
+pip install -r elliot/requirements.txt
 
 # Install Playwright browsers
 playwright install chromium
@@ -116,7 +126,7 @@ playwright install chromium
 
 ### 3. Configure Environment Variables
 
-Create the file `veritas/.env`:
+Create the file `elliot/.env`:
 
 ```env
 # ── NVIDIA NIM ──────────────────────────────
@@ -126,8 +136,15 @@ NIM_VISION_MODEL=nvidia/llama-3.2-nv-vision-90b-instruct
 NIM_VISION_FALLBACK=nvidia/llama-3.2-nv-vision-11b-instruct
 NIM_LLM_MODEL=nvidia/llama-3.3-nemotron-super-49b-v1
 
+# ── Database Persistence ────────────────────
+USE_DB_PERSISTENCE=true             # Set false to disable DB writes
+DATABASE_URL=sqlite+aiosqlite:///./elliot_dev.db
+
 # ── API Keys (optional) ────────────────────
-TAVILY_API_KEY=                       # Leave empty to disable web search
+TAVILY_API_KEY=                     # Web search (leave empty to disable)
+
+# ── IPC Mode ────────────────────────────────
+USE_QUEUE_IPC=false                 # true = multiprocessing.Queue, false = stdout
 
 # ── Tuning ──────────────────────────────────
 NIM_TIMEOUT=30
@@ -158,21 +175,36 @@ cd ..
 
 ### 6. Run (Development)
 
-Open **two terminals**:
-
-**Terminal 1 — Backend:**
-```bash
-cd backend
-uvicorn main:app --host 0.0.0.0 --port 8000
+**Option A — One-click (Windows):**
+```cmd
+start.bat
 ```
 
-**Terminal 2 — Frontend:**
+**Option B — Two terminals:**
+
 ```bash
+# Terminal 1 — Backend
+cd backend
+uvicorn main:app --host 0.0.0.0 --port 8000
+
+# Terminal 2 — Frontend
 cd frontend
 npm run dev
 ```
 
 Open **http://localhost:3000** in your browser.
+
+---
+
+## Application Routes
+
+| Route | Description |
+|---|---|
+| `/` | Landing page — URL input, tier selection, recent audits |
+| `/audit/[id]` | Live audit terminal — 16-panel real-time forensic view |
+| `/report/[id]` | Full forensic report — score, signals, patterns, security |
+| `/history` | Audit history browser with filtering and pagination |
+| `/compare` | Multi-audit comparison with trust score deltas |
 
 ---
 
@@ -193,32 +225,7 @@ cd backend
 gunicorn main:app -w 4 -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000
 ```
 
-### Docker (Optional)
-
-```dockerfile
-# backend/Dockerfile
-FROM python:3.13-slim
-WORKDIR /app
-COPY veritas/ ./veritas/
-COPY backend/ ./backend/
-COPY veritas/requirements.txt ./veritas/
-COPY backend/requirements.txt ./backend/
-RUN pip install -r veritas/requirements.txt -r backend/requirements.txt
-RUN playwright install chromium --with-deps
-WORKDIR /app/backend
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
-```
-
-```dockerfile
-# frontend/Dockerfile
-FROM node:22-alpine
-WORKDIR /app
-COPY frontend/package*.json ./
-RUN npm ci
-COPY frontend/ .
-RUN npm run build
-CMD ["npm", "start"]
-```
+### Docker
 
 ```yaml
 # docker-compose.yml
@@ -226,15 +233,15 @@ services:
   backend:
     build:
       context: .
-      dockerfile: backend/Dockerfile
+      dockerfile: Dockerfile
     ports:
       - "8000:8000"
-    env_file: veritas/.env
+    env_file: elliot/.env
 
   frontend:
     build:
-      context: .
-      dockerfile: frontend/Dockerfile
+      context: ./frontend
+      dockerfile: Dockerfile
     ports:
       - "3000:3000"
     depends_on:
@@ -250,18 +257,23 @@ services:
 ### REST Endpoints
 
 | Method | Path | Description |
-|--------|------|-------------|
+|---|---|---|
 | `GET` | `/api/health` | Service health check |
 | `POST` | `/api/audit/start` | Start a new audit |
-| `GET` | `/api/audit/{id}/status` | Get audit status |
+| `GET` | `/api/audit/{id}/status` | Get audit status + result |
+| `GET` | `/api/audit/{id}/screenshot/{sid}` | Serve a saved screenshot file |
+| `GET` | `/api/audits/history` | Paginated audit history (DB) |
+| `POST` | `/api/audits/compare` | Compare 2+ audits, compute trust deltas |
 
 #### POST /api/audit/start
 
-**Request Body:**
+**Request:**
 ```json
 {
   "url": "https://example.com",
-  "tier": "standard"
+  "tier": "standard_audit",
+  "verdict_mode": "expert",
+  "security_modules": ["security_headers", "phishing_db"]
 }
 ```
 
@@ -274,135 +286,253 @@ services:
 }
 ```
 
-### WebSocket
+#### POST /api/audits/compare
 
-Connect to `ws://localhost:8000/api/audit/stream/{audit_id}` to receive real-time events.
+**Request:**
+```json
+{ "audit_ids": ["vrts_aaa", "vrts_bbb"] }
+```
 
-**Event Types:**
+**Response:** Returns full audit data for each ID plus computed `trust_score_deltas` and `risk_level_changes` arrays.
 
-| Type | Payload | Description |
-|------|---------|-------------|
-| `phase_start` | `{ phase, name }` | Agent phase begins |
-| `phase_complete` | `{ phase, name }` | Agent phase finishes |
-| `finding` | `{ category, severity, title, description, evidence }` | Dark pattern or issue found |
-| `screenshot` | `{ url, data, timestamp }` | Base64 screenshot captured |
-| `stats_update` | `{ pages_crawled, patterns_found, ... }` | Live statistics |
-| `log_entry` | `{ level, message, timestamp, source }` | Technical log line |
-| `site_type` | `{ site_type, confidence }` | Detected site category |
-| `security_result` | `{ header, present, value }` | Security header check |
-| `audit_result` | `{ trust_score, risk_level, signals, ... }` | Final scored result |
-| `audit_complete` | `{ audit_id }` | Audit finished |
+#### GET /api/audits/history
+
+**Query params:** `limit` (1–100), `offset`, `status_filter`, `risk_level_filter`
+
+### WebSocket Events
+
+Connect to `ws://localhost:8000/api/audit/stream/{audit_id}`.
+
+| Event Type | Key Payload Fields | Description |
+|---|---|---|
+| `phase_start` | `phase`, `message`, `pct` | Agent phase begins |
+| `phase_complete` | `phase`, `summary`, `pct` | Agent phase finishes |
+| `phase_error` | `phase`, `error` | Agent phase failed |
+| `finding` | `finding` (object) | Dark pattern or security issue found |
+| `screenshot` | `url`, `image` (base64), `index`, `label` | Screenshot captured |
+| `stats_update` | `stats` (object) | Live stats refresh |
+| `log_entry` | `agent`, `message`, `level` | Technical log line |
+| `site_type` | `site_type`, `confidence` | Site category classified |
+| `security_result` | `module`, `result` | Security module output |
+| `dark_pattern_finding` | fields | Visual dark pattern from VLM |
+| `temporal_finding` | fields | Time-based content change detected |
+| `osint_result` | fields | OSINT query result |
+| `darknet_threat` | fields | Marketplace threat data |
+| `ioc_indicator` | fields | IOC indicator found |
+| `ioc_detection_complete` | fields | IOC scan complete |
+| `cvss_metrics` | `metrics[]` | CVSS metric values |
+| `mitre_technique_mapped` | `technique` | MITRE ATT&CK technique matched |
+| `threat_attribution` | fields | APT group attribution |
+| `exploitation_advisory` | fields | Exploitation advisory |
+| `knowledge_graph` | `graph` | Entity relationship graph data |
+| `graph_analysis` | fields | Graph anomaly analysis |
+| `site_classification` | fields | Detailed site classification |
+| `exploration_path` | `path` | Scout URL traversal path |
+| `captcha_detected` | fields | CAPTCHA detection result |
+| `form_detected` | fields | Form discovered during crawl |
+| `dom_health` | fields | DOM structure health report |
+| `corporate_entities` | `entities[]` | Business entity claims |
+| `green_flags` | `flags[]` | Positive trust signals |
+| `dual_verdict` | `technical`, `non_technical`, `trust_score` | Final dual verdict |
+| `audit_result` | `result` (full object) | Complete audit data |
+| `audit_complete` | `audit_id` | Audit finished |
+| `audit_error` | `error` | Fatal audit error |
+| `agent_personality` | `agent`, `context`, `params` | Agent behavioral event |
 
 ---
 
 ## Project Structure
 
 ```
-veritas/
-├── veritas/                        # Python auditing engine
-│   ├── __main__.py                 # CLI entry point
-│   ├── .env                        # Environment config
-│   ├── requirements.txt            # Python dependencies
+elliotAI/
+├── elliot/                        # Python auditing engine
+│   ├── __main__.py                 # CLI entry point (argparse)
+│   ├── __init__.py
+│   ├── .env                        # API keys + config
+│   ├── requirements.txt
 │   ├── agents/                     # AI agent modules
-│   │   ├── scout.py                # Phase 1: URL crawling & DOM extraction
+│   │   ├── scout.py                # Phase 1: Crawling, DOM, screenshots
+│   │   ├── security_agent.py       # Phase 2: Headers, forms, phishing
 │   │   ├── vision.py               # Phase 3: VLM screenshot analysis
-│   │   ├── graph_investigator.py   # Phase 4: Entity graph & link analysis
-│   │   └── judge.py                # Phase 5: Scoring & verdict
-│   ├── analysis/                   # Analysis modules
-│   │   ├── dom_analyzer.py         # HTML structure analysis
-│   │   ├── form_validator.py       # Form security checks
-│   │   ├── js_analyzer.py          # JavaScript behavior detection
-│   │   ├── meta_analyzer.py        # Meta tag & SEO checks
+│   │   ├── graph_investigator.py   # Phase 4: Entity graph + link analysis
+│   │   └── judge.py                # Phase 5: Scoring + dual verdict
+│   ├── analysis/                   # Deterministic analysis modules
+│   │   ├── dom_analyzer.py
+│   │   ├── form_validator.py
+│   │   ├── js_analyzer.py
+│   │   ├── meta_analyzer.py
 │   │   ├── pattern_matcher.py      # Dark pattern detection
-│   │   ├── phishing_checker.py     # Phishing indicator analysis
-│   │   ├── redirect_analyzer.py    # Redirect chain tracing
-│   │   ├── security_headers.py     # HTTP security headers
-│   │   └── temporal_analyzer.py    # Time-based content changes
-│   ├── config/                     # Configuration
-│   │   ├── settings.py             # App settings & env loading
-│   │   ├── trust_weights.py        # Signal weight definitions
-│   │   ├── dark_patterns.py        # Pattern category definitions
-│   │   └── site_types.py           # Site classification rules
+│   │   ├── phishing_checker.py
+│   │   ├── redirect_analyzer.py
+│   │   ├── security_headers.py
+│   │   ├── temporal_analyzer.py
+│   │   ├── exploitation_advisor.py
+│   │   ├── scenario_generator.py
+│   │   └── security/               # Extended security sub-modules
 │   ├── core/                       # Core infrastructure
 │   │   ├── orchestrator.py         # LangGraph pipeline orchestrator
 │   │   ├── nim_client.py           # NVIDIA NIM API client
-│   │   ├── evidence_store.py       # LanceDB evidence storage
-│   │   ├── web_searcher.py         # External search integration
-│   │   └── tor_client.py           # Tor network client
+│   │   ├── evidence_store.py       # LanceDB vector evidence
+│   │   ├── evidence.py
+│   │   ├── evidence_evidence.py
+│   │   ├── osint_enrichment.py     # OSINT enrichment pipeline
+│   │   ├── web_searcher.py         # Tavily web search
+│   │   ├── tor_client.py           # Tor network client
+│   │   ├── ipc.py                  # IPC mode selection (Queue vs Stdout)
+│   │   ├── circuit_breaker.py      # Resilience / rate-limit breaker
+│   │   ├── complexity_analyzer.py
+│   │   ├── degradation.py          # Graceful degradation logic
+│   │   ├── timeout_manager.py
+│   │   └── types.py                # Core type definitions
+│   ├── osint/                      # OSINT intelligence engine
+│   │   ├── orchestrator.py         # OSINT pipeline orchestrator
+│   │   ├── ioc_detector.py         # IOC indicator detection
+│   │   ├── cti.py                  # Cyber threat intelligence
+│   │   ├── reputation.py           # Domain reputation checks
+│   │   ├── attack_patterns.py      # Attack pattern recognition
+│   │   ├── vulnerability_mapper.py # CVE / vulnerability mapping
+│   │   ├── cache.py                # OSINT result caching
+│   │   └── types.py
+│   ├── darknet/                    # Darknet / Tor analysis
+│   │   ├── onion_detector.py       # Onion link detection
+│   │   ├── threat_scraper.py       # Marketplace threat data
+│   │   └── tor_client.py
+│   ├── quality/                    # Quality control layer
+│   │   ├── confidence_scorer.py    # Per-finding confidence scoring
+│   │   ├── consensus_engine.py     # Multi-signal consensus
+│   │   └── validation_state.py
+│   ├── db/                         # Database persistence
+│   │   ├── models.py               # SQLAlchemy ORM models
+│   │   ├── repositories.py         # Data access layer
+│   │   └── config.py
+│   ├── config/                     # Configuration
+│   │   ├── settings.py
+│   │   ├── trust_weights.py
+│   │   ├── dark_patterns.py
+│   │   └── site_types.py
 │   ├── reporting/                  # Report generation
-│   │   └── report_generator.py     # Markdown/JSON report builder
-│   └── tests/                      # Test suite
-│       └── test_veritas.py         # 20 unit tests
+│   │   └── report_generator.py     # PDF / HTML / Markdown reports
+│   ├── reporters/
+│   ├── cwe/                        # CWE data
+│   ├── ui/                         # Optional Streamlit UI
+│   └── tests/
 │
 ├── backend/                        # FastAPI API layer
-│   ├── main.py                     # CORS, routers, sys.path setup
-│   ├── requirements.txt            # fastapi, uvicorn, websockets
+│   ├── main.py
+│   ├── requirements.txt
 │   ├── routes/
-│   │   ├── audit.py                # REST + WebSocket endpoints
-│   │   └── health.py               # Health check
+│   │   ├── audit.py                # All audit REST + WS endpoints
+│   │   └── health.py
 │   └── services/
 │       └── audit_runner.py         # Subprocess wrapper for engine
 │
 ├── frontend/                       # Next.js 15 UI
-│   ├── src/
-│   │   ├── app/
-│   │   │   ├── layout.tsx          # Root layout (fonts, theme)
-│   │   │   ├── globals.css         # Veritas dark theme + animations
-│   │   │   ├── page.tsx            # Landing page
-│   │   │   ├── audit/[id]/page.tsx # Live audit view
-│   │   │   └── report/[id]/page.tsx# Forensic report view
-│   │   ├── components/
-│   │   │   ├── ambient/            # ParticleField background
-│   │   │   ├── landing/            # Hero, Signals, Carousel, Timeline, Grid
-│   │   │   ├── audit/              # AgentPipeline, Narrative, Evidence, Log
-│   │   │   ├── report/             # Score, Signals, Patterns, Security
-│   │   │   ├── data-display/       # Gauges, badges, charts, counters
-│   │   │   └── layout/             # Navbar
-│   │   ├── hooks/
-│   │   │   └── useAuditStream.ts   # WebSocket hook
-│   │   └── lib/
-│   │       ├── types.ts            # TypeScript interfaces
-│   │       ├── store.ts            # Zustand global state
-│   │       └── education.ts        # Educational content data
-│   └── package.json                # Next.js + React + deps
+│   └── src/
+│       ├── app/
+│       │   ├── layout.tsx
+│       │   ├── globals.css         # Cybercore dark theme + animations
+│       │   ├── page.tsx            # Landing page
+│       │   ├── audit/[id]/page.tsx # Live audit terminal (16 panels)
+│       │   ├── report/[id]/page.tsx# Full forensic report
+│       │   ├── history/page.tsx    # Audit history browser
+│       │   └── compare/page.tsx    # Multi-audit comparison
+│       ├── components/
+│       │   ├── terminal/           # 16 live terminal panel components
+│       │   │   ├── AgentProcState.tsx
+│       │   │   ├── CorporateEntitiesPanel.tsx
+│       │   │   ├── CvssRadar.tsx
+│       │   │   ├── DarknetOsintGrid.tsx
+│       │   │   ├── FinalAuditReport.tsx
+│       │   │   ├── KnowledgeGraph.tsx
+│       │   │   ├── MitreGrid.tsx
+│       │   │   ├── NodeDetailPanel.tsx
+│       │   │   ├── ScoutImagery.tsx
+│       │   │   ├── ScoutTelemetry.tsx
+│       │   │   ├── SysLogStream.tsx
+│       │   │   ├── TerminalPanel.tsx
+│       │   │   ├── ThreatIntelligenceMatrix.tsx
+│       │   │   ├── VerdictPanel.tsx
+│       │   │   └── VisionIntelligence.tsx
+│       │   ├── landing/            # CommandInput, RecentAudits, CapabilitiesGrid
+│       │   ├── providers/          # ChromaticProvider (agent-driven theming)
+│       │   ├── ambient/            # ParticleField background
+│       │   ├── audit/
+│       │   ├── report/
+│       │   ├── data-display/
+│       │   ├── layout/             # Navbar
+│       │   └── ui/                 # shadcn/ui primitives
+│       ├── hooks/
+│       │   └── useAuditStream.ts   # WebSocket hook with reconnect logic
+│       ├── config/
+│       │   └── agents.ts           # AGENT_ORDER, AgentId type
+│       └── lib/
+│           ├── types.ts            # 60+ TypeScript interfaces
+│           ├── store.ts            # Zustand store (~1300 lines, 40+ state fields)
+│           └── education.ts
 │
-├── USER_GUIDE.md                   # Local quick-start guide
-└── README.md                       # This file
+├── start.bat                       # One-click Windows launcher
+├── stop.bat                        # Kill all servers
+├── install_dependencies.bat        # Windows dependency installer
+├── install_dependencies.sh         # Unix dependency installer
+├── kill_port.py                    # Port cleanup utility
+├── Dockerfile
+├── pytest.ini
+├── README.md
+└── USER_GUIDE.md
 ```
 
 ---
 
 ## Tech Stack
 
-### Backend
+### Backend / Engine
 
 | Technology | Purpose |
-|-----------|---------|
+|---|---|
 | **Python 3.12+** | Core engine runtime |
-| **LangChain** | LLM orchestration framework |
-| **LangGraph** | Multi-agent state machine |
-| **NVIDIA NIM** | LLM + Vision Language Model API |
-| **Playwright** | Headless browser automation |
-| **LanceDB** | Vector database for evidence |
+| **LangChain + LangGraph** | Multi-agent state machine orchestration |
+| **NVIDIA NIM** | LLM reasoning + VLM screenshot analysis |
+| **Playwright** | Headless Chromium automation |
+| **LanceDB** | Vector database for evidence storage |
 | **sentence-transformers** | Text embeddings |
 | **NetworkX** | Entity relationship graphs |
 | **FastAPI** | REST + WebSocket API |
+| **SQLAlchemy (async)** | ORM — audit DB persistence |
+| **aiosqlite** | Async SQLite adapter |
+| **BeautifulSoup4** | HTML/DOM parsing |
 | **Uvicorn** | ASGI server |
-| **BeautifulSoup4** | HTML parsing |
 
 ### Frontend
 
 | Technology | Purpose |
-|-----------|---------|
-| **Next.js 15** | React meta-framework (App Router, Turbopack) |
+|---|---|
+| **Next.js 15** | App Router, Turbopack, SSR |
 | **React 19** | UI library |
-| **TypeScript 5** | Type safety |
+| **TypeScript 5** | Type safety (60+ interfaces) |
 | **Tailwind CSS 4** | Utility-first styling |
 | **shadcn/ui** | Component library (New York style) |
 | **Framer Motion** | Animations & transitions |
-| **Zustand** | Global state management |
+| **Zustand** | Global state (40+ fields, 1300 lines) |
 | **Recharts** | Radar & bar charts |
 | **Lucide React** | Icon library |
+
+---
+
+## Audit Tiers
+
+| Tier | Key | Approx. Duration | Description |
+|---|---|---|---|
+| Quick Scan | `quick_scan` | ~60 s | DNS, headers, visible patterns |
+| Standard Audit | `standard_audit` | ~3 min | Full 5-agent pipeline + screenshots |
+| Deep Forensic | `deep_forensic` | ~5 min | Temporal analysis, extended crawl, graph |
+| Darknet Investigation | `darknet_investigation` | ~8 min | All above + Tor/darknet threat intelligence |
+
+## Verdict Modes
+
+| Mode | Description |
+|---|---|
+| `expert` | Full forensic narrative with CVSS, MITRE ATT&CK, IOCs, technical details |
+| `simple` | Plain-English consumer-friendly summary and actionable advice |
 
 ---
 
@@ -411,11 +541,10 @@ veritas/
 ### Python Engine Tests
 
 ```bash
-# Activate venv first
-python -m pytest veritas/tests/test_veritas.py -v
+python -m pytest elliot/tests/test_elliot.py -v
 ```
 
-Expected output: **20 passed**.
+Expected: **20 passed**.
 
 ### Frontend Build Verification
 
@@ -424,69 +553,86 @@ cd frontend
 npm run build
 ```
 
-Expected output: 3 routes generated (`/`, `/audit/[id]`, `/report/[id]`), 0 errors.
+Expected: 5 routes generated, 0 errors.
 
 ---
 
-## Configuration
-
-### Environment Variables
+## Configuration Reference
 
 | Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
+|---|---|---|---|
 | `NVIDIA_API_KEY` | **Yes** | — | NVIDIA NIM API key |
-| `NVIDIA_NIM_ENDPOINT` | No | `https://integrate.api.nvidia.com/v1` | NIM API base URL |
-| `NIM_VISION_MODEL` | No | `nvidia/llama-3.2-nv-vision-90b-instruct` | Primary VLM model |
-| `NIM_VISION_FALLBACK` | No | `nvidia/llama-3.2-nv-vision-11b-instruct` | Fallback VLM model |
-| `NIM_LLM_MODEL` | No | `nvidia/llama-3.3-nemotron-super-49b-v1` | LLM model for reasoning |
-| `TAVILY_API_KEY` | No | — | Web search API key |
-| `NIM_TIMEOUT` | No | `30` | API request timeout (seconds) |
-| `NIM_RETRY_COUNT` | No | `2` | API retry attempts |
-| `NIM_REQUESTS_PER_MINUTE` | No | `10` | Rate limiter |
-| `MAX_ITERATIONS` | No | `5` | Max LangGraph iterations |
-| `MAX_PAGES_PER_AUDIT` | No | `10` | Max pages to crawl per audit |
-| `TEMPORAL_DELAY` | No | `10` | Delay between temporal snapshots (seconds) |
-| `CONFIDENCE_THRESHOLD` | No | `0.6` | Minimum confidence for findings |
+| `NVIDIA_NIM_ENDPOINT` | No | `https://integrate.api.nvidia.com/v1` | NIM base URL |
+| `NIM_VISION_MODEL` | No | `nvidia/llama-3.2-nv-vision-90b-instruct` | Primary VLM |
+| `NIM_VISION_FALLBACK` | No | `nvidia/llama-3.2-nv-vision-11b-instruct` | Fallback VLM |
+| `NIM_LLM_MODEL` | No | `nvidia/llama-3.3-nemotron-super-49b-v1` | LLM for reasoning |
+| `USE_DB_PERSISTENCE` | No | `true` | Enable SQLite audit history |
+| `DATABASE_URL` | No | `sqlite+aiosqlite:///./elliot_dev.db` | DB connection string |
+| `USE_QUEUE_IPC` | No | `false` | Use multiprocessing.Queue for IPC |
+| `TAVILY_API_KEY` | No | — | Web search (optional) |
+| `NIM_TIMEOUT` | No | `30` | API timeout (seconds) |
+| `NIM_RETRY_COUNT` | No | `2` | API retry count |
+| `NIM_REQUESTS_PER_MINUTE` | No | `10` | Rate limit |
+| `MAX_PAGES_PER_AUDIT` | No | `10` | Max pages to crawl |
+| `CONFIDENCE_THRESHOLD` | No | `0.6` | Min confidence for findings |
 | `BROWSER_HEADLESS` | No | `true` | Run browser headlessly |
-
-### Audit Tiers
-
-| Tier | Duration | Description |
-|------|----------|-------------|
-| `quick` | ~60s | Basic checks — DNS, headers, visible patterns |
-| `standard` | ~3min | Full pipeline — all 5 agents, screenshots, scoring |
-| `deep` | ~5min | Deep forensic — temporal analysis, extended crawl, graph investigation |
 
 ---
 
 ## Troubleshooting
 
 | Issue | Solution |
-|-------|----------|
-| `ModuleNotFoundError: veritas` | Run backend from the `backend/` directory — `main.py` adds parent path automatically |
+|---|---|
+| `ModuleNotFoundError: elliot` | Run backend from `backend/` dir — `main.py` adds parent path automatically |
 | `playwright._impl._errors.Error` | Run `playwright install chromium` inside the venv |
-| NVIDIA NIM 401/403 | Verify `NVIDIA_API_KEY` in `veritas/.env` |
-| NVIDIA NIM 404 | Model name may have changed. Check [NVIDIA NIM Catalog](https://build.nvidia.com/explore/discover) |
-| Port already in use | Kill existing process or change port: `uvicorn main:app --port 8001` |
-| WebSocket fails to connect | Ensure backend is running before accessing the audit page |
-| Frontend blank page | Check browser console. Ensure `npm install` completed without errors |
-| Python 3.14 `CancelledError` | Already patched in orchestrator.py — uses `asyncio.exceptions.CancelledError` |
+| NVIDIA NIM 401/403 | Verify `NVIDIA_API_KEY` in `elliot/.env` |
+| NVIDIA NIM 404 | Check [NVIDIA NIM Catalog](https://build.nvidia.com/explore/discover) for current model names |
+| Port already in use | Run `kill_port.py` or `taskkill /F /PID <pid>` |
+| WebSocket fails | Ensure backend is running before opening the audit page |
+| Frontend blank page | Run `npm install` in `frontend/`, check browser console |
 | `UnicodeEncodeError` on Windows | Already patched — engine uses `utf-8` encoding explicitly |
-| LanceDB lock errors | Delete `veritas/data/vectordb/` and restart |
+| LanceDB lock errors | Delete `elliot/data/vectordb/` and restart |
+| DB errors on startup | SQLite DB auto-created at `elliot_dev.db`. Delete and restart to reset. |
+| Audit history empty | Ensure `USE_DB_PERSISTENCE=true` in `elliot/.env` |
 
 ---
 
-## How It Works
+## How It Works — Deep Dive
 
-1. **Scout Agent** — Navigates to the target URL using Playwright, captures screenshots, extracts full DOM, follows links up to `MAX_PAGES_PER_AUDIT`
+1. **Scout Agent** — Playwright navigates to the target URL using a full headless Chromium browser. It waits for network idle, captures full-page screenshots, extracts the rendered DOM, detects forms and CAPTCHAs, and crawls linked pages up to `MAX_PAGES_PER_AUDIT`.
 
-2. **Security Agent** — Checks HTTP response headers (CSP, HSTS, X-Frame-Options, etc.), analyzes forms for HTTPS/autocomplete, runs phishing heuristics, traces redirect chains
+2. **Security Agent** — Runs 6 deterministic analysis modules: HTTP security headers (CSP, HSTS, X-Frame-Options, etc.), form security (HTTPS submission, autocomplete), phishing heuristics, JS behavior analysis, redirect chain tracing, and meta tag analysis.
 
-3. **Vision Agent** — Sends screenshots to NVIDIA NIM VLM for visual analysis — detects fake urgency banners, misleading buttons, hidden elements, deceptive layouts
+3. **Vision Agent** — Sends screenshots to NVIDIA NIM VLMs. Detects deceptive visual patterns invisible in raw HTML: fake countdowns, camouflaged decline buttons, urgency banners, misleading layouts, and hidden subscription disclosures.
 
-4. **Graph Investigator** — Builds entity relationship graph (domain ↔ registrar ↔ hosting ↔ certificates), identifies inconsistencies, checks domain age and reputation
+4. **Graph Investigator** — Builds a NetworkX entity graph: domain ↔ registrar ↔ ASN ↔ hosting ↔ SSL issuer. Cross-references OSINT: IOC indicators, domain reputation, APT group attributions, CVSS scores, MITRE ATT&CK technique matches, and darknet threat mentions.
 
-5. **Judge Agent** — Aggregates all signals with configurable weights, applies site-type-specific scoring adjustments, classifies risk level, generates natural-language verdict and actionable recommendations
+5. **Quality Consensus Engine** — A confidence scorer and consensus engine run across all findings before the Judge, filtering low-confidence signals and resolving contradictions between agents.
+
+6. **Judge Agent** — Aggregates all evidence with configurable signal weights. Applies site-type-specific scoring adjustments. Produces both a **technical forensic verdict** (with technical IOCs, CVSS vector, CWE entries, remediation steps) and a **non-technical executive summary** (plain English, consumer-facing advice).
+
+---
+
+## CLI Usage
+
+The engine can be run directly from the command line without the frontend:
+
+```bash
+# Standard audit
+python -m elliot https://suspicious-site.com
+
+# Deep forensic with PDF report
+python -m elliot https://store.example.com --tier deep_forensic --report pdf
+
+# Quick scan with JSON output
+python -m elliot https://example.com --tier quick_scan --json
+
+# Expert vs simple verdict
+python -m elliot https://example.com --verdict-mode simple
+
+# Custom security modules
+python -m elliot https://example.com --security-modules security_headers,phishing_db,js_analysis
+```
 
 ---
 
@@ -494,11 +640,11 @@ Expected output: 3 routes generated (`/`, `/audit/[id]`, `/report/[id]`), 0 erro
 
 1. Fork the repository
 2. Create a feature branch: `git checkout -b feature/my-feature`
-3. Commit changes: `git commit -m "Add my feature"`
+3. Commit: `git commit -m "feat: my feature"`
 4. Push: `git push origin feature/my-feature`
 5. Open a Pull Request
 
-Please ensure all 20 Python tests pass and `npm run build` succeeds before submitting.
+Ensure all 20 Python tests pass and `npm run build` succeeds before submitting.
 
 ---
 
@@ -509,5 +655,5 @@ MIT License. See [LICENSE](LICENSE) for details.
 ---
 
 <p align="center">
-  Built with NVIDIA NIM · LangGraph · Next.js · FastAPI
+  Built with NVIDIA NIM · LangGraph · Next.js 15 · FastAPI · SQLAlchemy
 </p>

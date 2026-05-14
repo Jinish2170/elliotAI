@@ -1,0 +1,1504 @@
+"""
+Elliot Agent 2 — Visual Forensics Unit (Computer Vision)
+
+The "Eyes" of Elliot. Analyzes screenshots captured by the Scout agent
+using NVIDIA NIM Vision-Language Models to detect dark patterns.
+
+Pipeline:
+    1. Receives screenshot paths from Scout
+    2. Selects relevant VLM prompts from the dark pattern taxonomy
+    3. Sends each screenshot to NIM VLM with forensic prompts
+    4. Parses structured JSON responses
+    5. Computes per-category and aggregate visual scores
+    6. Returns a VisionResult with all findings + score
+
+Fallback chain (inherited from NIMClient):
+    NIM VLM Primary → NIM VLM Fallback → Tesseract OCR + Heuristics → No-AI stub
+
+Patterns from:
+    - config/dark_patterns.py → DARK_PATTERN_TAXONOMY (prompt source)
+    - core/nim_client.py → analyze_image(), batch_analyze_image()
+"""
+
+import enum
+import json
+import re
+import logging
+import time
+from dataclasses import dataclass, field
+from typing import List, Optional
+
+from elliot.config.dark_patterns import (DARK_PATTERN_TAXONOMY, get_all_vlm_prompts,
+                                  get_severity_weight, get_temporal_categories)
+from elliot.core.nim_client import NIMClient
+
+# Lazy imports for optional modules (avoid circular import with TemporalFinding)
+# from analysis.temporal_analyzer import TemporalAnalyzer  — imported in method
+# from analysis.pattern_matcher import PatternMatcher       — imported in method
+
+logger = logging.getLogger("elliot.vision")
+
+
+# ============================================================
+# Pass Priority Enumeration
+# ============================================================
+
+class VisionPassPriority(enum.Enum):
+    """Priority levels for Vision Agent VLM passes to enable intelligent skipping."""
+
+    CRITICAL = 1      # Always run: Pass 1 (quick threat), Pass 5 (final synthesis)
+    CONDITIONAL = 2   # Run if prior findings exist: Pass 2 (dark patterns), Pass 4 (cross-reference)
+    EXPENSIVE = 3     # Run only if temporal changes detected: Pass 3 (temporal dynamics)
+
+
+def should_run_pass(
+    pass_num: int,
+    prior_findings: list,
+    has_temporal_changes: bool = False
+) -> bool:
+    """
+    Determine if a VLM pass should execute based on cost/benefit analysis.
+
+    Args:
+        pass_num: Pass identifier (1-5 for Vision Agent passes)
+        prior_findings: List of findings from prior runs (for CONDITIONAL passes)
+        has_temporal_changes: Whether temporal changes were detected (for EXPENSIVE passes)
+
+    Returns:
+        True if the pass should execute, False to skip
+    """
+    pass_priority = {
+        1: VisionPassPriority.CRITICAL,
+        2: VisionPassPriority.CONDITIONAL,
+        3: VisionPassPriority.EXPENSIVE,
+        4: VisionPassPriority.CONDITIONAL,
+        5: VisionPassPriority.CRITICAL
+    }.get(pass_num, VisionPassPriority.CRITICAL)
+
+    if pass_priority == VisionPassPriority.CRITICAL:
+        return True
+    elif pass_priority == VisionPassPriority.CONDITIONAL:
+        return len(prior_findings) > 0
+    elif pass_priority == VisionPassPriority.EXPENSIVE:
+        return has_temporal_changes
+
+    return True
+
+
+def get_confidence_tier(confidence_score: float) -> str:
+    """Map confidence score to 5-tier alert level.
+
+    Args:
+        confidence_score: Confidence value (0-100)
+
+    Returns:
+        String tier: 'low', 'moderate', 'suspicious', 'likely', 'critical'
+    """
+    CONFIDENCE_TIERS = {
+        (0, 20): 'low',          # Warning only
+        (20, 40): 'moderate',    # Suspicious
+        (40, 60): 'suspicious',  # Likely problematic
+        (60, 80): 'likely',      # Confirmed
+        (80, 100): 'critical'    # Definite dark pattern
+    }
+
+    for (min_val, max_val), tier in CONFIDENCE_TIERS.items():
+        if min_val <= confidence_score < max_val:
+            return tier
+    if confidence_score >= 100:
+        return 'critical'
+    return 'low'
+
+
+def get_pass_prompt(pass_num: int, temporal_result: Optional[dict] = None) -> str:
+    """Get appropriate prompt for pass number, injecting temporal context.
+
+    Args:
+        pass_num: Pass identifier (1-5 for Vision Agent passes)
+        temporal_result: Optional temporal analysis result for Pass 3 context injection
+
+    Returns:
+        The full prompt string for this pass, with temporal context if applicable
+    """
+    from elliot.config.dark_patterns import VISION_PASS_PROMPTS
+
+    base_prompt = VISION_PASS_PROMPTS.get(pass_num, "")
+
+    # Inject temporal context into Pass 3
+    if pass_num == 3 and temporal_result:
+        temporal_context = f"""
+        TEMPORAL CONTEXT:
+        - SSIM score: {temporal_result.get('ssim_score', 0):.3f}
+        - Has temporal changes: {temporal_result.get('has_changes', False)}
+        - Changed regions: {len(temporal_result.get('changed_regions', []))}
+        """
+        return base_prompt + temporal_context
+
+    return base_prompt
+
+
+# ============================================================
+# Vision Event Emitter
+# ============================================================
+
+class VisionEventEmitter:
+    """Manages vision WebSocket events with throttling and batching.
+
+    Prevents WebSocket flooding during 5-pass analysis by:
+    - Throttling: Max 5 events/sec
+    - Batching: Up to 5 findings per event
+    - Event queuing: Accumulates events when throttled
+    """
+
+    def __init__(self, max_events_per_sec: int = 5, batch_size: int = 5, progress_emitter=None):
+        """
+        Initialize the event emitter with rate limiting.
+
+        Args:
+            max_events_per_sec: Maximum number of events to emit per second
+            batch_size: Maximum number of findings to batch in a single event
+            progress_emitter: Optional ProgressEmitter for WebSocket delivery
+        """
+        self.max_events_per_sec = max_events_per_sec
+        self.batch_size = batch_size
+        self.event_queue: List[dict] = []
+        self.last_emit_time = 0.0
+        self.progress_emitter = progress_emitter
+        self.logger = logging.getLogger("elliot.vision_emitter")
+
+    async def emit_vision_start(self, total_screenshots: int) -> None:
+        """Emit event when vision phase starts."""
+        await self._emit({
+            "type": "vision_start",
+            "screenshots": total_screenshots,
+            "passes": 5
+        })
+
+    async def emit_pass_start(self, pass_num: int, description: str, screenshots_in_pass: int) -> None:
+        """Emit event when a specific pass starts."""
+        await self._emit({
+            "type": "vision_pass_start",
+            "pass": pass_num,
+            "description": description,
+            "screenshots": screenshots_in_pass
+        })
+
+    async def emit_pass_findings(self, pass_num: int, findings: List["DarkPatternFinding"]) -> None:
+        """
+        Emit findings for a pass, with batching.
+
+        Args:
+            pass_num: Pass identifier (1-5)
+            findings: List of DarkPatternFinding objects
+        """
+        if not findings:
+            return
+
+        # Batch findings (up to batch_size per event)
+        batches = [findings[i:i+self.batch_size] for i in range(0, len(findings), self.batch_size)]
+
+        for batch in batches:
+            event = {
+                "type": "vision_pass_findings",
+                "pass": pass_num,
+                "findings": [self._finding_to_dict(f) for f in batch],
+                "count": len(batch),
+                "batch": True
+            }
+            await self._emit(event)
+
+    async def emit_pass_complete(self, pass_num: int, findings_count: int, confidence: float) -> None:
+        """Emit event when a pass completes."""
+        await self._emit({
+            "type": "vision_pass_complete",
+            "pass": pass_num,
+            "findings_count": findings_count,
+            "confidence": confidence
+        })
+
+    async def emit_vision_complete(self, total_findings: int, passes_completed: int) -> None:
+        """Emit event when vision phase completes."""
+        await self._emit({
+            "type": "vision_complete",
+            "findings": total_findings,
+            "passes_completed": passes_completed
+        })
+
+    async def _emit(self, event: dict) -> None:
+        """
+        Emit event with rate limiting.
+
+        If the rate limit is exceeded, events are queued and will be
+        flushed when the rate limit allows.
+
+        Args:
+            event: Event dictionary to emit
+        """
+        now = time.time()
+        time_since_last = now - self.last_emit_time
+        min_interval = 1.0 / self.max_events_per_sec
+
+        if time_since_last >= min_interval:
+            await self._do_emit(event)
+            self.last_emit_time = now
+        else:
+            # Event rate limited - queue it
+            self.event_queue.append(event)
+            self.logger.debug(
+                f"Event queued (rate limited): {event.get('type')} "
+                f"(time since last: {time_since_last:.3f}s, "
+                f"min interval: {min_interval:.3f}s)"
+            )
+
+    async def _do_emit(self, event: dict) -> None:
+        """
+        Actually emit event via progress emitter.
+
+        Uses the standard ##PROGRESS: stdout marker format that
+        AuditRunner catches and converts to WebSocket events.
+        Also routes through ProgressEmitter if available for WebSocket delivery.
+
+        Args:
+            event: Event dictionary to emit
+        """
+        print(f"##PROGRESS:{json.dumps(event)}", flush=True)
+        if self.progress_emitter is not None:
+            try:
+                await self.progress_emitter.emit(event)
+            except Exception:
+                pass  # stdout path is the canonical IPC mechanism
+
+    async def flush_queue(self) -> None:
+        """Flush all accumulated queued events.
+
+        This method should be called after passes are complete
+        to ensure all pending events are transmitted.
+        """
+        while self.event_queue:
+            event = self.event_queue.pop(0)
+            await self._do_emit(event)
+            self.last_emit_time = time.time()
+
+    def _finding_to_dict(self, finding: "DarkPatternFinding") -> dict:
+        """
+        Convert a DarkPatternFinding to a dictionary for JSON serialization.
+
+        Args:
+            finding: DarkPatternFinding object
+
+        Returns:
+            Dictionary representation of the finding
+        """
+        return {
+            "id": f"{finding.category_id}_{finding.pattern_type}_{finding.confidence:.2f}",
+            "category": finding.category_id,
+            "pattern_type": finding.pattern_type,
+            "confidence": finding.confidence,
+            "severity": finding.severity,
+            "description": finding.evidence,
+            "plain_english": finding.evidence,
+            "screenshot_index": 0,  # Will be filled by frontend if needed
+        }
+
+    def get_queue_size(self) -> int:
+        """Get the number of events currently in the queue."""
+        return len(self.event_queue)
+
+
+# ============================================================
+# Data Structures
+# ============================================================
+
+@dataclass
+class DarkPatternFinding:
+    """A single detected dark pattern instance."""
+    category_id: str          # e.g., "visual_interference"
+    pattern_type: str         # e.g., "misdirected_click"
+    confidence: float         # 0.0 to 1.0
+    severity: str             # "low", "medium", "high", "critical"
+    evidence: str             # Description of what was found
+    screenshot_path: str      # Which screenshot this was detected in
+    raw_vlm_response: str     # Full VLM response text for audit trail
+    model_used: str           # Which model produced this finding
+    fallback_mode: bool       # True if not using primary NIM VLM
+
+
+@dataclass
+class TemporalFinding:
+    """Result of comparing Screenshot_A (t0) vs Screenshot_B (t+delay)."""
+    finding_type: str         # "fake_countdown", "fake_scarcity", "consistent"
+    value_at_t0: str          # Timer/counter value at first capture
+    value_at_t_delay: str     # Timer/counter value at second capture
+    delta_seconds: float      # Time between captures
+    is_suspicious: bool       # True if the values suggest deception
+    explanation: str           # Human-readable explanation
+    confidence: float          # 0.0 to 1.0
+
+
+@dataclass
+class VisionResult:
+    """Complete result from the Visual Forensics analysis."""
+    # Findings
+    dark_patterns: list[DarkPatternFinding] = field(default_factory=list)
+    temporal_findings: list[TemporalFinding] = field(default_factory=list)
+
+    # Scores (0.0 to 1.0 — higher = MORE trustworthy / fewer dark patterns)
+    visual_score: float = 1.0
+    temporal_score: float = 1.0
+
+    # Stats
+    screenshots_analyzed: int = 0
+    prompts_sent: int = 0
+    nim_calls_made: int = 0
+    cache_hits: int = 0
+    fallback_used: bool = False
+
+    # Diagnostics
+    errors: list[str] = field(default_factory=list)
+
+    @property
+    def total_patterns_found(self) -> int:
+        return len(self.dark_patterns)
+
+    @property
+    def critical_patterns(self) -> list[DarkPatternFinding]:
+        return [p for p in self.dark_patterns if p.severity == "critical"]
+
+    @property
+    def has_fake_timers(self) -> bool:
+        return any(
+            tf.finding_type == "fake_countdown" and tf.is_suspicious
+            for tf in self.temporal_findings
+        )
+
+    @property
+    def temporal_finding_ids(self) -> list[str]:
+        """IDs of suspicious temporal findings — used by trust scorer override rules."""
+        return [
+            tf.finding_type for tf in self.temporal_findings if tf.is_suspicious
+        ]
+
+
+# ============================================================
+# Vision Agent
+# ============================================================
+
+class VisionAgent:
+    """
+    Agent 2: Analyzes screenshots for dark patterns using VLM.
+
+    Usage:
+        agent = VisionAgent()
+
+        result = await agent.analyze(
+            screenshots=["evidence/abc_t0.jpg", "evidence/abc_t10.jpg", "evidence/abc_fullpage.jpg"],
+            screenshot_labels=["t0", "t10", "fullpage"],
+            url="https://suspicious-site.com"
+        )
+
+        print(f"Dark patterns found: {result.total_patterns_found}")
+        print(f"Visual score: {result.visual_score}")
+        print(f"Fake timers: {result.has_fake_timers}")
+    """
+
+    def __init__(self, nim_client: Optional[NIMClient] = None, progress_emitter: Optional["ProgressEmitter"] = None):
+        self._nim = nim_client or NIMClient()
+        self._temporal_categories = set(get_temporal_categories())
+        # Optional pattern matcher for batched prompt efficiency
+        self._pattern_matcher = None
+        try:
+            from elliot.analysis.pattern_matcher import PatternMatcher
+            self._pattern_matcher = PatternMatcher()
+        except Exception:
+            logger.debug("PatternMatcher not available — using individual prompts")
+
+        # Vision event emitter for real-time progress streaming
+        self.event_emitter = VisionEventEmitter(progress_emitter=progress_emitter)
+
+        # Progress emitter for WebSocket streaming (token-bucket rate limited)
+        self.progress_emitter = progress_emitter
+
+        # Temporal analyzer (initialized with content type during analysis)
+        self.temporal_analyzer = None
+
+    # ================================================================
+    # Public: Full Analysis Pipeline
+    # ================================================================
+
+    async def analyze(
+        self,
+        screenshots: list[str],
+        screenshot_labels: list[str],
+        url: str = "",
+        categories: Optional[list[str]] = None,
+        site_type: str = "",
+        use_5_pass_pipeline: bool = False,
+        max_passes: int = 5,
+        nim_budget: Optional[int] = None,
+    ) -> VisionResult:
+        """
+        Full visual forensics analysis on a set of screenshots.
+
+        Args:
+            screenshots: List of file paths to screenshot images
+            screenshot_labels: Labels matching screenshots (e.g., ["t0", "t10", "fullpage"])
+            url: The target URL (for logging / context)
+            categories: Specific dark pattern categories to check. None = check all.
+            site_type: Site type for priority pattern ordering.
+            use_5_pass_pipeline: If True, use the new 5-pass pipeline with
+                intelligent pass skipping, temporal analysis, and event streaming.
+                Default: False for backward compatibility.
+
+        Returns:
+            VisionResult with all findings and scores
+        """
+        # Use new 5-pass pipeline if requested
+        if use_5_pass_pipeline:
+            logger.info("Using 5-pass enhanced vision pipeline")
+            return await self.analyze_5_pass(screenshots, url, max_passes=max_passes, nim_budget=nim_budget)
+
+        # Resolve budget from tier config if not explicitly passed
+        if nim_budget is None:
+            from elliot.config import settings as _s
+            _tier = _s.AUDIT_TIERS[_s.DEFAULT_TIER]
+            nim_budget = _tier.get("vision_nim", _tier["nim_calls"])
+
+        # Original analysis path (backward compatible)
+        self._nim_budget = nim_budget  # Store for budget checking in sub-methods
+        result = VisionResult()
+
+        if not screenshots:
+            logger.warning("VisionAgent.analyze called with no screenshots")
+            return result
+
+        # Determine which categories to analyze
+        # Site-type-aware: prioritise categories relevant to the site type
+        active_taxonomy = DARK_PATTERN_TAXONOMY
+        if categories:
+            active_taxonomy = {
+                k: v for k, v in DARK_PATTERN_TAXONOMY.items() if k in categories
+            }
+        elif site_type:
+            # Reorder so priority categories for this site type are analysed first
+            try:
+                from elliot.config.site_types import SITE_TYPE_PROFILES, SiteType
+                st = SiteType(site_type)
+                profile = SITE_TYPE_PROFILES.get(st)
+                if profile and profile.priority_patterns:
+                    priority = [p for p in profile.priority_patterns if p in active_taxonomy]
+                    rest = [k for k in active_taxonomy if k not in priority]
+                    ordered = {k: active_taxonomy[k] for k in priority + rest}
+                    active_taxonomy = ordered
+                    logger.info(f"Reordered categories for site_type={site_type}: priority={priority}")
+            except Exception:
+                pass  # Ignore — use default order
+
+        logger.info(
+            f"Starting visual analysis of {url} | "
+            f"screenshots={len(screenshots)} | categories={list(active_taxonomy.keys())}"
+        )
+
+        # -----------------------------------------------------------
+        # Phase 1: Static analysis (non-temporal) on fullpage or t0
+        # -----------------------------------------------------------
+        primary_screenshot = self._select_primary_screenshot(
+            screenshots, screenshot_labels
+        )
+        if primary_screenshot:
+            await self._analyze_static_patterns(
+                primary_screenshot, active_taxonomy, result
+            )
+
+        # -----------------------------------------------------------
+        # Phase 2: Temporal analysis (Screenshot_A vs Screenshot_B)
+        #          VLM + pixel/OCR heuristic cross-validation
+        # -----------------------------------------------------------
+        t0_path, t_delay_path = self._find_temporal_pair(
+            screenshots, screenshot_labels
+        )
+        if t0_path and t_delay_path:
+            # Phase 2a: VLM-based temporal analysis
+            await self._analyze_temporal_patterns(
+                t0_path, t_delay_path, screenshot_labels, result
+            )
+
+            # Phase 2b: Heuristic temporal analysis (pixel-diff + OCR)
+            #           Acts as ground-truth validation for VLM claims
+            try:
+                from elliot.analysis.temporal_analyzer import TemporalAnalyzer
+                heuristic_analyzer = TemporalAnalyzer()
+                heuristic_findings = heuristic_analyzer.compare_screenshots(
+                    t0_path, t_delay_path, delay_seconds=10.0
+                )
+                for hf in heuristic_findings:
+                    if hf.is_suspicious:
+                        # Check if VLM already caught this
+                        already_found = any(
+                            tf.finding_type == hf.finding_type and tf.is_suspicious
+                            for tf in result.temporal_findings
+                        )
+                        if not already_found:
+                            # Heuristic found something VLM missed — add it
+                            hf.explanation += " (detected by pixel/OCR heuristics)"
+                            result.temporal_findings.append(hf)
+                            result.dark_patterns.append(DarkPatternFinding(
+                                category_id="false_urgency",
+                                pattern_type=hf.finding_type,
+                                confidence=hf.confidence,
+                                severity="high",
+                                evidence=hf.explanation,
+                                screenshot_path=t0_path,
+                                raw_vlm_response="[heuristic-temporal-analyzer]",
+                                model_used="pixel_ocr_heuristic",
+                                fallback_mode=True,
+                            ))
+                            logger.info(f"Heuristic temporal finding: {hf.finding_type}")
+                        else:
+                            logger.debug(f"VLM+heuristic agree on: {hf.finding_type}")
+            except Exception as e:
+                logger.debug(f"Heuristic temporal analysis unavailable: {e}")
+        else:
+            logger.debug("No temporal screenshot pair found — skipping temporal analysis")
+            result.temporal_score = 0.5  # Neutral — no data to judge
+
+        # -----------------------------------------------------------
+        # Phase 3: Compute visual score from findings
+        # -----------------------------------------------------------
+        result.visual_score = self._compute_visual_score(result.dark_patterns)
+        result.temporal_score = self._compute_temporal_score(result.temporal_findings)
+        result.screenshots_analyzed = len(screenshots)
+
+        # Capture NIM stats
+        nim_stats = self._nim.get_stats()
+        result.nim_calls_made = nim_stats["api_calls"]
+        result.cache_hits = nim_stats["cache_hits"]
+        result.fallback_used = nim_stats["fallback_count"] > 0
+
+        logger.info(
+            f"Visual analysis complete for {url} | "
+            f"patterns={result.total_patterns_found} | "
+            f"visual_score={result.visual_score:.2f} | "
+            f"temporal_score={result.temporal_score:.2f} | "
+            f"nim_calls={nim_stats['api_calls']} | "
+            f"cache_hits={nim_stats['cache_hits']}"
+        )
+
+        return result
+
+    async def run_pass_with_cache(
+        self,
+        pass_num: int,
+        screenshot: str,
+        prompt: str,
+        category_id: str = "",
+    ) -> list[DarkPatternFinding]:
+        """
+        Execute vision pass with pass-specific caching.
+
+        This method implements pass-level caching for the Vision Agent's
+        5-pass pipeline, enabling smart pass skipping when results are
+        already cached.
+
+        Args:
+            pass_num: Pass identifier (1-5 for Vision Agent passes)
+            screenshot: Path to screenshot image
+            prompt: The VLM forensic prompt
+            category_id: Optional category ID for result parsing
+
+        Returns:
+            List of DarkPatternFinding objects for this pass
+
+        Raises:
+            Exception: If VLM analysis fails (with full error logging)
+        """
+        cache_key = self._nim.get_cache_key(screenshot, prompt, pass_num)
+        cached = self._nim._read_cache(cache_key)
+
+        if cached:
+            logger.info(f"Cache hit for Pass {pass_num}")
+            # Convert cached dict back to DarkPatternFinding objects
+            cached_findings = cached.get("findings", [])
+            findings = []
+            for f_data in cached_findings:
+                try:
+                    findings.append(DarkPatternFinding(**f_data))
+                except (TypeError, KeyError):
+                    logger.warning(f"Failed to restore cached finding: {f_data}")
+            return findings
+
+        # Execute VLM call with pass_type for proper cache key
+        vlm_response = await self._nim.analyze_image(
+            image_path=screenshot,
+            prompt=prompt,
+            category_hint=category_id
+        )
+
+        # Parse response into DarkPatternFinding objects
+        findings = self._parse_vlm_response(
+            vlm_response, category_id,
+            DARK_PATTERN_TAXONOMY.get(category_id) if category_id else None,
+            screenshot
+        )
+
+        # Cache result as dict (24h TTL is default in _write_cache)
+        cache_data = {
+            "findings": [f.__dict__ for f in findings],
+            "prompt": prompt,
+            "pass_num": pass_num,
+            "model": vlm_response.get("model", "unknown"),
+            "fallback_mode": vlm_response.get("fallback_mode", False),
+        }
+        self._nim._write_cache(cache_key, cache_data)
+
+        return findings
+
+    async def analyze_5_pass(
+        self,
+        screenshots: list[str],
+        url: str = "",
+        scout_result: Optional["ScoutResult"] = None,
+        progress_emitter: Optional["ProgressEmitter"] = None,
+        max_passes: int = 5,
+        nim_budget: Optional[int] = None,
+    ) -> VisionResult:
+        """
+        Perform 5-pass vision analysis on screenshots using the enhanced pipeline.
+
+        This is the new Phase 6 analysis method with:
+        - Content type detection for adaptive SSIM thresholds
+        - Temporal analysis with CV-based change detection
+        - 5-pass VLM pipeline with intelligent pass skipping
+        - Real-time progress event streaming
+
+        Args:
+            screenshots: List of file paths to screenshot images
+            url: The target URL (for content type detection)
+            scout_result: Optional ScoutResult for enhanced context
+
+        Returns:
+            VisionResult with all findings and scores
+        """
+        # Use provided emitter or fall back to instance emitter
+        emitter = progress_emitter or self.progress_emitter
+
+        # Resolve budget from tier config if not explicitly passed
+        if nim_budget is None:
+            from elliot.config import settings as _s
+            _tier = _s.AUDIT_TIERS[_s.DEFAULT_TIER]
+            nim_budget = _tier.get("vision_nim", _tier["nim_calls"])
+
+        # Emit vision start event (both emitters for compatibility)
+        await self.event_emitter.emit_vision_start(len(screenshots))
+        if emitter:
+            await emitter.emit_agent_status("Vision", "running", f"Analyzing {len(screenshots)} screenshots...")
+
+        try:
+            all_findings = []
+
+            # Detect content type for adaptive SSIM thresholds
+            content_type = self._detect_content_type(url, scout_result)
+            logger.info(f"Detected content type: {content_type}")
+    
+            # Initialize TemporalAnalyzer
+            try:
+                from elliot.analysis.temporal_analyzer import TemporalAnalyzer
+                self.temporal_analyzer = TemporalAnalyzer()
+            except (ImportError, Exception) as e:
+                logger.warning(f"Temporal analyzer not available: {e}")
+                self.temporal_analyzer = None
+    
+            # Temporal analysis (CV-based)
+            temporal_result = None
+            has_temporal_changes = False
+    
+            if len(screenshots) >= 2 and self.temporal_analyzer:
+                try:
+                    temporal_result = self.temporal_analyzer.analyze_temporal_changes(
+                        screenshots[0], screenshots[1]
+                    )
+                    has_temporal_changes = temporal_result['has_changes']
+                    logger.info(
+                        f"Temporal analysis: SSIM={temporal_result['ssim_score']:.3f}, "
+                        f"has_changes={has_temporal_changes}"
+                    )
+                except Exception as e:
+                    logger.warning(f"Temporal analysis failed: {e}")
+                    if emitter:
+                        await emitter.emit_error("temporal_analysis", f"Temporal analysis failed: {e}", "Vision", recoverable=True)
+    
+            # Determine screenshots to analyze based on temporal result
+            if temporal_result and temporal_result.get('recommendation') == 'fullpage_only':
+                # No temporal changes - analyze only fullpage if available
+                screenshots_to_analyze = [screenshots[-1]] if screenshots else []
+            else:
+                screenshots_to_analyze = screenshots
+    
+            # Run 5-pass analysis
+            passes_completed = 0
+            for pass_num in range(1, min(max_passes, 5) + 1):
+                # Check if this pass should run based on priority logic
+                if not should_run_pass(pass_num, all_findings, has_temporal_changes):
+                    logger.debug(f"Skipping Pass {pass_num} (priority rule)")
+                    # Emit skip progress via ProgressEmitter
+                    if emitter:
+                        pass_pct = {1: 10, 2: 30, 3: 50, 4: 70, 5: 90}
+                        await emitter.emit_progress(
+                            "Vision",
+                            f"pass_{pass_num}",
+                            pass_pct[pass_num],
+                            f"Pass {pass_num} skipped via priority rule"
+                        )
+                    continue
+    
+                # Get pass description and emit start event
+                description = self._get_pass_description(pass_num)
+                await self.event_emitter.emit_pass_start(
+                    pass_num, description, len(screenshots_to_analyze)
+                )
+    
+                # Emit progress for this pass via ProgressEmitter
+                if emitter:
+                    pass_messages = {
+                        1: "Scanning for threats...",
+                        2: "Detecting dark patterns...",
+                        3: "Analyzing temporal changes...",
+                        4: "Cross-referencing with graph...",
+                        5: "Synthesizing verdict..."
+                    }
+                    pass_pct = {1: 10, 2: 30, 3: 50, 4: 70, 5: 90}
+    
+                    await emitter.emit_agent_status(
+                        "Vision",
+                        "running",
+                        f"Pass {pass_num}: {description}"
+                    )
+                    await emitter.emit_progress(
+                        "Vision",
+                        f"pass_{pass_num}",
+                        pass_pct[pass_num],
+                        pass_messages.get(pass_num, "Processing...")
+                    )
+    
+                # Get prompt for this pass (with temporal context injection for Pass 3)
+                prompt = get_pass_prompt(pass_num, temporal_result)
+    
+                # Process each screenshot in this pass
+                pass_findings = []
+                for screenshot in screenshots_to_analyze:
+                    # Check cache first
+                    cache_key = self._nim.get_cache_key(screenshot, prompt, pass_num)
+                    cached = self._nim._read_cache(cache_key)
+    
+                    if cached:
+                        # Use cached results
+                        logger.debug(f"Cache hit for Pass {pass_num}, screenshot={screenshot}")
+                        cached_findings = cached.get("findings", [])
+                        for f_data in cached_findings:
+                            try:
+                                pass_findings.append(DarkPatternFinding(**f_data))
+                            except (TypeError, KeyError):
+                                logger.warning(f"Failed to restore cached finding: {f_data}")
+                    else:
+                        # Budget guard: stop making NIM calls if budget exhausted
+                        if self._nim.call_count >= nim_budget:
+                            logger.warning(f"NIM budget exhausted ({nim_budget} calls) — skipping remaining VLM analysis")
+                            break
+                        # Execute VLM analysis
+                        try:
+                            vlm_response = await self._nim.analyze_image(
+                                image_path=screenshot,
+                                prompt=prompt,
+                                category_hint=""
+                            )
+                        except Exception as e:
+                            logger.error(f"VLM error in Pass {pass_num}: {e}")
+                            if emitter:
+                                await emitter.emit_error("vlm_error", f"Vision model error: {e}", "Vision", recoverable=True)
+                            # Continue to next screenshot
+                            continue
+    
+                        # Parse response into findings
+                        findings_from_pass = self._parse_vlm_response(
+                            vlm_response, f"pass_{pass_num}", None, screenshot
+                        )
+                        pass_findings.extend(findings_from_pass)
+    
+                        # Stream findings via ProgressEmitter (especially for Pass 2 dark patterns)
+                        if emitter and pass_num == 2:  # Pass 2 is dark pattern detection
+                            for finding in findings_from_pass:
+                                severity_map = {
+                                    "CRITICAL": "CRITICAL",
+                                    "HIGH": "HIGH",
+                                    "MEDIUM": "MEDIUM",
+                                    "LOW": "LOW"
+                                }
+                                severity = severity_map.get(finding.severity, "MEDIUM")
+                                await emitter.emit_finding(
+                                    category="dark_pattern",
+                                    severity=severity,
+                                    message=finding.description or finding.category,
+                                    phase="Vision",
+                                    confidence=int(finding.confidence) if finding.confidence else None
+                                )
+    
+                        # Cache results
+                        cache_data = {
+                            "findings": [f.__dict__ for f in findings_from_pass],
+                            "prompt": prompt,
+                            "pass_num": pass_num,
+                            "model": vlm_response.get("model", "unknown"),
+                            "fallback_mode": vlm_response.get("fallback_mode", False),
+                        }
+                        self._nim._write_cache(cache_key, cache_data)
+    
+                # Deduplicate findings within this pass
+                pass_findings = self._deduplicate_findings(pass_findings)
+                all_findings.extend(pass_findings)
+    
+                # Emit findings event
+                await self.event_emitter.emit_pass_findings(pass_num, pass_findings)
+    
+                # Compute confidence and emit complete event
+                confidence = self._compute_confidence(pass_findings) if pass_findings else 0.0
+                await self.event_emitter.emit_pass_complete(
+                    pass_num, len(pass_findings), confidence
+                )
+    
+                passes_completed += 1
+                logger.info(
+                    f"Pass {pass_num} complete: {len(pass_findings)} findings, "
+                    f"confidence={confidence:.1f}"
+                )
+    
+            # Cross-reference findings (Phase 8 placeholder)
+            all_findings = self._cross_reference_findings(all_findings)
+    
+            # Emit interesting highlight during vision analysis
+            if emitter and len(all_findings) > 0:
+                await emitter.emit_interesting_highlight(
+                    f"Vision Agent found {len(all_findings)} potential dark patterns",
+                    phase="Vision"
+                )
+    
+            # Flush any queued events (both emitters)
+            await self.event_emitter.flush_queue()
+            if emitter:
+                await emitter.flush()
+    
+            # Emit vision complete event
+            await self.event_emitter.emit_vision_complete(len(all_findings), passes_completed)
+            if emitter:
+                await emitter.emit_agent_status("Vision", "completed")
+                await emitter.emit_progress("Vision", "complete", 100, f"Analysis complete: {len(all_findings)} findings")
+    
+            # Build VisionResult
+            result = VisionResult()
+            result.dark_patterns = all_findings
+            result.screenshots_analyzed = len(screenshots)
+            result.prompts_sent = passes_completed * len(screenshots_to_analyze)
+    
+            # Capture NIM stats
+            nim_stats = self._nim.get_stats()
+            result.nim_calls_made = nim_stats["api_calls"]
+            result.cache_hits = nim_stats["cache_hits"]
+            result.fallback_used = nim_stats["fallback_count"] > 0
+    
+            # Compute scores
+            result.visual_score = self._compute_visual_score(all_findings)
+            result.temporal_score = (
+                1.0 if temporal_result and not temporal_result['has_changes']
+                else 0.5 if temporal_result and temporal_result['has_changes']
+                else 0.5  # No temporal data
+            )
+    
+            logger.info(
+                f"5-pass analysis complete: {len(all_findings)} total findings, "
+                f"{passes_completed} passes completed, visual_score={result.visual_score:.2f}"
+            )
+    
+            return result
+        except Exception as e:
+            logger.error(f"Vision analysis error: {e}", exc_info=True)
+            if emitter:
+                await emitter.emit_error("vision_analysis", str(e), "Vision", recoverable=True)
+                await emitter.emit_agent_status("Vision", "failed", str(e))
+            # Return minimal result
+            result = VisionResult()
+            result.screenshots_analyzed = len(screenshots)
+            return result
+
+    # ================================================================
+    # Private: Static Pattern Analysis
+    # ================================================================
+
+    async def _analyze_static_patterns(
+        self,
+        screenshot_path: str,
+        taxonomy: dict,
+        result: VisionResult,
+    ):
+        """
+        Run all non-temporal VLM prompts against a screenshot.
+        Each category's prompts are sent sequentially (batched per image).
+        """
+        for cat_id, category in taxonomy.items():
+            # Skip temporal-only categories in static analysis
+            if category.detection_method == "temporal":
+                continue
+
+            for prompt in category.vlm_prompts:
+                # Budget guard
+                if hasattr(self, '_nim_budget') and self._nim.call_count >= self._nim_budget:
+                    logger.warning(f"NIM budget exhausted ({self._nim_budget}) during static analysis")
+                    return
+                result.prompts_sent += 1
+
+                try:
+                    vlm_result = await self._nim.analyze_image(
+                        image_path=screenshot_path,
+                        prompt=prompt,
+                        category_hint=cat_id,
+                    )
+
+                    findings = self._parse_vlm_response(
+                        vlm_result, cat_id, category, screenshot_path
+                    )
+                    result.dark_patterns.extend(findings)
+
+                    if vlm_result.get("fallback_mode"):
+                        result.fallback_used = True
+
+                except Exception as e:
+                    error_msg = f"VLM analysis failed for {cat_id}: {e}"
+                    logger.error(error_msg)
+                    result.errors.append(error_msg)
+
+    # ================================================================
+    # Private: Temporal Pattern Analysis
+    # ================================================================
+
+    async def _analyze_temporal_patterns(
+        self,
+        t0_path: str,
+        t_delay_path: str,
+        labels: list[str],
+        result: VisionResult,
+    ):
+        """
+        Compare Screenshot_A (t0) vs Screenshot_B (t+delay) for:
+        - Fake countdown timers (value resets or doesn't decrease correctly)
+        - Fake scarcity ("Only 2 left" that never changes)
+        - Fake social proof counters
+        """
+        temporal_tax = {
+            k: v for k, v in DARK_PATTERN_TAXONOMY.items()
+            if v.detection_method == "temporal"
+        }
+
+        for cat_id, category in temporal_tax.items():
+            for prompt in category.vlm_prompts:
+                # Budget guard
+                if hasattr(self, '_nim_budget') and self._nim.call_count >= self._nim_budget:
+                    logger.warning(f"NIM budget exhausted ({self._nim_budget}) during temporal analysis")
+                    return
+                result.prompts_sent += 2  # One for each screenshot
+
+                try:
+                    # Analyze Screenshot_A
+                    vlm_a = await self._nim.analyze_image(
+                        image_path=t0_path,
+                        prompt=prompt,
+                        category_hint=f"{cat_id}_t0",
+                    )
+
+                    # Analyze Screenshot_B
+                    vlm_b = await self._nim.analyze_image(
+                        image_path=t_delay_path,
+                        prompt=prompt,
+                        category_hint=f"{cat_id}_t_delay",
+                    )
+
+                    # Compare the two responses
+                    temporal = self._compare_temporal_responses(
+                        vlm_a, vlm_b, cat_id, prompt
+                    )
+                    if temporal:
+                        result.temporal_findings.append(temporal)
+
+                        # If suspicious, also add as a dark pattern finding
+                        if temporal.is_suspicious:
+                            result.dark_patterns.append(DarkPatternFinding(
+                                category_id=cat_id,
+                                pattern_type=temporal.finding_type,
+                                confidence=temporal.confidence,
+                                severity="critical" if "countdown" in temporal.finding_type else "high",
+                                evidence=temporal.explanation,
+                                screenshot_path=t0_path,
+                                raw_vlm_response=f"T0: {vlm_a.get('response', '')}\nT+delay: {vlm_b.get('response', '')}",
+                                model_used=vlm_a.get("model", "unknown"),
+                                fallback_mode=vlm_a.get("fallback_mode", False),
+                            ))
+
+                except Exception as e:
+                    error_msg = f"Temporal analysis failed for {cat_id}: {e}"
+                    logger.error(error_msg)
+                    result.errors.append(error_msg)
+
+    def _compare_temporal_responses(
+        self,
+        vlm_a: dict,
+        vlm_b: dict,
+        category_id: str,
+        prompt: str,
+    ) -> Optional[TemporalFinding]:
+        """
+        Compare VLM responses from two time points to detect deception.
+
+        Logic:
+        - Extract values (timer text, stock count, viewer count) from both responses
+        - If timer value at t+delay >= timer value at t0 → FAKE (should have decreased)
+        - If stock count is identical → SUSPICIOUS
+        - If viewer count is identical → SUSPICIOUS
+        """
+        try:
+            response_a = vlm_a.get("response", "")
+            response_b = vlm_b.get("response", "")
+
+            data_a = self._extract_json_from_response(response_a)
+            data_b = self._extract_json_from_response(response_b)
+
+            if not data_a or not data_b:
+                return None
+
+            # --- Timer comparison ---
+            timer_a = data_a.get("timer_value", "")
+            timer_b = data_b.get("timer_value", "")
+
+            if timer_a and timer_b:
+                if timer_a == timer_b:
+                    return TemporalFinding(
+                        finding_type="fake_countdown",
+                        value_at_t0=timer_a,
+                        value_at_t_delay=timer_b,
+                        delta_seconds=10.0,
+                        is_suspicious=True,
+                        explanation=(
+                            f"Countdown timer shows '{timer_a}' at t0 and '{timer_b}' "
+                            f"at t+10s — timer appears frozen/reset (should have decreased)"
+                        ),
+                        confidence=0.85,
+                    )
+                # Could also compare parsed time values for non-matching reset
+                # (e.g., 04:59 → 05:00 means it reset)
+
+            # --- Scarcity comparison ---
+            scarcity_a = data_a.get("scarcity_text", "")
+            scarcity_b = data_b.get("scarcity_text", "")
+
+            if scarcity_a and scarcity_b:
+                if scarcity_a == scarcity_b:
+                    return TemporalFinding(
+                        finding_type="fake_scarcity",
+                        value_at_t0=scarcity_a,
+                        value_at_t_delay=scarcity_b,
+                        delta_seconds=10.0,
+                        is_suspicious=True,
+                        explanation=(
+                            f"Scarcity indicator shows '{scarcity_a}' at both time points — "
+                            f"static value suggests fake scarcity messaging"
+                        ),
+                        confidence=0.70,
+                    )
+
+            # No temporal anomaly detected
+            return TemporalFinding(
+                finding_type="consistent",
+                value_at_t0=timer_a or scarcity_a or "",
+                value_at_t_delay=timer_b or scarcity_b or "",
+                delta_seconds=10.0,
+                is_suspicious=False,
+                explanation="No temporal anomalies detected between screenshots",
+                confidence=0.5,
+            )
+
+        except Exception as e:
+            logger.warning(f"Temporal comparison error: {e}")
+            return None
+
+    # ================================================================
+    # Private: VLM Response Parsing
+    # ================================================================
+
+    def _parse_vlm_response(
+        self,
+        vlm_result: dict,
+        category_id: str,
+        category,
+        screenshot_path: str,
+    ) -> list[DarkPatternFinding]:
+        """
+        Parse a VLM response into structured DarkPatternFinding objects.
+        Handles both valid JSON responses and free-text responses.
+        """
+        findings = []
+        response_text = vlm_result.get("response", "")
+        model = vlm_result.get("model", "unknown")
+        is_fallback = vlm_result.get("fallback_mode", False)
+
+        # Try to parse as JSON first
+        data = self._extract_json_from_response(response_text)
+
+        if data:
+            findings.extend(self._findings_from_json(
+                data, category_id, category, screenshot_path,
+                response_text, model, is_fallback
+            ))
+        else:
+            # Fallback: strict mode, do not guess from text to avoid false positives. 
+            logger.warning(f"Failed to parse JSON from VLM response for {category_id}, avoiding text-guessing to prevent false positives.")
+            findings = []
+        return findings
+
+    def _findings_from_json(
+        self, data: dict, category_id: str, category,
+        screenshot_path: str, raw_response: str, model: str, fallback: bool,
+    ) -> list[DarkPatternFinding]:
+        """Extract findings from a parsed JSON VLM response."""
+        findings = []
+
+        # Handle {"findings": [...]} format
+        json_findings = data.get("findings", [])
+        if isinstance(json_findings, list):
+            for finding in json_findings:
+                if not isinstance(finding, dict):
+                    continue
+
+                try:
+                    confidence_raw = finding.get("confidence", 0.8)
+                    if isinstance(confidence_raw, str):
+                        confidence = float(re.search(r"0\.\d+", confidence_raw).group()) if re.search(r"0\.\d+", confidence_raw) else 0.8
+                    else:
+                        confidence = float(confidence_raw)
+                except Exception:
+                    confidence = 0.8
+
+                if confidence < 0.65:
+                    continue  # Too low confidence to report
+
+                pattern_type = finding.get("pattern_type", category_id)
+                if pattern_type.startswith("pass_"):
+                    pattern_type = {
+                        "pass_1": "Visual Scan Indicator",
+                        "pass_2": "Dark Pattern Detected",
+                        "pass_3": "Dynamic Content Manipulated",
+                        "pass_4": "External Intel Mismatch",
+                        "pass_5": "Confidence Scoring Insight"
+                    }.get(pattern_type, pattern_type)
+                category_id = pattern_type
+                severity = self._lookup_severity(category_id, pattern_type)
+
+                evidence_parts = []
+                for key in ["evidence", "text", "pair", "element", "description", "issue", "dominant",
+                            "size_ratio", "contrast_difference"]:
+                    if key in finding:
+                        evidence_parts.append(f"{key}: {finding[key]}")
+
+                findings.append(DarkPatternFinding(
+                    category_id=category_id,
+                    pattern_type=pattern_type,
+                    confidence=confidence,
+                    severity=severity,
+                    evidence=" | ".join(evidence_parts) if evidence_parts else str(finding),
+                    screenshot_path=screenshot_path,
+                    raw_vlm_response=raw_response,
+                    model_used=model,
+                    fallback_mode=fallback,
+                ))
+
+        return findings
+
+    def _findings_from_text(
+        self, text: str, category_id: str, category,
+        screenshot_path: str, model: str, fallback: bool,
+    ) -> list[DarkPatternFinding]:
+        """
+        Fallback: extract findings from free-text VLM response.
+        Only used when JSON parsing fails.
+        """
+        findings = []
+        text_lower = text.lower()
+
+        # Check if the response indicates a positive detection
+        positive_indicators = [
+            "detected", "found", "identified", "present", "suspicious",
+            "yes", "appears to be", "likely", "confirms",
+        ]
+        negative_indicators = [
+            "no dark pattern", "none detected", "clean", "no suspicious",
+            "not found", "none found", "no issues",
+        ]
+
+        for neg in negative_indicators:
+            if neg in text_lower:
+                return findings  # Clean — no patterns
+
+        for pos in positive_indicators:
+            if pos in text_lower:
+                # Extract a finding with moderate confidence
+                findings.append(DarkPatternFinding(
+                    category_id=category_id,
+                    pattern_type=category_id,
+                    confidence=0.5,  # Lower confidence for free-text extraction
+                    severity="medium",
+                    evidence=text[:300],  # Truncate for readability
+                    screenshot_path=screenshot_path,
+                    raw_vlm_response=text,
+                    model_used=model,
+                    fallback_mode=fallback,
+                ))
+                break  # Only one finding per free-text response
+
+        return findings
+
+    # ================================================================
+    # Private: Scoring
+    # ================================================================
+
+    def _compute_visual_score(self, patterns: list[DarkPatternFinding]) -> float:
+        """
+        Compute visual trust score (0-1, higher = more trustworthy).
+
+        Formula: 1.0 - (sum of weighted pattern severities, capped at 1.0)
+        Each detected pattern deducts based on its severity × confidence.
+        """
+        if not patterns:
+            return 1.0  # No dark patterns → fully trustworthy visually
+
+        total_deduction = 0.0
+        for p in patterns:
+            weight = get_severity_weight(p.severity)
+            total_deduction += weight * p.confidence
+
+        # Normalize: more patterns = worse, but cap at 0.0
+        # Divide by expected-max to keep scoring proportional
+        max_expected = 5.0  # 5 high-severity patterns = score of 0
+        normalized = min(total_deduction / max_expected, 1.0)
+
+        return round(max(0.0, 1.0 - normalized), 3)
+
+    def _compute_temporal_score(self, temporals: list[TemporalFinding]) -> float:
+        """
+        Compute temporal trust score (0-1, higher = more trustworthy).
+        Any fake timer/counter detection heavily penalizes the score.
+        """
+        if not temporals:
+            # No timers detected means no fake timers. Fully trustworthy.
+            return 1.0
+
+        suspicious = [t for t in temporals if t.is_suspicious]
+        if not suspicious:
+            return 1.0  # Clean temporal analysis
+
+        # Each suspicious finding deducts proportionally
+        total_deduction = sum(s.confidence for s in suspicious)
+        max_expected = 2.0  # 2 suspicious findings at full confidence = score of 0
+
+        return round(max(0.0, 1.0 - min(total_deduction / max_expected, 1.0)), 3)
+
+    # ================================================================
+    # Private: Helpers
+    # ================================================================
+
+    def _select_primary_screenshot(
+        self, screenshots: list[str], labels: list[str]
+    ) -> Optional[str]:
+        """Select the best screenshot for static (non-temporal) analysis."""
+        # Prefer fullpage, then t0, then any
+        for preferred in ["fullpage", "t0", "subpage"]:
+            for path, label in zip(screenshots, labels):
+                if label == preferred:
+                    return path
+        return screenshots[0] if screenshots else None
+
+    def _find_temporal_pair(
+        self, screenshots: list[str], labels: list[str]
+    ) -> tuple[Optional[str], Optional[str]]:
+        """Find the t0 and t+delay screenshot pair."""
+        t0_path = None
+        t_delay_path = None
+
+        for path, label in zip(screenshots, labels):
+            if label == "t0":
+                t0_path = path
+            elif label.startswith("t") and label != "t0":
+                t_delay_path = path
+
+        return t0_path, t_delay_path
+
+    def _extract_json_from_response(self, text: str) -> Optional[dict]:
+        """
+        Extract JSON from a VLM response that may contain markdown or preamble.
+        Handles: pure JSON, ```json blocks, JSON buried in text.
+        """
+        if not text:
+            return None
+
+        # Try 1: Direct parse
+        try:
+            return json.loads(text)
+        except json.JSONDecodeError:
+            pass
+
+        # Try 2: Extract from ```json ... ``` block
+        import re
+        json_block = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', text, re.DOTALL)
+        if json_block:
+            try:
+                return json.loads(json_block.group(1))
+            except json.JSONDecodeError:
+                pass
+
+        # Try 3: Find first {...} in text
+        brace_match = re.search(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}', text, re.DOTALL)
+        if brace_match:
+            try:
+                return json.loads(brace_match.group(0))
+            except json.JSONDecodeError:
+                pass
+
+        return None
+
+    def _lookup_severity(self, category_id: str, pattern_type: str) -> str:
+        """Look up the severity of a pattern type from the taxonomy."""
+        category = DARK_PATTERN_TAXONOMY.get(category_id)
+        if category:
+            for sub in category.sub_types:
+                if sub.id == pattern_type:
+                    return sub.severity
+        return "medium"  # Default
+
+    # ================================================================
+    # New Phase 6: 5-Pass Pipeline Methods
+    # ================================================================
+
+    def _detect_content_type(self, url: str, scout_result=None) -> str:
+        """
+        Detect content type from URL and Scout metadata for adaptive SSIM thresholds.
+
+        Returns:
+            Content type string: 'e_commerce', 'subscription', 'phishing/scan',
+            'news/blog', or 'default'
+        """
+        url_lower = url.lower()
+
+        # E-commerce
+        e_commerce_patterns = ['shop', 'store', 'buy', 'cart', 'checkout', 'order',
+                              'amazon', 'ebay', 'etsy', 'shopify', 'walmart']
+        if any(p in url_lower for p in e_commerce_patterns):
+            return 'e_commerce'
+
+        # Subscription
+        subscription_patterns = ['subscrib', 'plan', 'pricing', 'trial', 'signup',
+                               'notion', 'slack', 'zoom', 'github', 'figma',
+                               'netflix', 'spotify', 'adobe']
+        if any(p in url_lower for p in subscription_patterns):
+            return 'subscription'
+
+        # Phishing/scan - check scout result if available
+        if scout_result:
+            # Check for trust_score or risk attribute
+            if hasattr(scout_result, 'trust_score') and scout_result.trust_score < 0.3:
+                return 'phishing/scan'
+            if hasattr(scout_result, 'risk') and scout_result.risk >= 0.7:
+                return 'phishing/scan'
+            if hasattr(scout_result, 'url') and scout_result.url:
+                # Check URL patterns again with scout result URL
+                scout_url_lower = scout_result.url.lower()
+                phishing_patterns = ['phishing', 'scam', 'fake', 'fraud', 'suspicious',
+                                    'verify', 'account', 'security', 'alert']
+                if any(p in scout_url_lower for p in phishing_patterns):
+                    return 'phishing/scan'
+
+        # News/blog
+        news_patterns = ['news', 'blog', 'article', 'post', 'medium', 'substack',
+                        'nytimes', 'wired', 'techcrunch']
+        if any(p in url_lower for p in news_patterns):
+            return 'news/blog'
+
+        return 'default'
+
+    def _get_pass_description(self, pass_num: int) -> str:
+        """Get description for a pass number."""
+        descriptions = {
+            1: "Quick visual scan for obvious threats",
+            2: "Sophisticated dark pattern detection",
+            3: "Temporal dynamics and dynamic content",
+            4: "Cross-reference with external intelligence",
+            5: "Final synthesis and confidence scoring"
+        }
+        return descriptions[pass_num]
+
+    def _deduplicate_findings(self, findings: list[DarkPatternFinding]) -> list[DarkPatternFinding]:
+        """
+        Deduplicate findings by bbox + category.
+
+        Args:
+            findings: List of DarkPatternFinding objects
+
+        Returns:
+            List of unique findings
+        """
+        seen = {}
+        unique = []
+        for finding in findings:
+            # Use category_id and pattern_type as key since bbox might vary
+            # For a more sophisticated deduplication, you could use approximate bbox matching
+            key = (finding.category_id, finding.pattern_type, finding.screenshot_path)
+            if key not in seen:
+                seen[key] = finding
+                unique.append(finding)
+            else:
+                # Keep the finding with higher confidence
+                existing = seen[key]
+                if finding.confidence > existing.confidence:
+                    unique.remove(existing)
+                    unique.append(finding)
+                    seen[key] = finding
+        return unique
+
+    def _compute_confidence(self, findings: list[DarkPatternFinding]) -> float:
+        """
+        Compute confidence score (0-100) for a set of findings.
+
+        Args:
+            findings: List of DarkPatternFinding objects
+
+        Returns:
+            Confidence score (0-100)
+        """
+        if not findings:
+            return 0.0
+        # Use the normalized confidence from findings (DarkPatternFinding uses 0-1, convert to 0-100)
+        return sum(f.confidence for f in findings) / len(findings) * 100
+
+    def _cross_reference_findings(
+        self, findings: list[DarkPatternFinding]
+    ) -> list[DarkPatternFinding]:
+        """
+        Cross-reference findings with external intelligence (placeholder for Phase 8).
+
+        Args:
+            findings: List of DarkPatternFinding objects
+
+        Returns:
+            List of findings with cross-reference placeholders applied
+        """
+        # Phase 8 will implement actual OSINT cross-reference
+        # For now, just mark all findings as not yet cross-referenced
+        for finding in findings:
+            if not hasattr(finding, 'verified_externally'):
+                # Add attribute dynamically to avoid breaking existing code
+                finding.verified_externally = False
+            if not hasattr(finding, 'external_sources'):
+                finding.external_sources = []
+        return findings

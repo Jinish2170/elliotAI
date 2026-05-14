@@ -1,21 +1,21 @@
-# VERITAS Advanced Data Mapping Document
+# ELLIOT Advanced Data Mapping Document
 ## Complete Integration of Backend Advanced Features to Frontend
 
 > Generated: 2026-03-07
-> Purpose: Document all advanced data classes and their WebSocket integration for the VERITAS Agent Theater
+> Purpose: Document all advanced data classes and their WebSocket integration for the ELLIOT Agent Theater
 
 ---
 
 ## Executive Summary
 
-This document maps all advanced data structures from the VERITAS backend agents to their corresponding frontend types and WebSocket events. The system has sophisticated capabilities that are now fully integrated into the theater UI.
+This document maps all advanced data structures from the ELLIOT backend agents to their corresponding frontend types and WebSocket events. The system has sophisticated capabilities that are now fully integrated into the theater UI.
 
 ---
 
 ## 1. Vision Agent Advanced Data
 
 ### 1.1 DarkPatternFinding Class
-**Location:** `veritas/agents/vision.py`
+**Location:** `elliot/agents/vision.py`
 
 | Field | Type | Description | Frontend Type | Event Type |
 |-------|------|-------------|---------------|------------|
@@ -52,7 +52,7 @@ This document maps all advanced data structures from the VERITAS backend agents 
 ---
 
 ### 1.2 TemporalFinding Class
-**Location:** `veritas/agents/vision.py` (via `analysis/temporal_analyzer.py`)
+**Location:** `elliot/agents/vision.py` (via `analysis/temporal_analyzer.py`)
 
 | Field | Type | Description | Frontend Type | Event Type |
 |-------|------|-------------|---------------|------------|
@@ -114,7 +114,7 @@ This document maps all advanced data structures from the VERITAS backend agents 
 ---
 
 ### 1.4 VisionResult Full Structure
-**Location:** `veritas/agents/vision.py`
+**Location:** `elliot/agents/vision.py`
 
 ```python
 @dataclass
@@ -136,7 +136,7 @@ class VisionResult:
 ## 2. Scout Agent Advanced Data
 
 ### 2.1 ScrollResult Class
-**Location:** `veritas/core/types.py`
+**Location:** `elliot/core/types.py`
 
 | Field | Type | Description | Frontend Type |
 |-------|------|-------------|---------------|
@@ -157,7 +157,7 @@ class VisionResult:
 | `stabilized` | bool | Page is stable |
 
 ### 2.3 ExplorationResult Class
-**Location:** `veritas/core/types.py`
+**Location:** `elliot/core/types.py`
 
 | Field | Type | Description | Frontend Type |
 |-------|------|-------------|---------------|
@@ -192,7 +192,7 @@ class VisionResult:
 ## 3. OSINT / Graph Investigator Advanced Data
 
 ### 3.1 OSINTResult Class
-**Location:** `veritas/osint/types.py`
+**Location:** `elliot/osint/types.py`
 
 | Field | Type | Description | Frontend Type | Event Type |
 |-------|------|-------------|---------------|------------|
@@ -231,7 +231,7 @@ class VisionResult:
 ---
 
 ### 3.2 MarketplaceThreatData Class
-**Location:** `veritas/osint/types.py`
+**Location:** `elliot/osint/types.py`
 
 | Field | Type | Description | Frontend Type | Event Type |
 |-------|------|-------------|---------------|------------|
@@ -266,7 +266,7 @@ class VisionResult:
 ---
 
 ### 3.3 IOCIndicator Class
-**Location:** `veritas/osint/ioc_detector.py` (via types)
+**Location:** `elliot/osint/ioc_detector.py` (via types)
 
 | Field | Type | Description | Frontend Type | Event Type |
 |-------|------|-------------|---------------|------------|
@@ -295,7 +295,7 @@ class VisionResult:
 ---
 
 ### 3.4 IOCDetectionResult Class
-**Location:** `veritas/osint/ioc_detector.py`
+**Location:** `elliot/osint/ioc_detector.py`
 
 | Field | Type | Description | Frontend Type |
 |-------|------|-------------|---------------|
@@ -322,7 +322,7 @@ class VisionResult:
 ## 4. Judge Agent Dual-Verdict Data
 
 ### 4.1 VerdictTechnical Class
-**Location:** `veritas/agents/judge/verdict/base.py`
+**Location:** `elliot/agents/judge/verdict/base.py`
 
 | Field | Type | Description | Frontend Type | Event Type |
 |-------|------|-------------|---------------|------------|
@@ -361,7 +361,7 @@ class VisionResult:
 ---
 
 ### 4.2 VerdictNonTechnical Class
-**Location:** `veritas/agents/judge/verdict/base.py`
+**Location:** `elliot/agents/judge/verdict/base.py`
 
 | Field | Type | Description | Frontend Type | Event Type |
 |-------|------|-------------|---------------|------------|
@@ -507,7 +507,7 @@ interface AuditStore {
 ## 7. File Structure
 
 ```
-veritas/
+elliot/
 ├── agents/
 │   ├── vision.py              # DarkPatternFinding, TemporalFinding, VisionResult
 │   ├── scout.py               # ScoutResult (contains temporal, forms, etc.)

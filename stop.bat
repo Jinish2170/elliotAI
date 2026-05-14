@@ -1,7 +1,7 @@
 @echo off
-title Veritas — Shutdown
+title Elliot — Shutdown
 echo.
-echo  Stopping Veritas services...
+echo  Stopping Elliot services...
 echo.
 
 :: Kill backend (port 8000)
@@ -11,7 +11,7 @@ for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":8000.*LISTENING" 2^>NUL') d
 )
 
 :: Kill any child python processes from backend
-for /f "tokens=2" %%a in ('tasklist /FI "WINDOWTITLE eq Veritas Backend" /FO TABLE /NH 2^>NUL ^| findstr /I "python uvicorn"') do (
+for /f "tokens=2" %%a in ('tasklist /FI "WINDOWTITLE eq Elliot Backend" /FO TABLE /NH 2^>NUL ^| findstr /I "python uvicorn"') do (
     taskkill /PID %%a /F >NUL 2>&1
 )
 
@@ -22,5 +22,5 @@ for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":3000.*LISTENING" 2^>NUL') d
 )
 
 echo.
-echo  All Veritas services stopped.
+echo  All Elliot services stopped.
 timeout /t 3 /nobreak >NUL

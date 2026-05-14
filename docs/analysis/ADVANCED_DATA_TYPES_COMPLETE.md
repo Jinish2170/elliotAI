@@ -1,14 +1,14 @@
-# VERITAS Advanced Data Types - Complete Reference
+# ELLIOT Advanced Data Types - Complete Reference
 
 **Documentation Date:** 2026-03-07
-**Project:** VERITAS v2.0 Masterpiece Upgrade
+**Project:** ELLIOT v2.0 Masterpiece Upgrade
 **Status:** Advanced Type System Complete, Integration In Progress
 
 ---
 
 ## Executive Summary
 
-This document provides a comprehensive reference for all advanced data types in the VERITAS system. The system implements a sophisticated forensic web auditing platform with 5 specialized AI agents (Scout, Security, Vision, Graph, Judge) and supports deep threat intelligence including darknet marketplace monitoring, CVE/CVSS scoring, MITRE ATT&CK framework mapping, and knowledge graph construction.
+This document provides a comprehensive reference for all advanced data types in the ELLIOT system. The system implements a sophisticated forensic web auditing platform with 5 specialized AI agents (Scout, Security, Vision, Graph, Judge) and supports deep threat intelligence including darknet marketplace monitoring, CVE/CVSS scoring, MITRE ATT&CK framework mapping, and knowledge graph construction.
 
 ---
 

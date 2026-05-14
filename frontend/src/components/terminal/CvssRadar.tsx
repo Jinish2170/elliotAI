@@ -1,40 +1,47 @@
 "use client";
-import React from "react";
+import React, { useMemo, memo } from "react";
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from "recharts";
 import { GhostPanel } from "./TerminalPanel";
 import type { CVSSMetric } from "@/lib/types";
 
-export function CvssRadar({ metrics, status }: { metrics: CVSSMetric[], status?: string }) {
-  if (!metrics || metrics.length === 0) {
+function CvssRadarComponent({ metrics, status }: { metrics: CVSSMetric[], status?: string }) {
+  // Use stable reference comparison - only recalculate when content actually changes
+  const memoizedMetrics = useMemo(() => {
+    if (!metrics || metrics.length === 0) return [];
+    return metrics;
+  }, [JSON.stringify(metrics)]);
+
+  // Transform metrics - memoize data array to prevent RadarChart re-renders
+  const data = useMemo(() => {
+    const sevMap: Record<string, number> = { CRITICAL: 4, HIGH: 3, MEDIUM: 2, LOW: 1, NONE: 0 };
+    return memoizedMetrics.map((m, idx) => {
+      const safeName = (m?.name || `metric_${idx}`).toString();
+      const safeValue = (m?.value ?? "").toString();
+      const safeSeverity = (m?.severity || "MEDIUM").toString().toUpperCase();
+      return {
+        subject: safeName.replace(/_/g, '').substring(0, 7).toUpperCase(),
+        A: sevMap[safeSeverity] || 0,
+        fullLabel: `${safeName}: ${safeValue}`,
+        color: safeSeverity === "CRITICAL" ? "var(--t-red)" : safeSeverity === "HIGH" ? "var(--t-amber)" : "var(--t-green)"
+      };
+    });
+  }, [JSON.stringify(memoizedMetrics)]);
+
+  if (!memoizedMetrics || memoizedMetrics.length === 0) {
     if (status === "complete") {
       return (
         <div className="w-full h-full flex flex-col items-center justify-center p-4 text-center bg-[var(--t-green)]/5">
-          <span className="text-[var(--t-green)]/50 font-mono text-[11px] uppercase tracking-widest">[ NO CVEs DETECTED ]</span>
+          <span className="text-[var(--t-green)]/50 font-mono text-[11px] uppercase tracking-widest">[ NO CVEs DETECTED ]</span>    
         </div>
       );
     }
     return <GhostPanel message="AWAITING VECTOR CALCULATION" />;
   }
-  
-  // Transform metrics
-  const sevMap: Record<string, number> = { CRITICAL: 4, HIGH: 3, MEDIUM: 2, LOW: 1, NONE: 0 };
-  
-  const data = metrics.map((m, idx) => {
-    const safeName = (m?.name || `metric_${idx}`).toString();
-    const safeValue = (m?.value ?? "").toString();
-    const safeSeverity = (m?.severity || "MEDIUM").toString().toUpperCase();
-    return {
-      subject: safeName.replace(/_/g, '').substring(0, 7).toUpperCase(),
-      A: sevMap[safeSeverity] || 0,
-      fullLabel: `${safeName}: ${safeValue}`,
-      color: safeSeverity === "CRITICAL" ? "var(--t-red)" : safeSeverity === "HIGH" ? "var(--t-amber)" : "var(--t-green)"
-    };
-  });
 
   return (
     <div className="w-full h-full relative p-2 flex flex-col">
       <div className="flex flex-col gap-[2px] z-10 text-[11px] text-[var(--t-dim)] mb-2 shrink-0">
-         {metrics.slice(0, 4).map((m, i) => {
+         {memoizedMetrics.slice(0, 4).map((m, i) => {
            const safeName = (m?.name || `metric_${i}`).toString();
            const safeValue = (m?.value ?? "").toString();
            const safeSeverity = (m?.severity || "MEDIUM").toString().toUpperCase();
@@ -60,4 +67,13 @@ export function CvssRadar({ metrics, status }: { metrics: CVSSMetric[], status?:
     </div>
   );
 }
+
+// Wrap with memo to prevent unnecessary re-renders from parent
+export const CvssRadar = memo(CvssRadarComponent, (prevProps, nextProps) => {
+  // Return true if props are equal (skip re-render), false if different (re-render)
+  return (
+    prevProps.status === nextProps.status &&
+    JSON.stringify(prevProps.metrics) === JSON.stringify(nextProps.metrics)
+  );
+});
 

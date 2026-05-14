@@ -18,7 +18,7 @@ export function Navbar() {
         <Link href="/" className="flex items-center gap-2 group">
           <Shield className="w-4 h-4 text-cyan-500 group-hover:text-cyan-400 transition-colors" />
           <span className="font-bold text-[12px] font-mono tracking-[0.2em] text-[var(--v-text)]">
-            VERITAS
+            ELLIOT
           </span>
           <span className="text-[8px] font-mono text-[var(--v-text-tertiary)] border border-[rgba(255,255,255,0.08)] rounded px-1 py-0.5">
             v2.0

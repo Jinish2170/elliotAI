@@ -1,7 +1,7 @@
-# VERITAS V2 Integration Analysis
+# ELLIOT V2 Integration Analysis
 
 **Last updated:** 2026-03-09
-**Scope:** backend, event contract, Veritas agents
+**Scope:** backend, event contract, Elliot agents
 **Status:** V2 backend contract normalized; remaining risk is optional dependency degradation and slow end-to-end security coverage
 
 ## Executive Summary
@@ -15,7 +15,7 @@ The repo already contained most V2 functionality. The primary failure was not mi
 
 That drift is now reduced to one canonical runtime path:
 
-- `veritas.core.orchestrator` produces the canonical audit result.
+- `elliot.core.orchestrator` produces the canonical audit result.
 - `backend.services.audit_runner` derives WebSocket events and API summary data from that canonical result.
 - `backend.routes.audit` persists the runner-emitted `audit_result` payload directly.
 
@@ -25,8 +25,8 @@ No feature paths were intentionally removed. Older modules remain as compatibili
 
 | Layer | Canonical source | Notes |
 |---|---|---|
-| Python imports | `veritas.*` and `backend.*` | Runtime code no longer depends on top-level `analysis`, `core`, `agents`, or `config` imports. |
-| Audit state/result | `veritas/core/orchestrator.py` | Security output is split into `security_results` plus aggregate `security_summary`. |
+| Python imports | `elliot.*` and `backend.*` | Runtime code no longer depends on top-level `analysis`, `core`, `agents`, or `config` imports. |
+| Audit state/result | `elliot/core/orchestrator.py` | Security output is split into `security_results` plus aggregate `security_summary`. |
 | WebSocket events | `backend/services/audit_runner.py` | Runner converts canonical result into frontend-facing events. |
 | Persistence payload | `backend/routes/audit.py` | `on_audit_completed()` persists the `audit_result.result` summary payload directly. |
 
@@ -85,13 +85,13 @@ No feature paths were intentionally removed. Older modules remain as compatibili
 
 | Capability | Status | Canonical path | Notes |
 |---|---|---|---|
-| Scout navigation and screenshots | Wired | `veritas.agents.scout` | `scout_nav/*` remains support code under the main scout path. |
-| Vision 5-pass events | Wired | `veritas.agents.vision` -> progress passthrough | `vision_pass_*` events come from agent progress output and are forwarded by the runner. |
-| Vision summary/result serialization | Wired | `veritas.core.orchestrator` | Canonical serialized shape is `findings` + `temporal_findings`, not legacy singleton fields. |
-| Security tier execution | Wired | `veritas.agents.security_agent` | Tier execution is now the default V2 path when tier utilities are available. |
-| Security fallback | Wired | `veritas.core.orchestrator.security_node_with_agent` | Falls back to legacy/function paths and records explicit `security_mode`. |
-| Graph / OSINT / CTI | Wired | `veritas.agents.graph_investigator` | Runner now emits `osint_result`, `darknet_threat`, `ioc_indicator`, `knowledge_graph`, `graph_analysis`. |
-| Dual verdict output | Wired | `veritas.agents.judge` | Runner emits technical, non-technical, and combined verdict events. |
+| Scout navigation and screenshots | Wired | `elliot.agents.scout` | `scout_nav/*` remains support code under the main scout path. |
+| Vision 5-pass events | Wired | `elliot.agents.vision` -> progress passthrough | `vision_pass_*` events come from agent progress output and are forwarded by the runner. |
+| Vision summary/result serialization | Wired | `elliot.core.orchestrator` | Canonical serialized shape is `findings` + `temporal_findings`, not legacy singleton fields. |
+| Security tier execution | Wired | `elliot.agents.security_agent` | Tier execution is now the default V2 path when tier utilities are available. |
+| Security fallback | Wired | `elliot.core.orchestrator.security_node_with_agent` | Falls back to legacy/function paths and records explicit `security_mode`. |
+| Graph / OSINT / CTI | Wired | `elliot.agents.graph_investigator` | Runner now emits `osint_result`, `darknet_threat`, `ioc_indicator`, `knowledge_graph`, `graph_analysis`. |
+| Dual verdict output | Wired | `elliot.agents.judge` | Runner emits technical, non-technical, and combined verdict events. |
 | Persistence | Wired | `backend.routes.audit` | Completed audits persist canonical summary fields and dark-pattern findings. |
 | Legacy result keys (`scout_result`, `security_result`) | Removed from runtime assumptions | n/a | Backend no longer depends on singleton legacy keys. |
 
@@ -101,13 +101,13 @@ No feature paths were intentionally removed. Older modules remain as compatibili
 
 Runtime imports were normalized in the critical backend/agent path:
 
-- `veritas/core/orchestrator.py`
-- `veritas/agents/vision.py`
-- `veritas/agents/scout.py`
-- `veritas/agents/graph_investigator.py`
-- `veritas/agents/security_agent.py`
-- `veritas/analysis/security/darknet.py`
-- `veritas/config/__init__.py`
+- `elliot/core/orchestrator.py`
+- `elliot/agents/vision.py`
+- `elliot/agents/scout.py`
+- `elliot/agents/graph_investigator.py`
+- `elliot/agents/security_agent.py`
+- `elliot/analysis/security/darknet.py`
+- `elliot/config/__init__.py`
 - `backend/routes/audit.py`
 - `backend/services/audit_runner.py`
 
@@ -149,30 +149,30 @@ and sets a completion timestamp when the result payload does not provide one.
 
 | Area | Canonical | Compatibility retained |
 |---|---|---|
-| Scout | `veritas.agents.scout` | `veritas.agents.scout_nav.*` helpers |
-| Vision | `veritas.agents.vision` | legacy field aliases still tolerated in runner for normalization |
+| Scout | `elliot.agents.scout` | `elliot.agents.scout_nav.*` helpers |
+| Vision | `elliot.agents.vision` | legacy field aliases still tolerated in runner for normalization |
 | Security | `SecurityAgent` tier execution | legacy function path retained for fallback |
-| Graph | `veritas.agents.graph_investigator` | none required beyond optional source failures |
-| Judge | `veritas.agents.judge` | older key aliases patched where security module names changed |
+| Graph | `elliot.agents.graph_investigator` | none required beyond optional source failures |
+| Judge | `elliot.agents.judge` | older key aliases patched where security module names changed |
 
 ## Known Remaining Risks
 
 1. `opencv-python` is still optional. Without it, temporal CV degrades and the runtime explicitly warns that optical flow is unavailable.
-2. `veritas/tests/test_security_integration.py` is still a slow, network-heavy suite. It should be treated as an environment/integration check, not a fast contract test.
+2. `elliot/tests/test_security_integration.py` is still a slow, network-heavy suite. It should be treated as an environment/integration check, not a fast contract test.
 3. Some older tests still use legacy import paths via local path shims. They do not currently block the runtime path, but they are not the desired long-term state.
 
 ## Verification Snapshot
 
 Verified on 2026-03-09:
 
-- `python -m veritas --help`
-- `python -c "import veritas.core.orchestrator, veritas.agents.vision, veritas.agents.security_agent, backend.services.audit_runner; print('imports-ok')"`
-- `pytest -q veritas/tests/test_migration_path.py`
+- `python -m elliot --help`
+- `python -c "import elliot.core.orchestrator, elliot.agents.vision, elliot.agents.security_agent, backend.services.audit_runner; print('imports-ok')"`
+- `pytest -q elliot/tests/test_migration_path.py`
 - `pytest -q backend/tests/test_audit_runner_queue.py backend/tests/test_audit_route_contract.py backend/tests/test_audit_persistence.py`
-- `pytest -q veritas/tests/test_security_agent.py -k "tier_execution or async_context_manager"`
+- `pytest -q elliot/tests/test_security_agent.py -k "tier_execution or async_context_manager"`
 
 ## Recommended Next Work
 
-1. Replace remaining legacy-import compatibility tests with `veritas.*` imports.
+1. Replace remaining legacy-import compatibility tests with `elliot.*` imports.
 2. Add a bounded, mocked `test_security_integration.py` slice for tier execution and fallback without live network reliance.
 3. Extend route/API tests to cover the WebSocket stream endpoint itself, not just helper functions.

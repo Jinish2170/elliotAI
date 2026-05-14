@@ -7,8 +7,8 @@ confidence scoring, and state machine transitions.
 
 import pytest
 
-from veritas.core.types import FindingStatus, FindingSource
-from veritas.quality import ConfidenceScorer, ConsensusEngine, ValidationStateMachine
+from elliot.core.types import FindingStatus, FindingSource
+from elliot.quality import ConfidenceScorer, ConsensusEngine, ValidationStateMachine
 
 
 class TestFindingStatusAndSourceDataclasses:

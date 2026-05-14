@@ -7,9 +7,9 @@ Tests ScrollOrchestrator, LazyLoadDetector, and scroll state management.
 import pytest
 from pathlib import Path
 
-from veritas.agents.scout_nav.lazy_load_detector import LazyLoadDetector, MUTATION_OBSERVER_SCRIPT
-from veritas.agents.scout_nav.scroll_orchestrator import ScrollOrchestrator
-from veritas.core.types import ScrollState, ScrollResult
+from elliot.agents.scout_nav.lazy_load_detector import LazyLoadDetector, MUTATION_OBSERVER_SCRIPT
+from elliot.agents.scout_nav.scroll_orchestrator import ScrollOrchestrator
+from elliot.core.types import ScrollState, ScrollResult
 
 
 @pytest.mark.asyncio

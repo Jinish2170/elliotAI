@@ -63,7 +63,7 @@ export function CommandInput() {
       const data = await res.json();
       router.push(`/audit/${data.audit_id}?url=${encodeURIComponent(targetUrl)}&tier=${tier}&verdict=${verdictMode}`);
     } catch {
-      setError("Could not connect to Veritas backend. Ensure the server is running.");
+      setError("Could not connect to Elliot backend. Ensure the server is running.");
       setLoading(false);
     }
   };
@@ -73,7 +73,7 @@ export function CommandInput() {
       {/* Brand mark */}
       <div className="text-center mb-8">
         <h1 className="text-[32px] font-bold tracking-widest text-[#00FF41] glitch-text relative inline-block">
-          VERITAS
+          ELLIOT
         </h1>
         <p className="text-[12px] font-mono text-[var(--t-dim)] uppercase tracking-[0.3em] mt-2">
           Autonomous Forensic Web Auditor

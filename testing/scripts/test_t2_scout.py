@@ -1,5 +1,5 @@
 """
-Veritas Independent Module Testing — Phase T2: Scout & Browser Automation
+Elliot Independent Module Testing — Phase T2: Scout & Browser Automation
 =========================================================================
 Tests Scout navigation, scrolling, and link discovery independently.
 No NIM calls, no budget limits — browser only.
@@ -102,7 +102,7 @@ async def test_t2_1_scout_basic():
 
     start = time.time()
     try:
-        from veritas.agents.scout import StealthScout
+        from elliot.agents.scout import StealthScout
 
         async with StealthScout(evidence_dir=SCREENSHOTS_DIR) as scout:
             result = await scout.investigate(
@@ -192,7 +192,7 @@ async def test_t2_2_link_explorer():
     start = time.time()
     try:
         from playwright.async_api import async_playwright
-        from veritas.agents.scout_nav.link_explorer import LinkExplorer
+        from elliot.agents.scout_nav.link_explorer import LinkExplorer
 
         explorer = LinkExplorer(base_url=TARGET_URL)
 
@@ -274,8 +274,8 @@ async def test_t2_3_scroll():
     start = time.time()
     try:
         from playwright.async_api import async_playwright
-        from veritas.agents.scout_nav.scroll_orchestrator import ScrollOrchestrator
-        from veritas.agents.scout_nav.lazy_load_detector import LazyLoadDetector
+        from elliot.agents.scout_nav.scroll_orchestrator import ScrollOrchestrator
+        from elliot.agents.scout_nav.lazy_load_detector import LazyLoadDetector
 
         scroll_dir = SCREENSHOTS_DIR / "scroll_test"
         scroll_dir.mkdir(parents=True, exist_ok=True)
@@ -349,7 +349,7 @@ async def test_t2_4_lazy_load():
     start = time.time()
     try:
         from playwright.async_api import async_playwright
-        from veritas.agents.scout_nav.lazy_load_detector import LazyLoadDetector
+        from elliot.agents.scout_nav.lazy_load_detector import LazyLoadDetector
 
         detector = LazyLoadDetector()
 
@@ -438,7 +438,7 @@ async def test_t2_5_multi_page():
 
     start = time.time()
     try:
-        from veritas.agents.scout import StealthScout
+        from elliot.agents.scout import StealthScout
 
         multi_dir = SCREENSHOTS_DIR / "multi_page"
         multi_dir.mkdir(parents=True, exist_ok=True)
@@ -524,7 +524,7 @@ async def test_t2_5_multi_page():
 # ============================================================
 async def main():
     print("=" * 60)
-    print("VERITAS — Phase T2: Scout & Browser Automation")
+    print("ELLIOT — Phase T2: Scout & Browser Automation")
     print(f"Target: {TARGET_DOMAIN}")
     print(f"Started: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print("=" * 60)

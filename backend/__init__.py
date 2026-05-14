@@ -1,7 +1,7 @@
 """
-Backend Package for Veritas FastAPI Server
+Backend Package for Elliot FastAPI Server
 
-Provides HTTP API endpoints and WebSocket streaming for Veritas audits.
+Provides HTTP API endpoints and WebSocket streaming for Elliot audits.
 """
 
 import sys
