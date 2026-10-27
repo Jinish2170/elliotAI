@@ -26,11 +26,11 @@ Veritas is an AI-powered forensic web auditing platform that analyzes websites f
 
 - **5-Phase Autonomous Pipeline** — Scout → Security → Vision → Graph Investigation → Judge  
 - **NVIDIA NIM Integration** — LLM reasoning + Vision Language Model for screenshot analysis  
-- **22 Analysis Modules** — DOM parsing, form validation, dark pattern detection, phishing checks, redirect tracing, temporal analysis, security headers, meta tag analysis, JavaScript behavior analysis  
+- **9 Analysis Modules** — DOM parsing, form validation, dark pattern detection, phishing checks, redirect tracing, temporal analysis, security headers, meta tag analysis, JavaScript behavior analysis  
 - **Real-Time WebSocket Streaming** — Live progress, findings, and screenshots streamed to the browser  
 - **Trust Score Engine** — Weighted multi-signal scoring (0–100) with risk classification  
-- **Dark Pattern Detection** — 5 categories: Urgency, Misdirection, Social Proof, Obstruction, Sneaking  
-- **Next.js 15 Frontend** — Animated three-column live audit view, interactive report with Simple/Expert modes  
+- **Dark Pattern Detection** — 5 categories: Visual Interference, False Urgency, Forced Continuity, Sneaking, Social Engineering  
+- **Next.js 16 Frontend** — Animated three-column live audit view, interactive report with Simple/Expert modes  
 - **LanceDB Vector Store** — Evidence persistence and similarity search  
 - **Playwright Browser Automation** — Headless screenshot capture, DOM extraction, interaction testing  
 
@@ -91,8 +91,8 @@ Veritas is an AI-powered forensic web auditing platform that analyzes websites f
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/your-org/veritas.git
-cd veritas
+git clone https://github.com/Jinish2170/elliotAI.git
+cd elliotAI
 ```
 
 ### 2. Set Up Python Environment
@@ -343,7 +343,7 @@ veritas/
 │   └── services/
 │       └── audit_runner.py         # Subprocess wrapper for engine
 │
-├── frontend/                       # Next.js 15 UI
+├── frontend/                       # Next.js 16 UI
 │   ├── src/
 │   │   ├── app/
 │   │   │   ├── layout.tsx          # Root layout (fonts, theme)
@@ -394,7 +394,7 @@ veritas/
 
 | Technology | Purpose |
 |-----------|---------|
-| **Next.js 15** | React meta-framework (App Router, Turbopack) |
+| **Next.js 16** | React meta-framework (App Router, Turbopack) |
 | **React 19** | UI library |
 | **TypeScript 5** | Type safety |
 | **Tailwind CSS 4** | Utility-first styling |
