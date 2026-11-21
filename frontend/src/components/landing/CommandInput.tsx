@@ -58,7 +58,14 @@ export function CommandInput() {
         body: JSON.stringify({ url: targetUrl, tier, verdict_mode: verdictMode }),
       });
 
-      if (!res.ok) throw new Error("Failed to start audit");
+      if (!res.ok) {
+        // Surface the server's reason (tier disabled, rate limit, blocked target)
+        let detail = "";
+        try { detail = (await res.json()).detail ?? ""; } catch {}
+        setError(typeof detail === "string" && detail ? `[SYS.ERR] ${detail}` : `[SYS.ERR] Audit rejected (HTTP ${res.status})`);
+        setLoading(false);
+        return;
+      }
 
       const data = await res.json();
       router.push(`/audit/${data.audit_id}?url=${encodeURIComponent(targetUrl)}&tier=${tier}&verdict=${verdictMode}`);
