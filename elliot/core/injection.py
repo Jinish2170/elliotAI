@@ -1,5 +1,5 @@
 """
-Prompt-injection defenses for content VERITAS reads from audited websites.
+Prompt-injection defenses for content elliotAI reads from audited websites.
 
 Every audited page is attacker-controlled. Layers (strongest first):
   1. Architecture (elsewhere): trust score computed by code; no side-effect tools.

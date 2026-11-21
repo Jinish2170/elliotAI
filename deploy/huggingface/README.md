@@ -1,5 +1,5 @@
 ---
-title: VERITAS Backend
+title: elliotAI Backend
 emoji: 🛡️
 colorFrom: gray
 colorTo: green
@@ -8,5 +8,5 @@ app_port: 7860
 pinned: false
 ---
 
-VERITAS audit API (FastAPI + LangGraph-style agent pipeline + headless Chromium).
+elliotAI audit API (FastAPI + LangGraph-style agent pipeline + headless Chromium).
 Frontend: deployed separately on Vercel. See `docs/DEPLOY.md` in the main repo.

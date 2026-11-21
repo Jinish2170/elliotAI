@@ -1,7 +1,7 @@
 """
 Abuse guards for a publicly deployed auditor.
 
-A public VERITAS drives a real browser to any URL a stranger submits and spends
+A public elliotAI deployment drives a real browser to any URL a stranger submits and spends
 LLM credits on it. Guards (all env-configurable, all off-able for local dev):
 
 - BLOCK_PRIVATE_TARGETS (default true): refuse URLs whose host resolves to a

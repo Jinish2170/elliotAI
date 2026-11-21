@@ -1,5 +1,12 @@
 # Architecture
-**Analysis Date:** 2026-05-14
+**Analysis Date:** 2026-05-14 · **Updated:** 2026-11-21
+
+> **Added since the original analysis** (details in `docs/ENGINEERING_CASE_STUDY.md`):
+> OpenTelemetry/OpenInference tracing (`elliot/core/tracing.py`), structured outputs
+> (`elliot/core/structured.py`), prompt-injection defences (`elliot/core/injection.py`,
+> `elliot/analysis/security/prompt_injection.py`), abstention in the trust score
+> (`insufficient_evidence`), public-deploy guards (`backend/services/guards.py`) and the
+> eval harness (`eval/`).
 
 ## Pattern Overview
 

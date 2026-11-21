@@ -13,13 +13,12 @@
 - **SSL/TLS certificate inspection** - Certificate verification (`elliot/osint/sources/ssl_verify.py`). Auth: none.
 - **Darknet / TOR marketplaces** - `.onion` threat scraping across multiple market sources (`elliot/osint/sources/darknet_alpha.py`, `darknet_dream.py`, `darknet_empire.py`, `darknet_hansa.py`, `darknet_wallstreet.py`, `darknet_tor2web.py`; `elliot/darknet/`). Accessed via TOR SOCKS5h proxy (`PySocks`); `elliot/darknet/tor_client.py`, `elliot/core/tor_client.py`. Auth: none (proxy config via `TOR_*` env vars).
 - **Target websites** - Audited sites loaded via Playwright headless Chromium (`elliot/agents/scout.py`, `elliot/agents/scout_nav/`).
-- **Glass-box-portal (separate sub-project)** - `base models projects/glass-box-portal/backend/main.py` uses Google Generative AI (`GOOGLE_API_KEY`); not part of the main Elliot app.
 
 ## Data Storage
 
 **Databases:**
 - SQLite via SQLAlchemy 2.0 + aiosqlite (async, WAL mode). Config in `elliot/db/config.py` (`DATABASE_URL = sqlite+aiosqlite:///./data/elliot_audits.db`). Models/repos in `elliot/db/models.py`, `elliot/db/repositories.py`. Initialized on FastAPI startup (`backend/main.py` lifespan -> `init_database`).
-- Database files observed: `data/veritas_audits.db`, `elliot_dev.db` (root), plus `.serena`/`.swarm` tooling DBs.
+- Database files observed: `elliot_dev.db` (root), plus `.serena`/`.swarm` tooling DBs.
 - PRAGMA tuning: `WAL` journal, `NORMAL` synchronous, 64MB cache, memory temp store.
 
 **File Storage:**
@@ -59,7 +58,6 @@
 - Persistence/verdict: `USE_DB_PERSISTENCE`, `DEFAULT_VERDICT_MODE`
 - TOR: `TOR_ENABLED`, `TOR_SOCKS_HOST`, `TOR_SOCKS_PORT`
 - Backend/IPC: `ALLOWED_ORIGINS`, `QUEUE_IPC_MODE`, `QUEUE_IPC_ROLLOUT`, `ELLIOT_SUBPROCESS`, `PYTHONIOENCODING`
-- Separate sub-project only: `GOOGLE_API_KEY` (`base models projects/glass-box-portal/`)
 
 **Secrets location:** `.env.example` template at repo root; runtime `.env` expected at `elliot/.env` (loaded by `elliot/config/settings.py` and `backend/main.py`). `.gitignore` present at root. No secrets manager/vault detected; secrets are local `.env` files only.
 

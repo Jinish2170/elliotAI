@@ -7,7 +7,6 @@
       "is_malicious": false,
       "score": 84,
       "risk_level": "probably_safe",
-      "veritas_flagged": false,
       "baseline_domain_age_days": 705,
       "baseline_flagged": false,
       "seconds": 205.9,
@@ -37,7 +36,8 @@
         "est_cost_usd": 0.0,
         "total_tokens": 132563,
         "trace_id": "5ddc3ab08c86c2e5c3ef418c183fe83c"
-      }
+      },
+      "system_flagged": false
     },
     {
       "id": "synthara",
@@ -45,7 +45,6 @@
       "is_malicious": false,
       "score": 78,
       "risk_level": "probably_safe",
-      "veritas_flagged": false,
       "baseline_domain_age_days": 284,
       "baseline_flagged": false,
       "seconds": 200.3,
@@ -75,7 +74,8 @@
         "est_cost_usd": 0.0,
         "total_tokens": 113756,
         "trace_id": "60533e63c34c87caef9f814bde751cab"
-      }
+      },
+      "system_flagged": false
     },
     {
       "id": "example",
@@ -83,7 +83,6 @@
       "is_malicious": false,
       "score": 94,
       "risk_level": "trusted",
-      "veritas_flagged": false,
       "baseline_domain_age_days": 11422,
       "baseline_flagged": false,
       "seconds": 77.3,
@@ -113,7 +112,8 @@
         "est_cost_usd": 0.0,
         "total_tokens": 36911,
         "trace_id": "71756377773477d789a2feda00bbeb01"
-      }
+      },
+      "system_flagged": false
     },
     {
       "id": "wikipedia",
@@ -121,7 +121,6 @@
       "is_malicious": false,
       "score": 91,
       "risk_level": "trusted",
-      "veritas_flagged": false,
       "baseline_domain_age_days": 9443,
       "baseline_flagged": false,
       "seconds": 87.4,
@@ -151,12 +150,13 @@
         "est_cost_usd": 0.0,
         "total_tokens": 37748,
         "trace_id": "c5f40b9fc45ead91ce077b3151d2d5c5"
-      }
+      },
+      "system_flagged": false
     }
   ],
   "false_positive_rate": {
-    "veritas": "0/4",
-    "domain_age_baseline": "0/4"
+    "domain_age_baseline": "0/4",
+    "elliotai": "0/4"
   },
   "latency_p50_s": 200.3,
   "note": "Legit-only: measures false alarms. Phishing recall needs live phishing captures (not collected).",

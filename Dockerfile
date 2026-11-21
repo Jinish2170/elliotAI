@@ -1,6 +1,6 @@
-# VERITAS backend (FastAPI + audit engine + headless Chromium).
+# elliotAI backend (FastAPI + audit engine + headless Chromium).
 # Targets Hugging Face Spaces (Docker SDK, free CPU tier: 2 vCPU / 16 GB) but
-# runs anywhere: docker build -t veritas . && docker run -p 7860:7860 --env-file elliot/.env veritas
+# runs anywhere: docker build -t elliotai . && docker run -p 7860:7860 --env-file elliot/.env elliotai
 FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \

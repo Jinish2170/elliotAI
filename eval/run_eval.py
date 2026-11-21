@@ -1,5 +1,5 @@
 """
-VERITAS eval harness.
+elliotAI eval harness.
 
     python -m eval.run_eval --suite scoring      # deterministic policy checks (no LLM)
     python -m eval.run_eval --suite vision       # VLM dark-pattern detection, P/R/F1 per category
@@ -276,18 +276,18 @@ async def suite_e2e() -> dict:
         flagged = score is not None and score < 70
         rows.append({
             "id": c["id"], "stratum": c["stratum"], "is_malicious": c["is_malicious"],
-            "score": score, "risk_level": level, "veritas_flagged": flagged,
+            "score": score, "risk_level": level, "system_flagged": flagged,
             "baseline_domain_age_days": age,
             "baseline_flagged": isinstance(age, int) and 0 <= age < 30,
             "seconds": round(time.time() - t0, 1),
             "trace_summary": r.get("trace_summary"),
         })
     legit = [x for x in rows if not x["is_malicious"]]
-    fp = sum(x["veritas_flagged"] for x in legit)
+    fp = sum(x["system_flagged"] for x in legit)
     bfp = sum(x["baseline_flagged"] for x in legit)
     secs = sorted(x["seconds"] for x in rows)
     return {"suite": "e2e", "rows": rows,
-            "false_positive_rate": {"veritas": f"{fp}/{len(legit)}", "domain_age_baseline": f"{bfp}/{len(legit)}"},
+            "false_positive_rate": {"elliotai": f"{fp}/{len(legit)}", "domain_age_baseline": f"{bfp}/{len(legit)}"},
             "latency_p50_s": secs[len(secs) // 2] if secs else None,
             "note": "Legit-only: measures false alarms. Phishing recall needs live phishing captures (not collected)."}
 
@@ -321,7 +321,7 @@ def to_markdown(res: dict) -> str:
             lines.append(f"| {r['id']} | {r['channel']} | {'ATTACK SUCCEEDED' if r['attack_succeeded'] else 'blocked'} — {r['entities']} |")
     else:
         fpr = res["false_positive_rate"]
-        lines = [f"### E2E (legit sites): false alarms VERITAS {fpr['veritas']}, domain-age baseline {fpr['domain_age_baseline']}, p50 {res['latency_p50_s']}s", "",
+        lines = [f"### E2E (legit sites): false alarms elliotAI {fpr['elliotai']}, domain-age baseline {fpr['domain_age_baseline']}, p50 {res['latency_p50_s']}s", "",
                  "| site | score | level | domain age | s | llm calls | tokens |", "|---|---|---|---|---|---|---|"]
         for r in res["rows"]:
             ts = r["trace_summary"] or {}
@@ -337,7 +337,7 @@ async def main():
     args = ap.parse_args()
 
     from elliot.core import tracing
-    tracing.init_tracing(service_name="veritas-eval", run_id=f"eval-{args.suite}")
+    tracing.init_tracing(service_name="elliotai-eval", run_id=f"eval-{args.suite}")
 
     suites = ["scoring", "vision", "injection", "e2e"] if args.suite == "all" else [args.suite]
     RESULTS.mkdir(exist_ok=True)

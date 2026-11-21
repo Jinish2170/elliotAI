@@ -307,11 +307,7 @@ If Python version incompatibility is confirmed (needs verification), consider Py
 
 ## Related Documentation
 
-- **Phase Context:** `C:/files/coding dev era/elliot/elliotAI/.planning/phases/03-langgraph-state-machine-investigation/03-CONTEXT.md`
-- **Phase Research:** `C:/files/coding dev era/elliot/elliotAI/.planning/phases/03-langgraph-state-machine-investigation/03-RESEARCH.md`
-- **LANGGRAPH Research:** `C:/files/coding dev era/elliot/elliotAI/.planning/research/LANGGRAPH.md`
 - **ELLIOT Orchestrator:** `elliot/core/orchestrator.py` (sequential bypass at line 939)
-- **State:** `.planning/STATE.md`
 
 ---
 

@@ -1,4 +1,4 @@
-# ELLIOT/VERITAS audit engine — runtime deps (pinned to versions verified 2026-11-21)
+# elliotAI audit engine — runtime deps (pinned to versions verified 2026-11-21)
 # Backend API deps live in backend/requirements.txt.
 langchain==1.3.2
 langgraph==1.2.2

@@ -42,10 +42,10 @@ elliotAI/
 │       ├── lib/             # store.ts (Zustand), types.ts, utils.ts, education.ts
 │       └── config/          # agent_personalities.ts, agents.ts
 ├── tests/                   # Top-level engine tests (consensus, link explorer, scroll)
-├── testing/                 # Ad-hoc test scaffolding / fixtures
-├── docs/                    # Project docs (agent_config, analysis, bug_reports, planning)
-├── .planning/               # GSD planning artifacts (this directory)
-├── .backend-docs/           # Generated backend reference docs
+├── eval/                    # Eval harness: suites, labelled fixtures, versioned results
+├── deploy/                  # Hosting config (Hugging Face Space card)
+├── docs/                    # Case study, deploy guide, user guide, architecture/
+├── .github/workflows/       # CI: tests + eval gate + frontend type-check
 ├── data/                    # Top-level runtime data dir
 ├── start.bat / stop.bat     # Windows service launchers (ports 8000 + 3000)
 ├── Dockerfile               # Container build
@@ -110,10 +110,10 @@ elliotAI/
 - **Contains:** Route pages, React components, WebSocket hook, Zustand store, shared TS types.
 - **Key files:** `frontend/src/app/page.tsx`, `frontend/src/app/layout.tsx`, `frontend/src/hooks/useAuditStream.ts`, `frontend/src/lib/store.ts`, `frontend/src/lib/types.ts`.
 
-### `tests/`, `backend/tests/`, `elliot/tests/`, `testing/`
-- **Purpose:** Test suites split by component. Root `tests/` and `elliot/tests/` cover the engine; `backend/tests/` covers the API/runner; `testing/` holds ad-hoc scaffolding/fixtures.
+### `tests/`, `backend/tests/`, `elliot/tests/`, `eval/`
+- **Purpose:** Test suites split by component. Root `tests/` and `elliot/tests/` cover the engine; `backend/tests/` covers the API/runner; `eval/` measures model-backed behaviour (vision P/R/F1, injection ASR, end-to-end) against labelled fixtures.
 - **Contains:** Pytest modules (`test_*.py`), `elliot/tests/integration/`, `elliot/tests/unit/`, `elliot/tests/sites/`.
-- **Key files:** `pytest.ini`, `elliot/tests/test_veritas.py`, `backend/tests/test_audit_route_contract.py`, `tests/test_consensus_engine.py`.
+- **Key files:** `pytest.ini`, `elliot/tests/test_audit_pipeline.py`, `backend/tests/test_audit_route_contract.py`, `tests/test_consensus_engine.py`.
 
 ## Key File Locations
 
@@ -163,7 +163,7 @@ elliotAI/
 **Directories:**
 - Python packages: lowercase, single-word where possible (`agents`, `analysis`, `osint`, `quality`, `cwe`). Sub-packages group an agent's helpers (`scout_nav`, `judge_core`, `vision`).
 - Frontend components grouped by feature/area (`audit/`, `terminal/`, `report/`, `landing/`, `data-display/`, `ui/`, `ambient/`, `layout/`, `providers/`).
-- Planning/docs dirs are dotted or descriptive (`.planning/`, `.backend-docs/`, `docs/`).
+- Documentation lives in `docs/` (architecture reference in `docs/architecture/`).
 
 ## Where to Add New Code
 
@@ -188,7 +188,7 @@ elliotAI/
 ## Special Directories
 
 ### `elliot/data/`
-- **Purpose:** Engine runtime data — `cache/`, `evidence/`, `reports/`, `vectordb/`, the SQLite DB (`elliot_audits.db` / `veritas_audits.db`), `marketplace_threat_feeds.json`.
+- **Purpose:** Engine runtime data — `cache/`, `evidence/`, `reports/`, `vectordb/`, the SQLite DB (`elliot_audits.db`), `marketplace_threat_feeds.json`.
 - **Generated:** yes (created/written at runtime; `settings.py` auto-creates the subdirs on import).
 - **Committed:** mostly no — DB files and cache/evidence are runtime artifacts; check `.gitignore`. Seed JSON feeds may be committed.
 
@@ -197,14 +197,8 @@ elliotAI/
 - **Generated:** yes.
 - **Committed:** no (runtime artifacts).
 
-### `.planning/`
-- **Purpose:** GSD workflow artifacts — roadmap, requirements, phase plans, and this `codebase/` analysis set.
-- **Generated:** yes (by GSD tooling/agents).
-- **Committed:** yes.
-
-### `.backend-docs/` and `docs/`
-- **Purpose:** `.backend-docs/` holds generated backend reference docs (routes, services, events); `docs/` holds broader project docs (analysis, bug reports, planning, agent config).
-- **Generated:** `.backend-docs/` largely generated; `docs/` mixed (hand-written + generated).
+### `docs/`
+- **Purpose:** `ENGINEERING_CASE_STUDY.md` (bugs found via tracing/evals, fixes, numbers), `DEPLOY.md`, `USER_GUIDE.md`, and `architecture/` (this reference set).
 - **Committed:** yes.
 
 ### `node_modules/` (root and `frontend/`)

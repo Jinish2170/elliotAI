@@ -1,4 +1,4 @@
-# VERITAS — Engineering Case Study
+# elliotAI — Engineering Case Study
 
 How a multi-agent website-trust auditor was made measurable, observable and robust:
 which bugs were found, **how they were found** (traces, evals, tests, code sweeps),
@@ -73,7 +73,7 @@ The higher cost after the fix is the honest price of analysing the pages the rep
 | E2 | No-SSL cap documented as 50, coded as 85; test failing since March | Medium | Scoring suite `no_ssl_cap` ❌ + `test_override_no_ssl` | Real cause: `GraphResult.has_ssl` returned **False when the lookup failed**, so HTTPS sites got capped; someone raised the cap to hide it. Fixed `has_ssl` to be tri-state (True/False/None — which also revives the Judge's dead scout fallback) and restored 50. |
 | E3 | "Force below 15" produced exactly 15 | Low | Scoring suite `blacklist_forces_low` ❌ | `min(score, value)` → `min(score, value-1)`. |
 | E4 | **Eval harness bug**: fake-countdown page never detected | — | Vision suite FN on `dp_fake_countdown` | `false_urgency` is a *temporal-only* category; the harness captured one fullpage shot. Harness now captures exactly what Scout captures (t0, t+10 s, fullpage). Recall 0.8 → 1.0. **Lesson: the eval pipeline is code and has bugs too.** |
-| E5 | **Prompt injection via meta description** → VERITAS extracted *"Microsoft Corporation, founded 1975, Redmond"* as the identity of a fake shop | Critical | Injection suite: text-channel attack succeeded | Untrusted page text concatenated raw into the extraction prompt. See §5. |
+| E5 | **Prompt injection via meta description** → elliotAI extracted *"Microsoft Corporation, founded 1975, Redmond"* as the identity of a fake shop | Critical | Injection suite: text-channel attack succeeded | Untrusted page text concatenated raw into the extraction prompt. See §5. |
 | E6 | Injection detector **false positives on real AI-company sites** (GitHub, Synthara: "AI systems, agentic …") | Medium | Held-out real pages | Pattern `ai systems[:,]` too broad → vocative-only (`AI auditors:`), addressing words (`Dear AI …`). |
 
 **Scoring policy suite:** 2/5 → **5/5** (now a CI gate).
@@ -126,7 +126,7 @@ baseline ............................ ASR 1/3  (meta → "Microsoft Corporation,
 
 ## 5. Prompt-injection defence in depth
 
-VERITAS reads attacker-controlled content by design, so defences are layered (strongest first):
+elliotAI reads attacker-controlled content by design, so defences are layered (strongest first):
 
 1. **Architecture** — the score is computed by code; no tool can send, buy or delete.
 2. **Constrained outputs** — enums leave no field for "SAFE, score 100".
@@ -139,7 +139,7 @@ VERITAS reads attacker-controlled content by design, so defences are layered (st
 
 ## 6. Observability: what to look at in Phoenix
 
-Project `veritas`. Useful views:
+Project `elliotai`. Useful views:
 - Sort spans by latency → slowest `nim.call` (attempt, queue wait, timeout).
 - Filter `elliot.cache_hit = true` under `agent.vision` → wasted or duplicated work (found T1).
 - Count `agent.judge` spans per trace → agent loop iterations (found T2).

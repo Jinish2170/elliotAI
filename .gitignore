@@ -142,3 +142,14 @@ elliot/data/*.json
 # SQLite runtime files
 *.db-shm
 *.db-wal
+
+# Local AI-tooling & planning workspace (not part of the product)
+.claude/
+.claude-flow/
+.planning/
+.swarm/
+.hive-mind/
+.serena/
+
+# Engine runtime data (traces, cache, evidence)
+elliot/data/

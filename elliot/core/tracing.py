@@ -165,7 +165,7 @@ def init_tracing(service_name: str = "elliot-audit", run_id: str = "") -> bool:
 
         provider = TracerProvider(resource=Resource.create({
             "service.name": service_name,
-            "openinference.project.name": os.getenv("PHOENIX_PROJECT_NAME", "veritas"),
+            "openinference.project.name": os.getenv("PHOENIX_PROJECT_NAME", "elliotai"),
         }))
         _summary = AuditSummaryProcessor()
         provider.add_span_processor(_summary)

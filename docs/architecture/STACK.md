@@ -8,7 +8,7 @@
 - TypeScript 5.x - Next.js desktop/web frontend (`frontend/src/`)
 
 **Secondary:**
-- JavaScript (ESM) - Frontend tooling and WebSocket test harnesses (`frontend/run_ws.js`, `frontend/eslint.config.mjs`, `frontend/postcss.config.mjs`)
+- JavaScript (ESM) - Frontend tooling (`frontend/eslint.config.mjs`, `frontend/postcss.config.mjs`)
 - Batch / Shell - Startup and install scripts (`start.bat`, `stop.bat`, `install_dependencies.bat`, `install_dependencies.sh`)
 
 ## Runtime

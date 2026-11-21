@@ -1,4 +1,4 @@
-# Deploying VERITAS on free tiers
+# Deploying elliotAI on free tiers
 
 | Part | Where (free) | Why |
 |---|---|---|
@@ -11,7 +11,7 @@
 
 ```bash
 # one-time: create a Docker Space at https://huggingface.co/new-space (SDK: Docker)
-git clone https://huggingface.co/spaces/<you>/veritas-backend hf-space
+git clone https://huggingface.co/spaces/<you>/elliotai-backend hf-space
 rsync -a --exclude-from=.dockerignore ./ hf-space/   # repo contents minus ignored files
 cp deploy/huggingface/README.md hf-space/README.md   # Space card (sdk: docker, app_port: 7860)
 cd hf-space && git add -A && git commit -m "deploy" && git push
@@ -33,7 +33,7 @@ Space → Settings → **Variables and secrets** (secrets are never baked into t
 | `PHOENIX_COLLECTOR_ENDPOINT` | var | optional, e.g. your Phoenix Cloud space URL |
 | `PHOENIX_API_KEY` | secret | optional, Phoenix Cloud key (sent as `authorization: Bearer`) |
 
-Health check: `GET https://<you>-veritas-backend.hf.space/api/health`.
+Health check: `GET https://<you>-elliotai-backend.hf.space/api/health`.
 
 ## 2. Frontend → Vercel
 
@@ -41,14 +41,14 @@ Import the GitHub repo in Vercel, **Root Directory = `frontend`**, then set:
 
 | Name | Value |
 |---|---|
-| `NEXT_PUBLIC_API_URL` | `https://<you>-veritas-backend.hf.space` |
-| `NEXT_PUBLIC_WS_URL` | `wss://<you>-veritas-backend.hf.space` |
+| `NEXT_PUBLIC_API_URL` | `https://<you>-elliotai-backend.hf.space` |
+| `NEXT_PUBLIC_WS_URL` | `wss://<you>-elliotai-backend.hf.space` |
 
 ## 3. Local (identical image)
 
 ```bash
-docker build -t veritas .
-docker run -p 7860:7860 --env-file elliot/.env -e ALLOWED_ORIGINS=http://localhost:3000 veritas
+docker build -t elliotai .
+docker run -p 7860:7860 --env-file elliot/.env -e ALLOWED_ORIGINS=http://localhost:3000 elliotai
 cd frontend && NEXT_PUBLIC_API_URL=http://localhost:7860 NEXT_PUBLIC_WS_URL=ws://localhost:7860 npm run dev
 ```
 

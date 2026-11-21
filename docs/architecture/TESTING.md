@@ -35,7 +35,6 @@ python -m pytest -v -s elliot/tests/langgraph_investigation/
 - `elliot/tests/` — core/agent tests, with subdirs `unit/`, `integration/`, `langgraph_investigation/`. Many tests also sit directly in `elliot/tests/` (`test_security_agent.py`, `test_judge_early_exit.py`, `test_vlm_caching.py`).
 - `backend/tests/` — FastAPI route + service tests (`test_audit_route_contract.py`, `test_audit_runner_queue.py`, `test_audit_persistence.py`).
 - `tests/` (repo root) — cross-cutting component tests (`test_consensus_engine.py`, `test_link_explorer.py`, `test_scroll_orchestrator.py`).
-- `testing/scripts/` — manual/ad-hoc scripts, **not** pytest-collected.
 
 **Naming:** Files are `test_<subject>.py`. Test classes are `Test<Subject>` (`TestOnionDetectorPatterns`, `TestRunnerResultContract`, `TestScoutDataFlow`). Test functions are `test_<behavior>` with descriptive snake_case names (`test_pattern_v3_rejects_55_char`, `test_on_audit_completed_persists_canonical_summary`).
 
@@ -116,7 +115,6 @@ Factory-style module helper functions build large result payloads — e.g. `_sam
 
 **Integration Tests:** Multi-component data-flow and tier-workflow tests under `elliot/tests/integration/` (`test_data_flow.py`, `test_tier_workflows.py`) and the route+DB contract tests in `backend/tests/`. Mark cross-component tests with `@pytest.mark.integration` (registered in `pytest.ini`). These exercise real orchestration/DB with external services mocked.
 
-**E2E Tests:** No automated browser/end-to-end suite. The closest is `elliot/tests/langgraph_investigation/test_02_full_audit_mocked.py`, which runs the *entire* compiled LangGraph (`build_audit_graph().compile().ainvoke(...)`) with all external agents mocked. Truly manual end-to-end checks live as scripts in `testing/scripts/` and are run by hand, not via pytest.
 
 ## Common Patterns
 
@@ -153,3 +151,16 @@ async def test_node_error_propagation():
 
 ---
 *Testing analysis: 2026-05-14*
+
+## Eval Harness (model-backed behaviour)
+
+Unit tests mock the LLM; `eval/` measures the real models against labelled fixtures:
+
+| Suite | Command | Measures |
+|---|---|---|
+| scoring | `python -m eval.run_eval --suite scoring` | Deterministic trust-score policy checks (CI gate: must be 5/5) |
+| vision | `python -m eval.run_eval --suite vision` | Dark-pattern detection P/R/F1 per category (production-equivalent t0 / t+delay / fullpage capture) |
+| injection | `python -m eval.run_eval --suite injection` | Prompt-injection attack success rate on matched pairs + controls |
+| e2e | `python -m eval.run_eval --suite e2e` | Full audits on real sites: false alarms vs a domain-age baseline, latency, tokens |
+
+Results are versioned in `eval/results/`. See `docs/ENGINEERING_CASE_STUDY.md` for numbers.
