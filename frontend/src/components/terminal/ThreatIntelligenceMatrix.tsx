@@ -60,7 +60,7 @@ export function ThreatIntelligenceMatrix({ osintResults, marketplaceThreats, sta
                       {q.data && Object.keys(q.data).length > 0 && (
                         <div className="text-[9px] text-[var(--t-dim)] mt-1 whitespace-pre-wrap break-words">
                           {Object.entries(q.data).slice(0, 3).map(([k, v]) => (
-                            <div key={k} className="truncate"><span className="opacity-50">{k}:</span> {String(v)}</div>
+                            <div key={k} className="truncate"><span className="opacity-50">{k}:</span> {formatValue(v)}</div>
                           ))}
                         </div>
                       )}
@@ -95,4 +95,16 @@ export function ThreatIntelligenceMatrix({ osintResults, marketplaceThreats, sta
       )}
     </div>
   );
+}
+
+/** Render OSINT values readably: nested DNS/WHOIS objects used to print "[object Object]". */
+function formatValue(v: unknown): string {
+  if (v == null) return "—";
+  if (Array.isArray(v)) return v.length ? v.map(formatValue).join(", ") : "—";
+  if (typeof v === "object") {
+    const o = v as Record<string, unknown>;
+    if (Array.isArray(o.records)) return o.records.length ? o.records.map(String).join(", ") : String(o.status ?? "—");
+    return Object.entries(o).slice(0, 2).map(([k, x]) => `${k}=${typeof x === "object" ? "…" : String(x)}`).join(" ");
+  }
+  return String(v);
 }

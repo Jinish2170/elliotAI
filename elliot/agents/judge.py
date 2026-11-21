@@ -1254,6 +1254,9 @@ class JudgeAgent:
             "5. Conclusion: Overall risk assessment + key recommendation\n\n"
             "RULES:\n"
             "- Cite specific scores and confidence values from the evidence\n"
+            "- Grounding: state only facts present in the EVIDENCE below; if a fact is absent, "
+            "say it was not checked rather than inventing or denying it\n"
+            "- Plain prose: no markdown, no ** bold markers\n"
             "- Use numbers: 'found 3 dark patterns (2 high-severity)' not 'found some issues'\n"
             "- Every claim must reference evidence below. Do NOT add information not in evidence.\n"
             "- Neutral, professional tone. No speculation, no emotional language.\n\n"
@@ -1310,6 +1313,33 @@ class JudgeAgent:
                 sections.append(f"  - {v.claim.entity_type}='{v.claim.entity_value}': {v.status} (conf={v.confidence:.0%})")
             for inc in gr.inconsistencies:
                 sections.append(f"  - INCONSISTENCY ({inc.severity}): {inc.explanation[:100]}")
+
+            # Domain & transport facts. Omitting these made the narrative claim
+            # "SSL and WHOIS details were not provided" although they were checked.
+            meta = gr.meta_analysis if isinstance(gr.meta_analysis, dict) else {}
+            ssl = meta.get("ssl") or {}
+            age = meta.get("domain_age") or {}
+            dns = meta.get("dns") or {}
+            sections.append("\nDomain & Transport:")
+            if ssl:
+                sections.append(f"  TLS certificate valid: {ssl.get('is_valid')} | issuer: {ssl.get('issuer')} | "
+                                f"days until expiry: {ssl.get('days_until_expiry')} | self-signed: {ssl.get('is_self_signed')}")
+            else:
+                sections.append(f"  TLS: {'present' if gr.has_ssl else 'not verified'}")
+            if age:
+                sections.append(f"  WHOIS registrar: {age.get('registrar')} | privacy-protected: {age.get('is_privacy_protected')}")
+            if dns:
+                sections.append(f"  DNS: SPF={dns.get('has_spf')} DMARC={dns.get('has_dmarc')} MX records={len(dns.get('mx_records') or [])}")
+
+        # Security modules (deterministic checks)
+        if evidence.security_results:
+            sections.append("\nSecurity Modules:")
+            for name, res in evidence.security_results.items():
+                if name.startswith("cvss") or not isinstance(res, dict):
+                    continue
+                findings = res.get("findings") or []
+                sev = sorted({str(f.get("severity", "")).lower() for f in findings if isinstance(f, dict)} - {""})
+                sections.append(f"  - {name}: {len(findings)} finding(s){' (' + ', '.join(sev) + ')' if sev else ''}")
 
         # Overrides
         if trust_result.overrides_applied:

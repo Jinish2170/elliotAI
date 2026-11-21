@@ -110,7 +110,8 @@ function parseSecurityResults(sr: Record<string, unknown>) {
 export function SecurityMatrix({ securityResults, className }: SecurityMatrixProps) {
   const { headers, phishingChecks, formIssues } = parseSecurityResults(securityResults || {});
   const presentCount = headers.filter((h) => h.present).length;
-  const totalChecks = headers.length + phishingChecks.length + (formIssues.length > 0 ? 1 : 0);
+  // The form check always counts once: passed when there are no form issues.
+  const totalChecks = headers.length + phishingChecks.length + 1;
   const passCount = presentCount + phishingChecks.filter((p) => !p.flagged).length + (formIssues.length === 0 ? 1 : 0);
 
   return (

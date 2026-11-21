@@ -230,9 +230,19 @@ async def stream_audit(ws: WebSocket, audit_id: str, db: DbSession):
 
 @router.get("/audit/{audit_id}/status")
 async def audit_status(audit_id: str, db: DbSession):
-    """Check audit status. Reads from database first if persistence enabled."""
+    """Check audit status.
+
+    Prefers the full in-memory result (url, findings, trace_summary, verdicts…)
+    while this process still holds it; the DB row only stores a subset of the
+    result, so a DB-rebuilt result is the fallback after a restart.
+    """
     response_data = None
-    
+
+    info = _audits.get(audit_id)
+    if info and info.get("status") == "completed" and info.get("result"):
+        return {"audit_id": audit_id, "status": "completed", "url": info["url"],
+                "result": info["result"], "error": info.get("error")}
+
     # Try database first if persistence is enabled
     if should_use_db_persistence():
         repo = AuditRepository(db)
@@ -243,6 +253,17 @@ async def audit_status(audit_id: str, db: DbSession):
                 "status": audit.status.value,
                 "url": audit.url,
                 "result": {
+                    "url": audit.url,
+                    "audit_tier": audit.audit_tier,
+                    "verdict_mode": audit.verdict_mode,
+                    "screenshots_count": audit.screenshots_count,
+                    "errors": audit.errors or [],
+                    "findings": [
+                        {"id": f.id, "pattern_type": f.pattern_type, "category": f.category,
+                         "severity": f.severity, "confidence": f.confidence,
+                         "description": f.description, "plain_english": f.plain_english}
+                        for f in audit.findings
+                    ],
                     "trust_score": audit.trust_score,
                     "risk_level": audit.risk_level,
                     "signal_scores": audit.signal_scores,
@@ -541,6 +562,7 @@ async def on_audit_completed(audit_id: str, result: dict, db: AsyncSession) -> N
         audit.security_results = result.get("security_results", {})
         audit.pages_scanned = result.get("pages_scanned", 0)
         audit.elapsed_seconds = result.get("elapsed_seconds", 0)
+        audit.screenshots_count = result.get("screenshots_count", 0)
         audit.status = AuditStatus.COMPLETED
         audit.completed_at = result.get("completed_at") or datetime.utcnow()
 

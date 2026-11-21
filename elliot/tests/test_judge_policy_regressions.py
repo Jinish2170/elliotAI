@@ -50,3 +50,23 @@ def test_injection_attempt_caps_score_to_high_risk():
          for n in ["visual", "structural", "temporal", "graph", "meta", "security"]}
     r = compute_trust_score(s, injection_detected=True)
     assert r.final_score <= 39 and r.risk_level is RiskLevel.HIGH_RISK
+
+
+def test_narrative_evidence_includes_tls_whois_dns_and_security():
+    """Regression: the narrative claimed SSL/WHOIS were 'not provided' because the
+    evidence text never contained them."""
+    from elliot.config.trust_weights import compute_trust_score
+
+    gr = GraphResult(meta_analysis={
+        "ssl": {"is_valid": True, "issuer": "Let's Encrypt", "days_until_expiry": 62, "is_self_signed": False},
+        "domain_age": {"registrar": "Spaceship, Inc.", "is_privacy_protected": False},
+        "dns": {"has_spf": True, "has_dmarc": False, "mx_records": ["mx1"]},
+    })
+    ev = J.AuditEvidence.__new__(J.AuditEvidence)
+    ev.url, ev.scout_results, ev.vision_result, ev.graph_result = "https://x.example", [], None, gr
+    ev.security_results = {"security_headers": {"findings": [{"severity": "HIGH"}]}}
+    agent = J.JudgeAgent.__new__(J.JudgeAgent)
+    text = agent._build_evidence_summary_text(ev, compute_trust_score({}))
+    for needle in ("TLS certificate valid: True", "Let's Encrypt", "WHOIS registrar: Spaceship",
+                   "DMARC=False", "security_headers: 1 finding(s) (high)"):
+        assert needle in text

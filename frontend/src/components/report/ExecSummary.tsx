@@ -89,7 +89,7 @@ export function ExecSummary({
 
           {/* Narrative */}
           <p className="text-[13px] text-[var(--v-text-secondary)] leading-relaxed mb-4">
-            {narrative}
+            {renderBold(narrative)}
           </p>
 
           {/* Quick stats */}
@@ -99,7 +99,7 @@ export function ExecSummary({
             {elapsedSeconds != null && (
               <QuickStat
                 label="DURATION"
-                value={`${Math.floor(elapsedSeconds / 60)}m ${elapsedSeconds % 60}s`}
+                value={`${Math.floor(elapsedSeconds / 60)}m ${Math.round(elapsedSeconds % 60)}s`}
               />
             )}
           </div>
@@ -119,5 +119,16 @@ function QuickStat({ label, value }: { label: string; value: string }) {
         {label}
       </span>
     </div>
+  );
+}
+
+/** Render the LLM narrative's **bold** markers instead of showing raw markdown. */
+function renderBold(text: string) {
+  return (text || "").split(/\*\*(.+?)\*\*/g).map((part, i) =>
+    i % 2 === 1 ? (
+      <strong key={i} className="text-[var(--v-text)] font-medium">{part}</strong>
+    ) : (
+      part
+    ),
   );
 }
