@@ -153,3 +153,5 @@ elliot/data/*.json
 
 # Engine runtime data (traces, cache, evidence)
 elliot/data/
+.serena/
+.vscode/
