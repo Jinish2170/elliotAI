@@ -20,6 +20,27 @@ if TYPE_CHECKING:
 logger = logging.getLogger("elliot.orchestrator")
 
 
+def build_entity_text(scout_results: list[dict]) -> tuple[str, list[str]]:
+    """Text sent to LLM entity extraction: page titles + meta descriptions.
+
+    Context minimisation (prompt-injection defence): a field the injection
+    detector flags is attacker-controlled instruction text, so it is dropped
+    entirely instead of being sent to the LLM. Spotlighting alone did not stop
+    a meta-description attack in the eval (ASR stayed 1/3); quarantine does.
+    Returns (text, quarantined_fields).
+    """
+    from elliot.core.injection import detect_injection
+
+    kept, dropped = [], []
+    for sr in scout_results:
+        meta = sr.get("page_metadata", {}) or {}
+        for field in (sr.get("page_title"), meta.get("description")):
+            if not field:
+                continue
+            (dropped if detect_injection(f"<p>{field}</p>") else kept).append(field)
+    return "\n".join(kept), dropped
+
+
 async def graph_node(state: AuditState) -> dict:
     """
     GRAPH node: Run entity verification and build knowledge graph.
@@ -35,15 +56,9 @@ async def graph_node(state: AuditState) -> dict:
     primary = scout_results[0]
     metadata = primary.get("page_metadata", {})
 
-    # Gather page text from all scout results (titles + descriptions)
-    page_texts = []
-    for sr in scout_results:
-        if sr.get("page_title"):
-            page_texts.append(sr["page_title"])
-        meta = sr.get("page_metadata", {})
-        if meta.get("description"):
-            page_texts.append(meta["description"])
-    page_text = "\n".join(page_texts)
+    page_text, quarantined = build_entity_text(scout_results)
+    if quarantined:
+        logger.warning(f"Graph: quarantined {len(quarantined)} injected field(s) from entity extraction")
 
     # External links — aggregate across all scouted pages. Prefetched subpages
     # (/about, /contact, ...) often carry the real outbound links (socials,

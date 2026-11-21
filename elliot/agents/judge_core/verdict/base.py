@@ -33,6 +33,7 @@ class RiskLevel(str, Enum):
     HIGH_RISK = "high_risk"
     DANGEROUS = "dangerous"
     LIKELY_FRAUDULENT = "likely_fraudulent"
+    INSUFFICIENT_EVIDENCE = "insufficient_evidence"
 
 
 @dataclass(frozen=True)

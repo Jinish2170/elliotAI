@@ -10,12 +10,13 @@ import re
 from datetime import datetime
 from typing import Annotated, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel, field_validator
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.services import guards
 from backend.services.audit_runner import AuditRunner, generate_audit_id
 from elliot.config.settings import should_use_db_persistence
 from elliot.db import get_db
@@ -87,8 +88,20 @@ class AuditStartResponse(BaseModel):
 
 
 @router.post("/audit/start", response_model=AuditStartResponse)
-async def start_audit(req: AuditStartRequest, db: DbSession):
+async def start_audit(req: AuditStartRequest, request: Request, db: DbSession):
     """Create an audit and return the ID + WebSocket URL."""
+    tiers = guards.allowed_tiers()
+    if tiers and req.tier not in tiers:
+        raise HTTPException(403, f"Tier '{req.tier}' is disabled on this deployment ({', '.join(sorted(tiers))})")
+    if guards.block_private_targets() and await asyncio.to_thread(guards.target_is_private, req.url):
+        raise HTTPException(400, "Target resolves to a private or reserved address; refusing (SSRF guard)")
+    limit = guards.max_concurrent_audits()
+    if limit and sum(1 for a in _audits.values() if a.get("status") == "running") >= limit:
+        raise HTTPException(429, "Too many audits running; try again in a minute")
+    ip = guards.client_ip(request.headers, request.client.host if request.client else "unknown")
+    if not guards.rate_limiter.allow(ip):
+        raise HTTPException(429, "Hourly audit limit reached for this client")
+
     audit_id = generate_audit_id()
 
     _audits[audit_id] = {

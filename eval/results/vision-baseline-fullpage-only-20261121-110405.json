@@ -1,0 +1,332 @@
+{
+  "suite": "vision",
+  "micro": {
+    "precision": 0.8,
+    "recall": 0.8,
+    "f1": 0.8,
+    "tp": 4,
+    "fp": 1,
+    "fn": 1
+  },
+  "per_category": {
+    "false_urgency": {
+      "precision": 1.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "tp": 0,
+      "fp": 0,
+      "fn": 1
+    },
+    "forced_continuity": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0
+    },
+    "sneaking": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0
+    },
+    "social_engineering": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0
+    },
+    "visual_interference": {
+      "precision": 0.5,
+      "recall": 1.0,
+      "f1": 0.667,
+      "tp": 1,
+      "fp": 1,
+      "fn": 0
+    }
+  },
+  "clean_pages_without_false_alarm": "1/2",
+  "n_cases": 7,
+  "rows": [
+    {
+      "id": "clean_basic",
+      "stratum": "clean",
+      "expected": [],
+      "predicted": [
+        "visual_interference"
+      ],
+      "tp": 0,
+      "fp": 1,
+      "fn": 0,
+      "seconds": 43.6,
+      "cost": {
+        "llm_calls": 12,
+        "cache_hits": 0,
+        "input_tokens": 16485,
+        "output_tokens": 1379,
+        "llm_seconds": 24.71,
+        "slowest_llm_call_s": 5.88
+      },
+      "findings": [
+        {
+          "category": "visual_interference",
+          "pattern_type": "misdirected_click",
+          "confidence": 0.95,
+          "evidence": "element: Add to Cart button vs Save for Later button | The 'Add to Cart' button is green and filled, while 'Save for Later' is white with a gray border. The gre"
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "misdirected_click",
+          "confidence": 0.9,
+          "evidence": "element: Add to Cart button vs Save for Later button | The 'Add to Cart' button is larger and more visually prominent than the 'Save for Later' button, potentia"
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.9,
+          "evidence": "element: Unsubscribe link in footer navigation bar | Unsubscribe link is present in footer but small and low contrast"
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.85,
+          "evidence": "element: Copyright text \"\u00a9 2024 CleanStore LLC \u2014 All rights reserved\" | Copyright text is small gray text at bottom of page"
+        }
+      ]
+    },
+    {
+      "id": "clean_portfolio",
+      "stratum": "clean",
+      "expected": [],
+      "predicted": [],
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 31.9,
+      "cost": {
+        "llm_calls": 11,
+        "cache_hits": 0,
+        "input_tokens": 15078,
+        "output_tokens": 78,
+        "llm_seconds": 15.38,
+        "slowest_llm_call_s": 1.68
+      },
+      "findings": []
+    },
+    {
+      "id": "dp_fake_countdown",
+      "stratum": "dark_pattern",
+      "expected": [
+        "false_urgency"
+      ],
+      "predicted": [],
+      "tp": 0,
+      "fp": 0,
+      "fn": 1,
+      "seconds": 31.3,
+      "cost": {
+        "llm_calls": 11,
+        "cache_hits": 0,
+        "input_tokens": 15078,
+        "output_tokens": 82,
+        "llm_seconds": 14.73,
+        "slowest_llm_call_s": 1.61
+      },
+      "findings": []
+    },
+    {
+      "id": "dp_guilt_tripping",
+      "stratum": "dark_pattern",
+      "expected": [
+        "forced_continuity"
+      ],
+      "predicted": [
+        "forced_continuity",
+        "visual_interference"
+      ],
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 31.8,
+      "cost": {
+        "llm_calls": 11,
+        "cache_hits": 0,
+        "input_tokens": 15078,
+        "output_tokens": 399,
+        "llm_seconds": 15.24,
+        "slowest_llm_call_s": 2.21
+      },
+      "findings": [
+        {
+          "category": "visual_interference",
+          "pattern_type": "misdirected_click",
+          "confidence": 0.95,
+          "evidence": "element: YES, SEND MY DISCOUNT button vs No thanks text link | The green button 'YES, SEND MY DISCOUNT' is significantly more prominent than the text link 'No t"
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.95,
+          "evidence": "element: opt-out link below the main CTA button inside the popup modal | The text 'No thanks, I'd rather pay full price because I don't like saving money' is sm"
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.9,
+          "evidence": "element: opt-out link below the main CTA button inside the popup modal | The text is small and low contrast gray on white background, positioned at the bottom o"
+        },
+        {
+          "category": "forced_continuity",
+          "pattern_type": "guilt_tripping",
+          "confidence": 0.95,
+          "evidence": "element: link | No thanks, I'd rather pay full price because I don't like saving money"
+        }
+      ]
+    },
+    {
+      "id": "dp_preselected_addons",
+      "stratum": "dark_pattern",
+      "expected": [
+        "sneaking"
+      ],
+      "predicted": [
+        "sneaking",
+        "visual_interference"
+      ],
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 32.4,
+      "cost": {
+        "llm_calls": 11,
+        "cache_hits": 0,
+        "input_tokens": 15078,
+        "output_tokens": 321,
+        "llm_seconds": 15.73,
+        "slowest_llm_call_s": 2.04
+      },
+      "findings": [
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.95,
+          "evidence": "element: Convenience fee \u20b9650 and service charge \u20b9350 added at payment. | The text 'Convenience fee \u20b9650 and service charge \u20b9350 added at payment.' is small and"
+        },
+        {
+          "category": "sneaking",
+          "pattern_type": "pre_selected_options",
+          "confidence": 0.95,
+          "evidence": "element: checkboxes | Three checkboxes are visibly checked with blue checkmarks: 'Add travel insurance (\u20b9899)', 'Priority boarding (\u20b9499)', and 'Subscribe to Tr"
+        },
+        {
+          "category": "sneaking",
+          "pattern_type": "hidden_costs",
+          "confidence": 0.95,
+          "evidence": "element: text below checkboxes | Convenience fee \u20b9650 and service charge \u20b9350 added at payment."
+        }
+      ]
+    },
+    {
+      "id": "dp_fake_badges",
+      "stratum": "dark_pattern",
+      "expected": [
+        "social_engineering"
+      ],
+      "predicted": [
+        "social_engineering"
+      ],
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 33.3,
+      "cost": {
+        "llm_calls": 11,
+        "cache_hits": 0,
+        "input_tokens": 15078,
+        "output_tokens": 334,
+        "llm_seconds": 16.78,
+        "slowest_llm_call_s": 2.28
+      },
+      "findings": [
+        {
+          "category": "social_engineering",
+          "pattern_type": "fake_badges",
+          "confidence": 0.95,
+          "evidence": "element: Badge row containing Norton SECURED, McAfee SECURE, Verified by Visa, SEC Approved | The page displays four badge-like elements: 'Norton SECURED', 'McA"
+        },
+        {
+          "category": "social_engineering",
+          "pattern_type": "fake_authority",
+          "confidence": 0.95,
+          "evidence": "element: text and badge elements near top of page | Page claims 'As seen on: Forbes \u00b7 CNBC \u00b7 Bloomberg' without links or logos, and displays unverified trust ba"
+        }
+      ]
+    },
+    {
+      "id": "dp_hidden_unsubscribe",
+      "stratum": "dark_pattern",
+      "expected": [
+        "visual_interference"
+      ],
+      "predicted": [
+        "forced_continuity",
+        "visual_interference"
+      ],
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 32.7,
+      "cost": {
+        "llm_calls": 11,
+        "cache_hits": 0,
+        "input_tokens": 15078,
+        "output_tokens": 443,
+        "llm_seconds": 16.17,
+        "slowest_llm_call_s": 2.43
+      },
+      "findings": [
+        {
+          "category": "visual_interference",
+          "pattern_type": "misdirected_click",
+          "confidence": 0.95,
+          "evidence": "element: UPGRADE TO PREMIUM button vs 'No thanks' link | The 'UPGRADE TO PREMIUM' button is significantly larger, more colorful, and centrally positioned compar"
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.9,
+          "evidence": "element: Text link below upgrade button saying 'No thanks, I prefer limited features and a worse experience' | The text 'No thanks, I prefer limited features an"
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.85,
+          "evidence": "element: Footer navigation links at bottom of page | Footer navigation links 'Account Settings \u00b7 Billing \u00b7 Help Center' appear in very light gray text on white "
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.7,
+          "evidence": "element: Faint footer text below main navigation links | There appears to be additional very faint text in the footer area that is barely visible against the wh"
+        },
+        {
+          "category": "forced_continuity",
+          "pattern_type": "guilt_tripping",
+          "confidence": 0.95,
+          "evidence": "element: link below upgrade button | No thanks, I prefer limited features and a worse experience"
+        }
+      ]
+    }
+  ],
+  "tag": "baseline",
+  "ran_at": "2026-11-21T11:04:05",
+  "models": {
+    "vision": "nvidia/nemotron-3.5-super-vl-120b-a12b",
+    "llm": "nvidia/nemotron-3.5-super-vl-120b-a12b"
+  }
+}

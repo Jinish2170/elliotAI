@@ -177,7 +177,11 @@ def init_tracing(service_name: str = "elliot-audit", run_id: str = "") -> bool:
                     OTLPSpanExporter
 
                 url = endpoint if endpoint.endswith("/v1/traces") else f"{endpoint}/v1/traces"
-                provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter(endpoint=url)))
+                # Phoenix Cloud / auth-enabled Phoenix: API key as a bearer header.
+                key = os.getenv("PHOENIX_API_KEY", "")
+                headers = {"authorization": f"Bearer {key}"} if key else None
+                provider.add_span_processor(BatchSpanProcessor(
+                    OTLPSpanExporter(endpoint=url, headers=headers)))
                 logger.info(f"Tracing → OTLP {url}")
             except Exception as e:
                 logger.warning(f"OTLP exporter unavailable: {e}")

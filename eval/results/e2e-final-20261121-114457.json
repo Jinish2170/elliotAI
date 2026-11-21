@@ -1,0 +1,169 @@
+{
+  "suite": "e2e",
+  "rows": [
+    {
+      "id": "mindlyticai",
+      "stratum": "legit_small_business",
+      "is_malicious": false,
+      "score": 84,
+      "risk_level": "probably_safe",
+      "veritas_flagged": false,
+      "baseline_domain_age_days": 705,
+      "baseline_flagged": false,
+      "seconds": 205.9,
+      "trace_summary": {
+        "llm_calls": 40,
+        "llm_errors": 0,
+        "input_tokens": 131459,
+        "output_tokens": 1104,
+        "llm_seconds": 93.6,
+        "nim_requests": 75,
+        "cache_hits": 35,
+        "fallbacks": 0,
+        "retries": 0,
+        "queue_wait_seconds": 0.0,
+        "agents": {
+          "scout": 35.31,
+          "security": 0.45,
+          "vision": 141.92,
+          "graph": 15.89,
+          "judge": 8.81
+        },
+        "models": {
+          "private/nvidia/nemotron-3.5-super-120b-a12b": 40
+        },
+        "slowest_llm_call_s": 6.88,
+        "audit_seconds": 202.39,
+        "est_cost_usd": 0.0,
+        "total_tokens": 132563,
+        "trace_id": "5ddc3ab08c86c2e5c3ef418c183fe83c"
+      }
+    },
+    {
+      "id": "synthara",
+      "stratum": "legit_small_business",
+      "is_malicious": false,
+      "score": 78,
+      "risk_level": "probably_safe",
+      "veritas_flagged": false,
+      "baseline_domain_age_days": 284,
+      "baseline_flagged": false,
+      "seconds": 200.3,
+      "trace_summary": {
+        "llm_calls": 42,
+        "llm_errors": 0,
+        "input_tokens": 111604,
+        "output_tokens": 2152,
+        "llm_seconds": 69.77,
+        "nim_requests": 77,
+        "cache_hits": 35,
+        "fallbacks": 0,
+        "retries": 0,
+        "queue_wait_seconds": 0.0,
+        "agents": {
+          "scout": 45.48,
+          "security": 2.18,
+          "vision": 117.92,
+          "graph": 22.5,
+          "judge": 7.68
+        },
+        "models": {
+          "private/nvidia/nemotron-3.5-super-120b-a12b": 42
+        },
+        "slowest_llm_call_s": 5.34,
+        "audit_seconds": 195.76,
+        "est_cost_usd": 0.0,
+        "total_tokens": 113756,
+        "trace_id": "60533e63c34c87caef9f814bde751cab"
+      }
+    },
+    {
+      "id": "example",
+      "stratum": "legit_reference",
+      "is_malicious": false,
+      "score": 94,
+      "risk_level": "trusted",
+      "veritas_flagged": false,
+      "baseline_domain_age_days": 11422,
+      "baseline_flagged": false,
+      "seconds": 77.3,
+      "trace_summary": {
+        "llm_calls": 17,
+        "llm_errors": 0,
+        "input_tokens": 36290,
+        "output_tokens": 621,
+        "llm_seconds": 23.59,
+        "nim_requests": 17,
+        "cache_hits": 0,
+        "fallbacks": 0,
+        "retries": 0,
+        "queue_wait_seconds": 0.0,
+        "agents": {
+          "scout": 18.06,
+          "security": 0.01,
+          "vision": 43.9,
+          "graph": 5.65,
+          "judge": 5.84
+        },
+        "models": {
+          "private/nvidia/nemotron-3.5-super-120b-a12b": 17
+        },
+        "slowest_llm_call_s": 3.62,
+        "audit_seconds": 73.46,
+        "est_cost_usd": 0.0,
+        "total_tokens": 36911,
+        "trace_id": "71756377773477d789a2feda00bbeb01"
+      }
+    },
+    {
+      "id": "wikipedia",
+      "stratum": "legit_big_brand",
+      "is_malicious": false,
+      "score": 91,
+      "risk_level": "trusted",
+      "veritas_flagged": false,
+      "baseline_domain_age_days": 9443,
+      "baseline_flagged": false,
+      "seconds": 87.4,
+      "trace_summary": {
+        "llm_calls": 18,
+        "llm_errors": 0,
+        "input_tokens": 37093,
+        "output_tokens": 655,
+        "llm_seconds": 25.8,
+        "nim_requests": 18,
+        "cache_hits": 0,
+        "fallbacks": 0,
+        "retries": 0,
+        "queue_wait_seconds": 0.0,
+        "agents": {
+          "scout": 19.39,
+          "security": 0.4,
+          "vision": 44.71,
+          "graph": 12.41,
+          "judge": 6.68
+        },
+        "models": {
+          "private/nvidia/nemotron-3.5-super-120b-a12b": 18
+        },
+        "slowest_llm_call_s": 2.14,
+        "audit_seconds": 83.6,
+        "est_cost_usd": 0.0,
+        "total_tokens": 37748,
+        "trace_id": "c5f40b9fc45ead91ce077b3151d2d5c5"
+      }
+    }
+  ],
+  "false_positive_rate": {
+    "veritas": "0/4",
+    "domain_age_baseline": "0/4"
+  },
+  "latency_p50_s": 200.3,
+  "note": "Legit-only: measures false alarms. Phishing recall needs live phishing captures (not collected).",
+  "tag": "final",
+  "ran_at": "2026-11-21T11:44:57",
+  "models": {
+    "vision": "nvidia/nemotron-3.5-super-vl-120b-a12b",
+    "llm": "nvidia/nemotron-3.5-super-vl-120b-a12b"
+  }
+}

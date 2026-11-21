@@ -35,6 +35,7 @@ from tenacity import (AsyncRetrying, before_sleep_log, retry, retry_if_exception
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from elliot.config import settings
+from elliot.core.injection import VISION_RULE
 from elliot.core.tracing import span as trace_span
 
 logger = logging.getLogger("elliot.nim")
@@ -334,6 +335,8 @@ class NIMClient:
         )
         if strict_instruction not in prompt:
             prompt = prompt + strict_instruction
+        if VISION_RULE not in prompt:
+            prompt = prompt + VISION_RULE
 
         # Check cache - use pass-aware key if pass_type provided
         if pass_type is not None:

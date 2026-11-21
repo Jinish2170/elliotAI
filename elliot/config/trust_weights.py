@@ -33,6 +33,8 @@ class RiskLevel(Enum):
     SUSPICIOUS = "suspicious"
     HIGH_RISK = "high_risk"
     LIKELY_FRAUDULENT = "likely_fraudulent"
+    # Abstention: too little evidence to say anything. Never mapped from a score.
+    INSUFFICIENT_EVIDENCE = "insufficient_evidence"
 
 
 RISK_LEVEL_THRESHOLDS: dict[RiskLevel, tuple[int, int]] = {
@@ -42,6 +44,10 @@ RISK_LEVEL_THRESHOLDS: dict[RiskLevel, tuple[int, int]] = {
     RiskLevel.HIGH_RISK:          (20, 39),
     RiskLevel.LIKELY_FRAUDULENT:  (0, 19),
 }
+
+
+# Minimum Σ(weight × confidence) needed to issue a verdict (see compute_trust_score).
+MIN_EVIDENCE_COVERAGE = 0.25
 
 
 def score_to_risk_level(score: int) -> RiskLevel:
@@ -142,7 +148,7 @@ OVERRIDE_RULES: list[OverrideRule] = [
         description="Sites without HTTPS cannot score above 50",
         condition="ssl_status == False",
         action="cap_at",
-        value=85,
+        value=50,
         priority=1,
     ),
     OverrideRule(
@@ -180,6 +186,16 @@ OVERRIDE_RULES: list[OverrideRule] = [
         action="deduct",
         value=15,
         priority=4,
+    ),
+    OverrideRule(
+        id="prompt_injection_detected",
+        name="AI Manipulation Attempt",
+        description="Page contains text that tries to instruct AI auditors → cap at 39 (high risk). "
+                    "Legitimate sites have no reason to address AI systems; the attack is evidence.",
+        condition="security_results.prompt_injection has findings",
+        action="cap_at",
+        value=39,
+        priority=1,
     ),
     OverrideRule(
         id="captcha_only",
@@ -279,6 +295,8 @@ class TrustScoreResult:
     overrides_applied: list         # List[OverrideRule] that fired
     pre_override_score: int         # Score before any overrides
     explanation: str                # Human-readable explanation
+    evidence_coverage: float = 1.0  # Σ weight × confidence over signals (0-1)
+    abstained: bool = False         # True → risk_level is INSUFFICIENT_EVIDENCE
 
 
 def compute_trust_score(
@@ -296,6 +314,7 @@ def compute_trust_score(
     js_risk_score: float = 1.0,
     is_privacy_protected: bool = False,
     has_cross_domain_sensitive_forms: bool = False,
+    injection_detected: bool = False,
 ) -> TrustScoreResult:
     """
     Compute the final trust score from sub-signals.
@@ -376,13 +395,15 @@ def compute_trust_score(
             fired = True
         elif rule.id == "captcha_only" and scout_status == "CAPTCHA_BLOCKED":
             fired = True
+        elif rule.id == "prompt_injection_detected" and injection_detected:
+            fired = True
 
         if fired:
             overrides_applied.append(rule)
             if rule.action == "cap_at":
                 final_score = min(final_score, rule.value)
             elif rule.action == "force_below":
-                final_score = min(final_score, rule.value)
+                final_score = min(final_score, rule.value - 1)
             elif rule.action == "deduct":
                 final_score = max(0, final_score - rule.value)
 
@@ -411,12 +432,25 @@ def compute_trust_score(
                 if rule.action == "cap_at":
                     final_score = min(final_score, rule.value)
                 elif rule.action == "force_below":
-                    final_score = min(final_score, rule.value)
+                    final_score = min(final_score, rule.value - 1)
                 elif rule.action == "deduct":
                     final_score = max(0, final_score - rule.value)
 
     final_score = max(0, min(100, final_score))
     risk_level = score_to_risk_level(final_score)
+
+    # Abstention. Missing signals fall back to the optimistic prior, so with no
+    # evidence the formula alone says 85 / "probably_safe" — fail-open for a
+    # fraud detector. Below MIN_EVIDENCE_COVERAGE we report "insufficient
+    # evidence" instead (hard-stop overrides such as blocklists still win).
+    coverage = sum(
+        weight * signals[name].confidence
+        for name, weight in weight_map.items() if name in signals
+    )
+    hard_stop = any(r.action == "force_below" for r in overrides_applied)
+    abstained = coverage < MIN_EVIDENCE_COVERAGE and not hard_stop
+    if abstained:
+        risk_level = RiskLevel.INSUFFICIENT_EVIDENCE
 
     # Step 3: Generate explanation
     explanations = []
@@ -444,5 +478,7 @@ def compute_trust_score(
         overrides_applied=overrides_applied,
         pre_override_score=pre_override,
         explanation=explanation,
+        evidence_coverage=round(coverage, 3),
+        abstained=abstained,
     )
 

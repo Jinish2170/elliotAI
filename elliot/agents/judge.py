@@ -40,7 +40,10 @@ from elliot.core.nim_client import NIMClient
 try:
     from elliot.agents.judge_core.verdict import (
         DualVerdict,
-        RiskLevel,
+        # Aliased: importing it as `RiskLevel` shadowed trust_weights.RiskLevel, so
+        # every `risk == RiskLevel.X` check compared members of different enums
+        # (always False) and fraudulent sites got "This website looks okay".
+        RiskLevel as VerdictRiskLevel,
         SeverityLevel,
         VerdictNonTechnical,
         VerdictTechnical,
@@ -718,18 +721,19 @@ class JudgeAgent:
             green_flags.append("Domain is over 1 year old")
 
         try:
-            rl_enum = RiskLevel(trust_result.risk_level.value.lower()) if hasattr(trust_result.risk_level, 'value') else RiskLevel(str(trust_result.risk_level).lower())
+            rl_enum = VerdictRiskLevel(trust_result.risk_level.value.lower()) if hasattr(trust_result.risk_level, 'value') else VerdictRiskLevel(str(trust_result.risk_level).lower())
         except Exception:
-            rl_enum = RiskLevel.SUSPICIOUS
+            rl_enum = VerdictRiskLevel.SUSPICIOUS
 
         # Simple explanation based on risk level
         simple_explanation = {
-            RiskLevel.TRUSTED: "This site appears safe and legitimate. No major concerns detected.",
-            RiskLevel.PROBABLY_SAFE: "This site looks reasonably safe. Verify before sharing sensitive info.",
-            RiskLevel.SUSPICIOUS: "Be cautious with this site. Check for reviews and verify authenticity.",
-            RiskLevel.HIGH_RISK: "This site has warning signs. Don't enter personal information here.",
-            RiskLevel.DANGEROUS: "This site has high severity threats. Do not use this site.",
-            RiskLevel.LIKELY_FRAUDULENT: "This site is likely a scam. Avoid it completely.",
+            VerdictRiskLevel.TRUSTED: "This site appears safe and legitimate. No major concerns detected.",
+            VerdictRiskLevel.PROBABLY_SAFE: "This site looks reasonably safe. Verify before sharing sensitive info.",
+            VerdictRiskLevel.SUSPICIOUS: "Be cautious with this site. Check for reviews and verify authenticity.",
+            VerdictRiskLevel.HIGH_RISK: "This site has warning signs. Don't enter personal information here.",
+            VerdictRiskLevel.DANGEROUS: "This site has high severity threats. Do not use this site.",
+            VerdictRiskLevel.LIKELY_FRAUDULENT: "This site is likely a scam. Avoid it completely.",
+            VerdictRiskLevel.INSUFFICIENT_EVIDENCE: "We could not gather enough evidence to judge this site. Treat it as unverified.",
         }.get(rl_enum, "Unable to determine safety.")
 
         # Use strategy narrative if available
@@ -815,6 +819,7 @@ class JudgeAgent:
 
         # Gather paranoia params from security results
         is_phishing = False
+        injection_detected = False
         js_risk_score = 0.0
         is_privacy_protected = False
         has_cross_domain_forms = False
@@ -823,6 +828,10 @@ class JudgeAgent:
         if sec:
             phishing = sec.get("phishing_db") or sec.get("phishing", {})
             is_phishing = phishing.get("is_phishing", False)
+            # Blocklist = an external database hit (Safe Browsing / PhishTank),
+            # not heuristics. Was hard-coded False, so this override never fired.
+            is_blacklisted = bool(phishing.get("sources"))
+            injection_detected = bool((sec.get("prompt_injection") or {}).get("findings"))
             js = sec.get("js_analysis", {})
             js_risk_score = js.get("risk_score", 0.0)
         if evidence.graph_result and evidence.graph_result.domain_intel:
@@ -849,6 +858,7 @@ class JudgeAgent:
             js_risk_score=js_risk_score,
             is_privacy_protected=is_privacy_protected,
             has_cross_domain_sensitive_forms=has_cross_domain_forms,
+            injection_detected=injection_detected,
         )
 
         logger.info(
@@ -1364,6 +1374,9 @@ class JudgeAgent:
             recs.append("Report this site to relevant authorities (FTC, local consumer protection).")
             recs.append("If you've already transacted, monitor your accounts for unauthorized activity.")
 
+        if risk == RiskLevel.INSUFFICIENT_EVIDENCE:
+            recs.append("Insufficient evidence for a verdict (analysis blocked or failed). Re-run the audit or verify manually.")
+
         if risk == RiskLevel.SUSPICIOUS:
             recs.append("Exercise caution. Verify the business through independent channels before transacting.")
             recs.append("Check for the business on official registries (Better Business Bureau, etc.).")
@@ -1466,6 +1479,9 @@ class JudgeAgent:
             recs.append("Don't enter your credit card or personal details on this site.")
             recs.append("If you've already made a purchase, check your bank statements carefully.")
             recs.append("Look for the same product/service on well-known websites instead.")
+        elif risk == RiskLevel.INSUFFICIENT_EVIDENCE:
+            recs.append("We couldn't check this site properly, so treat it as unverified.")
+            recs.append("Don't enter passwords or payment details until you can verify it another way.")
         elif risk == RiskLevel.SUSPICIOUS:
             recs.append("Be careful — this site has some warning signs.")
             recs.append("Search for reviews of this website before buying anything.")

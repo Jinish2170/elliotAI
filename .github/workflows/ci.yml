@@ -1,0 +1,43 @@
+name: ci
+
+on:
+  push:
+    branches: [main, feat/osint-pipeline]
+  pull_request:
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install
+        run: |
+          pip install -r requirements-dev.txt
+          python -m playwright install --with-deps chromium
+      - name: Unit + integration tests (LLM calls are mocked; no API key needed)
+        run: python -m pytest -q elliot/tests tests backend/tests -p no:cacheprovider
+      - name: Eval gate — deterministic scoring policy must be 5/5
+        run: |
+          python -m eval.run_eval --suite scoring --tag ci | tee scoring.md
+          grep -q "Scoring policy: 5/5" scoring.md
+
+  frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npx tsc --noEmit

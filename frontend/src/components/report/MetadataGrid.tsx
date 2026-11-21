@@ -53,6 +53,37 @@ export function MetadataGrid({ result, auditId, className }: MetadataGridProps) 
         ))}
       </div>
 
+      {/* AI pipeline telemetry (OpenTelemetry roll-up) */}
+      {result.trace_summary && (
+        <div className="mt-4 pt-3 border-t border-[rgba(255,255,255,0.04)]">
+          <span className="text-[9px] uppercase tracking-[0.15em] text-[var(--v-text-tertiary)] block mb-2">
+            AI pipeline telemetry · trace {result.trace_summary.trace_id.slice(0, 8)}
+          </span>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {[
+              { label: "LLM calls", value: `${result.trace_summary.llm_calls}${result.trace_summary.llm_errors ? ` (${result.trace_summary.llm_errors} err)` : ""}` },
+              { label: "Cache hits", value: `${result.trace_summary.cache_hits}/${result.trace_summary.nim_requests}` },
+              { label: "Tokens", value: result.trace_summary.total_tokens.toLocaleString() },
+              { label: "LLM time", value: `${result.trace_summary.llm_seconds}s (max ${result.trace_summary.slowest_llm_call_s}s)` },
+              { label: "Retries", value: String(result.trace_summary.retries) },
+              { label: "Fallbacks", value: String(result.trace_summary.fallbacks) },
+              { label: "Est. cost", value: `$${result.trace_summary.est_cost_usd.toFixed(4)}` },
+              {
+                label: "Slowest agent",
+                value: Object.entries(result.trace_summary.agents).sort((a, b) => b[1] - a[1])[0]?.join(" · ") + "s",
+              },
+            ].map((row) => (
+              <div key={row.label}>
+                <span className="text-[9px] uppercase tracking-[0.15em] text-[var(--v-text-tertiary)] block mb-0.5">
+                  {row.label}
+                </span>
+                <span className="text-[13px] font-mono text-[var(--v-text)]">{row.value}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Errors */}
       {result.errors && result.errors.length > 0 && (
         <div className="mt-4 pt-3 border-t border-[rgba(255,255,255,0.04)]">

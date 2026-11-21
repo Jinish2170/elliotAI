@@ -138,3 +138,7 @@ _test_ws.py
 
 # Marketplace threat data
 elliot/data/*.json
+
+# SQLite runtime files
+*.db-shm
+*.db-wal

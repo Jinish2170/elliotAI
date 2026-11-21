@@ -1,0 +1,43 @@
+{
+  "suite": "scoring",
+  "passed": 2,
+  "total": 5,
+  "checks": [
+    {
+      "id": "no_evidence_abstains",
+      "desc": "No evidence at all must not be reported as safe",
+      "pass": false,
+      "detail": "score=85 level=probably_safe"
+    },
+    {
+      "id": "weak_bad_evidence_not_safe",
+      "desc": "Uniformly bad (low-confidence) evidence must not be 'probably_safe'+",
+      "pass": true,
+      "detail": "score=60 level=suspicious"
+    },
+    {
+      "id": "no_ssl_cap",
+      "desc": "Sites without HTTPS cannot score above 50 (documented rule)",
+      "pass": false,
+      "detail": "score=85"
+    },
+    {
+      "id": "ssl_unknown_not_penalised",
+      "desc": "Unknown SSL status (lookup failed) must not trigger the no-SSL cap",
+      "pass": true,
+      "detail": "score=90"
+    },
+    {
+      "id": "blacklist_forces_low",
+      "desc": "Blocklisted domain forced below 15",
+      "pass": false,
+      "detail": "score=15"
+    }
+  ],
+  "tag": "baseline",
+  "ran_at": "2026-11-21T10:56:56",
+  "models": {
+    "vision": "nvidia/nemotron-3.5-super-vl-120b-a12b",
+    "llm": "nvidia/nemotron-3.5-super-vl-120b-a12b"
+  }
+}

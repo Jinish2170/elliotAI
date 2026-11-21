@@ -20,6 +20,19 @@
 
 Elliot is an AI-powered forensic web auditing platform that analyzes websites for trust, safety, dark patterns, and security vulnerabilities. It combines **5 specialized AI agents** with **visual analysis**, **graph investigation**, **OSINT/darknet intelligence**, and **multi-signal scoring** to produce comprehensive, real-time forensic reports.
 
+## AI engineering highlights
+
+| | |
+|---|---|
+| **LLMs perceive, code decides** | Models only describe pages; the 0–100 trust score is a deterministic, unit-tested function of 6 weighted signals + override rules — including **abstention** (`insufficient_evidence`) instead of failing open. |
+| **Tracing** | OpenTelemetry + OpenInference → Phoenix. One trace per audit (`audit › agent.* › nim.* › LLM`), per-audit token / latency / cost roll-up in the API and UI. Traces found 4 pipeline bugs that the test suite missed. |
+| **Evals** | `python -m eval.run_eval --suite scoring|vision|injection|e2e` — policy checks (CI gate), per-category P/R/F1 for the VLM, red-team attack-success-rate on matched pairs, end-to-end vs a domain-age baseline. |
+| **Structured outputs** | Taxonomy-derived Pydantic schemas + NIM constrained decoding (`json_schema`) + one repair retry. |
+| **Prompt-injection defence** | Context minimisation, spotlighting, deterministic detector; an injection attempt *lowers* the trust score. ASR 1/3 → 0/3. |
+| **Deployable** | Docker (HF Spaces) + Vercel, SSRF guard, per-IP rate limits. |
+
+→ **[Engineering case study](docs/ENGINEERING_CASE_STUDY.md)** (every bug: how it was found, root cause, fix, before/after) · **[Deploy guide](docs/DEPLOY.md)**
+
 ---
 
 ## Features

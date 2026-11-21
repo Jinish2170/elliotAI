@@ -1,48 +1,28 @@
-# Use Python 3.12 slim as the base image
+# VERITAS backend (FastAPI + audit engine + headless Chromium).
+# Targets Hugging Face Spaces (Docker SDK, free CPU tier: 2 vCPU / 16 GB) but
+# runs anywhere: docker build -t veritas . && docker run -p 7860:7860 --env-file elliot/.env veritas
 FROM python:3.12-slim
 
-# Set environment variables
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
-ENV PYTHONPATH=/app
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app \
+    PLAYWRIGHT_BROWSERS_PATH=/ms-playwright \
+    PORT=7860
 
-# Install system dependencies for Playwright and Chromium
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    wget \
-    gnupg \
-    libgconf-2-4 \
-    libatk1.0-0 \
-    libatk-bridge2.0-0 \
-    libgdk-pixbuf2.0-0 \
-    libgtk-3-0 \
-    libgbm-dev \
-    libnss3 \
-    libasound2 \
-    && rm -rf /var/lib/apt/lists/*
-
-# Set working directory
 WORKDIR /app
 
-# Copy requirement files first for better caching
-COPY requirements.txt .
+COPY requirements.txt ./
 COPY backend/requirements.txt ./backend/requirements.txt
+RUN pip install --no-cache-dir --retries 10 --timeout 60 -r requirements.txt -r backend/requirements.txt \
+ && python -m playwright install --with-deps chromium \
+ && rm -rf /var/lib/apt/lists/*
 
-# Install dependencies
-RUN pip install --no-cache-dir -r requirements.txt
-RUN pip install --no-cache-dir -r backend/requirements.txt
+# HF Spaces runs containers as uid 1000; give it the writable data dirs.
+RUN useradd -m -u 1000 app
+COPY --chown=app:app . .
+RUN mkdir -p elliot/data backend/data && chown -R app:app elliot/data backend/data
+USER app
 
-# Install Playwright and Chromium
-RUN playwright install chromium
-RUN playwright install-deps chromium
-
-# Copy the rest of the application code
-COPY . .
-
-# Expose the port FastAPI will run on
-EXPOSE 8000
-
-# Set working directory to the backend for running the app
+EXPOSE 7860
 WORKDIR /app/backend
-
-# Start the application
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT}"]

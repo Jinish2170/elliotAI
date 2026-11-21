@@ -174,7 +174,8 @@ export type RiskLevel =
   | "suspicious"
   | "high_risk"
   | "likely_fraudulent"
-  | "dangerous";
+  | "dangerous"
+  | "insufficient_evidence";
 
 export type SecuritySeverity =
   | "LOW"
@@ -742,7 +743,7 @@ export interface VerdictTechnical {
 }
 
 export interface VerdictNonTechnical {
-  risk_level: "trusted" | "probably_safe" | "suspicious" | "high_risk" | "likely_fraudulent" | "dangerous";
+  risk_level: "trusted" | "probably_safe" | "suspicious" | "high_risk" | "likely_fraudulent" | "dangerous" | "insufficient_evidence";
   summary: string;
   key_findings: string[];
   recommendations: string[];
@@ -821,6 +822,28 @@ export interface AuditResult {
   dual_verdict?: DualVerdict;
   trust_score_result?: TrustScoreResult;
   judge_decision?: JudgeDecision;
+  trace_summary?: TraceSummary | null;
+}
+
+/** Per-audit roll-up of OpenTelemetry spans (elliot/core/tracing.py). */
+export interface TraceSummary {
+  trace_id: string;
+  audit_seconds?: number;
+  llm_calls: number;
+  llm_errors: number;
+  nim_requests: number;
+  cache_hits: number;
+  retries: number;
+  fallbacks: number;
+  input_tokens: number;
+  output_tokens: number;
+  total_tokens: number;
+  llm_seconds: number;
+  queue_wait_seconds: number;
+  slowest_llm_call_s: number;
+  est_cost_usd: number;
+  agents: Record<string, number>;
+  models: Record<string, number>;
 }
 
 export interface VisionPassStartEvent {
@@ -892,6 +915,7 @@ export const RISK_COLORS: Record<string, string> = {
   high_risk: "#F97316",
   likely_fraudulent: "#EF4444",
   dangerous: "#DC2626",
+  insufficient_evidence: "#6B7280",
 };
 
 export const RISK_LABELS: Record<string, string> = {
@@ -900,6 +924,8 @@ export const RISK_LABELS: Record<string, string> = {
   suspicious: "Suspicious",
   high_risk: "High Risk",
   likely_fraudulent: "Likely Fraudulent",
+  dangerous: "Dangerous",
+  insufficient_evidence: "Insufficient Evidence",
 };
 
 // ========================================
