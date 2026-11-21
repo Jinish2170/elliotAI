@@ -50,7 +50,7 @@ Elliot is an AI-powered forensic web auditing platform that analyzes websites fo
 - **Audit History & Compare** — Browse past audits, compare trust scores / risk deltas between runs
 - **Chromatic UI Theming** — Active agent context drives ambient UI color changes (ChromaticProvider)
 - **16 Specialized Terminal Panels** — CVSS Radar, MITRE ATT&CK Grid, Knowledge Graph, Threat Matrix, Scout Imagery, Vision Intelligence, Scout Telemetry, Corporate Entities, Verdict Matrix, and more
-- **Next.js 15 Frontend** — 5-route app with animated terminal-style live audit view, history browser, multi-audit comparison
+- **Next.js 16 Frontend** — 5-route app with animated terminal-style live audit view, history browser, multi-audit comparison
 - **LanceDB Vector Store** — Evidence persistence and similarity search
 - **Playwright Browser Automation** — Headless screenshot capture, DOM extraction, interaction testing, CAPTCHA detection, form discovery
 
@@ -60,7 +60,7 @@ Elliot is an AI-powered forensic web auditing platform that analyzes websites fo
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│                     Next.js 15 Frontend                       │
+│                     Next.js 16 Frontend                       │
 │  Landing  ──▶  Live Audit (WS)  ──▶  Final Report            │
 │  History  ──▶  Compare (multi-audit diff)                     │
 │  Port 3000                                                    │
@@ -115,8 +115,8 @@ Elliot is an AI-powered forensic web auditing platform that analyzes websites fo
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/your-org/elliot.git
-cd elliot
+git clone https://github.com/Jinish2170/elliotAI.git
+cd elliotAI
 ```
 
 ### 2. Set Up Python Environment
@@ -439,7 +439,7 @@ elliotAI/
 │   └── services/
 │       └── audit_runner.py         # Subprocess wrapper for engine
 │
-├── frontend/                       # Next.js 15 UI
+├── frontend/                       # Next.js 16 UI
 │   └── src/
 │       ├── app/
 │       │   ├── layout.tsx
@@ -519,7 +519,7 @@ elliotAI/
 
 | Technology | Purpose |
 |---|---|
-| **Next.js 15** | App Router, Turbopack, SSR |
+| **Next.js 16** | App Router, Turbopack, SSR |
 | **React 19** | UI library |
 | **TypeScript 5** | Type safety (60+ interfaces) |
 | **Tailwind CSS 4** | Utility-first styling |
@@ -668,5 +668,5 @@ MIT License. See [LICENSE](LICENSE) for details.
 ---
 
 <p align="center">
-  Built with NVIDIA NIM · LangGraph · Next.js 15 · FastAPI · SQLAlchemy
+  Built with NVIDIA NIM · LangGraph · Next.js 16 · FastAPI · SQLAlchemy
 </p>
