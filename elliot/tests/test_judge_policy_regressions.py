@@ -70,3 +70,16 @@ def test_narrative_evidence_includes_tls_whois_dns_and_security():
     for needle in ("TLS certificate valid: True", "Let's Encrypt", "WHOIS registrar: Spaceship",
                    "DMARC=False", "security_headers: 1 finding(s) (high)"):
         assert needle in text
+
+
+def test_cvss_unknown_tls_is_not_treated_as_no_https():
+    """has_ssl=None (unknown) must not raise 'no HTTPS' risk; the report must explain each metric."""
+    from elliot.cwe.cvss_v31 import build_cvss_report
+
+    clean = build_cvss_report(dark_patterns=[], has_ssl=True)
+    assert clean["base_score"] == 0.0 and clean["vector_string"].endswith("C:N/I:N/A:N")
+    no_tls = build_cvss_report(dark_patterns=[], has_ssl=False)
+    assert "AC:H" in no_tls["vector_string"] and "C:L" in no_tls["vector_string"]
+    detail = {d["abbr"]: d for d in no_tls["metrics_detail"]}
+    assert len(detail) == 8 and "HTTPS" in detail["C"]["why"]
+    assert no_tls["calculator_url"].endswith(no_tls["vector_string"])

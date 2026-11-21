@@ -228,33 +228,21 @@ class JudgeAgent:
                 decision.use_dual_verdict = True
                 decision.dual_verdict = dual_verdict.to_dict()
                 logger.info(f"Dual-tier verdict generated for {evidence.url}")
-                logger.warning(f"----- JUDGE EMITTER PRESENT? {emitter is not None} -----")
-                open("judge_debug.txt", "w").write(f"Emitter: {emitter is not None} CVSS: {bool(dual_verdict.technical.cvss_metrics)}")
-                logger.warning(f"----- CVSS DICT PRESENT? {bool(dual_verdict.technical.cvss_metrics)} -----")
-                
                 # Emit CVSS metrics directly to frontend if emitter present
                 if emitter and dual_verdict.technical and dual_verdict.technical.cvss_metrics:
                     from elliot.core.progress.event_priority import EventPriority
-                    
+
                     cvss_dict = dual_verdict.technical.cvss_metrics
-                    cvss_arr = []
-                    _metric_keys = ['attack_vector', 'attack_complexity', 'privileges_required', 
-                                   'user_interaction', 'scope', 'confidentiality', 'integrity', 'availability']
-                    
-                    for k in _metric_keys:
-                        if k in cvss_dict:
-                            cvss_arr.append({
-                                "name": k,
-                                "value": str(cvss_dict[k]),
-                                "severity": "HIGH" if cvss_dict.get('base_score', 0) > 6 else "MEDIUM" # simplified severity mapping
-                            })
                     await emitter.emit_event(
                         event_type="cvss_metrics",
                         priority=EventPriority.MEDIUM,
-                        metrics=cvss_arr,
-                        base_score=cvss_dict.get('base_score', 0.0)
+                        metrics=cvss_dict.get("metrics_detail") or [],
+                        base_score=cvss_dict.get("base_score", 0.0),
+                        vector_string=cvss_dict.get("vector_string", ""),
+                        severity=cvss_dict.get("severity", ""),
+                        calculator_url=cvss_dict.get("calculator_url", ""),
                     )
-                    
+
             except Exception as e:
                 logger.warning(f"Failed to generate dual verdict: {e}", exc_info=True)
                 decision.use_dual_verdict = False
@@ -654,7 +642,8 @@ class JudgeAgent:
 
             cvss_report = build_cvss_report(
                 dark_patterns=dark_patterns_list,
-                has_ssl=ctx.has_ssl,
+                # None = TLS unknown (e.g. graph timed out): only a confirmed False counts as "no HTTPS".
+                has_ssl=ctx.has_ssl is not False,
                 phishing_flag=ctx.has_phishing_hits,
                 credential_capture=credential_capture,
                 malware_distribution=malware_distribution,
@@ -704,7 +693,7 @@ class JudgeAgent:
 
         # Warnings from critical triggers
         warnings = []
-        if not ctx.has_ssl:
+        if ctx.has_ssl is False:
             warnings.append("This site is not using secure HTTPS connection")
         if ctx.has_phishing_hits:
             warnings.append("External security services have flagged this as potentially phishing")

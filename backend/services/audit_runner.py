@@ -41,6 +41,7 @@ class AuditRunner:
         self._result_sent = False
         self._findings_sent: set[str] = set()
         self._screenshot_index = 0
+        self._shots_sent: set[str] = set()
 
     async def _read_queue_and_stream(self, send: Callable):
         if self.progress_queue is None:
@@ -81,35 +82,12 @@ class AuditRunner:
             await original_send(event)  # Use original to avoid recursion
         send = seq_send
 
-        # Send animated dummy data for CVSS and MITRE so UI is alive during audit
-        await send({
-            "type": "cvss_metrics",
-            "base_score": 0.0,
-            "metrics": [
-                {"name": "attack_vector", "value": "CALCULATING", "severity": "LOW"},
-                {"name": "attack_complexity", "value": "CALCULATING", "severity": "LOW"},
-                {"name": "privileges_required", "value": "CALCULATING", "severity": "LOW"},
-                {"name": "user_interaction", "value": "CALCULATING", "severity": "LOW"},
-                {"name": "scope", "value": "CALCULATING", "severity": "LOW"},
-                {"name": "confidentiality", "value": "CALCULATING", "severity": "LOW"},
-                {"name": "integrity", "value": "CALCULATING", "severity": "LOW"},
-                {"name": "availability", "value": "CALCULATING", "severity": "LOW"}
-            ]
-        })
-        await send({
-            "type": "mitre_technique_mapped",
-            "techniques": [
-                {"id": "T1592", "name": "Gather Victim Host Information", "tactic": "Reconnaissance", "confidence": 0.5},
-                {"id": "T1589", "name": "Gather Victim Identity Information", "tactic": "Reconnaissance", "confidence": 0.5},
-                {"id": "T1590", "name": "Gather Victim Network Information", "tactic": "Reconnaissance", "confidence": 0.5}
-            ]
-        })
-
         # --- PRE-FLIGHT REACHABILITY CHECK ---
         import urllib.request
         from urllib.error import URLError
         
         await send({"type": "phase_start", "phase": "scout", "message": "Pre-flight verification..."})
+        await send({"type": "log_entry", "timestamp": time.strftime("%H:%M:%S"), "agent": "Browser Reconnaissance", "message": "Pre-flight verification...", "level": "info"})
         try:
             # 15-second DNS/HEAD check to fail fast for garbage URLs
             req = urllib.request.Request(self.url, method="HEAD", headers={'User-Agent': 'Elliot/(+https://github.com)'})
@@ -242,6 +220,24 @@ class AuditRunner:
             for line in stderr_lines[-20:]:
                 logger.info("[%s] stderr: %s", self.audit_id, line)
 
+    async def _send_screenshots(self, files: list[dict], send: Callable):
+        """Stream screenshots to the UI once each (live after Scout, deduped at the end)."""
+        for item in files:
+            screenshot_path = item.get("path") or ""
+            if not screenshot_path or screenshot_path in self._shots_sent:
+                continue
+            self._shots_sent.add(screenshot_path)
+            data = None
+            path = Path(screenshot_path)
+            if path.exists():
+                try:
+                    data = base64.b64encode(path.read_bytes()).decode("ascii")
+                except Exception:
+                    data = None
+            label = item.get("label") or f"Screenshot {self._screenshot_index + 1}"
+            await send({"type": "screenshot", "url": screenshot_path, "label": label, "index": self._screenshot_index, "data": data})
+            self._screenshot_index += 1
+
     async def _handle_progress(self, data: dict, send: Callable):
         if data.get("type") and data.get("type") != "progress":
             # Track live-emitted findings so we don't duplicate them at the end
@@ -255,6 +251,12 @@ class AuditRunner:
         step = data.get("step", "")
         pct = data.get("pct", 0)
         detail = data.get("detail", "")
+        # Later rounds repeat the same steps; tag them so the log never looks duplicated.
+        if isinstance(data.get("iteration"), int):
+            self._round = data["iteration"]   # the scout step announces each new round
+        rnd = getattr(self, "_round", 1)
+        if rnd > 1 and phase not in ("init", "iteration", "complete"):
+            detail = f"{detail} (round {rnd})"
         label = {"init": "Initialization", "scout": "Browser Reconnaissance", "security": "Security Audit", "vision": "Visual Intelligence", "graph": "Intelligence Network", "judge": "Forensic Judge"}.get(phase, phase.title())
         if step in {"navigating", "scanning", "analyzing", "investigating", "deliberating", "starting"}:
             await send({"type": "phase_start", "phase": phase, "message": detail, "pct": pct, "label": label})
@@ -262,8 +264,10 @@ class AuditRunner:
             await send({"type": "log_entry", "timestamp": time.strftime("%H:%M:%S"), "agent": label, "message": detail, "level": "info"})
         elif step == "done":
             summary_data = data.get("summary", {})
+            if phase == "scout" and data.get("shot_files"):
+                await self._send_screenshots(data["shot_files"], send)
             for k, v in data.items():
-                if k not in ["type", "phase", "step", "pct", "detail", "summary"]:
+                if k not in ["type", "phase", "step", "pct", "detail", "summary", "shot_files"]:
                     summary_data[k] = v
 
             await send({"type": "phase_complete", "phase": phase, "message": detail, "pct": pct, "label": label, "summary": summary_data or {}})
@@ -506,17 +510,9 @@ class AuditRunner:
 
         for scout_result in scout_results:
             labels = scout_result.get("screenshot_labels", []) or []
-            for i, screenshot_path in enumerate(scout_result.get("screenshots", []) or []):
-                label = labels[i] if i < len(labels) else f"Screenshot {self._screenshot_index + 1}"
-                data = None
-                path = Path(screenshot_path)
-                if path.exists():
-                    try:
-                        data = base64.b64encode(path.read_bytes()).decode("ascii")
-                    except Exception:
-                        data = None
-                await send({"type": "screenshot", "url": screenshot_path, "label": label, "index": self._screenshot_index, "data": data})
-                self._screenshot_index += 1
+            await self._send_screenshots(
+                [{"path": sp, "label": labels[i] if i < len(labels) else None}
+                 for i, sp in enumerate(scout_result.get("screenshots", []) or [])], send)
 
         if summary["site_type"]:
             await send({"type": "site_type", "site_type": summary["site_type"], "confidence": summary["site_type_confidence"]})
@@ -638,14 +634,14 @@ class AuditRunner:
                 await send({"type": "cve_detected", "cve": cve_payload})
 
         cvss_metrics = technical.get("cvss_metrics")
-        if isinstance(cvss_metrics, dict):
-            def map_sev(val_str):
-                return "CRITICAL" if val_str in ("H", "High") else "HIGH" if val_str in ("M", "Medium") else "LOW" if val_str in ("L", "Low", "N", "None") else "MEDIUM"
-            mapped_metrics = [{"name": k, "value": str(v), "severity": map_sev(str(v))} for k, v in cvss_metrics.items() if k != "base_score"]
+        if isinstance(cvss_metrics, dict) and cvss_metrics.get("metrics_detail"):
             await send({
-                "type": "cvss_metrics", 
-                "metrics": mapped_metrics, 
-                "base_score": cvss_metrics.get("base_score", technical.get("cvss_score", 0.0))
+                "type": "cvss_metrics",
+                "metrics": cvss_metrics["metrics_detail"],
+                "base_score": cvss_metrics.get("base_score", technical.get("cvss_score", 0.0)),
+                "vector_string": cvss_metrics.get("vector_string", ""),
+                "severity": cvss_metrics.get("severity", ""),
+                "calculator_url": cvss_metrics.get("calculator_url", ""),
             })
         # Emit MITRE techniques only when they exist in technical verdict output
         technical_mitre = technical.get("attack_techniques")

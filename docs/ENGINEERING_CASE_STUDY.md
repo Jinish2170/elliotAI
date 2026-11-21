@@ -88,6 +88,18 @@ The higher cost after the fix is the honest price of analysing the pages the rep
 | C4 | Model free text overwrote `category_id`; findings labelled `unknown` | Medium | Structured-output design | Taxonomy-validated `pattern_type`; category derived from taxonomy, never from model text. |
 | C5 | JSON regex failed beyond 2 nesting levels; `<think>` blocks broke parsing | Medium | Unit tests | Balanced-brace scanner that respects strings; think-block stripping. |
 
+### Found by using the public demo (2026-11-21)
+
+| # | Bug | Sev | How found | Fix |
+|---|---|---|---|---|
+| D1 | **Scout rendered pages without CSS**, so the vision model judged a broken page and reported six invented dark patterns | Critical | A screenshot of the live "Scout imagery" panel; reproduced by comparing one page load with and without Scout's headers | Scout forced navigation-only headers (`Accept: text/html`, `Sec-Fetch-Dest: document`, ...) on **every** request, so CDNs answered CSS and image requests wrongly. Only `Accept-Language` and `DNT` are set now; Chromium owns the rest. |
+| D2 | Screenshots reached the UI only after the whole audit, so the imagery panel stayed empty for minutes | High | Live UI vs. audit log ("Captured 17 screenshots" while the panel said offline) | Scout now announces its files and the runner streams them right after Scout (first frame at ~26 s instead of at the end); the final pass only sends what was not yet sent. |
+| D3 | Every step appeared two to three times in the log | Medium | Screenshot of the log stream | Three events (`phase_start`, `agent_personality`, `log_entry`) each wrote a log line. One writer remains; repeated rounds are tagged "(round N)". |
+| D4 | CVSS panel showed `SEVERITY` and `VECTOR_STRING` as radar axes and a false "no HTTPS" risk | High | Screenshot of the radar; vector `AC:H/C:L` is only produced when HTTPS is missing, on an https site | The runner forwarded non-metric fields as metrics; `has_ssl=None` (TLS unknown) was treated as "no HTTPS". Only a confirmed `False` counts now; each metric carries a plain-English question, answer and the evidence behind it, plus a link to FIRST.org's calculator so the score is reproducible. |
+| D5 | Placeholder CVSS and MITRE events ("CALCULATING", three fake techniques) were sent at the start of every audit | Medium | Code read while tracing D4 | Removed: the UI never shows data we did not measure. |
+| D6 | Darknet tier forced Chromium through a Tor proxy that may not exist, which would fail every navigation | High | Code read before enabling the tier | The proxy is used only if a Tor daemon answers on the configured port; otherwise the audit runs direct and logs a warning. |
+| D7 | The UI said "Could not connect to backend" for any rejection (e.g. a disabled tier) | Medium | User screenshot | The server's own reason is shown. |
+
 ### Found earlier (setup, 2026-11-05)
 
 | # | Bug | Sev | How found | Fix |

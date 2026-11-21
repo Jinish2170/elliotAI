@@ -16,11 +16,35 @@ import { cn } from "@/lib/utils";
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
 const TIERS = [
-  { id: "quick_scan", label: "QUICK", time: "~60s", pages: "1-3 pages" },
-  { id: "standard_audit", label: "STANDARD", time: "~3min", pages: "5 pages" },
-  { id: "deep_forensic", label: "DEEP", time: "~5min", pages: "10 pages" },
-  { id: "darknet_investigation", label: "DARKNET", time: "~8min", pages: "15 pages" },
+  {
+    id: "quick_scan",
+    label: "QUICK SCAN",
+    time: "~2-3 min",
+    pages: "2 pages",
+    blurb: "Homepage check: security headers, TLS, WHOIS, visual dark-pattern scan, trust score.",
+  },
+  {
+    id: "standard_audit",
+    label: "FULL AUDIT",
+    time: "~3-5 min",
+    pages: "up to 8 pages",
+    blurb: "Crawls up to 8 pages with the full 5-agent pipeline: security modules, vision AI, OSINT claim checks, judge.",
+  },
+  {
+    id: "darknet_investigation",
+    label: "DARKNET INTEL",
+    time: "~10-15 min",
+    pages: "up to 20 pages",
+    blurb:
+      "Full audit, extended to 20 pages and 8 vision passes, plus darknet threat intelligence: .onion references, " +
+      "marketplace and exit-scam threat feeds, Tor2Web exposure. Read-only OSINT: it never crawls the dark web.",
+  },
 ] as const;
+
+// Public deployments list the tiers their backend allows (NEXT_PUBLIC_ENABLED_TIERS=quick_scan,standard_audit).
+// Unset = everything enabled (local development).
+const ENABLED = (process.env.NEXT_PUBLIC_ENABLED_TIERS || "").split(",").map((t) => t.trim()).filter(Boolean);
+const isEnabled = (id: string) => ENABLED.length === 0 || ENABLED.includes(id);
 
 export function CommandInput() {
   const router = useRouter();
@@ -134,21 +158,28 @@ export function CommandInput() {
             <span className="text-[10px] font-mono uppercase tracking-widest text-[var(--t-dim)] mr-2">
               TIER.SELECT:
             </span>
-            {TIERS.map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => setTier(t.id)}
-                className={cn(
-                  "px-3 py-1 text-[10px] font-mono border transition-colors uppercase tracking-wider",
-                  tier === t.id
-                    ? "border-[#00FF41] text-[#00FF41] bg-[#00FF41]/10 shadow-[0_0_8px_rgba(0,255,65,0.2)]"
-                    : "border-[#333] text-[var(--t-dim)] hover:text-[var(--t-text)] hover:border-[#555]"
-                )}
-              >
-                {t.label} 
-              </button>
-            ))}
+            {TIERS.map((t) => {
+              const locked = !isEnabled(t.id);
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  disabled={locked}
+                  title={locked ? "Disabled on the public demo (heavy tier). Run elliotAI locally to use it." : undefined}
+                  onClick={() => setTier(t.id)}
+                  className={cn(
+                    "px-3 py-1 text-[10px] font-mono border transition-colors uppercase tracking-wider",
+                    locked
+                      ? "border-[#222] text-[#444] cursor-not-allowed"
+                      : tier === t.id
+                        ? "border-[#00FF41] text-[#00FF41] bg-[#00FF41]/10 shadow-[0_0_8px_rgba(0,255,65,0.2)]"
+                        : "border-[#333] text-[var(--t-dim)] hover:text-[var(--t-text)] hover:border-[#555]"
+                  )}
+                >
+                  {t.label}{locked ? " \u{1F512}" : ""}
+                </button>
+              );
+            })}
           </div>
 
           {/* Verdict mode */}
@@ -173,6 +204,26 @@ export function CommandInput() {
             ))}
           </div>
         </div>
+
+        {/* Selected tier details */}
+        {(() => {
+          const t = TIERS.find((x) => x.id === tier) ?? TIERS[1];
+          return (
+            <div className="mt-3 border border-[var(--t-border)] bg-[#0a0a0a] p-3 text-[11px] font-mono leading-relaxed">
+              <div className="flex gap-4 text-[10px] uppercase tracking-widest text-[var(--t-dim)] mb-1">
+                <span className="text-[#00FF41]">{t.label}</span>
+                <span>{t.time}</span>
+                <span>{t.pages}</span>
+              </div>
+              <p className="text-[var(--t-text)] opacity-80">{t.blurb}</p>
+              {!isEnabled("darknet_investigation") && (
+                <p className="mt-2 text-[10px] text-[var(--t-dim)]">
+                  {"\u{1F512}"} DARKNET INTEL is disabled on the public demo (it is the heaviest tier). Run elliotAI locally to use it.
+                </p>
+              )}
+            </div>
+          );
+        })()}
       </form>
     </div>
   );

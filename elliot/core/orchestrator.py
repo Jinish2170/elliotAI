@@ -585,7 +585,12 @@ class ElliotOrchestrator:
                         scout_update = await scout_node(state)
                     state.update(scout_update)
                     n_shots = sum(len(sr.get("screenshots", [])) for sr in state.get("scout_results", []))
-                    self._emit("scout", "done", 25, f"Captured {n_shots} screenshots", screenshots=n_shots, iteration=state["iteration"])
+                    shot_files = [
+                        {"path": path, "label": (sr.get("screenshot_labels") or [])[i] if i < len(sr.get("screenshot_labels") or []) else f"page_{i + 1}"}
+                        for sr in state.get("scout_results", []) for i, path in enumerate(sr.get("screenshots", []) or [])
+                    ]
+                    self._emit("scout", "done", 25, f"Captured {n_shots} screenshots", screenshots=n_shots,
+                               shot_files=shot_files, iteration=state["iteration"])
 
                     # Emit Scout completion via ProgressEmitter
                     if self.use_progress_streaming and self._progress_emitter:
@@ -947,14 +952,7 @@ class ElliotOrchestrator:
                     tech = dv.get("technical", {}) if isinstance(dv, dict) else {}
                     cvss_dict = tech.get("cvss_metrics", {})
                     if cvss_dict:
-                        arr = []
-                        for k in ['attack_vector', 'attack_complexity', 'privileges_required', 'user_interaction', 'scope', 'confidentiality', 'integrity', 'availability']:
-                            if k in cvss_dict:
-                                arr.append({
-                                    "name": k,
-                                    "value": str(cvss_dict[k]),
-                                    "severity": "HIGH" if cvss_dict.get("base_score", 0) > 6 else "MEDIUM"
-                                })
+                        arr = cvss_dict.get("metrics_detail") or []
                         sec_res["cvss_metrics"] = arr
                         sec_res["cvss_base_score"] = cvss_dict.get("base_score", 0.0)
                         # CVSS v3.1 vector string + qualitative band (new fields

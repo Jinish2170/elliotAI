@@ -290,15 +290,21 @@ class StealthScout:
             "--window-size=1920,1080",
         ]
 
-        # TOR SOCKS5 proxy support (for darknet_investigation tier)
+        # TOR SOCKS5 proxy support (for darknet_investigation tier).
+        # Only used when a Tor daemon is actually listening: forcing a dead proxy
+        # would make every navigation fail. Without Tor the audit runs direct.
+        self.tor_active = False
         if self.use_tor:
             tor_host = getattr(settings, "TOR_SOCKS_HOST", "127.0.0.1")
             tor_port = getattr(settings, "TOR_SOCKS_PORT", 9050)
-            try:
+            if self._tor_reachable(tor_host, tor_port):
                 launch_args.append(f"--proxy-server=socks5://{tor_host}:{tor_port}")
+                self.tor_active = True
                 logger.info(f"StealthScout: TOR SOCKS5 proxy enabled ({tor_host}:{tor_port})")
-            except Exception as e:
-                logger.warning(f"StealthScout: TOR proxy setup failed, continuing without TOR: {e}")
+            else:
+                logger.warning(
+                    f"StealthScout: Tor requested but no proxy at {tor_host}:{tor_port}; continuing without Tor"
+                )
 
         self._browser = await self._playwright.chromium.launch(
             headless=settings.BROWSER_HEADLESS,
@@ -306,6 +312,15 @@ class StealthScout:
         )
         logger.info("StealthScout browser launched")
         return self
+
+    @staticmethod
+    def _tor_reachable(host: str, port: int, timeout: float = 1.0) -> bool:
+        import socket
+        try:
+            with socket.create_connection((host, port), timeout=timeout):
+                return True
+        except OSError:
+            return False
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         if self._browser:
@@ -1153,18 +1168,14 @@ class StealthScout:
             is_mobile=viewport == "mobile",
             java_script_enabled=True,
             ignore_https_errors=True,
+            # Only headers that are valid for EVERY request. Navigation-only headers
+            # (Accept: text/html, Sec-Fetch-*, Upgrade-Insecure-Requests, Cache-Control,
+            # Accept-Encoding) must be left to Chromium: forcing them on sub-requests made
+            # CDNs serve CSS/images wrongly, so pages rendered unstyled and the vision
+            # model judged a broken page.
             extra_http_headers={
-                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
                 "Accept-Language": "en-US,en;q=0.9",
-                "Accept-Encoding": "gzip, deflate, br",
                 "DNT": "1",
-                "Connection": "keep-alive",
-                "Upgrade-Insecure-Requests": "1",
-                "Sec-Fetch-Dest": "document",
-                "Sec-Fetch-Mode": "navigate",
-                "Sec-Fetch-Site": "none",
-                "Sec-Fetch-User": "?1",
-                "Cache-Control": "max-age=0",
             },
         )
         return context

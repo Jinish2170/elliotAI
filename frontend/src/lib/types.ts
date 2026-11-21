@@ -728,6 +728,17 @@ export interface CVSSMetric {
   name: string;
   value: string;
   severity: "NONE" | "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+  abbr?: string;      // CVSS letter: AV, AC, PR, UI, S, C, I, A
+  label?: string;     // short plain label, e.g. "Data theft"
+  question?: string;  // plain-English question the metric answers
+  level?: number;     // 0-4 radar height
+  why?: string;       // evidence that set this value
+}
+
+export interface CVSSMeta {
+  vector: string;
+  severity: string;
+  calculatorUrl: string;
 }
 
 export interface VerdictTechnical {

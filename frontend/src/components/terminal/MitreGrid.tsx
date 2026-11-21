@@ -19,7 +19,11 @@ export function MitreGrid({ techniques, status }: { techniques: TechniqueMatch[]
     if (status === "complete") {
       return (
         <div className="w-full h-full flex flex-col items-center justify-center p-4 text-center bg-[var(--t-green)]/5">
-          <span className="text-[var(--t-green)]/50 font-mono text-[11px] uppercase tracking-widest">[ NO TTPs DETECTED ]</span>
+          <span className="text-[var(--t-green)]/60 font-mono text-[11px] uppercase tracking-widest">[ NO ATTACKER TECHNIQUES MATCHED ]</span>
+          <p className="mt-2 max-w-[320px] text-[10px] normal-case tracking-normal text-[var(--t-dim)] leading-relaxed">
+            MITRE ATT&amp;CK is a public catalogue of known attacker behaviours. We compared this site&apos;s evidence
+            (threat-intel feeds, indicators, security findings) against it and found no match. Empty is a good result.
+          </p>
         </div>
       );
     }

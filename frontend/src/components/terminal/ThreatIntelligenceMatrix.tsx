@@ -29,7 +29,11 @@ export function ThreatIntelligenceMatrix({ osintResults, marketplaceThreats, sta
     if (status === "complete") {
       return (
         <div className="w-full h-full flex flex-col items-center justify-center p-4 text-center bg-[var(--t-green)]/5">
-          <span className="text-[var(--t-green)]/50 font-mono text-[11px] uppercase tracking-widest">[ NO EXTERNAL THREATS DETECTED ]</span>
+          <span className="text-[var(--t-green)]/50 font-mono text-[11px] uppercase tracking-widest">[ NO EXTERNAL THREATS FOUND ]</span>
+          <p className="mt-2 max-w-[320px] text-[10px] normal-case tracking-normal text-[var(--t-dim)] leading-relaxed">
+            We asked outside threat-intelligence sources (phishing and malware blocklists, reputation and
+            darknet feeds) about this domain. None reported it. Empty is a good result.
+          </p>
         </div>
       );
     }

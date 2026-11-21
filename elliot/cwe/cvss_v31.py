@@ -153,7 +153,12 @@ def severity_band(base_score: float) -> str:
 # explicit so reviewers can see why a particular site ended up at a particular
 # CVSS vector — no magic numbers, no risk-level back-projection.
 
-def derive_metrics_from_findings(
+def derive_metrics_from_findings(**kwargs) -> CvssV31Metrics:
+    """Map observed findings to a CVSS v3.1 metric set (see derive_metrics_with_reasons)."""
+    return derive_metrics_with_reasons(**kwargs)[0]
+
+
+def derive_metrics_with_reasons(
     *,
     dark_patterns: Optional[list[Any]] = None,
     has_ssl: bool = True,
@@ -163,75 +168,76 @@ def derive_metrics_from_findings(
     js_obfuscation: bool = False,
     js_risk_score: float = 0.0,
     domain_abuse: bool = False,
-) -> CvssV31Metrics:
-    """Map observed findings to a CVSS v3.1 metric set.
+) -> tuple[CvssV31Metrics, dict[str, list[str]]]:
+    """Map observed findings to CVSS v3.1 metrics AND the evidence behind each one.
 
     Defaults assume a typical web target: Network attack vector, no privileges
     required, user interaction required (click), unchanged scope. Impact
     metrics escalate based on what was actually observed.
 
-    The function picks the **worst applicable** impact across findings — CVSS
+    The function picks the **worst applicable** impact across findings: CVSS
     represents a single vulnerability, but we conflate the audit into one
     summary score, so we take the upper envelope rather than averaging.
+
+    Returns (metrics, reasons) where reasons[abbr] lists plain-English evidence.
     """
     dark_patterns = dark_patterns or []
+    why: dict[str, list[str]] = {k: [] for k in ("AV", "AC", "PR", "UI", "S", "C", "I", "A")}
 
-    # --- Attack vector / complexity / privileges / interaction ------------
-    # Web-fronted: nearly always reachable over the network.
     AV = "N"
-    # Most findings require no special conditions — page load is enough.
+    why["AV"].append("Every website can be reached over the internet by anyone.")
     AC = "L"
-    # Anonymous / unauthenticated.
+    why["AC"].append("Nothing special is needed: loading the page is enough.")
     PR = "N"
-    # Most fraud requires the user to click / submit. Drive-by malware shifts
-    # this to None.
+    why["PR"].append("No login is needed to visit the site.")
     UI = "R" if not (malware_distribution and js_obfuscation) else "N"
+    if UI == "R":
+        why["UI"].append("Harm usually needs the visitor to click, type or submit something.")
+    else:
+        why["UI"].append("Malware + obfuscated code found: harm can happen just by opening the page.")
 
-    # MITM-style findings (missing SSL) require the attacker to be in path,
-    # which raises complexity.
     if not has_ssl and not (credential_capture or phishing_flag):
         AC = "H"
+        why["AC"] = ["No valid HTTPS: an attacker must sit between you and the site to abuse it."]
 
-    # --- Scope --------------------------------------------------------------
-    # Drive-by exploits / credential reuse that pivot to other accounts change
-    # scope; pure on-site fraud doesn't.
     S = "C" if (malware_distribution or credential_capture) else "U"
+    if S == "C":
+        why["S"].append("Credential capture or malware can reach beyond this site (your other accounts, your device).")
+    else:
+        why["S"].append("No sign that harm spreads beyond this site.")
 
-    # --- Impact (worst applicable across findings) --------------------------
-    # Defaults to no impact; we raise as evidence accumulates.
     C, I, A = "N", "N", "N"
 
     if phishing_flag or credential_capture:
-        # Stealing credentials breaches confidentiality fully; the attacker
-        # can also impersonate the user (integrity).
         C = _max_cia(C, "H")
         I = _max_cia(I, "L")
-
+        why["C"].append("Phishing / credential-capture signal: private data could be stolen.")
+        why["I"].append("Stolen credentials let an attacker act as the user.")
     if malware_distribution:
-        # Drive-by payload can read, modify, and brick the host.
-        C = _max_cia(C, "H")
-        I = _max_cia(I, "H")
-        A = _max_cia(A, "L")
-
+        C = _max_cia(C, "H"); I = _max_cia(I, "H"); A = _max_cia(A, "L")
+        why["C"].append("Malware-distribution signal: files and data could be read.")
+        why["I"].append("Malware-distribution signal: files and settings could be changed.")
+        why["A"].append("Malware-distribution signal: the device could be disrupted.")
     if js_obfuscation or js_risk_score > 70:
-        # Obfuscated/malicious JS at minimum reads sensitive page state.
-        C = _max_cia(C, "L")
-        I = _max_cia(I, "L")
-
+        C = _max_cia(C, "L"); I = _max_cia(I, "L")
+        why["C"].append(f"Suspicious or hidden JavaScript (risk score {js_risk_score:.0f}) can read page data.")
+        why["I"].append("Suspicious or hidden JavaScript can alter what you see.")
     if not has_ssl:
-        # In-transit eavesdropping risk for any data the user submits.
         C = _max_cia(C, "L")
-
+        why["C"].append("No valid HTTPS: data you send can be intercepted in transit.")
     if dark_patterns:
-        # Manipulation findings indicate integrity-of-decision impact.
-        # Only escalate from None to Low; dark patterns alone aren't High.
         I = _max_cia(I, "L")
-
+        why["I"].append(f"{len(dark_patterns)} manipulative design pattern(s) detected: they can trick users into decisions they would not otherwise make.")
     if domain_abuse:
-        # Reputational/abuse signal — modest integrity impact.
         I = _max_cia(I, "L")
+        why["I"].append("Threat-intelligence sources flagged the domain or its network.")
 
-    return CvssV31Metrics(AV=AV, AC=AC, PR=PR, UI=UI, S=S, C=C, I=I, A=A)
+    for k, label in (("C", "No sign of private data being exposed."), ("I", "No sign that content or decisions are being tampered with."),
+                     ("A", "No sign the site or your device could be disrupted.")):
+        if not why[k]:
+            why[k].append(label)
+
+    return CvssV31Metrics(AV=AV, AC=AC, PR=PR, UI=UI, S=S, C=C, I=I, A=A), why
 
 
 def _max_cia(current: str, candidate: str) -> str:
@@ -259,7 +265,7 @@ def build_cvss_report(
         metric fields (`attack_vector`, `attack_complexity`, ...) so existing
         UI consumers that read named fields don't break.
     """
-    metrics = derive_metrics_from_findings(
+    metrics, why = derive_metrics_with_reasons(
         dark_patterns=dark_patterns,
         has_ssl=has_ssl,
         phishing_flag=phishing_flag,
@@ -270,9 +276,38 @@ def build_cvss_report(
         domain_abuse=domain_abuse,
     )
     base_score = compute_base_score(metrics)
+    vector = metrics.vector()
     return {
         "base_score": base_score,
         "severity": severity_band(base_score),
-        "vector_string": metrics.vector(),
+        "vector_string": vector,
+        "calculator_url": f"https://www.first.org/cvss/calculator/3.1#{vector}",
+        "metrics_detail": explain_metrics(metrics, why),
         **metrics.as_full_names(),
     }
+
+
+# Plain-English presentation of each metric: (full name, short label, question, level fn)
+_METRIC_UI = {
+    "AV": ("attack_vector", "Reach", "Where can an attacker come from?", {"N": 4, "A": 3, "L": 2, "P": 1}),
+    "AC": ("attack_complexity", "Ease", "How hard is it to abuse?", {"L": 4, "H": 1}),
+    "PR": ("privileges_required", "Access", "Does the attacker need an account?", {"N": 4, "L": 2, "H": 1}),
+    "UI": ("user_interaction", "Click needed", "Must the visitor do something?", {"N": 4, "R": 1}),
+    "S": ("scope", "Spread", "Can harm spread beyond this site?", {"U": 1, "C": 4}),
+    "C": ("confidentiality", "Data theft", "Could private data be exposed?", {"N": 0, "L": 2, "H": 4}),
+    "I": ("integrity", "Tampering", "Could content or decisions be manipulated?", {"N": 0, "L": 2, "H": 4}),
+    "A": ("availability", "Disruption", "Could service or device be disrupted?", {"N": 0, "L": 2, "H": 4}),
+}
+
+
+def explain_metrics(m: CvssV31Metrics, why: dict[str, list[str]]) -> list[dict[str, Any]]:
+    """One row per CVSS metric: plain question, answer, 0-4 radar level, and the evidence."""
+    full = m.as_full_names()
+    out = []
+    for abbr, (name, label, question, levels) in _METRIC_UI.items():
+        letter = getattr(m, abbr)
+        out.append({
+            "name": name, "abbr": abbr, "label": label, "question": question,
+            "value": full[name], "level": levels[letter], "why": " ".join(why.get(abbr, [])),
+        })
+    return out

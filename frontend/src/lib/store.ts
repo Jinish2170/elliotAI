@@ -25,6 +25,7 @@ import type {
     Tor2WebThreatData,
     CVEEntry,
     CVSSMetric,
+    CVSSMeta,
     TechniqueMatch,
     ThreatAttribution,
     ExploitationAdvisory,
@@ -115,6 +116,7 @@ interface AuditStore {
   cveEntries: CVEEntry[];  // POPULATED via cve_detected event
   cvssMetrics: CVSSMetric[];  // POPULATED via cvss_metrics/cvss_metric events
   cvssScore: number | null;  // POPULATED via cvss_metrics event
+  cvssMeta: CVSSMeta | null;
 
   // MITRE ATT&CK Data
   mitreTechniques: TechniqueMatch[];  // POPULATED via mitre_technique_mapped event
@@ -236,6 +238,7 @@ export const useAuditStore = create<AuditStore>((set, get) => ({
   cveEntries: [],
   cvssMetrics: [],
   cvssScore: null,
+  cvssMeta: null,
 
   // MITRE ATT&CK Data
   mitreTechniques: [],
@@ -342,6 +345,7 @@ export const useAuditStore = create<AuditStore>((set, get) => ({
       cveEntries: [],
       cvssMetrics: [],
       cvssScore: null,
+  cvssMeta: null,
       mitreTechniques: [],
       threatAttribution: null,
       attackPatterns: [],
@@ -455,6 +459,11 @@ function processSingleEvent(
           name: String(m.name || `metric_${idx}`),
           value: String(m.value ?? ""),
           severity: (allowed.includes(severityRaw) ? severityRaw : "MEDIUM") as CVSSMetric["severity"],
+          abbr: m.abbr ? String(m.abbr) : undefined,
+          label: m.label ? String(m.label) : undefined,
+          question: m.question ? String(m.question) : undefined,
+          level: typeof m.level === "number" ? m.level : undefined,
+          why: m.why ? String(m.why) : undefined,
         } as CVSSMetric;
       })
       .filter((metric): metric is CVSSMetric => metric !== null);
@@ -521,18 +530,7 @@ function processSingleEvent(
           },
         },
       });
-      // Add log
-      set({
-        logs: [
-          ...state.logs,
-          {
-            timestamp: new Date().toLocaleTimeString(),
-            agent: (event.label as string) || phase,
-            message: (event.message as string) || "",
-            level: "info" as const,
-          },
-        ],
-      });
+      // No log here: the backend sends a dedicated log_entry for each step.
       break;
     }
 
@@ -783,21 +781,6 @@ function processSingleEvent(
               message: `Personality: ${context}`,
             },
           },
-        });
-
-        // Add personality log entry
-        set({
-          logs: [
-            ...state.logs,
-            {
-              timestamp: new Date().toLocaleTimeString(),
-              agent,
-              message: `Personality: ${context}`,
-              level: "info",
-              context,
-              params,
-            },
-          ],
         });
       }
       break;
@@ -1054,6 +1037,13 @@ function processSingleEvent(
       set({
         cvssMetrics: normalizedMetrics,
         cvssScore: event.base_score as number,
+        cvssMeta: event.vector_string
+          ? {
+              vector: String(event.vector_string),
+              severity: String(event.severity || ""),
+              calculatorUrl: String(event.calculator_url || ""),
+            }
+          : null,
       });
       break;
     }

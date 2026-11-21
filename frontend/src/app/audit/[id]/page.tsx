@@ -136,6 +136,16 @@ function AuditPageContent({ id }: { id: string }) {
                   <CvssRadar 
                     metrics={store.cvssMetrics?.length ? store.cvssMetrics : ((store.result as any)?.security_results?.cvss_metrics as any[]) || []}
                     status={store.status}
+                    score={store.cvssScore ?? ((store.result as any)?.security_results?.cvss_base_score as number | undefined)}
+                    meta={store.cvssMeta ?? (
+                      (store.result as any)?.security_results?.cvss_vector_string
+                        ? {
+                            vector: (store.result as any).security_results.cvss_vector_string,
+                            severity: (store.result as any).security_results.cvss_severity_band || "",
+                            calculatorUrl: `https://www.first.org/cvss/calculator/3.1#${(store.result as any).security_results.cvss_vector_string}`,
+                          }
+                        : null
+                    )}
                   />
                 </TerminalPanel>
               )}
