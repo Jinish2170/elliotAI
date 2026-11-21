@@ -125,3 +125,20 @@ async def test_audit_status_returns_stable_completed_payload(db_session: AsyncSe
     assert status["result"]["site_type"] == "content"
     assert status["result"]["security_results"]["security_headers"]["score"] == 0.9
     assert status["result"]["dark_pattern_summary"]["findings"] == []
+
+
+@pytest.mark.asyncio
+async def test_on_audit_started_tolerates_concurrent_insert(db_session: AsyncSession):
+    """React StrictMode opens the stream twice; both handlers can miss the
+    existence check and INSERT. The loser must not raise IntegrityError."""
+    audit_id = "vrts_racecond"
+    data = {"url": "https://example.com", "tier": "standard_audit", "verdict_mode": "expert"}
+    with patch("backend.routes.audit.should_use_db_persistence", return_value=True):
+        await on_audit_started(audit_id, data, db_session)
+        # Simulate losing the race: existence check saw no row, then INSERT collides.
+        with patch.object(AuditRepository, "get_by_id", return_value=None):
+            await on_audit_started(audit_id, data, db_session)
+
+    audit = await AuditRepository(db_session).get_by_id(audit_id)
+    assert audit is not None
+    assert audit.status == AuditStatus.RUNNING

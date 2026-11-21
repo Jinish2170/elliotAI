@@ -73,7 +73,13 @@ def _select_prefetch_urls(base_url: str, primary_result: ScoutResult, limit: int
     if not isinstance(raw_links, list):
         return []
 
-    base_host = urlparse(base_url).netloc
+    # Compare hosts without a leading "www." — sites commonly redirect
+    # example.com -> www.example.com, so links on the landed page carry the
+    # www host while base_url does not (same rule as LinkExplorer._is_same_domain).
+    def _site(netloc: str) -> str:
+        return netloc.lower().removeprefix("www.")
+
+    base_host = _site(urlparse(base_url).netloc)
     seen: set[str] = {base_url.rstrip("/")}
     priority: list[str] = []
     other: list[str] = []
@@ -82,7 +88,7 @@ def _select_prefetch_urls(base_url: str, primary_result: ScoutResult, limit: int
             continue
         absolute = urljoin(base_url, link)
         # Stay on the same host — never prefetch off-domain.
-        if urlparse(absolute).netloc != base_host:
+        if _site(urlparse(absolute).netloc) != base_host:
             continue
         key = absolute.rstrip("/")
         if key in seen:

@@ -519,6 +519,10 @@ class NIMClient:
                     messages=messages,
                     max_tokens=max_tokens,
                     temperature=temperature,
+                    extra_body=(
+                        {"chat_template_kwargs": {"enable_thinking": False}}
+                        if settings.NIM_DISABLE_THINKING else None
+                    ),
                 ),
                 timeout=settings.NIM_TIMEOUT,
             )

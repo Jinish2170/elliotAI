@@ -36,6 +36,8 @@ build/
 # Output and test files
 *.json
 *.txt
+!requirements*.txt
+!backend/requirements*.txt
 *.out
 *.log
 *.bak
@@ -59,7 +61,8 @@ data/evidence/
 data/screenshots/
 backend/data/screenshots/
 testing/data/screenshots/
-elliot/screenshots/
+elliot/screenshots/*
+!elliot/screenshots/*.py
 
 # Database files
 *.db

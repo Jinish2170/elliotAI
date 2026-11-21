@@ -55,6 +55,9 @@ NIM_LLM_MODEL: str = os.getenv("NIM_LLM_MODEL", "meta/llama-3.1-70b-instruct")
 NIM_TIMEOUT: int = int(os.getenv("NIM_TIMEOUT", "90"))
 NIM_RETRY_COUNT: int = int(os.getenv("NIM_RETRY_COUNT", "4"))
 NIM_REQUESTS_PER_MINUTE: int = int(os.getenv("NIM_REQUESTS_PER_MINUTE", "40"))
+# Reasoning models (e.g. nemotron-3.5) think before answering; with small
+# max_tokens they return empty content. True sends enable_thinking=false.
+NIM_DISABLE_THINKING: bool = os.getenv("NIM_DISABLE_THINKING", "false").lower() == "true"
 
 
 # ============================================================

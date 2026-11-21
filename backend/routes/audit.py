@@ -3,6 +3,7 @@ Audit routes — Start + WebSocket stream.
 """
 
 import asyncio
+import contextlib
 import json
 import logging
 import re
@@ -12,6 +13,7 @@ from typing import Annotated, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel, field_validator
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.services.audit_runner import AuditRunner, generate_audit_id
@@ -120,6 +122,19 @@ async def stream_audit(ws: WebSocket, audit_id: str, db: DbSession):
         await ws.close()
         return
 
+    # Finished audit (e.g. the audit page was reloaded): replay the stored
+    # result instead of re-running the whole audit and resetting its status.
+    if audit_info.get("status") == "completed" and audit_info.get("result"):
+        await ws.send_json({"type": "audit_result", "audit_id": audit_id, "result": audit_info["result"]})
+        await ws.send_json({"type": "audit_complete", "audit_id": audit_id, "replayed": True})
+        await ws.close()
+        return
+
+    # Each connection owns the run it starts. A newer connection to the same
+    # audit (e.g. React StrictMode remount) takes ownership; the older one's
+    # run is cancelled when its socket closes and must not overwrite status.
+    owner = object()
+    audit_info["owner"] = owner
     audit_info["status"] = "running"
     # Save to database when audit starts (implementation in Plan 05-04)
     await on_audit_started(audit_id, audit_info, db)
@@ -155,15 +170,31 @@ async def stream_audit(ws: WebSocket, audit_id: str, db: DbSession):
             _ws_closed = True
             logger.warning(f"[{audit_id}] Failed to send WS event (marking closed): {e}")
 
+    async def wait_for_disconnect():
+        # The client never sends; receive() returns only on disconnect.
+        while (await ws.receive())["type"] != "websocket.disconnect":
+            pass
+
+    run_task = asyncio.create_task(runner.run(send_event))
+    disconnect_task = asyncio.create_task(wait_for_disconnect())
     try:
-        await runner.run(send_event)
+        await asyncio.wait({run_task, disconnect_task}, return_when=asyncio.FIRST_COMPLETED)
+        if not run_task.done():
+            # Client left: stop the run (runner.run's finally terminates the subprocess).
+            run_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await run_task
+            raise WebSocketDisconnect()
+        disconnect_task.cancel()
+        run_task.result()
         audit_info["status"] = "completed" if audit_info.get("result") else "error"
         if audit_info["status"] == "completed":
             # Save result to database when audit completes (implementation in Plan 05-04)
             await on_audit_completed(audit_id, audit_info.get("result"), db)
     except WebSocketDisconnect:
-        logger.info(f"[{audit_id}] Client disconnected")
-        audit_info["status"] = "disconnected"
+        logger.info(f"[{audit_id}] Client disconnected; run cancelled")
+        if audit_info.get("owner") is owner:
+            audit_info["status"] = "disconnected"
     except Exception as e:
         error_msg = str(e)
         # Provide a friendlier message for common timeout errors
@@ -452,7 +483,15 @@ async def on_audit_started(audit_id: str, data: dict, db: AsyncSession) -> None:
         verdict_mode=data.get("verdict_mode", "expert"),
     )
 
-    await repo.create(audit)
+    try:
+        await repo.create(audit)
+    except IntegrityError:
+        # Lost the race with a concurrent connection (React StrictMode opens
+        # the stream twice; both see no row, both INSERT). The row exists now.
+        await db.rollback()
+        await repo.update_status(audit_id, AuditStatus.RUNNING)
+        logger.info(f"[{audit_id}] Audit row created concurrently; marked running")
+        return
     logger.info(f"[{audit_id}] Audit persisted to database")
 
 

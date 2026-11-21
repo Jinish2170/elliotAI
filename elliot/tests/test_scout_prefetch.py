@@ -35,6 +35,24 @@ def test_off_domain_links_excluded():
     assert urls == ["https://example.com/contact"]
 
 
+def test_www_redirect_links_treated_as_same_site():
+    # example.com redirects to www.example.com, so the landed page's links
+    # carry the www host (seen on mindlyticai.com: all 33 pages were dropped).
+    result = _result(["https://www.example.com/about", "https://www.example.com/blog"])
+    urls = _select_prefetch_urls("https://example.com", result, limit=5)
+    assert urls == ["https://www.example.com/about", "https://www.example.com/blog"]
+    # And the reverse direction.
+    result = _result(["https://example.com/contact"])
+    assert _select_prefetch_urls("https://www.example.com", result, limit=5) == [
+        "https://example.com/contact"
+    ]
+
+
+def test_www_prefix_does_not_admit_other_domains():
+    result = _result(["https://www.evil.example/about", "https://notexample.com/x"])
+    assert _select_prefetch_urls("https://example.com", result, limit=5) == []
+
+
 def test_base_url_and_duplicates_excluded():
     result = _result(["/", "/about", "/about", "https://example.com/about/"])
     urls = _select_prefetch_urls("https://example.com", result, limit=5)
