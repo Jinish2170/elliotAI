@@ -379,9 +379,19 @@ class JudgeAgent:
                 available_links.extend(internal_links)
             available_links.extend(getattr(scout, "links", []) or [])
 
-        # Deduplicate
+        # Deduplicate, keep only the audited site (www/apex equivalent), stable order.
+        # Traced bug: external links (e.g. twitter.com) were queued as "pages to audit".
+        from urllib.parse import urlparse
+
+        def _site(u: str) -> str:
+            return urlparse(u).netloc.lower().removeprefix("www.")
+
+        target_site = _site(evidence.url)
         seen_urls = {s.url for s in evidence.scout_results}
-        candidate_urls = [u for u in set(available_links) if u not in seen_urls]
+        candidate_urls = sorted(
+            u for u in set(available_links)
+            if u not in seen_urls and _site(u) == target_site
+        )
 
         thresholds = settings.get_judge_thresholds(evidence.audit_tier)
         # If zero candidate URLs and deep scan, optionally sample a couple of external links just to keep scanning context

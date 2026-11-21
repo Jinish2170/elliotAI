@@ -30,11 +30,12 @@ from pathlib import Path
 from typing import Optional
 
 from openai import AsyncOpenAI
-from tenacity import (before_sleep_log, retry, retry_if_exception_type,
+from tenacity import (AsyncRetrying, before_sleep_log, retry, retry_if_exception_type,
                       stop_after_attempt, wait_exponential)
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from elliot.config import settings
+from elliot.core.tracing import span as trace_span
 
 logger = logging.getLogger("elliot.nim")
 
@@ -61,6 +62,10 @@ class NIMBudgetExceeded(Exception):
 # ============================================================
 # NIM Client
 # ============================================================
+
+def _schema_name(response_format: Optional[dict]) -> str:
+    return (response_format or {}).get("json_schema", {}).get("name", "")
+
 
 class NIMClient:
     """
@@ -91,6 +96,7 @@ class NIMClient:
         self._cache_hits = 0
         self._fallback_count = 0
         self._errors: list[str] = []
+        self._parse_failures = 0
 
         # Circuit breaker: skip NIM API entirely after N consecutive failures
         self._consecutive_failures = 0
@@ -180,7 +186,9 @@ class NIMClient:
         """
         with open(image_path, "rb") as f:
             image_bytes = f.read()
-        key_data = image_bytes + prompt.encode()
+        # Model is part of the key: a cached answer from one model must never be
+        # served for another (it silently invalidates model A/B comparisons).
+        key_data = image_bytes + prompt.encode() + settings.NIM_VISION_MODEL.encode()
         if pass_type is not None:
             key_data += str(pass_type).encode()
         return hashlib.md5(key_data).hexdigest()
@@ -194,12 +202,109 @@ class NIMClient:
         with open(image_path, "rb") as f:
             return f.read()
 
+    @staticmethod
+    def _annotate_span(s, result: dict) -> None:
+        resp = str(result.get("response", "") or "")
+        s.set_attributes({
+            "elliot.cache_hit": bool(result.get("cached")),
+            "elliot.model_used": str(result.get("model", "")),
+            "elliot.fallback_used": bool(result.get("fallback_mode")),
+            "elliot.degraded": resp.startswith("[NIM_"),
+            "elliot.response_chars": len(resp),
+        })
+
     async def analyze_image(
         self,
         image_path: str,
         prompt: str,
         category_hint: str = "",
         pass_type: Optional[int] = None,
+        response_format: Optional[dict] = None,
+    ) -> dict:
+        """Traced entry point; see _analyze_image_impl for the fallback chain."""
+        with trace_span(
+            "nim.analyze_image",
+            **{"elliot.pass_type": pass_type, "elliot.category": category_hint or None,
+               "elliot.prompt_sha": hashlib.sha1(prompt.encode()).hexdigest()[:12],
+               "elliot.image": Path(image_path).name},
+        ) as s:
+            result = await self._analyze_image_impl(image_path, prompt, category_hint, pass_type,
+                                                    response_format)
+            self._annotate_span(s, result)
+            return result
+
+    async def generate_text(
+        self,
+        prompt: str,
+        system_prompt: str = "",
+        max_tokens: int = 2048,
+        temperature: float = 0.1,
+        response_format: Optional[dict] = None,
+    ) -> dict:
+        """Traced entry point; see _generate_text_impl."""
+        with trace_span(
+            "nim.generate_text",
+            **{"elliot.prompt_sha": hashlib.sha1((system_prompt + prompt).encode()).hexdigest()[:12],
+               "elliot.max_tokens": max_tokens, "elliot.temperature": temperature},
+        ) as s:
+            result = await self._generate_text_impl(prompt, system_prompt, max_tokens, temperature,
+                                                    response_format)
+            self._annotate_span(s, result)
+            return result
+
+    # ---- Structured outputs: constrained decoding → validate → one repair ----
+
+    async def generate_structured(self, prompt: str, response_model, system_prompt: str = "",
+                                  max_tokens: int = 1024, temperature: float = 0.0):
+        """Return (validated_model | None, raw_result). Never raises on bad output."""
+        from elliot.core.structured import response_format_for
+
+        rf = response_format_for(response_model)
+        return await self._structured(
+            lambda p: self.generate_text(p, system_prompt, max_tokens, temperature, rf),
+            prompt, response_model, "nim.structured_text",
+        )
+
+    async def analyze_image_structured(self, image_path: str, prompt: str, response_model,
+                                       category_hint: str = ""):
+        """Vision variant of generate_structured."""
+        from elliot.core.structured import response_format_for
+
+        rf = response_format_for(response_model)
+        return await self._structured(
+            lambda p: self.analyze_image(image_path, p, category_hint=category_hint,
+                                         response_format=rf),
+            prompt, response_model, "nim.structured_vision",
+        )
+
+    async def _structured(self, call, prompt: str, response_model, span_name: str):
+        from elliot.core.structured import parse_structured, repair_prompt
+
+        with trace_span(span_name, **{"elliot.schema": response_model.__name__}) as s:
+            result = await call(prompt)
+            obj, err = parse_structured(result.get("response", ""), response_model)
+            degraded = str(result.get("response", "")).startswith("[NIM_")
+            repaired = False
+            if obj is None and not degraded:
+                self._parse_failures += 1
+                repaired = True
+                result = await call(repair_prompt(prompt, err))
+                obj, err = parse_structured(result.get("response", ""), response_model)
+                if obj is None:
+                    self._parse_failures += 1
+            s.set_attributes({
+                "elliot.parse_ok": obj is not None, "elliot.repair_attempted": repaired,
+                "elliot.parse_error": (err or "")[:300], "elliot.degraded": degraded,
+            })
+            return obj, result
+
+    async def _analyze_image_impl(
+        self,
+        image_path: str,
+        prompt: str,
+        category_hint: str = "",
+        pass_type: Optional[int] = None,
+        response_format: Optional[dict] = None,
     ) -> dict:
         """
         Analyze an image using VLM with 4-level fallback chain.
@@ -234,10 +339,10 @@ class NIMClient:
         if pass_type is not None:
             # get_cache_key reads the image file; offload to a thread.
             cache_key = await asyncio.to_thread(
-                self.get_cache_key, image_path, prompt, pass_type
+                self.get_cache_key, image_path, prompt + _schema_name(response_format), pass_type
             )
         else:
-            cache_key = self._cache_key(f"vision:{image_path}:{prompt}:{category_hint}")
+            cache_key = self._cache_key(f"vision:{settings.NIM_VISION_MODEL}:{image_path}:{prompt}:{category_hint}:{_schema_name(response_format)}")
 
         cached = await asyncio.to_thread(self._read_cache, cache_key)
         if cached:
@@ -254,7 +359,7 @@ class NIMClient:
 
         # Level 1: Primary NIM VLM
         result = await self._try_vision_model(
-            settings.NIM_VISION_MODEL, image_path, prompt
+            settings.NIM_VISION_MODEL, image_path, prompt, response_format
         )
         if result:
             self._record_nim_success()
@@ -264,7 +369,7 @@ class NIMClient:
         # Level 2: Fallback NIM VLM
         logger.info(f"Primary VLM failed, trying fallback: {settings.NIM_VISION_FALLBACK}")
         result = await self._try_vision_model(
-            settings.NIM_VISION_FALLBACK, image_path, prompt
+            settings.NIM_VISION_FALLBACK, image_path, prompt, response_format
         )
         if result:
             self._record_nim_success()
@@ -281,12 +386,13 @@ class NIMClient:
         result = self._tesseract_fallback(image_path)
         return {**result, "cached": False}
 
-    async def generate_text(
+    async def _generate_text_impl(
         self,
         prompt: str,
         system_prompt: str = "",
         max_tokens: int = 2048,
         temperature: float = 0.1,
+        response_format: Optional[dict] = None,
     ) -> dict:
         """
         Generate text using NIM LLM (for Judge agent reasoning).
@@ -308,7 +414,7 @@ class NIMClient:
         self._ensure_client()
 
         # Check cache
-        cache_key = self._cache_key(f"text:{system_prompt}:{prompt}")
+        cache_key = self._cache_key(f"text:{settings.NIM_LLM_MODEL}:{_schema_name(response_format)}:{system_prompt}:{prompt}")
         cached = await asyncio.to_thread(self._read_cache, cache_key)
         if cached:
             self._cache_hits += 1
@@ -335,6 +441,7 @@ class NIMClient:
                 messages=messages,
                 max_tokens=max_tokens,
                 temperature=temperature,
+                response_format=response_format,
             )
             self._record_nim_success()
             output = {
@@ -423,6 +530,7 @@ class NIMClient:
             "cache_hits": self._cache_hits,
             "fallback_count": self._fallback_count,
             "error_count": len(self._errors),
+            "parse_failures": self._parse_failures,
             "total_requests": self._call_count + self._cache_hits,
         }
 
@@ -431,7 +539,8 @@ class NIMClient:
     # ================================================================
 
     async def _try_vision_model(
-        self, model: str, image_path: str, prompt: str
+        self, model: str, image_path: str, prompt: str,
+        response_format: Optional[dict] = None,
     ) -> Optional[dict]:
         """Attempt a single VLM call. Returns None on any failure."""
         try:
@@ -460,6 +569,7 @@ class NIMClient:
                 messages=messages,
                 max_tokens=1024,
                 temperature=0.1,
+                response_format=response_format,
             )
 
             return {
@@ -485,56 +595,87 @@ class NIMClient:
             self._errors.append(error_msg)
             return None
 
-    @retry(
-        stop=stop_after_attempt(3),
-        wait=wait_exponential(multiplier=1, min=2, max=30),
-        retry=retry_if_exception_type((TimeoutError, ConnectionError, OSError)),
-        before_sleep=before_sleep_log(logger, logging.WARNING),
-        reraise=True,
-    )
     async def _rate_limited_call(
         self,
         model: str,
         messages: list,
         max_tokens: int,
         temperature: float = 0.1,
+        response_format: Optional[dict] = None,
     ):
         """
-        Rate-limited NIM API call with retry.
-        Uses asyncio.Semaphore to enforce requests-per-minute budget.
+        Rate-limited NIM API call with retry (3 attempts, exponential backoff).
+        Each attempt is traced as its own `nim.call` span.
         """
-        async with self._semaphore:
-            # Pre-call budget gate. Atomic with the increment below: once we hold
-            # the semaphore, no other coroutine can race past this check.
-            if self._budget_limit is not None and self._call_count >= self._budget_limit:
-                raise NIMBudgetExceeded(
-                    f"NIM budget exhausted: {self._call_count}/{self._budget_limit} calls used"
+        async for attempt in AsyncRetrying(
+            stop=stop_after_attempt(3),
+            wait=wait_exponential(multiplier=1, min=2, max=30),
+            retry=retry_if_exception_type((TimeoutError, ConnectionError, OSError)),
+            before_sleep=before_sleep_log(logger, logging.WARNING),
+            reraise=True,
+        ):
+            with attempt:
+                return await self._nim_call_once(
+                    model, messages, max_tokens, temperature,
+                    attempt.retry_state.attempt_number, response_format,
                 )
-            self._call_count += 1
-            logger.debug(f"NIM call #{self._call_count} to {model}")
 
-            result = await asyncio.wait_for(
-                self._client.chat.completions.create(
-                    model=model,
-                    messages=messages,
-                    max_tokens=max_tokens,
-                    temperature=temperature,
-                    extra_body=(
-                        {"chat_template_kwargs": {"enable_thinking": False}}
-                        if settings.NIM_DISABLE_THINKING else None
-                    ),
-                ),
-                timeout=settings.NIM_TIMEOUT,
+    async def _nim_call_once(
+        self,
+        model: str,
+        messages: list,
+        max_tokens: int,
+        temperature: float,
+        attempt_no: int,
+        response_format: Optional[dict] = None,
+    ):
+        """One attempt: semaphore → budget gate → request (timeout) → rate-limit delay."""
+        with trace_span(
+            "nim.call",
+            **{"elliot.model": model, "elliot.attempt": attempt_no,
+               "elliot.timeout_s": settings.NIM_TIMEOUT, "elliot.max_tokens": max_tokens,
+               "elliot.schema": (response_format or {}).get("json_schema", {}).get("name")},
+        ) as s:
+            t_wait = time.monotonic()
+            async with self._semaphore:
+                s.set_attribute("elliot.queue_wait_s", round(time.monotonic() - t_wait, 3))
+                return await self._nim_request(model, messages, max_tokens, temperature,
+                                               response_format)
+
+    async def _nim_request(self, model, messages, max_tokens, temperature, response_format=None):
+        """Body of a single rate-limited request (caller holds the semaphore)."""
+        # Pre-call budget gate. Atomic with the increment below: once we hold
+        # the semaphore, no other coroutine can race past this check.
+        if self._budget_limit is not None and self._call_count >= self._budget_limit:
+            raise NIMBudgetExceeded(
+                f"NIM budget exhausted: {self._call_count}/{self._budget_limit} calls used"
             )
+        self._call_count += 1
+        logger.debug(f"NIM call #{self._call_count} to {model}")
 
-            # Respect rate limit
-            try:
-                await asyncio.sleep(self._min_delay)
-            except asyncio.CancelledError:
-                logger.warning(
-                    "Rate-limit delay cancelled after successful NIM response; continuing without delay"
-                )
-            return result
+        result = await asyncio.wait_for(
+            self._client.chat.completions.create(
+                model=model,
+                messages=messages,
+                max_tokens=max_tokens,
+                temperature=temperature,
+                extra_body=(
+                    {"chat_template_kwargs": {"enable_thinking": False}}
+                    if settings.NIM_DISABLE_THINKING else None
+                ),
+                **({"response_format": response_format} if response_format else {}),
+            ),
+            timeout=settings.NIM_TIMEOUT,
+        )
+
+        # Respect rate limit
+        try:
+            await asyncio.sleep(self._min_delay)
+        except asyncio.CancelledError:
+            logger.warning(
+                "Rate-limit delay cancelled after successful NIM response; continuing without delay"
+            )
+        return result
 
     # ================================================================
     # Private: Fallbacks

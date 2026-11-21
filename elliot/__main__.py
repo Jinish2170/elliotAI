@@ -81,12 +81,29 @@ def setup_logging(verbose: bool = False):
 async def run_audit(url: str, tier: str, verdict_mode: str = "expert",
                     enabled_security_modules: list = None) -> dict:
     """Run the audit pipeline."""
+    from elliot.core import tracing
+
+    tracing.init_tracing(run_id=os.getenv("ELLIOT_AUDIT_ID", ""))
     orchestrator = ElliotOrchestrator()
-    return await orchestrator.audit(
-        url, tier,
-        verdict_mode=verdict_mode,
-        enabled_security_modules=enabled_security_modules,
-    )
+    with tracing.span("audit", **{"elliot.url": url, "elliot.tier": tier,
+                                  "elliot.audit_id": os.getenv("ELLIOT_AUDIT_ID"),
+                                  "input.value": url}) as root:
+        result = await orchestrator.audit(
+            url, tier,
+            verdict_mode=verdict_mode,
+            enabled_security_modules=enabled_security_modules,
+        )
+        jd = (result or {}).get("judge_decision") or {}
+        tr = jd.get("trust_score_result") or {} if isinstance(jd, dict) else {}
+        if isinstance(tr, dict):
+            root.set_attribute("elliot.trust_score", tr.get("final_score", -1))
+            root.set_attribute("output.value", str(tr.get("risk_level", "")))
+        trace_id = tracing.current_trace_id()
+    # Root span has ended → summary now includes total audit time.
+    if isinstance(result, dict) and trace_id:
+        result["trace_summary"] = tracing.get_summary(trace_id)
+    tracing.shutdown_tracing()
+    return result
 
 
 def main():

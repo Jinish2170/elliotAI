@@ -164,21 +164,22 @@ async def execute_tier(
         return all_findings
 
     # Create tasks for each module
-    tasks = []
+    # Instantiate per module and isolate failures: one broken module must not
+    # take down its siblings (a single abstract-class error used to fail the
+    # whole MEDIUM tier silently).
+    runnable, results = [], []
     for module_class in modules:
-        # Create module instance lazily before each execution
-        instance = module_class()
-        timeout = instance.timeout
-
-        # Create timeout-wrapped task
-        task = _execute_module_with_timeout(
-            instance, url, page_content, headers, dom_meta, timeout
-        )
-        tasks.append(task)
-
-    # Execute all tasks in parallel
-    # asyncio.gather() returns results or exceptions in order
-    results = await asyncio.gather(*tasks, return_exceptions=True)
+        try:
+            instance = module_class()
+        except Exception as e:
+            logger.error(f"Module {module_class.__name__} could not be instantiated: {e}")
+            continue
+        runnable.append((module_class, _execute_module_with_timeout(
+            instance, url, page_content, headers, dom_meta, instance.timeout
+        )))
+    if runnable:
+        results = await asyncio.gather(*(t for _, t in runnable), return_exceptions=True)
+    modules = [m for m, _ in runnable]
 
     # Process results
     for module_class, result in zip(modules, results):

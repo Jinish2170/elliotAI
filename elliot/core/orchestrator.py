@@ -29,6 +29,8 @@ from typing import Annotated, Any, Callable, Optional, TypedDict
 
 from langgraph.graph import END, StateGraph
 
+from elliot.core.tracing import span as trace_span
+
 from elliot.agents.graph_investigator import GraphInvestigator, GraphResult
 from elliot.agents.judge import AuditEvidence, JudgeAgent, JudgeDecision
 from elliot.agents.scout import ScoutResult, StealthScout
@@ -379,6 +381,24 @@ class ElliotOrchestrator:
         state: AuditState,
         timeout: Optional[int] = None
     ) -> tuple[dict, float]:
+        """Traced wrapper: one `agent.<name>` span per agent execution."""
+        with trace_span(f"agent.{agent_name}", **{
+            "elliot.iteration": state.get("iteration"), "elliot.timeout_s": timeout,
+        }) as s:
+            update, penalty = await self._execute_agent_smart_impl(
+                agent_name, primary_fn, state, timeout
+            )
+            s.set_attribute("elliot.quality_penalty", float(penalty))
+            s.set_attribute("elliot.degraded", penalty > 0)
+            return update, penalty
+
+    async def _execute_agent_smart_impl(
+        self,
+        agent_name: str,
+        primary_fn: Callable,
+        state: AuditState,
+        timeout: Optional[int] = None
+    ) -> tuple[dict, float]:
         """
         Execute agent with timeout and circuit breaker support.
 
@@ -560,7 +580,9 @@ class ElliotOrchestrator:
                 # 1. Scout
                 self._emit("scout", "navigating", 10, f"Scout agent navigating to target...", iteration=state["iteration"])
                 try:
-                    scout_update = await scout_node(state)
+                    with trace_span("agent.scout", **{"elliot.iteration": state["iteration"],
+                                                     "elliot.pending_urls": len(state.get("pending_urls", []))}):
+                        scout_update = await scout_node(state)
                     state.update(scout_update)
                     n_shots = sum(len(sr.get("screenshots", [])) for sr in state.get("scout_results", []))
                     self._emit("scout", "done", 25, f"Captured {n_shots} screenshots", screenshots=n_shots, iteration=state["iteration"])

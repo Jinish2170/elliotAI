@@ -190,7 +190,7 @@ class TestCacheAwareExecution:
         mock_response2 = {
             "response": json.dumps({
                 "findings": [{
-                    "pattern_type": "social_proof",
+                    "pattern_type": "fake_social_proof",
                     "confidence": 0.75,
                 }]
             }),
@@ -260,7 +260,7 @@ class TestCacheHitRate:
         mock_response = {
             "response": json.dumps({
                 "findings": [{
-                    "pattern_type": "test_pattern",
+                    "pattern_type": "fake_countdown",
                     "confidence": 0.8,
                     "evidence": "Test finding"
                 }]

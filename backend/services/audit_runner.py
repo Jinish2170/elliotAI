@@ -151,7 +151,7 @@ class AuditRunner:
         if self.security_modules:
             cmd.extend(["--security-modules", ",".join(self.security_modules)])
 
-        env = {**os.environ, "PYTHONIOENCODING": "utf-8"}
+        env = {**os.environ, "PYTHONIOENCODING": "utf-8", "ELLIOT_AUDIT_ID": self.audit_id}
         if self.ipc_mode == IPC_MODE_QUEUE:
             try:
                 mp.set_start_method("spawn", force=True)
@@ -696,6 +696,8 @@ class AuditRunner:
             } if judge else None,
             # Timing
             "elapsed_ms": int(summary.get("elapsed_seconds", 0) * 1000),
+            # Observability: per-audit token / latency / cost roll-up from OTel spans
+            "trace_summary": result.get("trace_summary"),
         }
         await send({"type": "audit_result", "result": enriched_summary})
 

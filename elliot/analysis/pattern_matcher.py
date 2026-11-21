@@ -394,32 +394,20 @@ class PatternMatcher:
     # ------------------------------------------------------------------
 
     def _extract_json(self, text: str):
-        """Extract JSON from VLM response text."""
+        """Extract a JSON object (or bare array) from VLM response text."""
         import json
 
-        # Try direct parse
-        try:
-            return json.loads(text.strip())
-        except (json.JSONDecodeError, ValueError):
-            pass
+        from elliot.core.structured import extract_json
 
-        # Try ```json block
-        match = re.search(r"```(?:json)?\s*\n?(.*?)```", text, re.DOTALL)
+        obj = extract_json(text)
+        if obj is not None:
+            return obj
+        match = re.search(r"\[.*\]", text or "", re.DOTALL)
         if match:
             try:
-                return json.loads(match.group(1).strip())
+                return json.loads(match.group())
             except (json.JSONDecodeError, ValueError):
                 pass
-
-        # Try finding any JSON object/array
-        for pattern in [r'\{[^{}]*\}', r'\[[^\[\]]*\]']:
-            match = re.search(pattern, text, re.DOTALL)
-            if match:
-                try:
-                    return json.loads(match.group())
-                except (json.JSONDecodeError, ValueError):
-                    pass
-
         return None
 
     def _json_to_finding(

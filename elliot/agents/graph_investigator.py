@@ -31,6 +31,7 @@ import networkx as nx
 
 from elliot.config import settings
 from elliot.core.nim_client import NIMClient
+from elliot.core.structured import EntityResponse, VerificationResponse
 from elliot.osint.orchestrator import OSINTOrchestrator
 from elliot.osint.reputation import ReputationManager, VerdictType, get_reputation_manager
 from elliot.osint.cti import CThreatIntelligence
@@ -941,8 +942,9 @@ class GraphInvestigator:
             f"Website text:\n{text_trimmed}"
         )
 
-        result = await self._nim.generate_text(
-            prompt=prompt,
+        parsed, _raw = await self._nim.generate_structured(
+            prompt,
+            EntityResponse,
             system_prompt=(
                 "You are a forensic entity extraction specialist for website trust audits. "
                 "Extract ONLY specific, verifiable claims that can be cross-referenced against "
@@ -955,20 +957,15 @@ class GraphInvestigator:
         )
 
         claims = []
-        try:
-            response_text = result.get("response", "")
-            data = self._extract_json(response_text)
-            if data and "entities" in data:
-                for entity in data["entities"]:
-                    if isinstance(entity, dict) and entity.get("type") and entity.get("value"):
-                        claims.append(EntityClaim(
-                            entity_type=entity["type"],
-                            entity_value=entity["value"],
-                            source_page=url,
-                            context=entity.get("context", ""),
-                        ))
-        except Exception as e:
-            logger.warning(f"LLM entity extraction failed: {e}")
+        for entity in (parsed.entities if parsed else []):
+            if entity.type == "other":
+                continue  # escape value: not a verifiable entity type
+            claims.append(EntityClaim(
+                entity_type=entity.type,
+                entity_value=entity.value,
+                source_page=url,
+                context=entity.context,
+            ))
 
         if not claims:
             import re
@@ -1170,8 +1167,9 @@ class GraphInvestigator:
             ' "explanation": "one sentence"}'
         )
 
-        result = await self._nim.generate_text(
-            prompt=prompt,
+        parsed, _raw = await self._nim.generate_structured(
+            prompt,
+            VerificationResponse,
             system_prompt=(
                 "You are a forensic OSINT analyst. Compare the website claim against "
                 "search evidence with strict rules:\n\n"
@@ -1192,11 +1190,10 @@ class GraphInvestigator:
         )
 
         try:
-            data = self._extract_json(result.get("response", ""))
-            if data:
-                status = data.get("status", "unverifiable")
-                explanation = data.get("explanation", "").lower()
-                confidence = float(data.get("confidence", 0.5))
+            if parsed:
+                status = parsed.status
+                explanation = parsed.explanation.lower()
+                confidence = parsed.confidence
 
                 # Guardrail: downgrade false "contradicted" verdicts.
                 # If the explanation signals absence rather than
@@ -2036,11 +2033,6 @@ class GraphInvestigator:
             return parsed.hostname or url
         except Exception:
             return url
-
-    def _extract_json(self, text: str) -> Optional[dict]:
-        """Extract JSON from text that may have preamble/postamble."""
-        if not text:
-            return None
         try:
             return json.loads(text)
         except json.JSONDecodeError:

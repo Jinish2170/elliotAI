@@ -31,6 +31,7 @@ from typing import List, Optional
 from elliot.config.dark_patterns import (DARK_PATTERN_TAXONOMY, get_all_vlm_prompts,
                                   get_severity_weight, get_temporal_categories)
 from elliot.core.nim_client import NIMClient
+from elliot.core.structured import VisionResponse, extract_json, parse_structured
 
 # Lazy imports for optional modules (avoid circular import with TemporalFinding)
 # from analysis.temporal_analyzer import TemporalAnalyzer  — imported in method
@@ -504,12 +505,14 @@ class VisionAgent:
         # -----------------------------------------------------------
         # Phase 1: Static analysis (non-temporal) on fullpage or t0
         # -----------------------------------------------------------
-        primary_screenshot = self._select_primary_screenshot(
-            screenshots, screenshot_labels
-        )
-        if primary_screenshot:
+        # One screenshot per scanned page (homepage first). Previously only the
+        # homepage was analysed, so "8 pages scanned" meant 1 page seen by the VLM.
+        # Cost stays bounded by the tier's vision NIM budget; repeats hit the cache.
+        for static_shot in self._select_static_screenshots(screenshots, screenshot_labels):
+            if nim_budget is not None and self._nim.call_count >= nim_budget:
+                break
             await self._analyze_static_patterns(
-                primary_screenshot, active_taxonomy, result
+                static_shot, active_taxonomy, result
             )
 
         # -----------------------------------------------------------
@@ -630,7 +633,7 @@ class VisionAgent:
             return findings
 
         # Execute VLM call with pass_type for proper cache key
-        vlm_response = await self._nim.analyze_image(
+        vlm_response = await self._structured_vlm(
             image_path=screenshot,
             prompt=prompt,
             category_hint=category_id
@@ -808,7 +811,7 @@ class VisionAgent:
                             break
                         # Execute VLM analysis
                         try:
-                            vlm_response = await self._nim.analyze_image(
+                            vlm_response = await self._structured_vlm(
                                 image_path=screenshot,
                                 prompt=prompt,
                                 category_hint=""
@@ -957,7 +960,7 @@ class VisionAgent:
                 result.prompts_sent += 1
 
                 try:
-                    vlm_result = await self._nim.analyze_image(
+                    vlm_result = await self._structured_vlm(
                         image_path=screenshot_path,
                         prompt=prompt,
                         category_hint=cat_id,
@@ -1067,8 +1070,8 @@ class VisionAgent:
             response_a = vlm_a.get("response", "")
             response_b = vlm_b.get("response", "")
 
-            data_a = self._extract_json_from_response(response_a)
-            data_b = self._extract_json_from_response(response_b)
+            data_a = extract_json(response_a)
+            data_b = extract_json(response_b)
 
             if not data_a or not data_b:
                 return None
@@ -1148,120 +1151,50 @@ class VisionAgent:
         model = vlm_result.get("model", "unknown")
         is_fallback = vlm_result.get("fallback_mode", False)
 
-        # Try to parse as JSON first
-        data = self._extract_json_from_response(response_text)
+        parsed = vlm_result.get("_parsed")
+        if parsed is None:
+            parsed, err = parse_structured(response_text, VisionResponse)
+            if parsed is None:
+                # Strict: never guess findings from free text (false positives).
+                logger.warning(f"Unparseable VLM response for {category_id}: {err}")
+                return []
+        findings.extend(self._findings_from_validated(
+            parsed, category_id, screenshot_path, response_text, model, is_fallback
+        ))
+        return findings
 
-        if data:
-            findings.extend(self._findings_from_json(
-                data, category_id, category, screenshot_path,
-                response_text, model, is_fallback
+    async def _structured_vlm(self, image_path: str, prompt: str, category_hint: str = "") -> dict:
+        """VLM call with schema-constrained decoding + validation + one repair retry."""
+        obj, raw = await self._nim.analyze_image_structured(
+            image_path, prompt, VisionResponse, category_hint=category_hint
+        )
+        return {**raw, "_parsed": obj}
+
+    def _findings_from_validated(
+        self, parsed: VisionResponse, category_id: str, screenshot_path: str,
+        raw_response: str, model: str, fallback: bool,
+    ) -> list[DarkPatternFinding]:
+        """Map schema-validated findings to DarkPatternFinding (taxonomy-checked ids)."""
+        out = []
+        for f in parsed.findings:
+            if f.pattern_type == "none" or f.confidence < 0.65:
+                continue
+            # Category comes from the taxonomy, never from model free text.
+            cat = f.category_id if f.pattern_type != "other" else (category_id or "other")
+            evidence = " | ".join(x for x in (f"element: {f.element}" if f.element else "",
+                                              f.evidence) if x)
+            out.append(DarkPatternFinding(
+                category_id=cat,
+                pattern_type=f.pattern_type,
+                confidence=f.confidence,
+                severity=self._lookup_severity(cat, f.pattern_type),
+                evidence=evidence or f.pattern_type,
+                screenshot_path=screenshot_path,
+                raw_vlm_response=raw_response,
+                model_used=model,
+                fallback_mode=fallback,
             ))
-        else:
-            # Fallback: strict mode, do not guess from text to avoid false positives. 
-            logger.warning(f"Failed to parse JSON from VLM response for {category_id}, avoiding text-guessing to prevent false positives.")
-            findings = []
-        return findings
-
-    def _findings_from_json(
-        self, data: dict, category_id: str, category,
-        screenshot_path: str, raw_response: str, model: str, fallback: bool,
-    ) -> list[DarkPatternFinding]:
-        """Extract findings from a parsed JSON VLM response."""
-        findings = []
-
-        # Handle {"findings": [...]} format
-        json_findings = data.get("findings", [])
-        if isinstance(json_findings, list):
-            for finding in json_findings:
-                if not isinstance(finding, dict):
-                    continue
-
-                try:
-                    confidence_raw = finding.get("confidence", 0.8)
-                    if isinstance(confidence_raw, str):
-                        confidence = float(re.search(r"0\.\d+", confidence_raw).group()) if re.search(r"0\.\d+", confidence_raw) else 0.8
-                    else:
-                        confidence = float(confidence_raw)
-                except Exception:
-                    confidence = 0.8
-
-                if confidence < 0.65:
-                    continue  # Too low confidence to report
-
-                pattern_type = finding.get("pattern_type", category_id)
-                if pattern_type.startswith("pass_"):
-                    pattern_type = {
-                        "pass_1": "Visual Scan Indicator",
-                        "pass_2": "Dark Pattern Detected",
-                        "pass_3": "Dynamic Content Manipulated",
-                        "pass_4": "External Intel Mismatch",
-                        "pass_5": "Confidence Scoring Insight"
-                    }.get(pattern_type, pattern_type)
-                category_id = pattern_type
-                severity = self._lookup_severity(category_id, pattern_type)
-
-                evidence_parts = []
-                for key in ["evidence", "text", "pair", "element", "description", "issue", "dominant",
-                            "size_ratio", "contrast_difference"]:
-                    if key in finding:
-                        evidence_parts.append(f"{key}: {finding[key]}")
-
-                findings.append(DarkPatternFinding(
-                    category_id=category_id,
-                    pattern_type=pattern_type,
-                    confidence=confidence,
-                    severity=severity,
-                    evidence=" | ".join(evidence_parts) if evidence_parts else str(finding),
-                    screenshot_path=screenshot_path,
-                    raw_vlm_response=raw_response,
-                    model_used=model,
-                    fallback_mode=fallback,
-                ))
-
-        return findings
-
-    def _findings_from_text(
-        self, text: str, category_id: str, category,
-        screenshot_path: str, model: str, fallback: bool,
-    ) -> list[DarkPatternFinding]:
-        """
-        Fallback: extract findings from free-text VLM response.
-        Only used when JSON parsing fails.
-        """
-        findings = []
-        text_lower = text.lower()
-
-        # Check if the response indicates a positive detection
-        positive_indicators = [
-            "detected", "found", "identified", "present", "suspicious",
-            "yes", "appears to be", "likely", "confirms",
-        ]
-        negative_indicators = [
-            "no dark pattern", "none detected", "clean", "no suspicious",
-            "not found", "none found", "no issues",
-        ]
-
-        for neg in negative_indicators:
-            if neg in text_lower:
-                return findings  # Clean — no patterns
-
-        for pos in positive_indicators:
-            if pos in text_lower:
-                # Extract a finding with moderate confidence
-                findings.append(DarkPatternFinding(
-                    category_id=category_id,
-                    pattern_type=category_id,
-                    confidence=0.5,  # Lower confidence for free-text extraction
-                    severity="medium",
-                    evidence=text[:300],  # Truncate for readability
-                    screenshot_path=screenshot_path,
-                    raw_vlm_response=text,
-                    model_used=model,
-                    fallback_mode=fallback,
-                ))
-                break  # Only one finding per free-text response
-
-        return findings
+        return out
 
     # ================================================================
     # Private: Scoring
@@ -1312,6 +1245,21 @@ class VisionAgent:
     # Private: Helpers
     # ================================================================
 
+    def _select_static_screenshots(
+        self, screenshots: list[str], labels: list[str]
+    ) -> list[str]:
+        """Primary (homepage) screenshot, then one full screenshot per subpage."""
+        picked: list[str] = []
+        primary = self._select_primary_screenshot(screenshots, labels)
+        if primary:
+            picked.append(primary)
+        subpage_full = [p for p, l in zip(screenshots, labels) if l == "subpage_full"]
+        subpage = [p for p, l in zip(screenshots, labels) if l == "subpage"]
+        for path in subpage_full or subpage:
+            if path not in picked:
+                picked.append(path)
+        return picked
+
     def _select_primary_screenshot(
         self, screenshots: list[str], labels: list[str]
     ) -> Optional[str]:
@@ -1337,39 +1285,6 @@ class VisionAgent:
                 t_delay_path = path
 
         return t0_path, t_delay_path
-
-    def _extract_json_from_response(self, text: str) -> Optional[dict]:
-        """
-        Extract JSON from a VLM response that may contain markdown or preamble.
-        Handles: pure JSON, ```json blocks, JSON buried in text.
-        """
-        if not text:
-            return None
-
-        # Try 1: Direct parse
-        try:
-            return json.loads(text)
-        except json.JSONDecodeError:
-            pass
-
-        # Try 2: Extract from ```json ... ``` block
-        import re
-        json_block = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', text, re.DOTALL)
-        if json_block:
-            try:
-                return json.loads(json_block.group(1))
-            except json.JSONDecodeError:
-                pass
-
-        # Try 3: Find first {...} in text
-        brace_match = re.search(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}', text, re.DOTALL)
-        if brace_match:
-            try:
-                return json.loads(brace_match.group(0))
-            except json.JSONDecodeError:
-                pass
-
-        return None
 
     def _lookup_severity(self, category_id: str, pattern_type: str) -> str:
         """Look up the severity of a pattern type from the taxonomy."""

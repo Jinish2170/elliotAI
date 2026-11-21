@@ -35,6 +35,8 @@ build/
 
 # Output and test files
 *.json
+!eval/cases.json
+!eval/results/*.json
 *.txt
 !requirements*.txt
 !backend/requirements*.txt

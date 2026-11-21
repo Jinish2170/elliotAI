@@ -105,8 +105,11 @@ def _select_prefetch_urls(base_url: str, primary_result: ScoutResult, limit: int
 
 async def scout_node(state: AuditState) -> dict:
     """
-    SCOUT node: Navigate the next URL and capture evidence.
-    Processes one URL per invocation from pending_urls.
+    SCOUT node: Navigate pending URLs and capture evidence.
+    The first invocation investigates the target (+ priority prefetch); later
+    invocations visit ALL pending URLs the Judge requested (bounded by the tier's
+    page budget) in one browser session. Visiting one URL per invocation used to
+    re-run Vision/Graph/Judge once per page (traced: 5 iterations for 4 pages).
     """
     pending = state.get("pending_urls", [])
     investigated = state.get("investigated_urls", [])
@@ -120,6 +123,7 @@ async def scout_node(state: AuditState) -> dict:
 
     url = pending[0]
     remaining = pending[1:]
+    extra_urls: list[str] = []
 
     logger.info(f"Scout investigating: {url}")
 
@@ -173,6 +177,17 @@ async def scout_node(state: AuditState) -> dict:
                 result = await scout.navigate_subpage(
                     url, progress_emitter=state.get("_progress_emitter"), max_sections=max_sections
                 )
+                # Batch the rest of the Judge's request into this same iteration.
+                extra_urls = [u for u in remaining if u not in investigated][:max(0, pages_left - 1)]
+                remaining = [u for u in remaining if u not in extra_urls]
+                for sub_url in extra_urls:
+                    try:
+                        prefetch_results.append(await scout.navigate_subpage(
+                            sub_url, progress_emitter=state.get("_progress_emitter"),
+                            max_sections=max_sections,
+                        ))
+                    except Exception as sub_e:
+                        logger.warning(f"Scout batch page failed for {sub_url}: {sub_e}")
 
         # Serialize primary + any prefetched results for state storage
         result_dict = _serialize_scout_result(result)

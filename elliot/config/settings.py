@@ -59,6 +59,16 @@ NIM_REQUESTS_PER_MINUTE: int = int(os.getenv("NIM_REQUESTS_PER_MINUTE", "40"))
 # max_tokens they return empty content. True sends enable_thinking=false.
 NIM_DISABLE_THINKING: bool = os.getenv("NIM_DISABLE_THINKING", "false").lower() == "true"
 
+# Cost accounting (USD per 1M tokens). NIM's free tier is $0; set these to a
+# paid provider's list price to see what an audit would cost in production.
+NIM_PRICE_INPUT_PER_1M: float = float(os.getenv("NIM_PRICE_INPUT_PER_1M", "0"))
+NIM_PRICE_OUTPUT_PER_1M: float = float(os.getenv("NIM_PRICE_OUTPUT_PER_1M", "0"))
+
+# Tracing (OpenTelemetry). Phoenix export is enabled by PHOENIX_COLLECTOR_ENDPOINT
+# (e.g. http://127.0.0.1:6006); local JSONL traces go to TRACE_DIR.
+TRACE_LOCAL: bool = os.getenv("ELLIOT_TRACE_LOCAL", "true").lower() == "true"
+TRACE_DIR: Path = Path(os.getenv("ELLIOT_TRACE_DIR", str(DATA_DIR / "traces")))
+
 
 # ============================================================
 # Tavily — External Search for Entity Verification
