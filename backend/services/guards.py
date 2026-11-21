@@ -87,6 +87,15 @@ def allowed_tiers() -> set[str]:
 
 
 def client_ip(headers, fallback: str) -> str:
-    """First hop of X-Forwarded-For (set by HF Spaces / Vercel proxies), else peer."""
+    """Client IP for rate limiting.
+
+    Prefer CF-Connecting-IP (set by Cloudflare, not client-controllable behind a
+    Cloudflare tunnel); otherwise the first X-Forwarded-For hop (set by managed
+    proxies), else the socket peer. Note: X-Forwarded-For is spoofable when the
+    service is reachable directly, so only trust it behind a proxy.
+    """
+    cf = headers.get("cf-connecting-ip", "").strip()
+    if cf:
+        return cf
     xff = headers.get("x-forwarded-for", "")
     return xff.split(",")[0].strip() or fallback

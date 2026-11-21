@@ -1,0 +1,13 @@
+[Unit]
+Description=elliotAI backend (FastAPI on 127.0.0.1:8010)
+After=network-online.target
+
+[Service]
+WorkingDirectory=REPO_DIR/backend
+EnvironmentFile=%h/.config/elliotai/backend.env
+ExecStart=REPO_DIR/.venv/bin/python -m uvicorn main:app --host 127.0.0.1 --port 8010 --proxy-headers
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=default.target

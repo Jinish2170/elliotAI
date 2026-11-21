@@ -41,3 +41,10 @@ def test_real_private_ip_detection():
     assert guards.target_is_private("http://127.0.0.1/")
     assert guards.target_is_private("http://10.0.0.5/")
     assert not guards.target_is_private("http://93.184.215.14/")
+
+
+def test_client_ip_prefers_cloudflare_header():
+    h = {"cf-connecting-ip": "198.51.100.9", "x-forwarded-for": "6.6.6.6, 10.0.0.1"}
+    assert guards.client_ip(h, "127.0.0.1") == "198.51.100.9"
+    assert guards.client_ip({"x-forwarded-for": "6.6.6.6"}, "127.0.0.1") == "6.6.6.6"
+    assert guards.client_ip({}, "127.0.0.1") == "127.0.0.1"

@@ -34,7 +34,7 @@ independently of the models, and a hijacked model can corrupt at most one signal
 | **Structured outputs** | `elliot/core/structured.py` | Pydantic schemas derived from the taxonomy, NIM `response_format=json_schema` (constrained decoding), balanced-brace extraction, one repair retry with the validation error fed back. |
 | **Eval harness** | `eval/` | 4 suites: deterministic scoring policy, vision P/R/F1 per category, prompt-injection attack-success-rate (matched pairs), end-to-end on real sites with a baseline. Results versioned in `eval/results/`. |
 | **Injection defences** | `elliot/core/injection.py`, `analysis/security/prompt_injection.py` | Spotlighting, field quarantine (context minimisation), deterministic detector, and an override rule that turns an injection attempt into a *lower* trust score. |
-| **Deploy hardening** | `backend/services/guards.py`, `Dockerfile`, `docs/DEPLOY.md` | SSRF guard, per-IP rate limit, concurrency cap, tier allowlist; HF Spaces (Docker) + Vercel. |
+| **Deploy hardening** | `backend/services/guards.py`, `Dockerfile`, `docs/DEPLOY.md` | SSRF guard, per-IP rate limit, concurrency cap, tier allowlist; Docker image + Vercel; live demo self-hosted behind a Cloudflare tunnel. |
 | **CI** | `.github/workflows/ci.yml` | Tests + **eval gate** (scoring policy must be 5/5) + frontend type-check. |
 
 ---

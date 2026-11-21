@@ -1,0 +1,8 @@
+[Unit]
+Description=Point the Vercel frontend at the current elliotAI tunnel URL
+
+[Service]
+Type=oneshot
+Environment=PATH=NODE_BIN_DIR:/usr/local/bin:/usr/bin:/bin
+Environment=FRONTEND_DIR=REPO_DIR/frontend
+ExecStart=REPO_DIR/deploy/local/elliotai-url-sync.sh

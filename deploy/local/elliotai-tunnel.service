@@ -1,0 +1,12 @@
+[Unit]
+Description=elliotAI public HTTPS tunnel (Cloudflare quick tunnel → 127.0.0.1:8010)
+After=elliotai-backend.service network-online.target
+Wants=elliotai-backend.service
+
+[Service]
+ExecStart=%h/.local/bin/cloudflared tunnel --no-autoupdate --metrics 127.0.0.1:20261 --url http://127.0.0.1:8010
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=default.target

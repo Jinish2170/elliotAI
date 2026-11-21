@@ -13,6 +13,10 @@
 </p>
 
 <p align="center">
+  <a href="https://elliotai.vercel.app"><strong>▶ Live demo: elliotai.vercel.app</strong></a>
+</p>
+
+<p align="center">
   <img src="docs/assets/demo.gif" alt="elliotAI auditing wikipedia.org live" width="880">
 </p>
 
@@ -125,7 +129,7 @@ Every audit also writes its spans to `elliot/data/traces/*.jsonl`.
 
 ## Deploy
 
-Backend as a Docker Space on Hugging Face (the free CPU tier fits headless Chromium), frontend on Vercel. Public deployments get an SSRF guard, per-IP rate limits, a concurrency cap and a tier allowlist. See **[docs/DEPLOY.md](docs/DEPLOY.md)**.
+Frontend on Vercel; backend in the repo's Docker image on any host with ~1 GB RAM per concurrent audit (measured). The live demo's backend is self-hosted behind a Cloudflare tunnel ([`deploy/local/`](deploy/local/README.md)). Public deployments get an SSRF guard, per-IP rate limits, a concurrency cap and a tier allowlist. See **[docs/DEPLOY.md](docs/DEPLOY.md)**.
 
 ## Limitations
 

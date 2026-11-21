@@ -1,50 +1,63 @@
-# Deploying elliotAI on free tiers
+# Deploying elliotAI
 
-| Part | Where (free) | Why |
+**Live demo:** https://elliotai.vercel.app (frontend on Vercel, backend self-hosted behind a Cloudflare tunnel).
+
+## Sizing (measured)
+
+| Requirement | Value | Why it matters |
 |---|---|---|
-| Backend (FastAPI + audit engine + Chromium) | **Hugging Face Spaces**, Docker SDK, CPU basic | 16 GB RAM / 2 vCPU. Each audit runs headless Chromium (~0.5–1 GB); 512 MB tiers (Render/Koyeb free) OOM. |
-| Frontend (Next.js) | **Vercel** Hobby | Native Next.js host. |
-| Traces | **Phoenix Cloud** (free) or none | OTLP export is optional; local JSONL traces always work. |
-| LLM | **NVIDIA NIM** free credits | OpenAI-compatible; models pinned in env. |
+| RAM per audit | **≥ 0.6 GB** peak (Python engine + headless Chromium), plus ~0.15 GB for the API | rules out every 256–512 MB free tier (Render, Koyeb, Railway free, SnapDeploy) |
+| Recommended | 1 vCPU / 2 GB | one concurrent audit with headroom |
+| Protocols | HTTPS + WebSocket, requests up to ~5 min | rules out short-timeout serverless functions |
 
-## 1. Backend → Hugging Face Space
+## Hosting options (checked November 2026)
+
+| Option | Cost | Fits | Notes |
+|---|---|---|---|
+| **Self-hosted + Cloudflare quick tunnel** *(current)* | free | ✅ | Any always-on machine. Setup: [`deploy/local/`](../deploy/local/README.md) |
+| **Oracle Cloud Always Free** *(planned)* | free (card for verification) | ✅ 2 OCPU / 12 GB ARM | A VM you operate; free A1 capacity is often exhausted |
+| Google Cloud Run | free tier (card required) | ✅ 2 GB | Scales to zero; WebSockets supported |
+| Azure Container Apps | free grant (card required) | ✅ | Similar to Cloud Run |
+| Railway Hobby | $5 / month | ✅ | Free plan capped at 0.5 GB |
+| Hugging Face Spaces (Docker) | PRO subscription | ✅ | Free Docker Spaces were discontinued |
+
+Any container host works with the repo [`Dockerfile`](../Dockerfile) (listens on `$PORT`, default 7860).
+
+## Backend configuration
+
+Non-secret settings (environment variables):
+
+| Name | Production value | Purpose |
+|---|---|---|
+| `NIM_VISION_MODEL` / `NIM_LLM_MODEL` | `nvidia/nemotron-3.5-super-vl-120b-a12b` | pinned models |
+| `NIM_VISION_FALLBACK` | `mistralai/mistral-large-4-1t-a52b` | fallback VLM |
+| `NIM_DISABLE_THINKING` | `true` | reasoning models return empty answers otherwise |
+| `ALLOWED_ORIGINS` | `https://<your-app>.vercel.app` | CORS |
+| `BLOCK_PRIVATE_TARGETS` | `true` (default) | SSRF guard: refuse private / loopback / link-local targets |
+| `AUDIT_RATE_LIMIT_PER_HOUR` | `5` | per client IP (`CF-Connecting-IP` behind Cloudflare) |
+| `MAX_CONCURRENT_AUDITS` | `1`–`2` | RAM bound |
+| `ALLOWED_TIERS` | `quick_scan,standard_audit` | keep long tiers off the public demo |
+| `PHOENIX_COLLECTOR_ENDPOINT` | optional | export traces to Phoenix (local or Phoenix Cloud) |
+
+Secrets: `NVIDIA_NIM_API_KEY` (and optional `PHOENIX_API_KEY`) go in the host's secret store or the gitignored `elliot/.env`, never into images or unit files.
+
+Health check: `GET /api/health`.
+
+## Frontend → Vercel
+
+The repo's `frontend/vercel.json` pins the Next.js framework preset and `package.json` pins Node 24.x.
 
 ```bash
-# one-time: create a Docker Space at https://huggingface.co/new-space (SDK: Docker)
-git clone https://huggingface.co/spaces/<you>/elliotai-backend hf-space
-rsync -a --exclude-from=.dockerignore ./ hf-space/   # repo contents minus ignored files
-cp deploy/huggingface/README.md hf-space/README.md   # Space card (sdk: docker, app_port: 7860)
-cd hf-space && git add -A && git commit -m "deploy" && git push
+cd frontend
+npx vercel link --yes --project <your-project>
+printf 'https://<backend-host>' | npx vercel env add NEXT_PUBLIC_API_URL production
+printf 'wss://<backend-host>'   | npx vercel env add NEXT_PUBLIC_WS_URL production
+npx vercel deploy --prod
 ```
 
-Space → Settings → **Variables and secrets** (secrets are never baked into the image):
+`NEXT_PUBLIC_*` values are inlined at build time: changing the backend URL requires a redeploy (automated by `deploy/local/elliotai-url-sync.sh` for the tunnel setup).
 
-| Name | Type | Value |
-|---|---|---|
-| `NVIDIA_NIM_API_KEY` | secret | your NIM key |
-| `NIM_VISION_MODEL` / `NIM_LLM_MODEL` | var | `nvidia/nemotron-3.5-super-vl-120b-a12b` |
-| `NIM_VISION_FALLBACK` | var | `mistralai/mistral-large-4-1t-a52b` |
-| `NIM_DISABLE_THINKING` | var | `true` |
-| `ALLOWED_ORIGINS` | var | `https://<your-app>.vercel.app` |
-| `AUDIT_RATE_LIMIT_PER_HOUR` | var | `5` (per client IP) |
-| `MAX_CONCURRENT_AUDITS` | var | `2` (RAM bound) |
-| `ALLOWED_TIERS` | var | `quick_scan,standard_audit` |
-| `BLOCK_PRIVATE_TARGETS` | var | `true` (SSRF guard, default) |
-| `PHOENIX_COLLECTOR_ENDPOINT` | var | optional, e.g. your Phoenix Cloud space URL |
-| `PHOENIX_API_KEY` | secret | optional, Phoenix Cloud key (sent as `authorization: Bearer`) |
-
-Health check: `GET https://<you>-elliotai-backend.hf.space/api/health`.
-
-## 2. Frontend → Vercel
-
-Import the GitHub repo in Vercel, **Root Directory = `frontend`**, then set:
-
-| Name | Value |
-|---|---|
-| `NEXT_PUBLIC_API_URL` | `https://<you>-elliotai-backend.hf.space` |
-| `NEXT_PUBLIC_WS_URL` | `wss://<you>-elliotai-backend.hf.space` |
-
-## 3. Local (identical image)
+## Local (same image)
 
 ```bash
 docker build -t elliotai .
@@ -52,7 +65,7 @@ docker run -p 7860:7860 --env-file elliot/.env -e ALLOWED_ORIGINS=http://localho
 cd frontend && NEXT_PUBLIC_API_URL=http://localhost:7860 NEXT_PUBLIC_WS_URL=ws://localhost:7860 npm run dev
 ```
 
-## Known limits of the free setup
-- HF free Spaces sleep after inactivity (cold start ~1 min) and have ephemeral disk: audit history (SQLite) resets on restart.
-- The rate limiter is in-memory (single instance). Multi-instance would need Redis.
-- SSRF guard checks the submitted URL's resolved IPs; redirects / DNS rebinding to private IPs mid-crawl are not re-checked.
+## Known limits
+- The rate limiter is in-memory (single instance); multiple instances would need Redis.
+- The SSRF guard checks the submitted URL's resolved IPs; redirects or DNS rebinding to private IPs mid-crawl are not re-checked.
+- Audit history (SQLite) lives on the host's disk; ephemeral container disks reset it on restart.

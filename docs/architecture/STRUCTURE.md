@@ -43,7 +43,7 @@ elliotAI/
 │       └── config/          # agent_personalities.ts, agents.ts
 ├── tests/                   # Top-level engine tests (consensus, link explorer, scroll)
 ├── eval/                    # Eval harness: suites, labelled fixtures, versioned results
-├── deploy/                  # Hosting config (Hugging Face Space card)
+├── deploy/                  # Self-hosting units (systemd + Cloudflare tunnel)
 ├── docs/                    # Case study, deploy guide, user guide, architecture/
 ├── .github/workflows/       # CI: tests + eval gate + frontend type-check
 ├── data/                    # Top-level runtime data dir

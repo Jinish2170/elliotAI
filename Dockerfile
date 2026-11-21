@@ -1,5 +1,5 @@
 # elliotAI backend (FastAPI + audit engine + headless Chromium).
-# Targets Hugging Face Spaces (Docker SDK, free CPU tier: 2 vCPU / 16 GB) but
+# Runs on any container host with ~1 GB RAM per concurrent audit (measured);
 # runs anywhere: docker build -t elliotai . && docker run -p 7860:7860 --env-file elliot/.env elliotai
 FROM python:3.12-slim
 
@@ -17,7 +17,7 @@ RUN pip install --no-cache-dir --retries 10 --timeout 60 -r requirements.txt -r 
  && python -m playwright install --with-deps chromium \
  && rm -rf /var/lib/apt/lists/*
 
-# HF Spaces runs containers as uid 1000; give it the writable data dirs.
+# Run as a non-root uid 1000 user (common container-platform requirement).
 RUN useradd -m -u 1000 app
 COPY --chown=app:app . .
 RUN mkdir -p elliot/data backend/data && chown -R app:app elliot/data backend/data
