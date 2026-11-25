@@ -1,0 +1,360 @@
+{
+  "suite": "vision",
+  "micro": {
+    "precision": 0.714,
+    "recall": 1.0,
+    "f1": 0.833,
+    "tp": 5,
+    "fp": 2,
+    "fn": 0
+  },
+  "per_category": {
+    "false_urgency": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0
+    },
+    "forced_continuity": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0
+    },
+    "sneaking": {
+      "precision": 0.5,
+      "recall": 1.0,
+      "f1": 0.667,
+      "tp": 1,
+      "fp": 1,
+      "fn": 0
+    },
+    "social_engineering": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0
+    },
+    "visual_interference": {
+      "precision": 0.5,
+      "recall": 1.0,
+      "f1": 0.667,
+      "tp": 1,
+      "fp": 1,
+      "fn": 0
+    }
+  },
+  "clean_pages_without_false_alarm": "1/2",
+  "n_cases": 7,
+  "rows": [
+    {
+      "id": "clean_basic",
+      "stratum": "clean",
+      "expected": [],
+      "predicted": [
+        "visual_interference"
+      ],
+      "tp": 0,
+      "fp": 1,
+      "fn": 0,
+      "seconds": 22.7,
+      "cost": {
+        "llm_calls": 15,
+        "cache_hits": 0,
+        "input_tokens": 21594,
+        "output_tokens": 379,
+        "llm_seconds": 25.39,
+        "slowest_llm_call_s": 2.17
+      },
+      "findings": [
+        {
+          "category": "visual_interference",
+          "pattern_type": "misdirected_click",
+          "confidence": 0.95,
+          "evidence": "element: Add to Cart button vs Save for Later button | The 'Add to Cart' button is green and visually dominant compared to the white 'Save for Later' button, po"
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.9,
+          "evidence": "element: Unsubscribe link in footer navigation bar at bottom of page, positioned between Contact Us and copyright text, appears in small gray font similar to ot"
+        }
+      ]
+    },
+    {
+      "id": "clean_portfolio",
+      "stratum": "clean",
+      "expected": [],
+      "predicted": [],
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 19.4,
+      "cost": {
+        "llm_calls": 15,
+        "cache_hits": 0,
+        "input_tokens": 21594,
+        "output_tokens": 223,
+        "llm_seconds": 19.01,
+        "slowest_llm_call_s": 1.44
+      },
+      "findings": []
+    },
+    {
+      "id": "dp_fake_countdown",
+      "stratum": "dark_pattern",
+      "expected": [
+        "false_urgency"
+      ],
+      "predicted": [
+        "false_urgency",
+        "sneaking"
+      ],
+      "tp": 1,
+      "fp": 1,
+      "fn": 0,
+      "seconds": 20.0,
+      "cost": {
+        "llm_calls": 15,
+        "cache_hits": 0,
+        "input_tokens": 21594,
+        "output_tokens": 443,
+        "llm_seconds": 20.07,
+        "slowest_llm_call_s": 1.59
+      },
+      "findings": [
+        {
+          "category": "sneaking",
+          "pattern_type": "hidden_costs",
+          "confidence": 0.95,
+          "evidence": "element: Wireless Earbuds Pro \u2014 \u20b99,999 \u20b9999 | Product price shown as \u20b9999 with strikethrough \u20b99,999, but no shipping, tax, or additional fees visible on this pa"
+        },
+        {
+          "category": "false_urgency",
+          "pattern_type": "fake_scarcity",
+          "confidence": 0.7,
+          "evidence": "Scarcity indicator shows 'Only 2 left in stock! 37 people are viewing this right now.' at both time points \u2014 static value suggests fake scarcity messaging"
+        }
+      ]
+    },
+    {
+      "id": "dp_guilt_tripping",
+      "stratum": "dark_pattern",
+      "expected": [
+        "forced_continuity"
+      ],
+      "predicted": [
+        "forced_continuity",
+        "visual_interference"
+      ],
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 20.4,
+      "cost": {
+        "llm_calls": 15,
+        "cache_hits": 0,
+        "input_tokens": 21594,
+        "output_tokens": 477,
+        "llm_seconds": 20.65,
+        "slowest_llm_call_s": 1.81
+      },
+      "findings": [
+        {
+          "category": "visual_interference",
+          "pattern_type": "misdirected_click",
+          "confidence": 0.9,
+          "evidence": "element: No thanks link text | The 'No thanks' link uses guilt-tripping language ('I'd rather pay full price because I don't like saving money') to discourage u"
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.95,
+          "evidence": "element: text link below the green button inside the modal box | The link 'No thanks, I'd rather pay full price because I don't like saving money' is styled in "
+        },
+        {
+          "category": "forced_continuity",
+          "pattern_type": "guilt_tripping",
+          "confidence": 0.95,
+          "evidence": "element: link text below the green button in the modal popup | The link text 'No thanks, I'd rather pay full price because I don't like saving money' uses sarca"
+        }
+      ]
+    },
+    {
+      "id": "dp_preselected_addons",
+      "stratum": "dark_pattern",
+      "expected": [
+        "sneaking"
+      ],
+      "predicted": [
+        "sneaking",
+        "visual_interference"
+      ],
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 24.2,
+      "cost": {
+        "llm_calls": 15,
+        "cache_hits": 0,
+        "input_tokens": 21594,
+        "output_tokens": 814,
+        "llm_seconds": 26.81,
+        "slowest_llm_call_s": 5.62
+      },
+      "findings": [
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.95,
+          "evidence": "element: Convenience fee \u20b9650 and service charge \u20b9350 added at payment. text disclosure below checkboxes and above Pay now button | The text 'Convenience fee \u20b96"
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.85,
+          "evidence": "element: Pre-checked 'Subscribe to TravelNow Plus \u2014 \u20b9299/month, cancel anytime' checkbox | The 'Subscribe to TravelNow Plus \u2014 \u20b9299/month, cancel anytime' checkb"
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.7,
+          "evidence": "element: Pre-checked 'Add travel insurance (\u20b9899)' checkbox | The 'Add travel insurance (\u20b9899)' checkbox is pre-checked. The insurance cost is presented in pare"
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.65,
+          "evidence": "element: Pre-checked 'Priority boarding (\u20b9499)' checkbox | The 'Priority boarding (\u20b9499)' checkbox is pre-checked. Similar to insurance, this additional service"
+        },
+        {
+          "category": "sneaking",
+          "pattern_type": "pre_selected_options",
+          "confidence": 0.95,
+          "evidence": "element: checkboxes under flight BOM \u2192 DEL \u20b94,200 | Three checkboxes are visibly checked by default: 'Add travel insurance (\u20b9899)', 'Priority boarding (\u20b9499)', "
+        },
+        {
+          "category": "sneaking",
+          "pattern_type": "hidden_costs",
+          "confidence": 0.95,
+          "evidence": "element: small text below add-ons | Convenience fee \u20b9650 and service charge \u20b9350 added at payment."
+        }
+      ]
+    },
+    {
+      "id": "dp_fake_badges",
+      "stratum": "dark_pattern",
+      "expected": [
+        "social_engineering"
+      ],
+      "predicted": [
+        "social_engineering"
+      ],
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 21.8,
+      "cost": {
+        "llm_calls": 15,
+        "cache_hits": 0,
+        "input_tokens": 21594,
+        "output_tokens": 667,
+        "llm_seconds": 22.94,
+        "slowest_llm_call_s": 2.82
+      },
+      "findings": [
+        {
+          "category": "social_engineering",
+          "pattern_type": "fake_badges",
+          "confidence": 0.95,
+          "evidence": "element: trust badges section | The page displays four badge-like elements: 'Norton SECURED', 'McAfee SECURE', 'Verified by Visa', and 'SEC Approved'. These app"
+        },
+        {
+          "category": "social_engineering",
+          "pattern_type": "fake_authority",
+          "confidence": 0.95,
+          "evidence": "element: text: 'As seen on: Forbes \u00b7 CNBC \u00b7 Bloomberg' and four green badge labels | Page displays 'As seen on: Forbes \u00b7 CNBC \u00b7 Bloomberg' without links or logo"
+        },
+        {
+          "category": "social_engineering",
+          "pattern_type": "fake_authority",
+          "confidence": 0.9,
+          "evidence": "element: four badge labels below headline | Four green-bordered badges claim security/verification ('Norton SECURED', 'McAfee SECURE', 'Verified by Visa', 'SEC "
+        },
+        {
+          "category": "social_engineering",
+          "pattern_type": "fake_authority",
+          "confidence": 0.85,
+          "evidence": "element: three testimonial lines with star ratings | Three five-star testimonials with names (Rahul S., Priya K., Amit P.) are presented as social proof but lac"
+        },
+        {
+          "category": "social_engineering",
+          "pattern_type": "fake_authority",
+          "confidence": 0.95,
+          "evidence": "element: main headline text | Headline 'Earn 3% daily, guaranteed' is an unrealistic financial promise with no disclaimer, regulatory notice, or supporting evid"
+        }
+      ]
+    },
+    {
+      "id": "dp_hidden_unsubscribe",
+      "stratum": "dark_pattern",
+      "expected": [
+        "visual_interference"
+      ],
+      "predicted": [
+        "forced_continuity",
+        "visual_interference"
+      ],
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 20.8,
+      "cost": {
+        "llm_calls": 15,
+        "cache_hits": 0,
+        "input_tokens": 21594,
+        "output_tokens": 589,
+        "llm_seconds": 21.79,
+        "slowest_llm_call_s": 2.34
+      },
+      "findings": [
+        {
+          "category": "visual_interference",
+          "pattern_type": "misdirected_click",
+          "confidence": 0.95,
+          "evidence": "element: UPGRADE TO PREMIUM button vs No thanks link | The 'UPGRADE TO PREMIUM' button is visually dominant with high contrast blue background and white text, w"
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.9,
+          "evidence": "element: Text link 'No thanks, I prefer limited features and a worse experience' below the upgrade button | The text 'No thanks, I prefer limited features and a"
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.85,
+          "evidence": "element: Footer navigation links at the bottom of the page | The footer links 'Account Settings \u00b7 Billing \u00b7 Help Center \u00b7 ...' are rendered in a very light gray"
+        },
+        {
+          "category": "forced_continuity",
+          "pattern_type": "guilt_tripping",
+          "confidence": 0.95,
+          "evidence": "element: link text below the upgrade button | The link text 'No thanks, I prefer limited features and a worse experience' frames declining the upgrade as choosi"
+        }
+      ]
+    }
+  ],
+  "tag": "super-noverify-r2",
+  "ran_at": "2026-11-25T16:13:21",
+  "models": {
+    "vision": "nvidia/nemotron-3.5-super-vl-120b-a12b",
+    "llm": "nvidia/nemotron-3.5-super-vl-120b-a12b"
+  }
+}

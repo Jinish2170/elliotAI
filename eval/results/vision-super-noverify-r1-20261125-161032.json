@@ -1,0 +1,360 @@
+{
+  "suite": "vision",
+  "micro": {
+    "precision": 0.714,
+    "recall": 1.0,
+    "f1": 0.833,
+    "tp": 5,
+    "fp": 2,
+    "fn": 0
+  },
+  "per_category": {
+    "false_urgency": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0
+    },
+    "forced_continuity": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0
+    },
+    "sneaking": {
+      "precision": 0.5,
+      "recall": 1.0,
+      "f1": 0.667,
+      "tp": 1,
+      "fp": 1,
+      "fn": 0
+    },
+    "social_engineering": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0
+    },
+    "visual_interference": {
+      "precision": 0.5,
+      "recall": 1.0,
+      "f1": 0.667,
+      "tp": 1,
+      "fp": 1,
+      "fn": 0
+    }
+  },
+  "clean_pages_without_false_alarm": "1/2",
+  "n_cases": 7,
+  "rows": [
+    {
+      "id": "clean_basic",
+      "stratum": "clean",
+      "expected": [],
+      "predicted": [
+        "visual_interference"
+      ],
+      "tp": 0,
+      "fp": 1,
+      "fn": 0,
+      "seconds": 24.7,
+      "cost": {
+        "llm_calls": 15,
+        "cache_hits": 0,
+        "input_tokens": 21594,
+        "output_tokens": 475,
+        "llm_seconds": 26.11,
+        "slowest_llm_call_s": 2.78
+      },
+      "findings": [
+        {
+          "category": "visual_interference",
+          "pattern_type": "misdirected_click",
+          "confidence": 0.95,
+          "evidence": "element: Add to Cart button | The 'Add to Cart' button is green and visually dominant compared to the white 'Save for Later' button, potentially steering users "
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.95,
+          "evidence": "element: Unsubscribe link in footer | The 'Unsubscribe' link is located in the footer among other small links, making it less prominent and potentially hard to "
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.9,
+          "evidence": "element: Unsubscribe link in footer | The 'Unsubscribe' link appears to be in a smaller font size compared to main navigation links, potentially under 12px."
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.85,
+          "evidence": "element: Unsubscribe link in footer | The 'Unsubscribe' link has low contrast against the white background, making it harder to read."
+        }
+      ]
+    },
+    {
+      "id": "clean_portfolio",
+      "stratum": "clean",
+      "expected": [],
+      "predicted": [],
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 26.0,
+      "cost": {
+        "llm_calls": 15,
+        "cache_hits": 0,
+        "input_tokens": 21594,
+        "output_tokens": 222,
+        "llm_seconds": 26.37,
+        "slowest_llm_call_s": 6.79
+      },
+      "findings": []
+    },
+    {
+      "id": "dp_fake_countdown",
+      "stratum": "dark_pattern",
+      "expected": [
+        "false_urgency"
+      ],
+      "predicted": [
+        "false_urgency",
+        "sneaking"
+      ],
+      "tp": 1,
+      "fp": 1,
+      "fn": 0,
+      "seconds": 25.6,
+      "cost": {
+        "llm_calls": 15,
+        "cache_hits": 0,
+        "input_tokens": 21594,
+        "output_tokens": 448,
+        "llm_seconds": 27.3,
+        "slowest_llm_call_s": 6.43
+      },
+      "findings": [
+        {
+          "category": "sneaking",
+          "pattern_type": "hidden_costs",
+          "confidence": 0.95,
+          "evidence": "element: Wireless Earbuds Pro \u2014 \u20b99,999 \u20b9999 | Product price shown as \u20b9999 with strikethrough \u20b99,999, but no shipping, tax, or additional fees are visible on thi"
+        },
+        {
+          "category": "false_urgency",
+          "pattern_type": "fake_scarcity",
+          "confidence": 0.7,
+          "evidence": "Scarcity indicator shows 'Only 2 left in stock! 37 people are viewing this right now.' at both time points \u2014 static value suggests fake scarcity messaging"
+        }
+      ]
+    },
+    {
+      "id": "dp_guilt_tripping",
+      "stratum": "dark_pattern",
+      "expected": [
+        "forced_continuity"
+      ],
+      "predicted": [
+        "forced_continuity",
+        "visual_interference"
+      ],
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 19.9,
+      "cost": {
+        "llm_calls": 15,
+        "cache_hits": 0,
+        "input_tokens": 21594,
+        "output_tokens": 657,
+        "llm_seconds": 22.89,
+        "slowest_llm_call_s": 4.7
+      },
+      "findings": [
+        {
+          "category": "visual_interference",
+          "pattern_type": "misdirected_click",
+          "confidence": 0.9,
+          "evidence": "element: button | The green button 'YES, SEND MY DISCOUNT' is visually prominent with high contrast against the white background, while the opposing action 'No "
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.95,
+          "evidence": "element: opt-out link below the green button in the popup modal | The link 'No thanks, I'd rather pay full price because I don't like saving money' is styled in"
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.9,
+          "evidence": "element: small text below the main heading | The text 'Join 50,000 smart shoppers.' is small and appears to be a secondary message, but it is not a clickable el"
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.85,
+          "evidence": "element: opt-out link text | The opt-out link is not clearly labeled as an unsubscribe option, which can confuse users about its function."
+        },
+        {
+          "category": "forced_continuity",
+          "pattern_type": "guilt_tripping",
+          "confidence": 0.95,
+          "evidence": "element: decline link text below the green button in the popup modal | The page uses guilt-inducing language in the decline option: 'No thanks, I'd rather pay f"
+        }
+      ]
+    },
+    {
+      "id": "dp_preselected_addons",
+      "stratum": "dark_pattern",
+      "expected": [
+        "sneaking"
+      ],
+      "predicted": [
+        "sneaking",
+        "visual_interference"
+      ],
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 24.0,
+      "cost": {
+        "llm_calls": 15,
+        "cache_hits": 0,
+        "input_tokens": 21594,
+        "output_tokens": 586,
+        "llm_seconds": 34.11,
+        "slowest_llm_call_s": 5.42
+      },
+      "findings": [
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.95,
+          "evidence": "element: Convenience fee \u20b9650 and service charge \u20b9350 added at payment. | The text 'Convenience fee \u20b9650 and service charge \u20b9350 added at payment.' is rendered "
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.9,
+          "evidence": "element: Subscribe to TravelNow Plus \u2014 \u20b9299/month, cancel anytime | The text 'Subscribe to TravelNow Plus \u2014 \u20b9299/month, cancel anytime' is accompanied by a pre-"
+        },
+        {
+          "category": "sneaking",
+          "pattern_type": "pre_selected_options",
+          "confidence": 0.95,
+          "evidence": "element: checkboxes | Three checkboxes are visibly pre-checked with blue checkmarks: 'Add travel insurance (\u20b9899)', 'Priority boarding (\u20b9499)', and 'Subscribe t"
+        },
+        {
+          "category": "sneaking",
+          "pattern_type": "hidden_costs",
+          "confidence": 0.95,
+          "evidence": "element: small gray text below checkboxes | Convenience fee \u20b9650 and service charge \u20b9350 added at payment."
+        }
+      ]
+    },
+    {
+      "id": "dp_fake_badges",
+      "stratum": "dark_pattern",
+      "expected": [
+        "social_engineering"
+      ],
+      "predicted": [
+        "social_engineering"
+      ],
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 23.0,
+      "cost": {
+        "llm_calls": 15,
+        "cache_hits": 0,
+        "input_tokens": 21594,
+        "output_tokens": 522,
+        "llm_seconds": 29.05,
+        "slowest_llm_call_s": 2.82
+      },
+      "findings": [
+        {
+          "category": "social_engineering",
+          "pattern_type": "fake_badges",
+          "confidence": 0.95,
+          "evidence": "element: badge row | Four green-bordered badges are displayed at the top of the page: 'Norton SECURED', 'McAfee SECURE', 'Verified by Visa', and 'SEC Approved'."
+        },
+        {
+          "category": "social_engineering",
+          "pattern_type": "fake_authority",
+          "confidence": 0.95,
+          "evidence": "element: trust badges and media mention text | Page displays 'Norton SECURED', 'McAfee SECURE', 'Verified by Visa', 'SEC Approved' badges and 'As seen on: Forbe"
+        },
+        {
+          "category": "social_engineering",
+          "pattern_type": "fake_authority",
+          "confidence": 0.9,
+          "evidence": "element: testimonials section | Testimonials with star ratings and names (Rahul S., Priya K., Amit P.) are present but lack verifiable links or proof."
+        },
+        {
+          "category": "social_engineering",
+          "pattern_type": "fake_authority",
+          "confidence": 0.85,
+          "evidence": "element: main headline | Headline 'Earn 3% daily, guaranteed' is an unverifiable financial claim presented as authority."
+        }
+      ]
+    },
+    {
+      "id": "dp_hidden_unsubscribe",
+      "stratum": "dark_pattern",
+      "expected": [
+        "visual_interference"
+      ],
+      "predicted": [
+        "forced_continuity",
+        "visual_interference"
+      ],
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 20.3,
+      "cost": {
+        "llm_calls": 15,
+        "cache_hits": 0,
+        "input_tokens": 21594,
+        "output_tokens": 486,
+        "llm_seconds": 21.92,
+        "slowest_llm_call_s": 1.94
+      },
+      "findings": [
+        {
+          "category": "visual_interference",
+          "pattern_type": "misdirected_click",
+          "confidence": 0.95,
+          "evidence": "element: UPGRADE TO PREMIUM button vs No thanks link | The 'UPGRADE TO PREMIUM' button is visually dominant with high contrast blue background and white text, w"
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.9,
+          "evidence": "element: Text link below the upgrade button saying 'No thanks, I prefer limited features and a worse experience'. It functions as a way to dismiss the upgrade o"
+        },
+        {
+          "category": "forced_continuity",
+          "pattern_type": "guilt_tripping",
+          "confidence": 0.95,
+          "evidence": "element: link below upgrade button | No thanks, I prefer limited features and a worse experience"
+        }
+      ]
+    }
+  ],
+  "tag": "super-noverify-r1",
+  "ran_at": "2026-11-25T16:10:32",
+  "models": {
+    "vision": "nvidia/nemotron-3.5-super-vl-120b-a12b",
+    "llm": "nvidia/nemotron-3.5-super-vl-120b-a12b"
+  }
+}

@@ -121,3 +121,38 @@ def test_failed_graph_placeholder_is_not_scored_as_evidence():
     sig = agent._build_signals(ev)
     assert sig["graph"].confidence <= 0.2 and sig["graph"].raw_score == J.SCORE_PRIOR
     assert "crashed" in sig["meta"].details["reason"]
+
+
+# --- 2026-11-25: vision positives are re-checked before they reach the score ---
+
+def _verifier(answer):
+    import asyncio
+    from types import SimpleNamespace as NS
+    from elliot.agents.vision import VisionAgent, DarkPatternFinding
+    agent = VisionAgent.__new__(VisionAgent)
+    agent._nim_budget = None
+    agent._nim = NS(call_count=0)
+
+    async def fake_vlm(**kw):
+        if isinstance(answer, Exception):
+            raise answer
+        return {"_parsed": answer}
+    agent._structured_vlm = fake_vlm
+    f = DarkPatternFinding("visual_interference", "misdirected_click", 0.95, "high", "Get app button",
+                           "s.png", "", "m", False)
+    return asyncio.run(agent._confirm_finding(f, "s.png", "visual_interference"))
+
+
+def test_unconfirmed_vision_finding_is_dropped():
+    from types import SimpleNamespace as NS
+    assert _verifier(NS(findings=[])) is False
+
+
+def test_confirmed_vision_finding_is_kept():
+    from types import SimpleNamespace as NS
+    assert _verifier(NS(findings=[NS(pattern_type="misdirected_click", confidence=0.9)])) is True
+
+
+def test_verifier_failure_keeps_the_finding():
+    assert _verifier(RuntimeError("NIM down")) is True
+    assert _verifier(None) is True

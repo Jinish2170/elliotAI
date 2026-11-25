@@ -29,7 +29,8 @@ BASE_DIR = _elliot_root
 DATA_DIR = BASE_DIR / "data"
 EVIDENCE_DIR = DATA_DIR / "evidence"
 REPORTS_DIR = DATA_DIR / "reports"
-CACHE_DIR = DATA_DIR / "cache"
+# Override for evals: a fresh dir per run so repeated runs measure the model, not the cache.
+CACHE_DIR = Path(os.getenv("ELLIOT_CACHE_DIR", str(DATA_DIR / "cache")))
 VECTORDB_DIR = DATA_DIR / "vectordb"
 TEMPLATES_DIR = BASE_DIR / "reporting" / "templates"
 
@@ -138,6 +139,8 @@ TEMPORAL_DELAY: int = int(os.getenv("TEMPORAL_DELAY", "10"))
 SCOUT_PREFETCH_LINKS: int = int(os.getenv("SCOUT_PREFETCH_LINKS", "3"))
 # Concurrent VLM prompts per page (the NIM client still rate-limits and budgets).
 VISION_CONCURRENCY: int = int(os.getenv("VISION_CONCURRENCY", "4"))
+# Re-check each positive vision finding once; drop it if not reproduced.
+VISION_VERIFY_POSITIVES: bool = os.getenv("VISION_VERIFY_POSITIVES", "true").lower() == "true"
 CONFIDENCE_THRESHOLD: float = float(os.getenv("CONFIDENCE_THRESHOLD", "0.6"))
 MIN_EVIDENCE_COUNT: int = int(os.getenv("MIN_EVIDENCE_COUNT", "3"))
 

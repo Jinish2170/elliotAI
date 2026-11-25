@@ -1,0 +1,317 @@
+{
+  "suite": "vision",
+  "micro": {
+    "precision": 0.571,
+    "recall": 0.8,
+    "f1": 0.667,
+    "tp": 4,
+    "fp": 3,
+    "fn": 1
+  },
+  "per_category": {
+    "false_urgency": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0
+    },
+    "forced_continuity": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "tp": 0,
+      "fp": 1,
+      "fn": 1
+    },
+    "sneaking": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0
+    },
+    "social_engineering": {
+      "precision": 0.5,
+      "recall": 1.0,
+      "f1": 0.667,
+      "tp": 1,
+      "fp": 1,
+      "fn": 0
+    },
+    "visual_interference": {
+      "precision": 0.5,
+      "recall": 1.0,
+      "f1": 0.667,
+      "tp": 1,
+      "fp": 1,
+      "fn": 0
+    }
+  },
+  "clean_pages_without_false_alarm": "1/2",
+  "n_cases": 7,
+  "rows": [
+    {
+      "id": "clean_basic",
+      "stratum": "clean",
+      "expected": [],
+      "predicted": [
+        "visual_interference"
+      ],
+      "tp": 0,
+      "fp": 1,
+      "fn": 0,
+      "seconds": 26.3,
+      "cost": {
+        "llm_calls": 18,
+        "cache_hits": 0,
+        "input_tokens": 26138,
+        "output_tokens": 814,
+        "llm_seconds": 32.66,
+        "slowest_llm_call_s": 4.39
+      },
+      "findings": [
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.9,
+          "evidence": "element: Unsubscribe link in the footer navigation bar at the bottom of the page, positioned to the right of 'Contact Us' and 'Terms of Service' links. It has l"
+        }
+      ]
+    },
+    {
+      "id": "clean_portfolio",
+      "stratum": "clean",
+      "expected": [],
+      "predicted": [],
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 33.3,
+      "cost": {
+        "llm_calls": 17,
+        "cache_hits": 0,
+        "input_tokens": 24540,
+        "output_tokens": 1253,
+        "llm_seconds": 32.84,
+        "slowest_llm_call_s": 9.21
+      },
+      "findings": []
+    },
+    {
+      "id": "dp_fake_countdown",
+      "stratum": "dark_pattern",
+      "expected": [
+        "false_urgency"
+      ],
+      "predicted": [
+        "false_urgency",
+        "forced_continuity"
+      ],
+      "tp": 1,
+      "fp": 1,
+      "fn": 0,
+      "seconds": 29.8,
+      "cost": {
+        "llm_calls": 19,
+        "cache_hits": 0,
+        "input_tokens": 27369,
+        "output_tokens": 777,
+        "llm_seconds": 29.64,
+        "slowest_llm_call_s": 3.36
+      },
+      "findings": [
+        {
+          "category": "forced_continuity",
+          "pattern_type": "guilt_tripping",
+          "confidence": 0.95,
+          "evidence": "element: text | Only 2 left in stock! 37 people are viewing this right now."
+        },
+        {
+          "category": "false_urgency",
+          "pattern_type": "fake_scarcity",
+          "confidence": 0.7,
+          "evidence": "Scarcity indicator shows 'Only 2 left in stock! 37 people are viewing this right now.' at both time points \u2014 static value suggests fake scarcity messaging"
+        }
+      ]
+    },
+    {
+      "id": "dp_guilt_tripping",
+      "stratum": "dark_pattern",
+      "expected": [
+        "forced_continuity"
+      ],
+      "predicted": [
+        "social_engineering",
+        "visual_interference"
+      ],
+      "tp": 0,
+      "fp": 1,
+      "fn": 1,
+      "seconds": 26.7,
+      "cost": {
+        "llm_calls": 18,
+        "cache_hits": 0,
+        "input_tokens": 26017,
+        "output_tokens": 677,
+        "llm_seconds": 25.28,
+        "slowest_llm_call_s": 2.41
+      },
+      "findings": [
+        {
+          "category": "visual_interference",
+          "pattern_type": "misdirected_click",
+          "confidence": 0.95,
+          "evidence": "element: YES, SEND MY DISCOUNT button vs No thanks link | The green button 'YES, SEND MY DISCOUNT' is visually prominent with high contrast and large size, whil"
+        },
+        {
+          "category": "social_engineering",
+          "pattern_type": "fake_authority",
+          "confidence": 0.95,
+          "evidence": "element: text 'Join 50,000 smart shoppers.' | The page contains the text 'Join 50,000 smart shoppers.' which is a common fake authority claim used to imply soci"
+        }
+      ]
+    },
+    {
+      "id": "dp_preselected_addons",
+      "stratum": "dark_pattern",
+      "expected": [
+        "sneaking"
+      ],
+      "predicted": [
+        "sneaking"
+      ],
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 27.8,
+      "cost": {
+        "llm_calls": 19,
+        "cache_hits": 0,
+        "input_tokens": 27371,
+        "output_tokens": 579,
+        "llm_seconds": 26.29,
+        "slowest_llm_call_s": 5.96
+      },
+      "findings": [
+        {
+          "category": "sneaking",
+          "pattern_type": "hidden_costs",
+          "confidence": 0.95,
+          "evidence": "element: Convenience fee \u20b9650 and service charge \u20b9350 added at payment | The text 'Convenience fee \u20b9650 and service charge \u20b9350 added at payment' is in smaller,"
+        }
+      ]
+    },
+    {
+      "id": "dp_fake_badges",
+      "stratum": "dark_pattern",
+      "expected": [
+        "social_engineering"
+      ],
+      "predicted": [
+        "social_engineering"
+      ],
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 56.2,
+      "cost": {
+        "llm_calls": 28,
+        "cache_hits": 0,
+        "input_tokens": 40818,
+        "output_tokens": 3469,
+        "llm_seconds": 61.21,
+        "slowest_llm_call_s": 10.73
+      },
+      "findings": [
+        {
+          "category": "social_engineering",
+          "pattern_type": "fake_badges",
+          "confidence": 0.95,
+          "evidence": "element: Norton SECURED badge | The 'Norton SECURED' badge is displayed with a green border and a checkmark icon, mimicking a security seal. It is positioned al"
+        },
+        {
+          "category": "social_engineering",
+          "pattern_type": "fake_badges",
+          "confidence": 0.95,
+          "evidence": "element: McAfee SECURE badge | The 'McAfee SECURE' badge is visually similar to the Norton badge\u2014green border, checkmark, and bold text. It is presented as a tr"
+        },
+        {
+          "category": "social_engineering",
+          "pattern_type": "fake_badges",
+          "confidence": 0.95,
+          "evidence": "element: Verified by Visa badge | The 'Verified by Visa' badge is displayed with a green border and checkmark, resembling an SSL or payment security seal. While"
+        },
+        {
+          "category": "social_engineering",
+          "pattern_type": "fake_badges",
+          "confidence": 0.95,
+          "evidence": "element: SEC Approved badge | The 'SEC Approved' badge is presented with a green border and checkmark, mimicking a regulatory seal. The SEC (Securities and Exch"
+        },
+        {
+          "category": "social_engineering",
+          "pattern_type": "fake_authority",
+          "confidence": 0.95,
+          "evidence": "element: Verified by Visa badge | The 'Verified by Visa' badge is shown with a checkmark, implying a partnership or verification with Visa. However, no actual l"
+        },
+        {
+          "category": "social_engineering",
+          "pattern_type": "fake_authority",
+          "confidence": 0.95,
+          "evidence": "element: SEC Approved badge | The 'SEC Approved' badge is displayed with a checkmark, suggesting approval by the U.S. Securities and Exchange Commission. Howeve"
+        },
+        {
+          "category": "social_engineering",
+          "pattern_type": "fake_authority",
+          "confidence": 0.95,
+          "evidence": "element: Customer testimonials | The page includes customer testimonials such as 'I made \u20b95 lakh in a week!' \u2014 Rahul S., 'Best investment ever, 100% legit' \u2014 Pr"
+        }
+      ]
+    },
+    {
+      "id": "dp_hidden_unsubscribe",
+      "stratum": "dark_pattern",
+      "expected": [
+        "visual_interference"
+      ],
+      "predicted": [
+        "sneaking",
+        "visual_interference"
+      ],
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 25.5,
+      "cost": {
+        "llm_calls": 19,
+        "cache_hits": 0,
+        "input_tokens": 27541,
+        "output_tokens": 921,
+        "llm_seconds": 30.05,
+        "slowest_llm_call_s": 4.06
+      },
+      "findings": [
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.95,
+          "evidence": "element: unsubscribe link text 'No thanks, I prefer limited features and a worse experience' below the upgrade button with low contrast and small size | Text 'N"
+        },
+        {
+          "category": "sneaking",
+          "pattern_type": "hidden_costs",
+          "confidence": 0.95,
+          "evidence": "element: UPGRADE TO PREMIUM \u2014 $49.99/month button | The prominently displayed price is $29.99/month for the Basic plan. The actual total is shown as $49.99/mont"
+        }
+      ]
+    }
+  ],
+  "tag": "nano-verify-r1",
+  "ran_at": "2026-11-25T16:26:50",
+  "models": {
+    "vision": "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning",
+    "llm": "nvidia/nemotron-3.5-super-vl-120b-a12b"
+  }
+}

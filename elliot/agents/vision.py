@@ -997,7 +997,10 @@ class VisionAgent:
                     )
                     if vlm_result.get("fallback_mode"):
                         result.fallback_used = True
-                    return self._parse_vlm_response(vlm_result, cat_id, category, screenshot_path)
+                    findings = self._parse_vlm_response(vlm_result, cat_id, category, screenshot_path)
+                    if findings and getattr(_s, "VISION_VERIFY_POSITIVES", True):
+                        findings = [f for f in findings if await self._confirm_finding(f, screenshot_path, cat_id)]
+                    return findings
                 except Exception as e:
                     error_msg = f"VLM analysis failed for {cat_id}: {e}"
                     logger.error(error_msg)
@@ -1006,6 +1009,44 @@ class VisionAgent:
 
         for findings in await asyncio.gather(*(run_one(*j) for j in jobs)):
             result.dark_patterns.extend(findings)
+
+    async def _confirm_finding(self, finding: "DarkPatternFinding", screenshot_path: str, cat_id: str) -> bool:
+        """Second look at a positive claim before it reaches the score.
+
+        Single VLM calls are unstable on clean pages (same page: 0 findings in
+        one run, a HIGH "misdirected click" in the next). Positives are rare,
+        so verifying only them is cheap; a claim the model cannot reproduce
+        when asked about it directly is dropped. Budget-limited like any call.
+        """
+        budget = getattr(self, "_nim_budget", None)
+        if budget is not None and self._nim.call_count >= budget:
+            return True  # no budget left to verify: keep the original verdict
+        prompt = (
+            f"A previous automated check claimed this web page shows the deceptive pattern "
+            f"'{finding.pattern_type}' ({finding.evidence}). Look at the screenshot carefully and "
+            f"independently. Report that pattern ONLY if it is clearly visible and genuinely "
+            f"deceptive to an ordinary user; a normal button, link, banner or ad that is honestly "
+            f"labelled is not a dark pattern. Otherwise return no findings."
+        )
+        try:
+            v = await self._structured_vlm(image_path=screenshot_path, prompt=prompt,
+                                           category_hint=f"{cat_id}:verify")
+            parsed = v.get("_parsed")
+            if parsed is None:
+                return True  # verifier unusable: do not silently drop evidence
+            # Same category is enough: the model often names one element with a
+            # sibling sub-type (hidden_unsubscribe vs misdirected_click), which
+            # an exact-type match wrongly treated as "not reproduced".
+            ok = any(f.pattern_type != "none" and f.confidence >= 0.65
+                     and (f.pattern_type == finding.pattern_type
+                          or getattr(f, "category_id", None) == finding.category_id)
+                     for f in parsed.findings)
+            if not ok:
+                logger.info(f"Vision: dropped unconfirmed {finding.pattern_type} on {screenshot_path}")
+            return ok
+        except Exception as e:
+            logger.warning(f"Vision verify failed ({e}); keeping finding")
+            return True
 
     # ================================================================
     # Private: Temporal Pattern Analysis

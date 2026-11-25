@@ -1,0 +1,261 @@
+{
+  "suite": "vision",
+  "micro": {
+    "precision": 1.0,
+    "recall": 0.8,
+    "f1": 0.889,
+    "tp": 4,
+    "fp": 0,
+    "fn": 1
+  },
+  "per_category": {
+    "false_urgency": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0
+    },
+    "forced_continuity": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0
+    },
+    "sneaking": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0
+    },
+    "social_engineering": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0
+    },
+    "visual_interference": {
+      "precision": 1.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "tp": 0,
+      "fp": 0,
+      "fn": 1
+    }
+  },
+  "clean_pages_without_false_alarm": "2/2",
+  "n_cases": 7,
+  "rows": [
+    {
+      "id": "clean_basic",
+      "stratum": "clean",
+      "expected": [],
+      "predicted": [],
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 28.0,
+      "cost": {
+        "llm_calls": 20,
+        "cache_hits": 0,
+        "input_tokens": 28823,
+        "output_tokens": 652,
+        "llm_seconds": 36.61,
+        "slowest_llm_call_s": 3.42
+      },
+      "findings": []
+    },
+    {
+      "id": "clean_portfolio",
+      "stratum": "clean",
+      "expected": [],
+      "predicted": [],
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 20.7,
+      "cost": {
+        "llm_calls": 15,
+        "cache_hits": 0,
+        "input_tokens": 21594,
+        "output_tokens": 222,
+        "llm_seconds": 21.14,
+        "slowest_llm_call_s": 1.77
+      },
+      "findings": []
+    },
+    {
+      "id": "dp_fake_countdown",
+      "stratum": "dark_pattern",
+      "expected": [
+        "false_urgency"
+      ],
+      "predicted": [
+        "false_urgency"
+      ],
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 26.5,
+      "cost": {
+        "llm_calls": 16,
+        "cache_hits": 0,
+        "input_tokens": 23042,
+        "output_tokens": 437,
+        "llm_seconds": 27.67,
+        "slowest_llm_call_s": 5.39
+      },
+      "findings": [
+        {
+          "category": "false_urgency",
+          "pattern_type": "fake_scarcity",
+          "confidence": 0.7,
+          "evidence": "Scarcity indicator shows 'Only 2 left in stock! 37 people are viewing this right now.' at both time points \u2014 static value suggests fake scarcity messaging"
+        }
+      ]
+    },
+    {
+      "id": "dp_guilt_tripping",
+      "stratum": "dark_pattern",
+      "expected": [
+        "forced_continuity"
+      ],
+      "predicted": [
+        "forced_continuity",
+        "visual_interference"
+      ],
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 24.4,
+      "cost": {
+        "llm_calls": 19,
+        "cache_hits": 0,
+        "input_tokens": 27421,
+        "output_tokens": 778,
+        "llm_seconds": 30.87,
+        "slowest_llm_call_s": 4.78
+      },
+      "findings": [
+        {
+          "category": "visual_interference",
+          "pattern_type": "misdirected_click",
+          "confidence": 0.9,
+          "evidence": "element: No thanks link with manipulative copy | The 'No thanks' link uses guilt-tripping language ('I'd rather pay full price because I don't like saving money"
+        },
+        {
+          "category": "forced_continuity",
+          "pattern_type": "guilt_tripping",
+          "confidence": 0.95,
+          "evidence": "element: link text below the green button in the popup modal | The link text 'No thanks, I'd rather pay full price because I don't like saving money' uses sarca"
+        }
+      ]
+    },
+    {
+      "id": "dp_preselected_addons",
+      "stratum": "dark_pattern",
+      "expected": [
+        "sneaking"
+      ],
+      "predicted": [
+        "sneaking"
+      ],
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 28.4,
+      "cost": {
+        "llm_calls": 20,
+        "cache_hits": 0,
+        "input_tokens": 28904,
+        "output_tokens": 1069,
+        "llm_seconds": 36.22,
+        "slowest_llm_call_s": 4.6
+      },
+      "findings": [
+        {
+          "category": "sneaking",
+          "pattern_type": "pre_selected_options",
+          "confidence": 0.95,
+          "evidence": "element: checkboxes | Three checkboxes are visibly checked by default: 'Add travel insurance (\u20b9899)', 'Priority boarding (\u20b9499)', and 'Subscribe to TravelNow Pl"
+        },
+        {
+          "category": "sneaking",
+          "pattern_type": "hidden_costs",
+          "confidence": 0.95,
+          "evidence": "element: Checkout page showing base price \u20b94,200 with additional fees disclosed in smaller text below the main price. | The prominently displayed price is \u20b94,20"
+        }
+      ]
+    },
+    {
+      "id": "dp_fake_badges",
+      "stratum": "dark_pattern",
+      "expected": [
+        "social_engineering"
+      ],
+      "predicted": [
+        "social_engineering"
+      ],
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 28.3,
+      "cost": {
+        "llm_calls": 17,
+        "cache_hits": 0,
+        "input_tokens": 24548,
+        "output_tokens": 652,
+        "llm_seconds": 29.87,
+        "slowest_llm_call_s": 5.3
+      },
+      "findings": [
+        {
+          "category": "social_engineering",
+          "pattern_type": "fake_badges",
+          "confidence": 0.95,
+          "evidence": "element: badge row | The page displays four badge-like elements: 'Norton SECURED', 'McAfee SECURE', 'Verified by Visa', and 'SEC Approved'. These are presented "
+        },
+        {
+          "category": "social_engineering",
+          "pattern_type": "fake_authority",
+          "confidence": 0.95,
+          "evidence": "element: text and badge elements near top of page | Page displays 'As seen on: Forbes \u00b7 CNBC \u00b7 Bloomberg' without links or logos, and security badges like 'Nort"
+        }
+      ]
+    },
+    {
+      "id": "dp_hidden_unsubscribe",
+      "stratum": "dark_pattern",
+      "expected": [
+        "visual_interference"
+      ],
+      "predicted": [],
+      "tp": 0,
+      "fp": 0,
+      "fn": 1,
+      "seconds": 37.9,
+      "cost": {
+        "llm_calls": 18,
+        "cache_hits": 0,
+        "input_tokens": 26057,
+        "output_tokens": 606,
+        "llm_seconds": 52.97,
+        "slowest_llm_call_s": 6.84
+      },
+      "findings": []
+    }
+  ],
+  "tag": "super-verifycat-r1",
+  "ran_at": "2026-11-25T16:30:57",
+  "models": {
+    "vision": "nvidia/nemotron-3.5-super-vl-120b-a12b",
+    "llm": "nvidia/nemotron-3.5-super-vl-120b-a12b"
+  }
+}

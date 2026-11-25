@@ -79,9 +79,9 @@ Small, honest sets: these numbers are a baseline, not a benchmark claim.
 | Eval | Result | Notes |
 |---|---|---|
 | Scoring policy (deterministic, CI gate) | **5 / 5** | was 2 / 5: fail-open, SSL cap, blocklist off-by-one |
-| Vision dark-pattern detection (7 labelled pages, 5 categories) | **P 0.83 · R 1.00 · F1 0.91** | 1 false alarm on a clean page |
+| Vision dark-pattern detection (7 labelled pages, 5 categories) | **P 1.00 · R 0.80 · F1 0.89** | 0 false alarms; positives re-checked before scoring (was P 0.71 · 2 false alarms without it). Same result on 2 runs |
 | Prompt-injection attack success rate | **1/3 → 0/3** | spotlighting alone left it at 1/3; quarantining flagged fields fixed it |
-| End-to-end on real sites (wikipedia, example.com, 2 small businesses) | **0 / 4 false alarms** | median 200 s per standard audit |
+| End-to-end on real sites (wikipedia, example.com, 2 small businesses) | **0 / 4 false alarms** | standard audit 768 s → 293 s after concurrent vision (same site, same hour) |
 
 Tracing found four pipeline bugs that 465 passing unit tests did not, including a vision agent that only ever looked at the homepage while the report claimed 8 pages. The full story, bug by bug: **[engineering case study](docs/ENGINEERING_CASE_STUDY.md)**.
 

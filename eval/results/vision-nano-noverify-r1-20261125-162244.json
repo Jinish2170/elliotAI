@@ -1,0 +1,432 @@
+{
+  "suite": "vision",
+  "micro": {
+    "precision": 0.455,
+    "recall": 1.0,
+    "f1": 0.625,
+    "tp": 5,
+    "fp": 6,
+    "fn": 0
+  },
+  "per_category": {
+    "false_urgency": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0
+    },
+    "forced_continuity": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0
+    },
+    "sneaking": {
+      "precision": 0.333,
+      "recall": 1.0,
+      "f1": 0.5,
+      "tp": 1,
+      "fp": 2,
+      "fn": 0
+    },
+    "social_engineering": {
+      "precision": 0.25,
+      "recall": 1.0,
+      "f1": 0.4,
+      "tp": 1,
+      "fp": 3,
+      "fn": 0
+    },
+    "visual_interference": {
+      "precision": 0.5,
+      "recall": 1.0,
+      "f1": 0.667,
+      "tp": 1,
+      "fp": 1,
+      "fn": 0
+    }
+  },
+  "clean_pages_without_false_alarm": "0/2",
+  "n_cases": 7,
+  "rows": [
+    {
+      "id": "clean_basic",
+      "stratum": "clean",
+      "expected": [],
+      "predicted": [
+        "sneaking",
+        "visual_interference"
+      ],
+      "tp": 0,
+      "fp": 2,
+      "fn": 0,
+      "seconds": 23.0,
+      "cost": {
+        "llm_calls": 15,
+        "cache_hits": 0,
+        "input_tokens": 21609,
+        "output_tokens": 616,
+        "llm_seconds": 24.09,
+        "slowest_llm_call_s": 2.58
+      },
+      "findings": [
+        {
+          "category": "visual_interference",
+          "pattern_type": "misdirected_click",
+          "confidence": 0.95,
+          "evidence": "element: Add to Cart button vs Save for Later button | The 'Add to Cart' button is green with white text, making it visually prominent. The 'Save for Later' but"
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.9,
+          "evidence": "element: Unsubscribe link in footer navigation bar with low contrast and small size | The 'Unsubscribe' link in the footer has very low contrast (light gray tex"
+        },
+        {
+          "category": "sneaking",
+          "pattern_type": "hidden_costs",
+          "confidence": 0.9,
+          "evidence": "element: price_displayed | The price of $49.99 is prominently displayed in green text. However, there is no visible breakdown of taxes, shipping costs, or other"
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.85,
+          "evidence": "element: unsubscribe_link | The 'Unsubscribe' link in the footer suggests that additional charges or communications may be managed separately, but no direct lin"
+        }
+      ]
+    },
+    {
+      "id": "clean_portfolio",
+      "stratum": "clean",
+      "expected": [],
+      "predicted": [
+        "social_engineering"
+      ],
+      "tp": 0,
+      "fp": 1,
+      "fn": 0,
+      "seconds": 19.6,
+      "cost": {
+        "llm_calls": 15,
+        "cache_hits": 0,
+        "input_tokens": 21609,
+        "output_tokens": 226,
+        "llm_seconds": 19.05,
+        "slowest_llm_call_s": 1.9
+      },
+      "findings": [
+        {
+          "category": "social_engineering",
+          "pattern_type": "fake_authority",
+          "confidence": 0.95,
+          "evidence": "element: text | The page contains no text, links, or visual elements indicating awards, media features, partnerships, or endorsements. The 'Contact' section lis"
+        }
+      ]
+    },
+    {
+      "id": "dp_fake_countdown",
+      "stratum": "dark_pattern",
+      "expected": [
+        "false_urgency"
+      ],
+      "predicted": [
+        "false_urgency",
+        "sneaking"
+      ],
+      "tp": 1,
+      "fp": 1,
+      "fn": 0,
+      "seconds": 19.4,
+      "cost": {
+        "llm_calls": 15,
+        "cache_hits": 0,
+        "input_tokens": 21609,
+        "output_tokens": 630,
+        "llm_seconds": 19.6,
+        "slowest_llm_call_s": 2.52
+      },
+      "findings": [
+        {
+          "category": "sneaking",
+          "pattern_type": "hidden_costs",
+          "confidence": 0.95,
+          "evidence": "element: price_display | The price is shown as \u20b99,999 crossed out and \u20b9999 in smaller, lighter text below the product name, indicating the actual total price is"
+        },
+        {
+          "category": "sneaking",
+          "pattern_type": "hidden_costs",
+          "confidence": 0.95,
+          "evidence": "element: price_comparison | The price is displayed in two different formats: a large, bold price (\u20b99,999) and a smaller, lighter price (\u20b9999), suggesting the ac"
+        },
+        {
+          "category": "sneaking",
+          "pattern_type": "hidden_costs",
+          "confidence": 0.95,
+          "evidence": "element: price_text | The text 'Wireless Earbuds Pro \u2014 \u20b99,999 \u20b9999' shows a crossed-out price (\u20b99,999) and a smaller, lighter price (\u20b9999), indicating the actua"
+        },
+        {
+          "category": "false_urgency",
+          "pattern_type": "fake_scarcity",
+          "confidence": 0.7,
+          "evidence": "Scarcity indicator shows 'Only 2 left in stock! 37 people are viewing this right now.' at both time points \u2014 static value suggests fake scarcity messaging"
+        }
+      ]
+    },
+    {
+      "id": "dp_guilt_tripping",
+      "stratum": "dark_pattern",
+      "expected": [
+        "forced_continuity"
+      ],
+      "predicted": [
+        "forced_continuity",
+        "social_engineering",
+        "visual_interference"
+      ],
+      "tp": 1,
+      "fp": 1,
+      "fn": 0,
+      "seconds": 19.1,
+      "cost": {
+        "llm_calls": 15,
+        "cache_hits": 0,
+        "input_tokens": 21609,
+        "output_tokens": 626,
+        "llm_seconds": 18.72,
+        "slowest_llm_call_s": 2.57
+      },
+      "findings": [
+        {
+          "category": "visual_interference",
+          "pattern_type": "misdirected_click",
+          "confidence": 0.95,
+          "evidence": "element: YES, SEND MY DISCOUNT button vs. No thanks link | The green button 'YES, SEND MY DISCOUNT' is visually prominent with high contrast and large size, whi"
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.9,
+          "evidence": "element: unsubscribe link text below the main button with low contrast and small size (appears under 12px font visually, though exact pixel measurement not poss"
+        },
+        {
+          "category": "forced_continuity",
+          "pattern_type": "guilt_tripping",
+          "confidence": 0.95,
+          "evidence": "element: text below the green button | No thanks, I'd rather pay full price because I don't like saving money"
+        },
+        {
+          "category": "social_engineering",
+          "pattern_type": "fake_authority",
+          "confidence": 0.95,
+          "evidence": "element: text 'Join 50,000 smart shoppers.' | The page contains the text 'Join 50,000 smart shoppers.' which is a common fake authority claim used to imply soci"
+        }
+      ]
+    },
+    {
+      "id": "dp_preselected_addons",
+      "stratum": "dark_pattern",
+      "expected": [
+        "sneaking"
+      ],
+      "predicted": [
+        "sneaking"
+      ],
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 28.0,
+      "cost": {
+        "llm_calls": 16,
+        "cache_hits": 0,
+        "input_tokens": 23068,
+        "output_tokens": 1416,
+        "llm_seconds": 25.66,
+        "slowest_llm_call_s": 8.32
+      },
+      "findings": [
+        {
+          "category": "sneaking",
+          "pattern_type": "pre_selected_options",
+          "confidence": 0.95,
+          "evidence": "element: Add travel insurance (\u20b9899) checkbox is checked\nPriority boarding (\u20b9499) checkbox is checked\nSubscribe to TravelNow Plus \u2014 \u20b9299/month, cancel anytime c"
+        },
+        {
+          "category": "sneaking",
+          "pattern_type": "pre_selected_options",
+          "confidence": 0.95,
+          "evidence": "element: Pay now button | The 'Pay now' button is prominently displayed and appears to be the primary call-to-action, suggesting it is pre-selected or pre-confi"
+        },
+        {
+          "category": "sneaking",
+          "pattern_type": "hidden_costs",
+          "confidence": 0.95,
+          "evidence": "element: Convenience fee \u20b9650 and service charge \u20b9350 added at payment | The text 'Convenience fee \u20b9650 and service charge \u20b9350 added at payment' is in smaller,"
+        }
+      ]
+    },
+    {
+      "id": "dp_fake_badges",
+      "stratum": "dark_pattern",
+      "expected": [
+        "social_engineering"
+      ],
+      "predicted": [
+        "social_engineering"
+      ],
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 35.0,
+      "cost": {
+        "llm_calls": 16,
+        "cache_hits": 0,
+        "input_tokens": 23068,
+        "output_tokens": 3251,
+        "llm_seconds": 39.47,
+        "slowest_llm_call_s": 8.15
+      },
+      "findings": [
+        {
+          "category": "social_engineering",
+          "pattern_type": "fake_reviews",
+          "confidence": 0.95,
+          "evidence": "element: testimonials | All three visible testimonials show 5-star ratings, identical star counts (5 stars), and extremely short, uniformly positive phrases lik"
+        },
+        {
+          "category": "social_engineering",
+          "pattern_type": "fake_reviews",
+          "confidence": 0.92,
+          "evidence": "element: testimonials | The profile photos are not visible in the image, but the names are followed by initials (S., K., P.) which is typical of stock or AI-gen"
+        },
+        {
+          "category": "social_engineering",
+          "pattern_type": "fake_reviews",
+          "confidence": 0.98,
+          "evidence": "element: testimonials | All three testimonials are 5-star ratings, indicating uniform ratings without variation, which is a common red flag for fake reviews."
+        },
+        {
+          "category": "social_engineering",
+          "pattern_type": "fake_reviews",
+          "confidence": 0.96,
+          "evidence": "element: testimonials | The review texts are suspiciously similar in tone (extremely positive), length (short, punchy), and structure (5 stars + quote + name). "
+        },
+        {
+          "category": "social_engineering",
+          "pattern_type": "fake_reviews",
+          "confidence": 0.94,
+          "evidence": "element: testimonials | The testimonials are presented without profile photos, which is common in fake review schemes where images are either missing or generic"
+        },
+        {
+          "category": "social_engineering",
+          "pattern_type": "fake_badges",
+          "confidence": 0.95,
+          "evidence": "element: Norton SECURED badge | The image shows four green rectangular badges with checkmarks and text: 'Norton SECURED', 'McAfee SECURE', 'Verified by Visa', a"
+        },
+        {
+          "category": "social_engineering",
+          "pattern_type": "fake_badges",
+          "confidence": 0.95,
+          "evidence": "element: Norton SECURED badge | The 'Norton SECURED' badge is visually identical to known fake trust badges used in scam websites. It has a green border, a chec"
+        },
+        {
+          "category": "social_engineering",
+          "pattern_type": "fake_badges",
+          "confidence": 0.95,
+          "evidence": "element: McAfee SECURE badge | The 'McAfee SECURE' badge is visually similar to the Norton badge, with a green border and checkmark. It is likely a static image"
+        },
+        {
+          "category": "social_engineering",
+          "pattern_type": "fake_badges",
+          "confidence": 0.95,
+          "evidence": "element: Verified by Visa badge | The 'Verified by Visa' badge is a known fraudulent pattern. While Visa does have a verification program, this specific badge f"
+        },
+        {
+          "category": "social_engineering",
+          "pattern_type": "fake_badges",
+          "confidence": 0.95,
+          "evidence": "element: SEC Approved badge | The 'SEC Approved' badge is suspicious. The U.S. Securities and Exchange Commission (SEC) does not issue 'approval' badges for inv"
+        }
+      ]
+    },
+    {
+      "id": "dp_hidden_unsubscribe",
+      "stratum": "dark_pattern",
+      "expected": [
+        "visual_interference"
+      ],
+      "predicted": [
+        "forced_continuity",
+        "sneaking",
+        "social_engineering",
+        "visual_interference"
+      ],
+      "tp": 1,
+      "fp": 1,
+      "fn": 0,
+      "seconds": 21.0,
+      "cost": {
+        "llm_calls": 15,
+        "cache_hits": 0,
+        "input_tokens": 21609,
+        "output_tokens": 873,
+        "llm_seconds": 24.1,
+        "slowest_llm_call_s": 2.8
+      },
+      "findings": [
+        {
+          "category": "visual_interference",
+          "pattern_type": "misdirected_click",
+          "confidence": 0.95,
+          "evidence": "element: UPGRADE TO PREMIUM \u2014 $49.99/month button vs. No thanks, I prefer limited features and a worse experience link | The primary call-to-action button 'UPGR"
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.95,
+          "evidence": "element: unsubscribe link text below the main button with low contrast and small size | Text 'No thanks, I prefer limited features and a worse experience' is di"
+        },
+        {
+          "category": "sneaking",
+          "pattern_type": "pre_selected_options",
+          "confidence": 0.95,
+          "evidence": "element: UPGRADE TO PREMIUM \u2014 $49.99/month button | The page shows a button labeled 'UPGRADE TO PREMIUM \u2014 $49.99/month' which is pre-selected as the primary cal"
+        },
+        {
+          "category": "sneaking",
+          "pattern_type": "pre_selected_options",
+          "confidence": 0.95,
+          "evidence": "element: Your Current Plan: Basic | The text 'Your Current Plan: Basic' indicates that the Basic plan is currently active, which is a pre-selected state without"
+        },
+        {
+          "category": "sneaking",
+          "pattern_type": "hidden_costs",
+          "confidence": 0.95,
+          "evidence": "element: UPGRADE TO PREMIUM \u2014 $49.99/month button | The main price is prominently displayed as $29.99/month, but there is a button below that says 'UPGRADE TO P"
+        },
+        {
+          "category": "forced_continuity",
+          "pattern_type": "hidden_cancel",
+          "confidence": 0.9,
+          "evidence": "element: No thanks, I prefer limited features and a worse experience | There is a link below the upgrade button that says 'No thanks, I prefer limited features "
+        },
+        {
+          "category": "social_engineering",
+          "pattern_type": "fake_authority",
+          "confidence": 0.95,
+          "evidence": "element: Help Center link | The page contains a link labeled 'Help Center' which may imply authority or credibility, but no explicit awards, media features, par"
+        }
+      ]
+    }
+  ],
+  "tag": "nano-noverify-r1",
+  "ran_at": "2026-11-25T16:22:44",
+  "models": {
+    "vision": "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning",
+    "llm": "nvidia/nemotron-3.5-super-vl-120b-a12b"
+  }
+}

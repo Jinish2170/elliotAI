@@ -1,0 +1,242 @@
+{
+  "suite": "vision",
+  "micro": {
+    "precision": 1.0,
+    "recall": 0.8,
+    "f1": 0.889,
+    "tp": 4,
+    "fp": 0,
+    "fn": 1
+  },
+  "per_category": {
+    "false_urgency": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0
+    },
+    "forced_continuity": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0
+    },
+    "sneaking": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0
+    },
+    "social_engineering": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0
+    },
+    "visual_interference": {
+      "precision": 1.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "tp": 0,
+      "fp": 0,
+      "fn": 1
+    }
+  },
+  "clean_pages_without_false_alarm": "2/2",
+  "n_cases": 7,
+  "rows": [
+    {
+      "id": "clean_basic",
+      "stratum": "clean",
+      "expected": [],
+      "predicted": [],
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 43.6,
+      "cost": {
+        "llm_calls": 16,
+        "cache_hits": 0,
+        "input_tokens": 23030,
+        "output_tokens": 304,
+        "llm_seconds": 65.32,
+        "slowest_llm_call_s": 8.65
+      },
+      "findings": []
+    },
+    {
+      "id": "clean_portfolio",
+      "stratum": "clean",
+      "expected": [],
+      "predicted": [],
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 30.2,
+      "cost": {
+        "llm_calls": 15,
+        "cache_hits": 0,
+        "input_tokens": 21594,
+        "output_tokens": 222,
+        "llm_seconds": 35.95,
+        "slowest_llm_call_s": 7.51
+      },
+      "findings": []
+    },
+    {
+      "id": "dp_fake_countdown",
+      "stratum": "dark_pattern",
+      "expected": [
+        "false_urgency"
+      ],
+      "predicted": [
+        "false_urgency"
+      ],
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 32.2,
+      "cost": {
+        "llm_calls": 16,
+        "cache_hits": 0,
+        "input_tokens": 23061,
+        "output_tokens": 445,
+        "llm_seconds": 45.62,
+        "slowest_llm_call_s": 7.55
+      },
+      "findings": [
+        {
+          "category": "false_urgency",
+          "pattern_type": "fake_scarcity",
+          "confidence": 0.7,
+          "evidence": "Scarcity indicator shows 'Only 2 left in stock! 37 people are viewing this right now.' at both time points \u2014 static value suggests fake scarcity messaging"
+        }
+      ]
+    },
+    {
+      "id": "dp_guilt_tripping",
+      "stratum": "dark_pattern",
+      "expected": [
+        "forced_continuity"
+      ],
+      "predicted": [
+        "forced_continuity"
+      ],
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 32.0,
+      "cost": {
+        "llm_calls": 19,
+        "cache_hits": 0,
+        "input_tokens": 27447,
+        "output_tokens": 722,
+        "llm_seconds": 43.24,
+        "slowest_llm_call_s": 4.63
+      },
+      "findings": [
+        {
+          "category": "forced_continuity",
+          "pattern_type": "guilt_tripping",
+          "confidence": 0.95,
+          "evidence": "element: link text 'No thanks, I'd rather pay full price because I don't like saving money' | The link text 'No thanks, I'd rather pay full price because I don'"
+        }
+      ]
+    },
+    {
+      "id": "dp_preselected_addons",
+      "stratum": "dark_pattern",
+      "expected": [
+        "sneaking"
+      ],
+      "predicted": [
+        "sneaking"
+      ],
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 32.9,
+      "cost": {
+        "llm_calls": 20,
+        "cache_hits": 0,
+        "input_tokens": 29032,
+        "output_tokens": 1111,
+        "llm_seconds": 45.39,
+        "slowest_llm_call_s": 5.55
+      },
+      "findings": [
+        {
+          "category": "sneaking",
+          "pattern_type": "pre_selected_options",
+          "confidence": 0.95,
+          "evidence": "element: checkboxes under flight BOM \u2192 DEL \u20b94,200 | Three checkboxes are visibly checked by default: 'Add travel insurance (\u20b9899)', 'Priority boarding (\u20b9499)', "
+        }
+      ]
+    },
+    {
+      "id": "dp_fake_badges",
+      "stratum": "dark_pattern",
+      "expected": [
+        "social_engineering"
+      ],
+      "predicted": [
+        "social_engineering"
+      ],
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 28.1,
+      "cost": {
+        "llm_calls": 17,
+        "cache_hits": 0,
+        "input_tokens": 24534,
+        "output_tokens": 532,
+        "llm_seconds": 28.79,
+        "slowest_llm_call_s": 4.0
+      },
+      "findings": [
+        {
+          "category": "social_engineering",
+          "pattern_type": "fake_authority",
+          "confidence": 0.95,
+          "evidence": "element: text and badge elements near top of page | Page displays 'As seen on: Forbes \u00b7 CNBC \u00b7 Bloomberg' and security badges like 'Norton SECURED', 'McAfee SEC"
+        }
+      ]
+    },
+    {
+      "id": "dp_hidden_unsubscribe",
+      "stratum": "dark_pattern",
+      "expected": [
+        "visual_interference"
+      ],
+      "predicted": [],
+      "tp": 0,
+      "fp": 0,
+      "fn": 1,
+      "seconds": 33.7,
+      "cost": {
+        "llm_calls": 18,
+        "cache_hits": 0,
+        "input_tokens": 26000,
+        "output_tokens": 548,
+        "llm_seconds": 55.55,
+        "slowest_llm_call_s": 8.18
+      },
+      "findings": []
+    }
+  ],
+  "tag": "super-verifycat-r2",
+  "ran_at": "2026-11-25T16:35:10",
+  "models": {
+    "vision": "nvidia/nemotron-3.5-super-vl-120b-a12b",
+    "llm": "nvidia/nemotron-3.5-super-vl-120b-a12b"
+  }
+}

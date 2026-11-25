@@ -1,0 +1,255 @@
+{
+  "suite": "vision",
+  "micro": {
+    "precision": 1.0,
+    "recall": 0.8,
+    "f1": 0.889,
+    "tp": 4,
+    "fp": 0,
+    "fn": 1
+  },
+  "per_category": {
+    "false_urgency": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0
+    },
+    "forced_continuity": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0
+    },
+    "sneaking": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0
+    },
+    "social_engineering": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "tp": 1,
+      "fp": 0,
+      "fn": 0
+    },
+    "visual_interference": {
+      "precision": 1.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "tp": 0,
+      "fp": 0,
+      "fn": 1
+    }
+  },
+  "clean_pages_without_false_alarm": "2/2",
+  "n_cases": 7,
+  "rows": [
+    {
+      "id": "clean_basic",
+      "stratum": "clean",
+      "expected": [],
+      "predicted": [],
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 27.9,
+      "cost": {
+        "llm_calls": 19,
+        "cache_hits": 0,
+        "input_tokens": 27337,
+        "output_tokens": 529,
+        "llm_seconds": 35.32,
+        "slowest_llm_call_s": 4.03
+      },
+      "findings": []
+    },
+    {
+      "id": "clean_portfolio",
+      "stratum": "clean",
+      "expected": [],
+      "predicted": [],
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 20.0,
+      "cost": {
+        "llm_calls": 15,
+        "cache_hits": 0,
+        "input_tokens": 21594,
+        "output_tokens": 222,
+        "llm_seconds": 19.92,
+        "slowest_llm_call_s": 1.62
+      },
+      "findings": []
+    },
+    {
+      "id": "dp_fake_countdown",
+      "stratum": "dark_pattern",
+      "expected": [
+        "false_urgency"
+      ],
+      "predicted": [
+        "false_urgency"
+      ],
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 20.8,
+      "cost": {
+        "llm_calls": 16,
+        "cache_hits": 0,
+        "input_tokens": 23061,
+        "output_tokens": 463,
+        "llm_seconds": 22.65,
+        "slowest_llm_call_s": 2.38
+      },
+      "findings": [
+        {
+          "category": "false_urgency",
+          "pattern_type": "fake_scarcity",
+          "confidence": 0.7,
+          "evidence": "Scarcity indicator shows 'Only 2 left in stock! 37 people are viewing this right now.' at both time points \u2014 static value suggests fake scarcity messaging"
+        }
+      ]
+    },
+    {
+      "id": "dp_guilt_tripping",
+      "stratum": "dark_pattern",
+      "expected": [
+        "forced_continuity"
+      ],
+      "predicted": [
+        "forced_continuity",
+        "visual_interference"
+      ],
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 23.8,
+      "cost": {
+        "llm_calls": 19,
+        "cache_hits": 0,
+        "input_tokens": 27429,
+        "output_tokens": 817,
+        "llm_seconds": 27.52,
+        "slowest_llm_call_s": 2.2
+      },
+      "findings": [
+        {
+          "category": "visual_interference",
+          "pattern_type": "misdirected_click",
+          "confidence": 0.95,
+          "evidence": "element: green button 'YES, SEND MY DISCOUNT' | The green button 'YES, SEND MY DISCOUNT' is visually dominant with high contrast against the white background, w"
+        },
+        {
+          "category": "forced_continuity",
+          "pattern_type": "guilt_tripping",
+          "confidence": 0.95,
+          "evidence": "element: link text below the green button in the popup modal | The link text 'No thanks, I'd rather pay full price because I don't like saving money' uses sarca"
+        }
+      ]
+    },
+    {
+      "id": "dp_preselected_addons",
+      "stratum": "dark_pattern",
+      "expected": [
+        "sneaking"
+      ],
+      "predicted": [
+        "sneaking"
+      ],
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 31.1,
+      "cost": {
+        "llm_calls": 22,
+        "cache_hits": 0,
+        "input_tokens": 31840,
+        "output_tokens": 1229,
+        "llm_seconds": 44.99,
+        "slowest_llm_call_s": 4.16
+      },
+      "findings": [
+        {
+          "category": "sneaking",
+          "pattern_type": "pre_selected_options",
+          "confidence": 0.95,
+          "evidence": "element: checkboxes for travel insurance, priority boarding, and TravelNow Plus subscription | Three checkboxes are visibly checked by default: 'Add travel insu"
+        },
+        {
+          "category": "sneaking",
+          "pattern_type": "hidden_costs",
+          "confidence": 0.95,
+          "evidence": "element: Checkout page showing base price \u20b94,200 with pre-checked add-ons and small text disclosing convenience fee \u20b9650 and service charge \u20b9350 added at paymen"
+        }
+      ]
+    },
+    {
+      "id": "dp_fake_badges",
+      "stratum": "dark_pattern",
+      "expected": [
+        "social_engineering"
+      ],
+      "predicted": [
+        "social_engineering"
+      ],
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 29.4,
+      "cost": {
+        "llm_calls": 17,
+        "cache_hits": 0,
+        "input_tokens": 24551,
+        "output_tokens": 567,
+        "llm_seconds": 30.69,
+        "slowest_llm_call_s": 6.61
+      },
+      "findings": [
+        {
+          "category": "social_engineering",
+          "pattern_type": "fake_authority",
+          "confidence": 0.95,
+          "evidence": "element: text and badge elements near top of page | Page displays 'As seen on: Forbes \u00b7 CNBC \u00b7 Bloomberg' and security badges like 'Norton SECURED', 'McAfee SEC"
+        }
+      ]
+    },
+    {
+      "id": "dp_hidden_unsubscribe",
+      "stratum": "dark_pattern",
+      "expected": [
+        "visual_interference"
+      ],
+      "predicted": [],
+      "tp": 0,
+      "fp": 0,
+      "fn": 1,
+      "seconds": 22.8,
+      "cost": {
+        "llm_calls": 18,
+        "cache_hits": 0,
+        "input_tokens": 25947,
+        "output_tokens": 496,
+        "llm_seconds": 26.14,
+        "slowest_llm_call_s": 2.6
+      },
+      "findings": []
+    }
+  ],
+  "tag": "super-verify-r2",
+  "ran_at": "2026-11-25T16:19:40",
+  "models": {
+    "vision": "nvidia/nemotron-3.5-super-vl-120b-a12b",
+    "llm": "nvidia/nemotron-3.5-super-vl-120b-a12b"
+  }
+}
