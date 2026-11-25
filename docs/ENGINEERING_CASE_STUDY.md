@@ -4,8 +4,32 @@ How a multi-agent website-trust auditor was made measurable, observable and robu
 which bugs were found, **how they were found** (traces, evals, tests, code sweeps),
 how they were fixed, and the numbers before and after.
 
-> Period: 2026-11-05 → 2026-11-21 · Branch: `feat/osint-pipeline`
+> Period: 2026-11-05 → 2026-11-25 · Branch: `feat/osint-pipeline` (= `main`)
 > Models: NVIDIA NIM `nemotron-3.5-super-vl-120b-a12b` (vision + text), `mistral-large-4` fallback
+
+---
+
+## 0. Improvements at a glance
+
+Every number below was measured in this project (same site / same eval set before and after); details and verification are in the F-table in section 3 and in section 4.
+
+| Area | Before | After | How measured |
+|---|---|---|---|
+| Score explainability | 0 of 6 signals explained; 18-point drop unexplained | 6 of 6 signals with points + plain-English reason; arithmetic adds up to the score | `score_breakdown`, replayed through `compute_trust_score` (F1–F4) |
+| Silent crash cost | 11 of 18 lost points came from a crashed agent's placeholder | 0 (same site 82 → 91) | Replay of stored signals (F1, F2) |
+| Audit time, standard tier | 768 s (Vision 662 s = 86 %) | 293 s (Vision 239 s); 96 s on a quieter API hour | Same site, same hour, 35 AI calls both (F11) |
+| Pages actually distinct | 1 page analysed 4× (`/#top`, `/#features`, …) | 4 distinct pages | Exploration path in UI (F13) |
+| Quick-scan budget | 4 pages, 17 screenshots, 116 s | 2 pages, 9 screenshots, 93 s | Back-to-back runs (F7) |
+| Form / CAPTCHA detection | github.com/login: "CAPTCHA blocked", 0 forms | success, 5 forms | Direct Scout run (F14) |
+| Vision false alarms (7 labelled pages) | P 0.71, 2 false alarms, clean pages flagged 1/2 | **P 1.00, 0 false alarms, 0/2**; F1 0.83 → 0.89; recall 1.00 → 0.80 | 2 runs each, fresh cache (F17) |
+| Vision model choice | — | kept nemotron-3.5-super-vl (1.6–2.0 s/call); smaller nano-omni had 3× the false alarms | 6 candidate models probed uncached (F16) |
+| Refresh / reconnect mid-audit | audit killed and restarted from zero | same run continues, full state replayed | Live reload + 4 route tests (F5) |
+| History after restart | empty, all-ABORTED dashboard | every panel replayed from the stored event log | Route test incl. path-traversal guard (F9) |
+| Orphaned "running" audits | 3 | 0 | DB after restart (F5) |
+| Live feedback | timer frozen, counters 0 until the end | pages ~50 s, security checks ~35 s, per-page Vision progress | Browser (F6, F15) |
+| Prompt-injection attack success | 1/3 | 0/3 | Matched pairs (section 5) |
+| Scoring policy checks | 2/5 | 5/5 (CI gate) | Deterministic suite |
+| Automated tests | 446 | 455 | `pytest backend/tests elliot/tests` |
 
 ---
 
@@ -175,9 +199,10 @@ Small n → wide intervals; numbers are a baseline, not a benchmark claim.
 |---|---|---|---|
 | Scoring policy (deterministic) | 2/5 | **5/5** | CI gate |
 | Vision, micro P / R / F1 (7 pages, 5 categories) | 0.80 / 0.80 / 0.80 *(harness bug)* → 0.833 / 1.0 / 0.909 | **0.833 / 1.0 / 0.909** | Defences caused no regression. 1 false alarm on `clean_basic` (visual_interference) remains. |
+| Vision, re-measured 2026-11-25 (2 runs each, fresh cache) | 0.714 / 1.0 / 0.833 (2 false alarms) | **1.00 / 0.80 / 0.889** with positive-finding verification (F17) | The no-verify number is lower than the Nov 21 one (0.833); cause not isolated (model-side drift or pipeline changes). Same result on both runs of each config. |
 | Injection ASR (3 attacks, matched pairs) | **1/3** | **0/3** (95% CI 0–0.56) | Spotlighting alone: still 1/3. Quarantine: 0/3. Controls clean 3/3. |
 | Injection detector | — | 5/5 fixtures, 6/6 held-out phrasings, 0/7 benign phrases, 0/9 real pages | Held-out set was used to fix one miss → now dev data; needs a fresh test set |
-| End-to-end, 4 real legit sites (standard tier) | — | **0/4 false alarms** (baseline 0/4), p50 200 s | mindlyticai 84, synthara 78, example 94, wikipedia 91. Vision ≈ 70 % of audit time. Legit-only: measures false alarms, not phishing recall. |
+| End-to-end, 4 real legit sites (standard tier) | — | **0/4 false alarms** (baseline 0/4), p50 200 s (Nov 21) | mindlyticai 84, synthara 78, example 94, wikipedia 91. Vision was ≈ 70–86 % of audit time before concurrent vision (F11). Legit-only: measures false alarms, not phishing recall. |
 
 How the injection result evolved (one variable at a time):
 
@@ -242,3 +267,6 @@ Project `elliotai`. Useful views:
 - *"Why 82?"* had no answer until the score carried its own arithmetic. Splitting lost points into "found a problem" vs "could not verify" exposed a crash that had been costing **11 of 18 points** (F1–F4).
 - Fallback values are the most dangerous output an agent has: they look like data. A failed agent must be *absent* evidence, never neutral evidence (F2).
 - Coupling a long job's lifetime to a WebSocket made every refresh throw away the job; the fix was an event log with replay, which is a standard pattern (F5).
+- Model choice was measured, not assumed: six image models probed through the production path with the cache bypassed. The bigger model stayed: it was as fast as the 30B one and had a third of the false alarms. The real latency problem was free-tier queueing, solved with concurrency (F11, F16).
+- Verify the positives, not everything: a second look only at claimed findings removed all false alarms for +15 % calls and no extra wall time, because clean pages (the common case) need no second call. It cost one true detection; I stopped there rather than tune a 7-page test set (F17).
+- Probes need guards against their own shortcuts: a silent fallback model and a response cache both made broken or repeated calls look healthy until the probe checked which model answered and bypassed the cache.
