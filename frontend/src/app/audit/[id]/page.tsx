@@ -6,8 +6,6 @@ import {
   TerminalPanel,
   GhostPanel,
   VerdictPanel,
-  CvssRadar,
-  MitreGrid,
   DarknetOsintGrid,
   SysLogStream,
   AgentProcState,
@@ -15,10 +13,11 @@ import {
   KnowledgeGraph,
   ScoutTelemetry,
   ScoreBreakdownPanel,
+  SecurityChecksPanel,
+  DomainFactsPanel,
   VisionIntelligence,
   ThreatIntelligenceMatrix,
   FinalAuditReport,
-  CorporateEntitiesPanel
 } from "@/components/terminal";
 import { ChromaticProvider } from "@/components/providers/ChromaticProvider";
 import { useAuditStream } from "@/hooks/useAuditStream";
@@ -149,17 +148,12 @@ function AuditPageContent({ id }: { id: string }) {
           {/* Left Rail (Investigative Matrices + Proc State) */}
           <div className="flex flex-col gap-2 flex-[3] min-w-0 min-h-0">
             <div className="flex-1 grid grid-rows-3 gap-2 min-h-0">
-              {(!store.cvssMetrics?.length && store.corporateEntities?.length > 0) ? (
-                <TerminalPanel title="CORP.INTEGRITY.VERIFICATION" className="min-h-0">
-                  <CorporateEntitiesPanel entities={store.corporateEntities} status={store.status} />
-                </TerminalPanel>
-              ) : (
-                <TerminalPanel title="CVSS.RADAR" className="min-h-0">
-                  <CvssRadar 
-                    metrics={store.cvssMetrics?.length ? store.cvssMetrics : ((store.result as any)?.security_results?.cvss_metrics as any[]) || []}
-                    status={store.status}
-                    score={store.cvssScore ?? ((store.result as any)?.security_results?.cvss_base_score as number | undefined)}
-                    meta={store.cvssMeta ?? (
+                <TerminalPanel title="SECURITY.CHECKS" className="min-h-0">
+                  <SecurityChecksPanel
+                    results={store.securityResults}
+                    mitre={store.mitreTechniques?.length ? store.mitreTechniques : ((store.result as any)?.security_results?.mitre_mappings as any[]) || []}
+                    cvssScore={store.cvssScore ?? ((store.result as any)?.security_results?.cvss_base_score as number | undefined)}
+                    cvssMeta={store.cvssMeta ?? (
                       (store.result as any)?.security_results?.cvss_vector_string
                         ? {
                             vector: (store.result as any).security_results.cvss_vector_string,
@@ -168,15 +162,12 @@ function AuditPageContent({ id }: { id: string }) {
                           }
                         : null
                     )}
+                    status={store.status}
                   />
                 </TerminalPanel>
-              )}
-              
-              <TerminalPanel title="MITRE.ATTACK.GRID" className="min-h-0">
-                <MitreGrid
-                  techniques={store.mitreTechniques?.length ? store.mitreTechniques : ((store.result as any)?.security_results?.mitre_mappings as any[]) || []}
-                  status={store.status}
-                />
+
+              <TerminalPanel title="DOMAIN.FACTS" className="min-h-0">
+                <DomainFactsPanel info={store.result?.domain_info} url={store.url} status={store.status} />
               </TerminalPanel>
               <TerminalPanel title="THREAT.MATRIX" className="min-h-0">
                 <ThreatIntelligenceMatrix

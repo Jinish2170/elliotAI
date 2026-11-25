@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import logging
 from typing import TYPE_CHECKING
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urljoin, urlparse, urldefrag
 
 from elliot.agents.scout import ScoutResult, StealthScout
 from elliot.config import settings
@@ -80,13 +80,13 @@ def _select_prefetch_urls(base_url: str, primary_result: ScoutResult, limit: int
         return netloc.lower().removeprefix("www.")
 
     base_host = _site(urlparse(base_url).netloc)
-    seen: set[str] = {base_url.rstrip("/")}
+    seen: set[str] = {urldefrag(base_url)[0].rstrip("/")}
     priority: list[str] = []
     other: list[str] = []
     for link in raw_links:
         if not isinstance(link, str) or not link:
             continue
-        absolute = urljoin(base_url, link)
+        absolute, _ = urldefrag(urljoin(base_url, link))  # "#section" anchors are the same page
         # Stay on the same host — never prefetch off-domain.
         if _site(urlparse(absolute).netloc) != base_host:
             continue

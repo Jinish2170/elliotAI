@@ -14,3 +14,5 @@ export { ScoutTelemetry } from "./ScoutTelemetry";
 export { FinalAuditReport } from "./FinalAuditReport";
 export { CorporateEntitiesPanel } from "./CorporateEntitiesPanel";
 export { ScoreBreakdownPanel } from "./ScoreBreakdownPanel";
+export { SecurityChecksPanel } from "./SecurityChecksPanel";
+export { DomainFactsPanel } from "./DomainFactsPanel";

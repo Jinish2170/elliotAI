@@ -12,6 +12,7 @@ interface Props {
 }
 
 export function ScoutTelemetry({ explorationPath, formDetections, captchaResults, pagesScanned, domHealth }: Props) {
+  const totalForms = (formDetections || []).reduce((n, e) => n + (e.forms?.length || 0), 0);
   const isEmpty = !explorationPath && !formDetections?.length && !captchaResults?.length && !pagesScanned && !domHealth;
   if (isEmpty) return <GhostPanel message="PAGES VISITED APPEAR WHEN SCOUT FINISHES · STEP 1 OF 5" />;
 
@@ -71,11 +72,13 @@ export function ScoutTelemetry({ explorationPath, formDetections, captchaResults
         </div>
       )}
 
-      {/* Forms & Captchas */}
+      {/* Forms & CAPTCHAs: only shown when the site actually has them */}
+      {(totalForms > 0 || captchaResults?.some(c => c.detected)) && (
       <div className="flex w-full gap-4 mt-2">
+        {totalForms > 0 && (
         <div className="flex-1 flex flex-col gap-2 min-w-0">
           <div className="text-[10px] text-[var(--t-amber)] border-b border-[var(--t-amber)] pb-1 shrink-0">
-            FORMS_DETECTED <span className="opacity-70">[{formDetections?.length || 0}]</span>
+            FORMS_DETECTED <span className="opacity-70">[{totalForms}]</span>
           </div>
           <div className="flex flex-col gap-1">
             {formDetections?.slice(0, 3).map((formEvent, i) => (
@@ -90,20 +93,23 @@ export function ScoutTelemetry({ explorationPath, formDetections, captchaResults
             ))}
           </div>
         </div>
+        )}
+        {captchaResults?.some(c => c.detected) && (
         <div className="flex-1 flex flex-col gap-2 min-w-0 border-l border-[var(--t-border)] pl-4">
           <div className="text-[10px] text-[var(--t-red)] border-b border-[var(--t-red)] pb-1 shrink-0">
-            CAPTCHA_DETECTED <span className="opacity-70">[{captchaResults?.length || 0}]</span>
+            CAPTCHA_DETECTED <span className="opacity-70">[{captchaResults.filter(c => c.detected).length}]</span>
           </div>
           <div className="flex flex-col gap-1">
-            {captchaResults?.map((captcha, i) => (
+            {captchaResults.filter(c => c.detected).map((captcha, i) => (
               <div key={i} className="text-[9px] bg-[#111] p-1.5 border-l border-[var(--t-red)]">
                 <span className="font-bold">{typeof captcha.captcha_type === 'string' ? captcha.captcha_type.toUpperCase() : "UNKNOWN"}</span>
-                <span className="opacity-70 block">Status: {captcha.detected ? "DETECTED" : "CLEARED"}</span>
               </div>
             ))}
           </div>
         </div>
+        )}
       </div>
+      )}
     </div>
   );
 }

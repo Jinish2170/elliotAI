@@ -42,6 +42,7 @@ class AuditRunner:
         self._findings_sent: set[str] = set()
         self._screenshot_index = 0
         self._shots_sent: set[str] = set()
+        self._security_sent: set[str] = set()
 
     async def _read_queue_and_stream(self, send: Callable):
         if self.progress_queue is None:
@@ -269,13 +270,18 @@ class AuditRunner:
             if phase == "scout" and isinstance(data.get("pages"), int):
                 # Live counter: page telemetry otherwise only arrives with the final result.
                 await send({"type": "stats_update", "stats": {"pages_scanned": data["pages"]}})
+            if phase == "security" and isinstance(data.get("security_results"), dict):
+                # Live: Security finishes ~30 s in; its results used to wait for the end.
+                for module_name, module_result in self._security_modules({"security_results": data["security_results"]}):
+                    self._security_sent.add(module_name)
+                    await send({"type": "security_result", "module": module_name, "result": module_result})
             if phase == "scout" and data.get("visited"):
                 self._path_sent = True
                 await send({"type": "exploration_path", "base_url": self.url,
                             "visited_urls": data["visited"], "breadcrumbs": data["visited"],
                             "total_pages": len(data["visited"]), "total_time_ms": data.get("nav_ms", 0)})
             for k, v in data.items():
-                if k not in ["type", "phase", "step", "pct", "detail", "summary", "shot_files", "visited"]:
+                if k not in ["type", "phase", "step", "pct", "detail", "summary", "shot_files", "visited", "security_results"]:
                     summary_data[k] = v
 
             await send({"type": "phase_complete", "phase": phase, "message": detail, "pct": pct, "label": label, "summary": summary_data or {}})
@@ -298,6 +304,13 @@ class AuditRunner:
             description = item.get("description") or item.get("evidence") or ""
             out.append({**item, "id": item.get("id") or f"{pattern_type}_{i}", "pattern_type": pattern_type, "category": category, "description": description, "plain_english": item.get("plain_english") or description})
         return out
+
+    @staticmethod
+    def _dns_a_record(graph: dict) -> Optional[str]:
+        """First A record from the OSINT DNS lookup (WHOIS often has no IP)."""
+        dns = ((graph.get("osint_sources") or {}).get("dns") or {}).get("data") or {}
+        records = (dns.get("A") or {}).get("records") or []
+        return records[0] if records else None
 
     def _security_modules(self, result: dict) -> list[tuple[str, dict]]:
         modules = result.get("security_results") or {}
@@ -407,7 +420,7 @@ class AuditRunner:
             "domain_info": {
                 "age_days": (graph.get("domain_intel") or {}).get("age_days") or graph.get("domain_age_days"),
                 "registrar": (graph.get("domain_intel") or {}).get("registrar"),
-                "ip": (graph.get("domain_intel") or {}).get("ip_address"),
+                "ip": (graph.get("domain_intel") or {}).get("ip_address") or self._dns_a_record(graph),
                 "ssl_issuer": (graph.get("domain_intel") or {}).get("ssl_issuer"),
                 "country": (graph.get("ip_geolocation") or {}).get("country"),
                 "inconsistencies": [(item.get("explanation") if isinstance(item, dict) else str(item)) for item in (graph.get("inconsistencies") or [])],
@@ -527,7 +540,8 @@ class AuditRunner:
             await send({"type": "site_type", "site_type": summary["site_type"], "confidence": summary["site_type_confidence"]})
 
         for module_name, module_result in self._security_modules(result):
-            await send({"type": "security_result", "module": module_name, "result": module_result})
+            if module_name not in self._security_sent:
+                await send({"type": "security_result", "module": module_name, "result": module_result})
             await send({"type": "security_module_result", "result": self._security_module_event(module_name, module_result)})
             if module_name.startswith("owasp_"):
                 await send({"type": "owasp_module_result", "result": {"module": module_name, **module_result}})

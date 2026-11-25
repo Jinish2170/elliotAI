@@ -118,6 +118,9 @@ Trigger: a user audited `takebloom.vercel.app`, got **82/100**, and nothing in t
 | F10 | Panels looked broken while waiting | Placeholders said "AWAITING …" with no hint of when; Vision showed nothing until it finished; verdict showed generic fallback text and labelled a "trusted" site `NOMINAL`; badge said `CALIBRATING` forever | Each placeholder names the step that fills it; Vision shows the 5 categories it checks + per-page progress; verdict wired to the judge's narrative, recommendations and real risk level; badge shows the running phase | Qualitative (screenshots before/after in the session) |
 | F11 | Full audits took 12+ minutes; UI sat on Vision | Vision ran every prompt for a page one after another (11–15 per page, ~19 s per NIM call on the day measured): **86 % of the audit** (662 of 768 s) | Prompts on a page are independent → run concurrently (`VISION_CONCURRENCY=4`); the NIM client already rate-limits and reserves budget atomically, so the tier's call budget cannot be overspent; findings keep their original order | Same site, same tier, same day: Vision **662 s → 239 s (2.8×)**, whole audit **768 s → 293 s (−62 %)**, AI calls **35 → 35** |
 | F12 | Executive summary ended "Other concerns: mi" | `', '.join(types)[:2]` sliced the *joined string* to 2 characters instead of taking 2 items | Slice the list, humanise names, skip when empty | Fixed (one occurrence in the codebase) |
+| F13 | "4 pages scanned" were one page: `/`, `/#top`, `/#features`, `/#actions` | Scout collected internal links with their `#fragment`, so same-page anchors deduplicated as different pages; Vision then spent its AI budget on the same page 4 times | Strip fragments in the in-browser link collector and skip links back to the current page; defensive `urldefrag` in prefetch | takebloom: 4 "pages" (1 real) → **4 distinct pages** (`/resize-photo-to-50kb/`, `/jpg-to-pdf/`, `/heic-to-png/`); AI calls now go to different content |
+| F14 | CAPTCHA "detected" on normal pages; forms always 0 | The detector matched the substring `captcha` anywhere in the HTML (dormant scripts, CSS classes, i18n strings) and aborted the page as `CAPTCHA_BLOCKED` before forms were read | Judge by what a visitor sees: challenge-page title/text, or a visible CAPTCHA widget on a near-empty page = blocked; a visible widget on a normal page is recorded and the audit continues | github.com/login: `CAPTCHA_BLOCKED`, **0 forms → SUCCESS, 5 forms** |
+| F15 | CVSS radar looked identical on every audit; MITRE grid always empty | CVSS scores *one vulnerability*, not a website: with no findings it is always 0.0 with a near-constant vector. The MITRE mapper (correctly) needs ≥ 2 distinct markers per technique, so it only fires on malicious sites | Replaced with `SECURITY.CHECKS` (8 checks in plain English, evidence + fix, live ~35 s in; CVSS kept as one verifiable line when > 0; MITRE matches shown as an alert block when present) and `DOMAIN.FACTS` (age, registrar, certificate issuer, IP, hosting country, identity) | Security results visible at **~35 s instead of at the end**; two always-empty panels → two always-populated ones |
 
 **Score attribution for the same site, before vs after** (site-type weights for `saas_subscription`):
 
@@ -130,6 +133,14 @@ Trigger: a user audited `takebloom.vercel.app`, got **82/100**, and nothing in t
 | Page structure (15) | 0.98 | 0.98 | check tops out at 95 % by design |
 | Manipulative design / visual (20) | 0.45 | 0.45 | 0 patterns in 17 screenshots |
 | **Score** | **82** | **91** | |
+
+**Audit time on the same site, standard tier, across the day** (one run each; NIM free-tier latency varies, so only the 768 → 293 s pair is a controlled comparison):
+
+| Run | Vision | Whole audit | Note |
+|---|---|---|---|
+| Before F11 (sequential) | 662 s | 768 s | ~19 s per NIM call |
+| After F11 (concurrent ×4) | 239 s | 293 s | same hour, same 35 calls |
+| After F11–F15 | 44 s | **96 s** | faster NIM hour; 4 real pages instead of 1 page ×4 |
 
 **How each claim was verified**
 - Crash reproduced by calling `GraphInvestigator.investigate()` directly on the site: `AttributeError: 'NoneType' object has no attribute 'lower'`; after the fix the same call returns graph 0.857 / meta 0.95.
@@ -208,6 +219,7 @@ Project `elliotai`. Useful views:
 | Graph OSINT still re-runs once per iteration (now 2×, was 5×) | Low | Open |
 | Vision latency: fixed by concurrency (F11) but still bounded by NIM free-tier latency, which varied 10–30 s per call across one day; single before/after pair, not a benchmark | Medium | Partly mitigated |
 | Vision output is unstable run to run: the same page gave 0 findings in one run and a HIGH 'misdirected click' in the next (score 91 vs 89) | Medium | Open — needs self-consistency (vote over 2–3 samples) or a stricter prompt |
+| Security-headers module attaches `cvss_score: 8.8` to a *missing* CSP header (inflated; not shown in the UI since F15, still in API output) | Low | Open |
 | Abandoned audits now run to completion (by design, so reloads don't lose work); they still hold the concurrency slot until done | Low | Accepted |
 | mindlyticai score moved 90 → 84 after full-page + all-module analysis; per-finding attribution not yet itemised | Low | Open |
 | Retry × timeout worst case (~4.5 min per call) not reproduced; observable now | Medium | UNVERIFIED |

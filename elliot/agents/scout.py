@@ -86,24 +86,6 @@ _MOBILE_USER_AGENTS = [
 
 
 # ============================================================
-# CAPTCHA Indicators
-# ============================================================
-
-_CAPTCHA_CONTENT_INDICATORS = [
-    "captcha", "recaptcha", "hcaptcha", "challenge-platform",
-    "cf-turnstile", "arkose", "funcaptcha", "geetest",
-    "challenge-form", "captcha-container", "captcha-box",
-    "please verify you are a human", "verify you are not a robot",
-    "complete the security check",
-]
-
-_CAPTCHA_IFRAME_INDICATORS = [
-    "recaptcha", "hcaptcha", "captcha", "turnstile",
-    "arkoselabs", "funcaptcha", "geetest",
-]
-
-
-# ============================================================
 # Stealth JavaScript
 # (Merged from glass-box main.py + RAGv5 scrapers.py)
 # ============================================================
@@ -763,7 +745,7 @@ class StealthScout:
                 },
                 links=metadata.links_external[:50],
                 forms_detected=len(metadata.forms),
-                captcha_detected=False,
+                captcha_detected=getattr(self, "_captcha_widget_seen", False),
                 ioc_detected=ioc_detected,
                 ioc_indicators=ioc_indicators[:20],  # Limit to prevent huge payloads
                 onion_detected=onion_detected,
@@ -970,6 +952,7 @@ class StealthScout:
                     "session_storage_keys": metadata.session_storage_keys,
                 },
                 forms_detected=len(metadata.forms),
+                captcha_detected=getattr(self, "_captcha_widget_seen", False),
                 ioc_detected=ioc_detected,
                 ioc_indicators=ioc_indicators,
                 onion_detected=onion_detected,
@@ -1373,25 +1356,42 @@ class StealthScout:
     # ================================================================
 
     async def _detect_captcha(self, page: Page) -> bool:
+        """True only when a CAPTCHA *blocks* the page.
+
+        Used to match the substring "captcha" anywhere in the HTML, so dormant
+        scripts, CSS class names or i18n strings (e.g. github.com/login) were
+        reported as "blocked" and the page was never analysed. Now judged on
+        what a visitor sees: a challenge page, or a visible CAPTCHA widget on a
+        near-empty page. A visible widget on a normal page is recorded in
+        self._captcha_widget_seen and the investigation continues.
         """
-        Detect if the page has a CAPTCHA challenge.
-        Two-phase check: page content scan + iframe URL scan.
-        """
+        self._captcha_widget_seen = False
         try:
-            # Phase 1: Content scan
-            content = (await page.content()).lower()
-            for indicator in _CAPTCHA_CONTENT_INDICATORS:
-                if indicator in content:
-                    return True
-
-            # Phase 2: Iframe URL scan
-            for frame in page.frames:
-                frame_url = frame.url.lower()
-                for indicator in _CAPTCHA_IFRAME_INDICATORS:
-                    if indicator in frame_url:
-                        return True
-
-            return False
+            state = await page.evaluate("""
+                () => {
+                    const text = (document.body?.innerText || "").toLowerCase();
+                    const title = (document.title || "").toLowerCase();
+                    const phrases = ["verify you are human", "verify you are a human",
+                        "please verify you are a human", "verify you are not a robot",
+                        "complete the security check", "checking your browser",
+                        "checking if the site connection is secure"];
+                    const challengeTitle = ["just a moment", "attention required", "access denied"]
+                        .some(t => title.includes(t));
+                    const visible = el => { const r = el.getBoundingClientRect();
+                        const cs = getComputedStyle(el);
+                        return r.width > 40 && r.height > 30 && cs.visibility !== "hidden" && cs.display !== "none"; };
+                    const sel = 'iframe[src*="recaptcha"],iframe[src*="hcaptcha"],iframe[src*="turnstile"],' +
+                        'iframe[src*="arkoselabs"],iframe[src*="funcaptcha"],iframe[src*="geetest"],' +
+                        '.g-recaptcha,.h-captcha,.cf-turnstile,#challenge-form';
+                    const widget = [...document.querySelectorAll(sel)].some(visible);
+                    return { phrase: phrases.some(p => text.includes(p)), challengeTitle,
+                             widget, textLen: text.length };
+                }
+            """)
+            self._captcha_widget_seen = bool(state.get("widget"))
+            if state.get("phrase") or state.get("challengeTitle"):
+                return True
+            return bool(state.get("widget")) and state.get("textLen", 0) < 400
         except Exception:
             return False
 
@@ -1427,7 +1427,9 @@ class StealthScout:
                             const url = new URL(a.href);
                             if (url.protocol.startsWith('http')) {
                                 if (url.hostname === hostname || url.hostname.endsWith('.' + hostname)) {
-                                    internalLinks.add(url.href);
+                                    // "/#features" is the same page, not another one.
+                                    url.hash = '';
+                                    if (url.href !== location.href.split('#')[0]) internalLinks.add(url.href);
                                 } else {
                                     externalLinks.add(url.href);
                                 }
