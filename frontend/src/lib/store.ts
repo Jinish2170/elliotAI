@@ -166,6 +166,7 @@ interface AuditStore {
   // Scout Navigation Events
   navigationEvents: Array<NavigationStartEvent | NavigationCompleteEvent | PageScannedEvent | ScrollEvent>;  // POPULATED via navigation_start/complete/page_scanned/scroll_event
   explorationPath: ExplorationPath | null;  // POPULATED via exploration_path event
+  startedAt: number | null;  // epoch ms, from audit_meta (server clock)
   captchaResults: CaptchaResult[];  // POPULATED via captcha_detected event
   formDetections: FormDetection[];  // POPULATED via form_detected event
 
@@ -288,6 +289,7 @@ export const useAuditStore = create<AuditStore>((set, get) => ({
   // Scout Navigation Events
   navigationEvents: [],
   explorationPath: null,
+  startedAt: null,
   captchaResults: [],
   formDetections: [],
 
@@ -378,6 +380,7 @@ export const useAuditStore = create<AuditStore>((set, get) => ({
       // Reset navigation events
       navigationEvents: [],
       explorationPath: null,
+  startedAt: null,
       captchaResults: [],
       formDetections: [],
       // Reset APT group data
@@ -690,6 +693,12 @@ function processSingleEvent(
         params: (event.params as Record<string, unknown>) || undefined,
       };
       set({ logs: [...state.logs, entry] });
+      break;
+    }
+
+    case "audit_meta": {
+      // Server-side start time: keeps the header clock right after a reload.
+      set({ startedAt: (event.started_at as number) * 1000 });
       break;
     }
 

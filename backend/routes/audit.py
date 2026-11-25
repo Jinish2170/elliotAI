@@ -8,6 +8,7 @@ import contextlib
 import json
 import logging
 import re
+import time
 from datetime import datetime
 from pathlib import Path
 from typing import Annotated, Optional
@@ -269,7 +270,8 @@ async def stream_audit(ws: WebSocket, audit_id: str):
 
     if audit_info.get("task") is None and audit_info.get("status") == "queued":
         audit_info["status"] = "running"
-        audit_info["events"] = []
+        audit_info["started_at"] = time.time()
+        audit_info["events"] = [{"type": "audit_meta", "audit_id": audit_id, "started_at": audit_info["started_at"]}]
         audit_info["subscribers"] = set()
         audit_info["task"] = asyncio.create_task(_run_audit(audit_id, audit_info))
 

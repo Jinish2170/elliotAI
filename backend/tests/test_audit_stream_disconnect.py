@@ -76,6 +76,8 @@ def _wait(pred, timeout=5.0):
 def test_disconnect_does_not_cancel_run(client):
     _register()
     with client.websocket_connect(f"/api/audit/stream/{AID}") as ws:
+        meta = ws.receive_json()
+        assert meta["type"] == "audit_meta" and meta["started_at"] > 0  # clock survives reloads
         assert ws.receive_json()["message"] == "step 1"
     threading.Event().wait(0.3)
     run = FakeRunner.instances[0]
@@ -88,8 +90,10 @@ def test_disconnect_does_not_cancel_run(client):
 def test_reconnect_replays_events_and_follows_live_without_rerun(client):
     _register()
     with client.websocket_connect(f"/api/audit/stream/{AID}") as ws:
+        first_meta = ws.receive_json()
         assert ws.receive_json()["message"] == "step 1"
     with client.websocket_connect(f"/api/audit/stream/{AID}") as ws:
+        assert ws.receive_json() == first_meta  # same start time on reconnect
         assert ws.receive_json()["message"] == "step 1"  # replayed backlog
         FakeRunner.instances[0].release.set()
         assert ws.receive_json()["type"] == "audit_result"  # live

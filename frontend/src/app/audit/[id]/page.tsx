@@ -78,7 +78,8 @@ function AuditPageContent({ id }: { id: string }) {
     const t = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);
   }, [running]);
-  const elapsed = running ? (now - startedAt) / 1000 : store.stats.elapsed_seconds || (now - startedAt) / 1000;
+  const origin = store.startedAt ?? startedAt;  // server start time when known (survives reloads)
+  const elapsed = running ? Math.max(0, (now - origin) / 1000) : store.stats.elapsed_seconds || (now - origin) / 1000;
 
   useEffect(() => {
     if (store.status === "complete" && store.result) {
