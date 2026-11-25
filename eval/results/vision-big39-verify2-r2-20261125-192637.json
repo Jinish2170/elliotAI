@@ -1,0 +1,1259 @@
+{
+  "suite": "vision",
+  "skipped": [],
+  "micro": {
+    "precision": 0.56,
+    "recall": 0.667,
+    "f1": 0.609,
+    "tp": 14,
+    "fp": 11,
+    "fn": 7,
+    "precision_ci95": [
+      0.371,
+      0.733
+    ],
+    "recall_ci95": [
+      0.454,
+      0.828
+    ]
+  },
+  "per_category": {
+    "false_urgency": {
+      "precision": 0.667,
+      "recall": 0.5,
+      "f1": 0.571,
+      "tp": 2,
+      "fp": 1,
+      "fn": 2
+    },
+    "forced_continuity": {
+      "precision": 1.0,
+      "recall": 0.6,
+      "f1": 0.75,
+      "tp": 3,
+      "fp": 0,
+      "fn": 2
+    },
+    "sneaking": {
+      "precision": 0.75,
+      "recall": 0.75,
+      "f1": 0.75,
+      "tp": 3,
+      "fp": 1,
+      "fn": 1
+    },
+    "social_engineering": {
+      "precision": 0.75,
+      "recall": 0.75,
+      "f1": 0.75,
+      "tp": 3,
+      "fp": 1,
+      "fn": 1
+    },
+    "visual_interference": {
+      "precision": 0.273,
+      "recall": 0.75,
+      "f1": 0.4,
+      "tp": 3,
+      "fp": 8,
+      "fn": 1
+    }
+  },
+  "clean_pages_without_false_alarm": "13/18",
+  "n_cases": 39,
+  "rows": [
+    {
+      "id": "clean_basic",
+      "stratum": "clean",
+      "expected": [],
+      "predicted": [
+        "visual_interference"
+      ],
+      "tp": 0,
+      "fp": 1,
+      "fn": 0,
+      "seconds": 32.4,
+      "cost": {
+        "llm_calls": 20,
+        "cache_hits": 0,
+        "input_tokens": 28876,
+        "output_tokens": 961,
+        "llm_seconds": 39.66,
+        "slowest_llm_call_s": 3.94
+      },
+      "findings": [
+        {
+          "category": "visual_interference",
+          "pattern_type": "misdirected_click",
+          "confidence": 0.9,
+          "evidence": "element: Add to Cart button vs Save for Later button | The 'Add to Cart' button is green and visually dominant compared to the 'Save for Later' button, which is"
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.95,
+          "evidence": "element: Unsubscribe link in footer navigation bar | Unsubscribe link is located in the footer among other legal links, separated from main content, with small "
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.9,
+          "evidence": "element: Unsubscribe link text | Text appears in light gray color against white background, significantly lighter than main body text"
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.85,
+          "evidence": "element: Unsubscribe link font size | Font size appears smaller than standard body text, approximately 12px or less"
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.8,
+          "evidence": "element: Unsubscribe link position | Positioned in footer area away from primary user flow and account settings"
+        }
+      ]
+    },
+    {
+      "id": "clean_portfolio",
+      "stratum": "clean",
+      "expected": [],
+      "predicted": [],
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 29.9,
+      "cost": {
+        "llm_calls": 15,
+        "cache_hits": 0,
+        "input_tokens": 21594,
+        "output_tokens": 222,
+        "llm_seconds": 32.06,
+        "slowest_llm_call_s": 7.65
+      },
+      "findings": []
+    },
+    {
+      "id": "dp_fake_countdown",
+      "stratum": "dark_pattern",
+      "expected": [
+        "false_urgency"
+      ],
+      "predicted": [
+        "false_urgency"
+      ],
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 56.2,
+      "cost": {
+        "llm_calls": 15,
+        "cache_hits": 0,
+        "input_tokens": 21594,
+        "output_tokens": 356,
+        "llm_seconds": 76.85,
+        "slowest_llm_call_s": 17.22
+      },
+      "findings": [
+        {
+          "category": "false_urgency",
+          "pattern_type": "fake_scarcity",
+          "confidence": 0.7,
+          "evidence": "Scarcity indicator shows 'Only 2 left in stock! 37 people are viewing this right now.' at both time points \u2014 static value suggests fake scarcity messaging"
+        }
+      ]
+    },
+    {
+      "id": "dp_guilt_tripping",
+      "stratum": "dark_pattern",
+      "expected": [
+        "forced_continuity"
+      ],
+      "predicted": [
+        "forced_continuity",
+        "visual_interference"
+      ],
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 51.7,
+      "cost": {
+        "llm_calls": 18,
+        "cache_hits": 0,
+        "input_tokens": 26015,
+        "output_tokens": 880,
+        "llm_seconds": 77.62,
+        "slowest_llm_call_s": 14.59
+      },
+      "findings": [
+        {
+          "category": "visual_interference",
+          "pattern_type": "misdirected_click",
+          "confidence": 0.95,
+          "evidence": "element: No thanks link with guilt-inducing text below the green discount button | The 'No thanks' link uses guilt-inducing language ('I'd rather pay full price"
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.9,
+          "evidence": "element: Dismiss link text below green button in modal dialog | The text 'No thanks, I'd rather pay full price because I don't like saving money' is small, low "
+        },
+        {
+          "category": "forced_continuity",
+          "pattern_type": "guilt_tripping",
+          "confidence": 0.95,
+          "evidence": "element: link | No thanks, I'd rather pay full price because I don't like saving money"
+        }
+      ]
+    },
+    {
+      "id": "dp_preselected_addons",
+      "stratum": "dark_pattern",
+      "expected": [
+        "sneaking"
+      ],
+      "predicted": [
+        "sneaking"
+      ],
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 43.8,
+      "cost": {
+        "llm_calls": 19,
+        "cache_hits": 0,
+        "input_tokens": 27548,
+        "output_tokens": 928,
+        "llm_seconds": 76.29,
+        "slowest_llm_call_s": 12.15
+      },
+      "findings": [
+        {
+          "category": "sneaking",
+          "pattern_type": "pre_selected_options",
+          "confidence": 0.95,
+          "evidence": "element: checkboxes | Three checkboxes are visibly checked by default: 'Add travel insurance (\u20b9899)', 'Priority boarding (\u20b9499)', and 'Subscribe to TravelNow Pl"
+        },
+        {
+          "category": "sneaking",
+          "pattern_type": "hidden_costs",
+          "confidence": 0.95,
+          "evidence": "element: Checkout page showing base price \u20b94,200 with additional fees disclosed in smaller text below and pre-selected add-ons | The page prominently displays '"
+        }
+      ]
+    },
+    {
+      "id": "dp_fake_badges",
+      "stratum": "dark_pattern",
+      "expected": [
+        "social_engineering"
+      ],
+      "predicted": [
+        "social_engineering"
+      ],
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 33.5,
+      "cost": {
+        "llm_calls": 17,
+        "cache_hits": 0,
+        "input_tokens": 24579,
+        "output_tokens": 682,
+        "llm_seconds": 44.85,
+        "slowest_llm_call_s": 6.12
+      },
+      "findings": [
+        {
+          "category": "social_engineering",
+          "pattern_type": "fake_badges",
+          "confidence": 0.95,
+          "evidence": "element: badge row | The page displays four badge-like elements: 'Norton SECURED', 'McAfee SECURE', 'Verified by Visa', and 'SEC Approved'. These are presented "
+        },
+        {
+          "category": "social_engineering",
+          "pattern_type": "fake_authority",
+          "confidence": 0.95,
+          "evidence": "element: text and badge elements near top of page | Page displays 'As seen on: Forbes \u00b7 CNBC \u00b7 Bloomberg' and security badges like 'Norton SECURED', 'McAfee SEC"
+        }
+      ]
+    },
+    {
+      "id": "dp_hidden_unsubscribe",
+      "stratum": "dark_pattern",
+      "expected": [
+        "visual_interference"
+      ],
+      "predicted": [
+        "forced_continuity",
+        "visual_interference"
+      ],
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 55.7,
+      "cost": {
+        "llm_calls": 18,
+        "cache_hits": 0,
+        "input_tokens": 26054,
+        "output_tokens": 959,
+        "llm_seconds": 130.56,
+        "slowest_llm_call_s": 29.61
+      },
+      "findings": [
+        {
+          "category": "visual_interference",
+          "pattern_type": "misdirected_click",
+          "confidence": 0.95,
+          "evidence": "element: UPGRADE TO PREMIUM \u2014 $49.99/month button vs No thanks, I prefer limited features and a worse experience link | The 'UPGRADE TO PREMIUM' button is large"
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.9,
+          "evidence": "element: Text link below the upgrade button saying 'No thanks, I prefer limited features and a worse experience'. It appears to be a link to decline the upgrade"
+        },
+        {
+          "category": "forced_continuity",
+          "pattern_type": "guilt_tripping",
+          "confidence": 0.95,
+          "evidence": "element: link text below the upgrade button | The link text 'No thanks, I prefer limited features and a worse experience' frames declining the upgrade as choosi"
+        }
+      ]
+    },
+    {
+      "id": "dp_vi_disguised_ad",
+      "stratum": "dark_pattern",
+      "expected": [
+        "visual_interference"
+      ],
+      "predicted": [
+        "visual_interference"
+      ],
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 46.0,
+      "cost": {
+        "llm_calls": 18,
+        "cache_hits": 0,
+        "input_tokens": 26031,
+        "output_tokens": 607,
+        "llm_seconds": 58.08,
+        "slowest_llm_call_s": 12.32
+      },
+      "findings": [
+        {
+          "category": "visual_interference",
+          "pattern_type": "disguised_ads",
+          "confidence": 0.95,
+          "evidence": "element: Green download buttons under 'Sponsored' label | Two large green buttons labeled 'DOWNLOAD NOW' and 'START DOWNLOAD' are styled as primary calls-to-act"
+        }
+      ]
+    },
+    {
+      "id": "dp_vi_trick_question",
+      "stratum": "dark_pattern",
+      "expected": [
+        "visual_interference"
+      ],
+      "predicted": [
+        "sneaking"
+      ],
+      "tp": 0,
+      "fp": 0,
+      "fn": 1,
+      "seconds": 58.9,
+      "cost": {
+        "llm_calls": 20,
+        "cache_hits": 0,
+        "input_tokens": 28943,
+        "output_tokens": 739,
+        "llm_seconds": 85.49,
+        "slowest_llm_call_s": 13.56
+      },
+      "findings": [
+        {
+          "category": "sneaking",
+          "pattern_type": "pre_selected_options",
+          "confidence": 0.95,
+          "evidence": "element: checkbox[checked=true]: 'Untick this box if you would prefer not to stop receiving offers from our partners.' | The checkbox labeled 'Untick this box i"
+        }
+      ]
+    },
+    {
+      "id": "dp_vi_cookie_hierarchy",
+      "stratum": "dark_pattern",
+      "expected": [
+        "visual_interference"
+      ],
+      "predicted": [
+        "visual_interference"
+      ],
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 74.5,
+      "cost": {
+        "llm_calls": 20,
+        "cache_hits": 0,
+        "input_tokens": 28903,
+        "output_tokens": 804,
+        "llm_seconds": 121.76,
+        "slowest_llm_call_s": 22.03
+      },
+      "findings": [
+        {
+          "category": "visual_interference",
+          "pattern_type": "misdirected_click",
+          "confidence": 0.95,
+          "evidence": "element: cookie consent banner at bottom of page | The 'ACCEPT ALL' button is bright green and significantly larger than the 'manage preferences' link, which is"
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.9,
+          "evidence": "element: manage preferences link in cookie banner at bottom left | The 'manage preferences' link is small and low contrast against the dark background, making i"
+        }
+      ]
+    },
+    {
+      "id": "dp_fu_hotel_scarcity",
+      "stratum": "dark_pattern",
+      "expected": [
+        "false_urgency"
+      ],
+      "predicted": [
+        "false_urgency"
+      ],
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 37.8,
+      "cost": {
+        "llm_calls": 16,
+        "cache_hits": 0,
+        "input_tokens": 23059,
+        "output_tokens": 321,
+        "llm_seconds": 76.52,
+        "slowest_llm_call_s": 15.88
+      },
+      "findings": [
+        {
+          "category": "false_urgency",
+          "pattern_type": "fake_scarcity",
+          "confidence": 0.7,
+          "evidence": "Scarcity indicator shows 'Only 1 room left at this price!' at both time points \u2014 static value suggests fake scarcity messaging"
+        }
+      ]
+    },
+    {
+      "id": "dp_fu_expiring_coupon",
+      "stratum": "dark_pattern",
+      "expected": [
+        "false_urgency"
+      ],
+      "predicted": [],
+      "tp": 0,
+      "fp": 0,
+      "fn": 1,
+      "seconds": 50.9,
+      "cost": {
+        "llm_calls": 16,
+        "cache_hits": 0,
+        "input_tokens": 23060,
+        "output_tokens": 383,
+        "llm_seconds": 62.47,
+        "slowest_llm_call_s": 17.47
+      },
+      "findings": []
+    },
+    {
+      "id": "dp_fu_live_activity",
+      "stratum": "dark_pattern",
+      "expected": [
+        "false_urgency"
+      ],
+      "predicted": [],
+      "tp": 0,
+      "fp": 0,
+      "fn": 1,
+      "seconds": 44.2,
+      "cost": {
+        "llm_calls": 19,
+        "cache_hits": 0,
+        "input_tokens": 27444,
+        "output_tokens": 532,
+        "llm_seconds": 70.99,
+        "slowest_llm_call_s": 7.83
+      },
+      "findings": []
+    },
+    {
+      "id": "dp_fc_trial_autorenew",
+      "stratum": "dark_pattern",
+      "expected": [
+        "forced_continuity"
+      ],
+      "predicted": [
+        "sneaking",
+        "visual_interference"
+      ],
+      "tp": 0,
+      "fp": 1,
+      "fn": 1,
+      "seconds": 51.1,
+      "cost": {
+        "llm_calls": 21,
+        "cache_hits": 0,
+        "input_tokens": 30500,
+        "output_tokens": 1743,
+        "llm_seconds": 102.04,
+        "slowest_llm_call_s": 10.52
+      },
+      "findings": [
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.95,
+          "evidence": "element: Fine print disclaimer text below the 'Start FREE trial' button describing automatic renewal and cancellation requirements | Fine print text at bottom o"
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.9,
+          "evidence": "element: Fine print disclaimer text below the 'Start FREE trial' button describing automatic renewal and cancellation requirements | The text is rendered in a v"
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.85,
+          "evidence": "element: Fine print disclaimer text below the 'Start FREE trial' button describing automatic renewal and cancellation requirements | The text is positioned at t"
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.8,
+          "evidence": "element: Fine print disclaimer text below the 'Start FREE trial' button describing automatic renewal and cancellation requirements | The text mentions cancellat"
+        },
+        {
+          "category": "sneaking",
+          "pattern_type": "hidden_costs",
+          "confidence": 0.95,
+          "evidence": "element: fine print text below the card number field | The page advertises 'Watch free for 7 days' but the fine print states 'After 7 days your membership autom"
+        },
+        {
+          "category": "sneaking",
+          "pattern_type": "hidden_subscription",
+          "confidence": 0.95,
+          "evidence": "element: free trial offer card with card input and fine print | Page headline 'Watch free for 7 days' with 'Start FREE trial' button. Card number field required"
+        }
+      ]
+    },
+    {
+      "id": "dp_fc_cancel_maze",
+      "stratum": "dark_pattern",
+      "expected": [
+        "forced_continuity"
+      ],
+      "predicted": [
+        "forced_continuity",
+        "visual_interference"
+      ],
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 60.7,
+      "cost": {
+        "llm_calls": 19,
+        "cache_hits": 1,
+        "input_tokens": 27552,
+        "output_tokens": 2133,
+        "llm_seconds": 91.79,
+        "slowest_llm_call_s": 13.1
+      },
+      "findings": [
+        {
+          "category": "visual_interference",
+          "pattern_type": "misdirected_click",
+          "confidence": 0.9,
+          "evidence": "element: button | The green 'Switch to a cheaper plan' button is visually more prominent than the blue 'Pause for 1 month instead' button due to its brighter co"
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.95,
+          "evidence": "element: Text describing how to end membership | The text 'To end your membership, please call our retention team on 1800-000-000 (Mon-Fri, 10:00-11:00) or visi"
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.9,
+          "evidence": "element: Text describing how to end membership | The text 'To end your membership, please call our retention team on 1800-000-000 (Mon-Fri, 10:00-11:00) or visi"
+        },
+        {
+          "category": "forced_continuity",
+          "pattern_type": "hidden_cancel",
+          "confidence": 0.95,
+          "evidence": "element: Text: 'To end your membership, please call our retention team on 1800-000-000 (Mon-Fri, 10:00-11:00) or visit your home club in person with photo ID.' "
+        }
+      ]
+    },
+    {
+      "id": "dp_fc_forced_account",
+      "stratum": "dark_pattern",
+      "expected": [
+        "forced_continuity"
+      ],
+      "predicted": [
+        "sneaking"
+      ],
+      "tp": 0,
+      "fp": 1,
+      "fn": 1,
+      "seconds": 33.6,
+      "cost": {
+        "llm_calls": 17,
+        "cache_hits": 0,
+        "input_tokens": 24526,
+        "output_tokens": 461,
+        "llm_seconds": 46.61,
+        "slowest_llm_call_s": 7.43
+      },
+      "findings": [
+        {
+          "category": "sneaking",
+          "pattern_type": "hidden_costs",
+          "confidence": 0.95,
+          "evidence": "element: yellow banner and blue button | The page states 'Prices and delivery dates are only visible to members.' and the button says 'Create account & see pric"
+        }
+      ]
+    },
+    {
+      "id": "dp_fc_confirmshaming",
+      "stratum": "dark_pattern",
+      "expected": [
+        "forced_continuity"
+      ],
+      "predicted": [
+        "forced_continuity",
+        "visual_interference"
+      ],
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 39.2,
+      "cost": {
+        "llm_calls": 19,
+        "cache_hits": 0,
+        "input_tokens": 27479,
+        "output_tokens": 877,
+        "llm_seconds": 61.13,
+        "slowest_llm_call_s": 6.12
+      },
+      "findings": [
+        {
+          "category": "visual_interference",
+          "pattern_type": "misdirected_click",
+          "confidence": 0.95,
+          "evidence": "element: modal buttons | The blue 'Yes, send me the guide' button is visually dominant with high contrast against the white modal background, while the 'No than"
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.9,
+          "evidence": "element: dismiss link in modal dialog | The link 'No thanks, I enjoy wasting money on bad laptops' is small, low contrast gray text on white background, positio"
+        },
+        {
+          "category": "forced_continuity",
+          "pattern_type": "guilt_tripping",
+          "confidence": 0.95,
+          "evidence": "element: dismiss link in modal | The dismiss link text 'No thanks, I enjoy wasting money on bad laptops' frames declining the offer as a foolish choice, using s"
+        }
+      ]
+    },
+    {
+      "id": "dp_sn_drip_pricing",
+      "stratum": "dark_pattern",
+      "expected": [
+        "sneaking"
+      ],
+      "predicted": [
+        "sneaking"
+      ],
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 49.9,
+      "cost": {
+        "llm_calls": 20,
+        "cache_hits": 0,
+        "input_tokens": 28955,
+        "output_tokens": 753,
+        "llm_seconds": 71.86,
+        "slowest_llm_call_s": 13.14
+      },
+      "findings": [
+        {
+          "category": "sneaking",
+          "pattern_type": "hidden_costs",
+          "confidence": 0.95,
+          "evidence": "element: Coldplay \u2014 Mumbai ticket pricing breakdown | The page advertises 'Tickets from \u20b92,000' but the actual total shown is \u20b96,710, with multiple fees added: "
+        }
+      ]
+    },
+    {
+      "id": "dp_sn_hidden_subscription",
+      "stratum": "dark_pattern",
+      "expected": [
+        "sneaking"
+      ],
+      "predicted": [
+        "forced_continuity",
+        "sneaking"
+      ],
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 42.4,
+      "cost": {
+        "llm_calls": 20,
+        "cache_hits": 0,
+        "input_tokens": 28903,
+        "output_tokens": 925,
+        "llm_seconds": 56.66,
+        "slowest_llm_call_s": 7.83
+      },
+      "findings": [
+        {
+          "category": "sneaking",
+          "pattern_type": "pre_selected_options",
+          "confidence": 0.95,
+          "evidence": "element: checkbox | A checkbox labeled 'Add VitaLife Plus membership (\u20b9299/month, billed monthly until cancelled)' is visibly checked with a blue checkmark in t"
+        },
+        {
+          "category": "sneaking",
+          "pattern_type": "hidden_costs",
+          "confidence": 0.9,
+          "evidence": "element: text | The pre-checked membership option adds \u20b9299/month recurring cost to the one-time purchase of \u20b9499 for Vitamin D3, creating an unexpected additio"
+        },
+        {
+          "category": "forced_continuity",
+          "pattern_type": "forced_registration",
+          "confidence": 0.85,
+          "evidence": "element: checkbox | The membership option is pre-selected by default, requiring the user to actively uncheck it to avoid automatic enrollment and recurring bill"
+        }
+      ]
+    },
+    {
+      "id": "dp_sn_bait_switch",
+      "stratum": "dark_pattern",
+      "expected": [
+        "sneaking"
+      ],
+      "predicted": [
+        "false_urgency",
+        "social_engineering"
+      ],
+      "tp": 0,
+      "fp": 2,
+      "fn": 1,
+      "seconds": 32.2,
+      "cost": {
+        "llm_calls": 17,
+        "cache_hits": 0,
+        "input_tokens": 24545,
+        "output_tokens": 551,
+        "llm_seconds": 36.35,
+        "slowest_llm_call_s": 5.8
+      },
+      "findings": [
+        {
+          "category": "social_engineering",
+          "pattern_type": "fake_authority",
+          "confidence": 0.9,
+          "evidence": "element: Text 'As advertised on TV' located directly below the headline 'Galaxy A-Lite for just \u20b91,999!' | The page states 'As advertised on TV' under the produ"
+        },
+        {
+          "category": "false_urgency",
+          "pattern_type": "fake_scarcity",
+          "confidence": 0.7,
+          "evidence": "Scarcity indicator shows 'Sorry, the \u20b91,999 model is out of stock in your area.' at both time points \u2014 static value suggests fake scarcity messaging"
+        }
+      ]
+    },
+    {
+      "id": "dp_se_fake_reviews",
+      "stratum": "dark_pattern",
+      "expected": [
+        "social_engineering"
+      ],
+      "predicted": [
+        "social_engineering"
+      ],
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 36.3,
+      "cost": {
+        "llm_calls": 17,
+        "cache_hits": 0,
+        "input_tokens": 24551,
+        "output_tokens": 499,
+        "llm_seconds": 68.72,
+        "slowest_llm_call_s": 9.99
+      },
+      "findings": [
+        {
+          "category": "social_engineering",
+          "pattern_type": "fake_reviews",
+          "confidence": 0.95,
+          "evidence": "element: review cards | Duplicate reviews: Sarah K. and Mike P. each appear twice with identical text 'Best product ever!!! Lost 10 kg in 1 week, highly recomme"
+        }
+      ]
+    },
+    {
+      "id": "dp_se_fake_authority",
+      "stratum": "dark_pattern",
+      "expected": [
+        "social_engineering"
+      ],
+      "predicted": [
+        "social_engineering",
+        "visual_interference"
+      ],
+      "tp": 1,
+      "fp": 1,
+      "fn": 0,
+      "seconds": 40.5,
+      "cost": {
+        "llm_calls": 21,
+        "cache_hits": 0,
+        "input_tokens": 30570,
+        "output_tokens": 1580,
+        "llm_seconds": 52.88,
+        "slowest_llm_call_s": 4.56
+      },
+      "findings": [
+        {
+          "category": "visual_interference",
+          "pattern_type": "disguised_ads",
+          "confidence": 0.95,
+          "evidence": "element: Three rectangular badge elements with checkmarks and text: 'WHO APPROVED' (green border), 'RECOMMENDED BY NASA' (blue border), 'GOVERNMENT CERTIFIED' ("
+        },
+        {
+          "category": "social_engineering",
+          "pattern_type": "fake_badges",
+          "confidence": 0.95,
+          "evidence": "element: WHO APPROVED badge | Three badge-like elements are present: 'WHO APPROVED', 'RECOMMENDED BY NASA', and 'GOVERNMENT CERTIFIED'. These are styled as clic"
+        },
+        {
+          "category": "social_engineering",
+          "pattern_type": "fake_badges",
+          "confidence": 0.95,
+          "evidence": "element: RECOMMENDED BY NASA badge | Three badge-like elements are present: 'WHO APPROVED', 'RECOMMENDED BY NASA', and 'GOVERNMENT CERTIFIED'. These are styled "
+        },
+        {
+          "category": "social_engineering",
+          "pattern_type": "fake_badges",
+          "confidence": 0.95,
+          "evidence": "element: GOVERNMENT CERTIFIED badge | Three badge-like elements are present: 'WHO APPROVED', 'RECOMMENDED BY NASA', and 'GOVERNMENT CERTIFIED'. These are styled"
+        },
+        {
+          "category": "social_engineering",
+          "pattern_type": "fake_authority",
+          "confidence": 0.95,
+          "evidence": "element: badges under product title | Three badges claim 'WHO APPROVED', 'RECOMMENDED BY NASA', and 'GOVERNMENT CERTIFIED' with no links or verifiable proof."
+        }
+      ]
+    },
+    {
+      "id": "dp_se_fake_counters",
+      "stratum": "dark_pattern",
+      "expected": [
+        "social_engineering"
+      ],
+      "predicted": [
+        "visual_interference"
+      ],
+      "tp": 0,
+      "fp": 1,
+      "fn": 1,
+      "seconds": 29.7,
+      "cost": {
+        "llm_calls": 16,
+        "cache_hits": 0,
+        "input_tokens": 23103,
+        "output_tokens": 584,
+        "llm_seconds": 39.1,
+        "slowest_llm_call_s": 4.53
+      },
+      "findings": [
+        {
+          "category": "visual_interference",
+          "pattern_type": "disguised_ads",
+          "confidence": 0.95,
+          "evidence": "element: Central promotional card with headline, statistics, and 'Join free' button | The central card with headline 'Earn \u20b950,000 a day from home', statistics "
+        }
+      ]
+    },
+    {
+      "id": "clean_honest_sale",
+      "stratum": "clean",
+      "expected": [],
+      "predicted": [],
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 43.8,
+      "cost": {
+        "llm_calls": 16,
+        "cache_hits": 0,
+        "input_tokens": 23061,
+        "output_tokens": 306,
+        "llm_seconds": 58.17,
+        "slowest_llm_call_s": 8.92
+      },
+      "findings": []
+    },
+    {
+      "id": "clean_transparent_checkout",
+      "stratum": "clean",
+      "expected": [],
+      "predicted": [
+        "visual_interference"
+      ],
+      "tp": 0,
+      "fp": 1,
+      "fn": 0,
+      "seconds": 43.7,
+      "cost": {
+        "llm_calls": 18,
+        "cache_hits": 0,
+        "input_tokens": 26049,
+        "output_tokens": 664,
+        "llm_seconds": 65.07,
+        "slowest_llm_call_s": 7.63
+      },
+      "findings": [
+        {
+          "category": "visual_interference",
+          "pattern_type": "misdirected_click",
+          "confidence": 0.9,
+          "evidence": "element: Pay \u20b91,300 button vs Continue as guest button | The 'Pay \u20b91,300' button is styled with a solid blue background and white text, making it visually domin"
+        }
+      ]
+    },
+    {
+      "id": "clean_saas_pricing",
+      "stratum": "clean",
+      "expected": [],
+      "predicted": [
+        "visual_interference"
+      ],
+      "tp": 0,
+      "fp": 1,
+      "fn": 0,
+      "seconds": 42.5,
+      "cost": {
+        "llm_calls": 20,
+        "cache_hits": 0,
+        "input_tokens": 28909,
+        "output_tokens": 794,
+        "llm_seconds": 60.31,
+        "slowest_llm_call_s": 7.29
+      },
+      "findings": [
+        {
+          "category": "visual_interference",
+          "pattern_type": "visual_hierarchy_manipulation",
+          "confidence": 0.95,
+          "evidence": "element: Choose Pro button vs Choose Free/Choose Team buttons | The 'Choose Pro' button is filled with blue background and white text, while 'Choose Free' and '"
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.9,
+          "evidence": "element: cancellation information text | The text 'Cancel anytime from Settings \u2192 Billing' is small and not prominently displayed, making it hard to find."
+        }
+      ]
+    },
+    {
+      "id": "clean_balanced_cookies",
+      "stratum": "clean",
+      "expected": [],
+      "predicted": [],
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 31.7,
+      "cost": {
+        "llm_calls": 20,
+        "cache_hits": 0,
+        "input_tokens": 28899,
+        "output_tokens": 625,
+        "llm_seconds": 55.93,
+        "slowest_llm_call_s": 5.58
+      },
+      "findings": []
+    },
+    {
+      "id": "clean_labelled_ad",
+      "stratum": "clean",
+      "expected": [],
+      "predicted": [],
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 34.4,
+      "cost": {
+        "llm_calls": 17,
+        "cache_hits": 0,
+        "input_tokens": 24528,
+        "output_tokens": 392,
+        "llm_seconds": 62.69,
+        "slowest_llm_call_s": 7.78
+      },
+      "findings": []
+    },
+    {
+      "id": "clean_real_reviews",
+      "stratum": "clean",
+      "expected": [],
+      "predicted": [],
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 30.3,
+      "cost": {
+        "llm_calls": 17,
+        "cache_hits": 0,
+        "input_tokens": 24525,
+        "output_tokens": 381,
+        "llm_seconds": 51.61,
+        "slowest_llm_call_s": 6.78
+      },
+      "findings": []
+    },
+    {
+      "id": "real_wikipedia",
+      "stratum": "clean",
+      "expected": [],
+      "predicted": [],
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 63.4,
+      "cost": {
+        "llm_calls": 15,
+        "cache_hits": 0,
+        "input_tokens": 44045,
+        "output_tokens": 223,
+        "llm_seconds": 119.56,
+        "slowest_llm_call_s": 16.48
+      },
+      "findings": []
+    },
+    {
+      "id": "real_python",
+      "stratum": "clean",
+      "expected": [],
+      "predicted": [],
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 34.9,
+      "cost": {
+        "llm_calls": 15,
+        "cache_hits": 0,
+        "input_tokens": 44034,
+        "output_tokens": 225,
+        "llm_seconds": 47.23,
+        "slowest_llm_call_s": 9.69
+      },
+      "findings": []
+    },
+    {
+      "id": "real_govuk",
+      "stratum": "clean",
+      "expected": [],
+      "predicted": [
+        "visual_interference"
+      ],
+      "tp": 0,
+      "fp": 1,
+      "fn": 0,
+      "seconds": 55.8,
+      "cost": {
+        "llm_calls": 16,
+        "cache_hits": 0,
+        "input_tokens": 48124,
+        "output_tokens": 385,
+        "llm_seconds": 75.94,
+        "slowest_llm_call_s": 18.34
+      },
+      "findings": [
+        {
+          "category": "visual_interference",
+          "pattern_type": "misdirected_click",
+          "confidence": 0.9,
+          "evidence": "element: cookie consent banner at top of page | The 'Accept additional cookies' button is green and positioned first, while 'Reject additional cookies' is grey "
+        }
+      ]
+    },
+    {
+      "id": "real_mozilla",
+      "stratum": "clean",
+      "expected": [],
+      "predicted": [],
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 28.9,
+      "cost": {
+        "llm_calls": 15,
+        "cache_hits": 0,
+        "input_tokens": 44474,
+        "output_tokens": 227,
+        "llm_seconds": 45.16,
+        "slowest_llm_call_s": 4.83
+      },
+      "findings": []
+    },
+    {
+      "id": "real_archive",
+      "stratum": "clean",
+      "expected": [],
+      "predicted": [],
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 28.5,
+      "cost": {
+        "llm_calls": 15,
+        "cache_hits": 0,
+        "input_tokens": 45266,
+        "output_tokens": 225,
+        "llm_seconds": 45.5,
+        "slowest_llm_call_s": 7.4
+      },
+      "findings": []
+    },
+    {
+      "id": "real_w3c",
+      "stratum": "clean",
+      "expected": [],
+      "predicted": [],
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 35.7,
+      "cost": {
+        "llm_calls": 15,
+        "cache_hits": 0,
+        "input_tokens": 44639,
+        "output_tokens": 225,
+        "llm_seconds": 54.94,
+        "slowest_llm_call_s": 8.96
+      },
+      "findings": []
+    },
+    {
+      "id": "real_nasa",
+      "stratum": "clean",
+      "expected": [],
+      "predicted": [],
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 37.6,
+      "cost": {
+        "llm_calls": 15,
+        "cache_hits": 0,
+        "input_tokens": 45134,
+        "output_tokens": 278,
+        "llm_seconds": 53.49,
+        "slowest_llm_call_s": 13.58
+      },
+      "findings": []
+    },
+    {
+      "id": "real_mdn",
+      "stratum": "clean",
+      "expected": [],
+      "predicted": [
+        "visual_interference"
+      ],
+      "tp": 0,
+      "fp": 1,
+      "fn": 0,
+      "seconds": 37.3,
+      "cost": {
+        "llm_calls": 17,
+        "cache_hits": 0,
+        "input_tokens": 52413,
+        "output_tokens": 635,
+        "llm_seconds": 56.75,
+        "slowest_llm_call_s": 5.66
+      },
+      "findings": [
+        {
+          "category": "visual_interference",
+          "pattern_type": "disguised_ads",
+          "confidence": 0.95,
+          "evidence": "element: MongoDB banner ad | MongoDB banner ad at top of page with 'Start Building' button, styled as a prominent content block but clearly an advertisement wit"
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "disguised_ads",
+          "confidence": 0.9,
+          "evidence": "element: MongoDB banner ad | MongoDB banner ad at bottom of page with 'Start Building' button, styled similarly to content sections but is an advertisement with"
+        }
+      ]
+    },
+    {
+      "id": "real_osm",
+      "stratum": "clean",
+      "expected": [],
+      "predicted": [],
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 32.1,
+      "cost": {
+        "llm_calls": 16,
+        "cache_hits": 0,
+        "input_tokens": 23086,
+        "output_tokens": 327,
+        "llm_seconds": 51.19,
+        "slowest_llm_call_s": 7.43
+      },
+      "findings": []
+    },
+    {
+      "id": "real_github_docs",
+      "stratum": "clean",
+      "expected": [],
+      "predicted": [],
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 35.6,
+      "cost": {
+        "llm_calls": 17,
+        "cache_hits": 0,
+        "input_tokens": 41224,
+        "output_tokens": 424,
+        "llm_seconds": 65.97,
+        "slowest_llm_call_s": 9.49
+      },
+      "findings": []
+    }
+  ],
+  "tag": "big39-verify2-r2",
+  "ran_at": "2026-11-25T19:26:37",
+  "models": {
+    "vision": "nvidia/nemotron-3.5-super-vl-120b-a12b",
+    "llm": "nvidia/nemotron-3.5-super-vl-120b-a12b"
+  }
+}

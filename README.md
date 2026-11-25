@@ -79,7 +79,7 @@ Small, honest sets: these numbers are a baseline, not a benchmark claim.
 | Eval | Result | Notes |
 |---|---|---|
 | Scoring policy (deterministic, CI gate) | **5 / 5** | was 2 / 5: fail-open, SSL cap, blocklist off-by-one |
-| Vision dark-pattern detection (7 labelled pages, 5 categories) | **P 1.00 · R 0.80 · F1 0.89** | 0 false alarms; positives re-checked before scoring (was P 0.71 · 2 false alarms without it). Same result on 2 runs |
+| Vision dark-pattern detection (39 labelled pages: 29 synthetic + 10 real sites) | **P 0.73–0.75 · R 0.38–0.57 · 0/10 real sites falsely flagged** | positives re-checked before scoring; without it P 0.32 and 5–7 of 10 real sites flagged. Recall is the open weakness. 2 runs, 95 % CIs in the case study |
 | Prompt-injection attack success rate | **1/3 → 0/3** | spotlighting alone left it at 1/3; quarantining flagged fields fixed it |
 | End-to-end on real sites (wikipedia, example.com, 2 small businesses) | **0 / 4 false alarms** | standard audit 768 s → 293 s after concurrent vision (same site, same hour) |
 

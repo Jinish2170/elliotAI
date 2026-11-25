@@ -1010,6 +1010,14 @@ class VisionAgent:
         for findings in await asyncio.gather(*(run_one(*j) for j in jobs)):
             result.dark_patterns.extend(findings)
 
+    @staticmethod
+    def _subtype_def(cat_id: str, pattern_type: str):
+        cat = DARK_PATTERN_TAXONOMY.get(cat_id)
+        for st in (getattr(cat, "sub_types", None) or []):
+            if st.id == pattern_type:
+                return st.name, st.description
+        return None
+
     async def _confirm_finding(self, finding: "DarkPatternFinding", screenshot_path: str, cat_id: str) -> bool:
         """Second look at a positive claim before it reaches the score.
 
@@ -1021,13 +1029,31 @@ class VisionAgent:
         budget = getattr(self, "_nim_budget", None)
         if budget is not None and self._nim.call_count >= budget:
             return True  # no budget left to verify: keep the original verdict
-        prompt = (
-            f"A previous automated check claimed this web page shows the deceptive pattern "
-            f"'{finding.pattern_type}' ({finding.evidence}). Look at the screenshot carefully and "
-            f"independently. Report that pattern ONLY if it is clearly visible and genuinely "
-            f"deceptive to an ordinary user; a normal button, link, banner or ad that is honestly "
-            f"labelled is not a dark pattern. Otherwise return no findings."
-        )
+        # Two measured verifier prompts (39-page eval, 2 runs each):
+        #   strict     : P 0.73-0.75, R 0.38-0.57, real sites clean 10/10 (default)
+        #   definition : P 0.54-0.56, R 0.67 (stable), real sites clean 8/10
+        # A false accusation of a legitimate site is the costliest error for a
+        # trust auditor, so strict is the default. See case study F20.
+        from elliot.config import settings as _s
+        if getattr(_s, "VISION_VERIFY_MODE", "strict") == "definition":
+            sub = self._subtype_def(cat_id, finding.pattern_type)
+            definition = f"{sub[0]}: {sub[1]}" if sub else finding.pattern_type.replace("_", " ")
+            prompt = (
+                f"Check this web page screenshot for one specific deceptive design pattern.\n"
+                f"Pattern definition - {definition}\n"
+                f"An earlier automated pass reported it here: \"{finding.evidence[:300]}\"\n"
+                f"Look at the screenshot yourself. If the page shows this pattern as defined, report it "
+                f"(pattern_type '{finding.pattern_type}') with the element and your evidence. "
+                f"If you cannot see it on the page, return no findings."
+            )
+        else:
+            prompt = (
+                f"A previous automated check claimed this web page shows the deceptive pattern "
+                f"'{finding.pattern_type}' ({finding.evidence}). Look at the screenshot carefully and "
+                f"independently. Report that pattern ONLY if it is clearly visible and genuinely "
+                f"deceptive to an ordinary user; a normal button, link, banner or ad that is honestly "
+                f"labelled is not a dark pattern. Otherwise return no findings."
+            )
         try:
             v = await self._structured_vlm(image_path=screenshot_path, prompt=prompt,
                                            category_hint=f"{cat_id}:verify")

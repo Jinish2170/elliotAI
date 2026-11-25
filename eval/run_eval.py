@@ -91,15 +91,27 @@ async def screenshot_all(files: list[str], base: str, out: Path) -> dict[str, tu
         pages = []
         for f in files:  # load all, then share one wait for the temporal pair
             page = await browser.new_page(viewport={"width": 1280, "height": 900})
-            await page.goto(f"{base}/{f}", wait_until="load")
-            await page.wait_for_timeout(1000)
-            t0 = out / f"{Path(f).stem}_t0.jpg"
+            is_url = f.startswith("http")
+            try:
+                # Real sites (cases with "url"): bounded wait; a site that will
+                # not load is skipped and reported, not allowed to crash the run.
+                await page.goto(f if is_url else f"{base}/{f}",
+                                wait_until="domcontentloaded" if is_url else "load",
+                                timeout=30000 if is_url else 30000)
+            except Exception as e:
+                print(f"[vision] could not load {f}: {type(e).__name__}")
+                await page.close()
+                continue
+            await page.wait_for_timeout(2500 if is_url else 1000)
+            stem = re.sub(r"[^a-z0-9]+", "_", f.lower())[:60] if is_url else Path(f).stem
+            t0 = out / f"{stem}_t0.jpg"
             await page.screenshot(path=str(t0), type="jpeg", quality=85)
             pages.append((f, page, t0))
         await asyncio.sleep(delay)
         for f, page, t0 in pages:
-            td = out / f"{Path(f).stem}_t{delay}.jpg"
-            full = out / f"{Path(f).stem}_full.jpg"
+            stem = t0.name[: -len("_t0.jpg")]
+            td = out / f"{stem}_t{delay}.jpg"
+            full = out / f"{stem}_full.jpg"
             await page.screenshot(path=str(td), type="jpeg", quality=85)
             await page.screenshot(path=str(full), full_page=True, type="jpeg", quality=85)
             shots[f] = ([str(t0), str(td), str(full)], ["t0", f"t{delay}", "fullpage"])
@@ -170,11 +182,15 @@ async def suite_vision() -> dict:
     cases = CASES["vision"]
     rows, per_cat = [], {}
     with FixtureServer() as srv, tempfile.TemporaryDirectory() as tmp:
-        shots = await screenshot_all([c["file"] for c in cases], srv.base, Path(tmp))
+        key = lambda c: c.get("url") or c["file"]  # noqa: E731
+        shots = await screenshot_all([key(c) for c in cases], srv.base, Path(tmp))
+        skipped = [c["id"] for c in cases if key(c) not in shots]
         for c in cases:
+            if key(c) not in shots:
+                continue
             t0 = time.time()
             with case_span(c["id"], "vision") as sp:
-                pred, found = await vision_categories(shots[c["file"]])
+                pred, found = await vision_categories(shots[key(c)])
                 cost = span_summary(sp)
             exp, ok = set(c["expected"]), set(c["also_ok"])
             tp = exp & pred
@@ -194,9 +210,14 @@ async def suite_vision() -> dict:
     fn = sum(r["fn"] for r in rows)
     clean = [r for r in rows if r["stratum"] == "clean"]
     clean_ok = sum(1 for r in clean if not r["predicted"])
+    micro = prf(tp, fp, fn)
+    # Small sets: report 95% Wilson intervals, not just point estimates.
+    micro["precision_ci95"] = [round(x, 3) for x in wilson(tp, tp + fp)] if tp + fp else None
+    micro["recall_ci95"] = [round(x, 3) for x in wilson(tp, tp + fn)] if tp + fn else None
     return {
         "suite": "vision",
-        "micro": prf(tp, fp, fn),
+        "skipped": skipped,
+        "micro": micro,
         "per_category": {k: prf(*v) for k, v in sorted(per_cat.items())},
         "clean_pages_without_false_alarm": f"{clean_ok}/{len(clean)}",
         "n_cases": len(rows),

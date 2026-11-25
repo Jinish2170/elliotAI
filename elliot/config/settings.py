@@ -141,6 +141,8 @@ SCOUT_PREFETCH_LINKS: int = int(os.getenv("SCOUT_PREFETCH_LINKS", "3"))
 VISION_CONCURRENCY: int = int(os.getenv("VISION_CONCURRENCY", "4"))
 # Re-check each positive vision finding once; drop it if not reproduced.
 VISION_VERIFY_POSITIVES: bool = os.getenv("VISION_VERIFY_POSITIVES", "true").lower() == "true"
+# "strict" (default, fewest false accusations) or "definition" (higher, stabler recall). Case study F20.
+VISION_VERIFY_MODE: str = os.getenv("VISION_VERIFY_MODE", "strict").lower()
 CONFIDENCE_THRESHOLD: float = float(os.getenv("CONFIDENCE_THRESHOLD", "0.6"))
 MIN_EVIDENCE_COUNT: int = int(os.getenv("MIN_EVIDENCE_COUNT", "3"))
 

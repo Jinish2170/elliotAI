@@ -1,0 +1,1010 @@
+{
+  "suite": "vision",
+  "skipped": [],
+  "micro": {
+    "precision": 0.727,
+    "recall": 0.381,
+    "f1": 0.5,
+    "tp": 8,
+    "fp": 3,
+    "fn": 13,
+    "precision_ci95": [
+      0.434,
+      0.903
+    ],
+    "recall_ci95": [
+      0.208,
+      0.591
+    ]
+  },
+  "per_category": {
+    "false_urgency": {
+      "precision": 0.667,
+      "recall": 0.5,
+      "f1": 0.571,
+      "tp": 2,
+      "fp": 1,
+      "fn": 2
+    },
+    "forced_continuity": {
+      "precision": 1.0,
+      "recall": 0.4,
+      "f1": 0.571,
+      "tp": 2,
+      "fp": 0,
+      "fn": 3
+    },
+    "sneaking": {
+      "precision": 1.0,
+      "recall": 0.25,
+      "f1": 0.4,
+      "tp": 1,
+      "fp": 0,
+      "fn": 3
+    },
+    "social_engineering": {
+      "precision": 1.0,
+      "recall": 0.5,
+      "f1": 0.667,
+      "tp": 2,
+      "fp": 0,
+      "fn": 2
+    },
+    "visual_interference": {
+      "precision": 0.333,
+      "recall": 0.25,
+      "f1": 0.286,
+      "tp": 1,
+      "fp": 2,
+      "fn": 3
+    }
+  },
+  "clean_pages_without_false_alarm": "18/18",
+  "n_cases": 39,
+  "rows": [
+    {
+      "id": "clean_basic",
+      "stratum": "clean",
+      "expected": [],
+      "predicted": [],
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 33.0,
+      "cost": {
+        "llm_calls": 20,
+        "cache_hits": 0,
+        "input_tokens": 28800,
+        "output_tokens": 627,
+        "llm_seconds": 34.95,
+        "slowest_llm_call_s": 3.01
+      },
+      "findings": []
+    },
+    {
+      "id": "clean_portfolio",
+      "stratum": "clean",
+      "expected": [],
+      "predicted": [],
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 19.9,
+      "cost": {
+        "llm_calls": 15,
+        "cache_hits": 0,
+        "input_tokens": 21594,
+        "output_tokens": 223,
+        "llm_seconds": 20.3,
+        "slowest_llm_call_s": 1.64
+      },
+      "findings": []
+    },
+    {
+      "id": "dp_fake_countdown",
+      "stratum": "dark_pattern",
+      "expected": [
+        "false_urgency"
+      ],
+      "predicted": [
+        "false_urgency"
+      ],
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 23.5,
+      "cost": {
+        "llm_calls": 16,
+        "cache_hits": 0,
+        "input_tokens": 23059,
+        "output_tokens": 461,
+        "llm_seconds": 25.31,
+        "slowest_llm_call_s": 3.19
+      },
+      "findings": [
+        {
+          "category": "false_urgency",
+          "pattern_type": "fake_scarcity",
+          "confidence": 0.7,
+          "evidence": "Scarcity indicator shows 'Only 2 left in stock! 37 people are viewing this right now.' at both time points \u2014 static value suggests fake scarcity messaging"
+        }
+      ]
+    },
+    {
+      "id": "dp_guilt_tripping",
+      "stratum": "dark_pattern",
+      "expected": [
+        "forced_continuity"
+      ],
+      "predicted": [
+        "forced_continuity",
+        "visual_interference"
+      ],
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 25.6,
+      "cost": {
+        "llm_calls": 19,
+        "cache_hits": 0,
+        "input_tokens": 27461,
+        "output_tokens": 990,
+        "llm_seconds": 32.74,
+        "slowest_llm_call_s": 3.9
+      },
+      "findings": [
+        {
+          "category": "visual_interference",
+          "pattern_type": "misdirected_click",
+          "confidence": 0.9,
+          "evidence": "element: No thanks link with guilt-inducing text below the green button | The 'No thanks' link uses guilt-inducing language ('I'd rather pay full price because "
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.95,
+          "evidence": "element: Opt-out link text below the green button inside the modal dialog box. | The link 'No thanks, I'd rather pay full price because I don't like saving mone"
+        },
+        {
+          "category": "forced_continuity",
+          "pattern_type": "guilt_tripping",
+          "confidence": 0.95,
+          "evidence": "element: link text below the green button | The link text 'No thanks, I'd rather pay full price because I don't like saving money' uses sarcasm and self-depreca"
+        }
+      ]
+    },
+    {
+      "id": "dp_preselected_addons",
+      "stratum": "dark_pattern",
+      "expected": [
+        "sneaking"
+      ],
+      "predicted": [
+        "sneaking"
+      ],
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 24.2,
+      "cost": {
+        "llm_calls": 20,
+        "cache_hits": 0,
+        "input_tokens": 28905,
+        "output_tokens": 821,
+        "llm_seconds": 28.65,
+        "slowest_llm_call_s": 2.79
+      },
+      "findings": [
+        {
+          "category": "sneaking",
+          "pattern_type": "pre_selected_options",
+          "confidence": 0.95,
+          "evidence": "element: checkboxes | Three checkboxes are visibly pre-checked with blue checkmarks: 'Add travel insurance (\u20b9899)', 'Priority boarding (\u20b9499)', and 'Subscribe t"
+        }
+      ]
+    },
+    {
+      "id": "dp_fake_badges",
+      "stratum": "dark_pattern",
+      "expected": [
+        "social_engineering"
+      ],
+      "predicted": [
+        "social_engineering"
+      ],
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 29.2,
+      "cost": {
+        "llm_calls": 17,
+        "cache_hits": 0,
+        "input_tokens": 24540,
+        "output_tokens": 640,
+        "llm_seconds": 37.43,
+        "slowest_llm_call_s": 5.42
+      },
+      "findings": [
+        {
+          "category": "social_engineering",
+          "pattern_type": "fake_badges",
+          "confidence": 0.95,
+          "evidence": "element: badge row | The page displays four badge-like elements: 'Norton SECURED', 'McAfee SECURE', 'Verified by Visa', and 'SEC Approved'. These are presented "
+        },
+        {
+          "category": "social_engineering",
+          "pattern_type": "fake_authority",
+          "confidence": 0.95,
+          "evidence": "element: text and badge elements near top of page | Page displays 'As seen on: Forbes \u00b7 CNBC \u00b7 Bloomberg' without links or logos, and four unverified security b"
+        }
+      ]
+    },
+    {
+      "id": "dp_hidden_unsubscribe",
+      "stratum": "dark_pattern",
+      "expected": [
+        "visual_interference"
+      ],
+      "predicted": [
+        "forced_continuity"
+      ],
+      "tp": 0,
+      "fp": 0,
+      "fn": 1,
+      "seconds": 24.2,
+      "cost": {
+        "llm_calls": 19,
+        "cache_hits": 0,
+        "input_tokens": 27490,
+        "output_tokens": 755,
+        "llm_seconds": 30.18,
+        "slowest_llm_call_s": 3.28
+      },
+      "findings": [
+        {
+          "category": "forced_continuity",
+          "pattern_type": "guilt_tripping",
+          "confidence": 0.95,
+          "evidence": "element: link text below the upgrade button | The link text 'No thanks, I prefer limited features and a worse experience' uses self-deprecating framing to disco"
+        }
+      ]
+    },
+    {
+      "id": "dp_vi_disguised_ad",
+      "stratum": "dark_pattern",
+      "expected": [
+        "visual_interference"
+      ],
+      "predicted": [],
+      "tp": 0,
+      "fp": 0,
+      "fn": 1,
+      "seconds": 23.4,
+      "cost": {
+        "llm_calls": 20,
+        "cache_hits": 0,
+        "input_tokens": 28833,
+        "output_tokens": 661,
+        "llm_seconds": 28.0,
+        "slowest_llm_call_s": 2.09
+      },
+      "findings": []
+    },
+    {
+      "id": "dp_vi_trick_question",
+      "stratum": "dark_pattern",
+      "expected": [
+        "visual_interference"
+      ],
+      "predicted": [
+        "visual_interference"
+      ],
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 33.2,
+      "cost": {
+        "llm_calls": 21,
+        "cache_hits": 0,
+        "input_tokens": 30248,
+        "output_tokens": 783,
+        "llm_seconds": 36.74,
+        "slowest_llm_call_s": 4.23
+      },
+      "findings": [
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.9,
+          "evidence": "element: Pre-checked opt-out checkbox for partner offers | The checkbox labeled 'Unclick this box if you would prefer not to stop receiving offers from our part"
+        }
+      ]
+    },
+    {
+      "id": "dp_vi_cookie_hierarchy",
+      "stratum": "dark_pattern",
+      "expected": [
+        "visual_interference"
+      ],
+      "predicted": [],
+      "tp": 0,
+      "fp": 0,
+      "fn": 1,
+      "seconds": 24.0,
+      "cost": {
+        "llm_calls": 19,
+        "cache_hits": 0,
+        "input_tokens": 27355,
+        "output_tokens": 542,
+        "llm_seconds": 27.69,
+        "slowest_llm_call_s": 2.59
+      },
+      "findings": []
+    },
+    {
+      "id": "dp_fu_hotel_scarcity",
+      "stratum": "dark_pattern",
+      "expected": [
+        "false_urgency"
+      ],
+      "predicted": [
+        "false_urgency"
+      ],
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 19.9,
+      "cost": {
+        "llm_calls": 16,
+        "cache_hits": 0,
+        "input_tokens": 23030,
+        "output_tokens": 319,
+        "llm_seconds": 21.65,
+        "slowest_llm_call_s": 1.71
+      },
+      "findings": [
+        {
+          "category": "false_urgency",
+          "pattern_type": "fake_scarcity",
+          "confidence": 0.7,
+          "evidence": "Scarcity indicator shows 'Only 1 room left at this price!' at both time points \u2014 static value suggests fake scarcity messaging"
+        }
+      ]
+    },
+    {
+      "id": "dp_fu_expiring_coupon",
+      "stratum": "dark_pattern",
+      "expected": [
+        "false_urgency"
+      ],
+      "predicted": [],
+      "tp": 0,
+      "fp": 0,
+      "fn": 1,
+      "seconds": 33.3,
+      "cost": {
+        "llm_calls": 21,
+        "cache_hits": 0,
+        "input_tokens": 30109,
+        "output_tokens": 755,
+        "llm_seconds": 28.76,
+        "slowest_llm_call_s": 4.2
+      },
+      "findings": []
+    },
+    {
+      "id": "dp_fu_live_activity",
+      "stratum": "dark_pattern",
+      "expected": [
+        "false_urgency"
+      ],
+      "predicted": [],
+      "tp": 0,
+      "fp": 0,
+      "fn": 1,
+      "seconds": 25.0,
+      "cost": {
+        "llm_calls": 18,
+        "cache_hits": 0,
+        "input_tokens": 25932,
+        "output_tokens": 490,
+        "llm_seconds": 27.51,
+        "slowest_llm_call_s": 3.53
+      },
+      "findings": []
+    },
+    {
+      "id": "dp_fc_trial_autorenew",
+      "stratum": "dark_pattern",
+      "expected": [
+        "forced_continuity"
+      ],
+      "predicted": [
+        "sneaking"
+      ],
+      "tp": 0,
+      "fp": 0,
+      "fn": 1,
+      "seconds": 23.7,
+      "cost": {
+        "llm_calls": 17,
+        "cache_hits": 0,
+        "input_tokens": 24610,
+        "output_tokens": 652,
+        "llm_seconds": 25.44,
+        "slowest_llm_call_s": 2.27
+      },
+      "findings": [
+        {
+          "category": "sneaking",
+          "pattern_type": "hidden_subscription",
+          "confidence": 0.95,
+          "evidence": "element: free trial offer card with card input and fine print renewal terms | Page headline 'Watch free for 7 days' with blue 'Start FREE trial' button. Card nu"
+        }
+      ]
+    },
+    {
+      "id": "dp_fc_cancel_maze",
+      "stratum": "dark_pattern",
+      "expected": [
+        "forced_continuity"
+      ],
+      "predicted": [
+        "visual_interference"
+      ],
+      "tp": 0,
+      "fp": 0,
+      "fn": 1,
+      "seconds": 31.3,
+      "cost": {
+        "llm_calls": 20,
+        "cache_hits": 0,
+        "input_tokens": 28897,
+        "output_tokens": 859,
+        "llm_seconds": 38.22,
+        "slowest_llm_call_s": 5.9
+      },
+      "findings": [
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.95,
+          "evidence": "element: Text instructing users to call retention team or visit in person to end membership | The text 'To end your membership, please call our retention team o"
+        }
+      ]
+    },
+    {
+      "id": "dp_fc_forced_account",
+      "stratum": "dark_pattern",
+      "expected": [
+        "forced_continuity"
+      ],
+      "predicted": [],
+      "tp": 0,
+      "fp": 0,
+      "fn": 1,
+      "seconds": 26.6,
+      "cost": {
+        "llm_calls": 17,
+        "cache_hits": 0,
+        "input_tokens": 24474,
+        "output_tokens": 383,
+        "llm_seconds": 27.19,
+        "slowest_llm_call_s": 5.19
+      },
+      "findings": []
+    },
+    {
+      "id": "dp_fc_confirmshaming",
+      "stratum": "dark_pattern",
+      "expected": [
+        "forced_continuity"
+      ],
+      "predicted": [
+        "forced_continuity"
+      ],
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 29.0,
+      "cost": {
+        "llm_calls": 20,
+        "cache_hits": 0,
+        "input_tokens": 28793,
+        "output_tokens": 697,
+        "llm_seconds": 36.48,
+        "slowest_llm_call_s": 5.16
+      },
+      "findings": [
+        {
+          "category": "forced_continuity",
+          "pattern_type": "guilt_tripping",
+          "confidence": 0.95,
+          "evidence": "element: dismiss link in modal | The dismiss link text 'No thanks, I enjoy wasting money on bad laptops' frames declining the offer as a foolish choice, using s"
+        }
+      ]
+    },
+    {
+      "id": "dp_sn_drip_pricing",
+      "stratum": "dark_pattern",
+      "expected": [
+        "sneaking"
+      ],
+      "predicted": [],
+      "tp": 0,
+      "fp": 0,
+      "fn": 1,
+      "seconds": 25.1,
+      "cost": {
+        "llm_calls": 18,
+        "cache_hits": 0,
+        "input_tokens": 25893,
+        "output_tokens": 443,
+        "llm_seconds": 27.1,
+        "slowest_llm_call_s": 3.97
+      },
+      "findings": []
+    },
+    {
+      "id": "dp_sn_hidden_subscription",
+      "stratum": "dark_pattern",
+      "expected": [
+        "sneaking"
+      ],
+      "predicted": [],
+      "tp": 0,
+      "fp": 0,
+      "fn": 1,
+      "seconds": 22.7,
+      "cost": {
+        "llm_calls": 19,
+        "cache_hits": 0,
+        "input_tokens": 27399,
+        "output_tokens": 583,
+        "llm_seconds": 25.47,
+        "slowest_llm_call_s": 2.95
+      },
+      "findings": []
+    },
+    {
+      "id": "dp_sn_bait_switch",
+      "stratum": "dark_pattern",
+      "expected": [
+        "sneaking"
+      ],
+      "predicted": [
+        "false_urgency"
+      ],
+      "tp": 0,
+      "fp": 1,
+      "fn": 1,
+      "seconds": 26.5,
+      "cost": {
+        "llm_calls": 20,
+        "cache_hits": 0,
+        "input_tokens": 28847,
+        "output_tokens": 770,
+        "llm_seconds": 32.03,
+        "slowest_llm_call_s": 3.51
+      },
+      "findings": [
+        {
+          "category": "false_urgency",
+          "pattern_type": "fake_scarcity",
+          "confidence": 0.7,
+          "evidence": "Scarcity indicator shows 'Sorry, the \u20b91,999 model is out of stock in your area.' at both time points \u2014 static value suggests fake scarcity messaging"
+        }
+      ]
+    },
+    {
+      "id": "dp_se_fake_reviews",
+      "stratum": "dark_pattern",
+      "expected": [
+        "social_engineering"
+      ],
+      "predicted": [],
+      "tp": 0,
+      "fp": 0,
+      "fn": 1,
+      "seconds": 36.2,
+      "cost": {
+        "llm_calls": 20,
+        "cache_hits": 0,
+        "input_tokens": 28841,
+        "output_tokens": 670,
+        "llm_seconds": 36.13,
+        "slowest_llm_call_s": 5.56
+      },
+      "findings": []
+    },
+    {
+      "id": "dp_se_fake_authority",
+      "stratum": "dark_pattern",
+      "expected": [
+        "social_engineering"
+      ],
+      "predicted": [
+        "social_engineering",
+        "visual_interference"
+      ],
+      "tp": 1,
+      "fp": 1,
+      "fn": 0,
+      "seconds": 31.3,
+      "cost": {
+        "llm_calls": 23,
+        "cache_hits": 0,
+        "input_tokens": 33276,
+        "output_tokens": 1410,
+        "llm_seconds": 36.61,
+        "slowest_llm_call_s": 3.77
+      },
+      "findings": [
+        {
+          "category": "visual_interference",
+          "pattern_type": "disguised_ads",
+          "confidence": 0.95,
+          "evidence": "element: Certification badges: 'WHO APPROVED', 'RECOMMENDED BY NASA', 'GOVERNMENT CERTIFIED' | Three badge-like elements styled as certifications ('WHO APPROVED"
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "disguised_ads",
+          "confidence": 0.9,
+          "evidence": "element: Sensational claim text: 'Doctors hate this! Clinically proven to cure all infections in 24 hours.' | The text 'Doctors hate this! Clinically proven to "
+        },
+        {
+          "category": "social_engineering",
+          "pattern_type": "fake_badges",
+          "confidence": 0.95,
+          "evidence": "element: badge elements | Three badge-like elements are present: 'WHO APPROVED', 'RECOMMENDED BY NASA', and 'GOVERNMENT CERTIFIED'. These are not recognized cer"
+        },
+        {
+          "category": "social_engineering",
+          "pattern_type": "fake_authority",
+          "confidence": 0.95,
+          "evidence": "element: badges under product title | Three badges claim 'WHO APPROVED', 'RECOMMENDED BY NASA', and 'GOVERNMENT CERTIFIED' with no links or verifiable proof vis"
+        }
+      ]
+    },
+    {
+      "id": "dp_se_fake_counters",
+      "stratum": "dark_pattern",
+      "expected": [
+        "social_engineering"
+      ],
+      "predicted": [
+        "visual_interference"
+      ],
+      "tp": 0,
+      "fp": 1,
+      "fn": 1,
+      "seconds": 21.9,
+      "cost": {
+        "llm_calls": 17,
+        "cache_hits": 0,
+        "input_tokens": 24526,
+        "output_tokens": 559,
+        "llm_seconds": 22.64,
+        "slowest_llm_call_s": 1.85
+      },
+      "findings": [
+        {
+          "category": "visual_interference",
+          "pattern_type": "disguised_ads",
+          "confidence": 0.95,
+          "evidence": "element: Central promotional card with earnings claim and Join free button | The central card with headline 'Earn \u20b950,000 a day from home', statistics '12,84,79"
+        }
+      ]
+    },
+    {
+      "id": "clean_honest_sale",
+      "stratum": "clean",
+      "expected": [],
+      "predicted": [],
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 25.1,
+      "cost": {
+        "llm_calls": 16,
+        "cache_hits": 0,
+        "input_tokens": 23069,
+        "output_tokens": 339,
+        "llm_seconds": 26.03,
+        "slowest_llm_call_s": 6.52
+      },
+      "findings": []
+    },
+    {
+      "id": "clean_transparent_checkout",
+      "stratum": "clean",
+      "expected": [],
+      "predicted": [],
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 22.4,
+      "cost": {
+        "llm_calls": 17,
+        "cache_hits": 0,
+        "input_tokens": 24508,
+        "output_tokens": 419,
+        "llm_seconds": 23.23,
+        "slowest_llm_call_s": 1.79
+      },
+      "findings": []
+    },
+    {
+      "id": "clean_saas_pricing",
+      "stratum": "clean",
+      "expected": [],
+      "predicted": [],
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 25.7,
+      "cost": {
+        "llm_calls": 20,
+        "cache_hits": 0,
+        "input_tokens": 28891,
+        "output_tokens": 716,
+        "llm_seconds": 32.78,
+        "slowest_llm_call_s": 2.51
+      },
+      "findings": []
+    },
+    {
+      "id": "clean_balanced_cookies",
+      "stratum": "clean",
+      "expected": [],
+      "predicted": [],
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 24.1,
+      "cost": {
+        "llm_calls": 19,
+        "cache_hits": 0,
+        "input_tokens": 27399,
+        "output_tokens": 586,
+        "llm_seconds": 28.42,
+        "slowest_llm_call_s": 2.34
+      },
+      "findings": []
+    },
+    {
+      "id": "clean_labelled_ad",
+      "stratum": "clean",
+      "expected": [],
+      "predicted": [],
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 23.8,
+      "cost": {
+        "llm_calls": 17,
+        "cache_hits": 0,
+        "input_tokens": 24523,
+        "output_tokens": 437,
+        "llm_seconds": 24.66,
+        "slowest_llm_call_s": 2.35
+      },
+      "findings": []
+    },
+    {
+      "id": "clean_real_reviews",
+      "stratum": "clean",
+      "expected": [],
+      "predicted": [],
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 23.5,
+      "cost": {
+        "llm_calls": 16,
+        "cache_hits": 0,
+        "input_tokens": 23030,
+        "output_tokens": 301,
+        "llm_seconds": 24.83,
+        "slowest_llm_call_s": 4.44
+      },
+      "findings": []
+    },
+    {
+      "id": "real_wikipedia",
+      "stratum": "clean",
+      "expected": [],
+      "predicted": [],
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 35.3,
+      "cost": {
+        "llm_calls": 15,
+        "cache_hits": 0,
+        "input_tokens": 44045,
+        "output_tokens": 223,
+        "llm_seconds": 72.14,
+        "slowest_llm_call_s": 7.67
+      },
+      "findings": []
+    },
+    {
+      "id": "real_python",
+      "stratum": "clean",
+      "expected": [],
+      "predicted": [],
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 26.6,
+      "cost": {
+        "llm_calls": 15,
+        "cache_hits": 0,
+        "input_tokens": 45299,
+        "output_tokens": 226,
+        "llm_seconds": 34.05,
+        "slowest_llm_call_s": 2.97
+      },
+      "findings": []
+    },
+    {
+      "id": "real_govuk",
+      "stratum": "clean",
+      "expected": [],
+      "predicted": [],
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 28.9,
+      "cost": {
+        "llm_calls": 17,
+        "cache_hits": 0,
+        "input_tokens": 51615,
+        "output_tokens": 381,
+        "llm_seconds": 42.01,
+        "slowest_llm_call_s": 3.44
+      },
+      "findings": []
+    },
+    {
+      "id": "real_mozilla",
+      "stratum": "clean",
+      "expected": [],
+      "predicted": [],
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 28.8,
+      "cost": {
+        "llm_calls": 15,
+        "cache_hits": 0,
+        "input_tokens": 44474,
+        "output_tokens": 227,
+        "llm_seconds": 41.51,
+        "slowest_llm_call_s": 4.28
+      },
+      "findings": []
+    },
+    {
+      "id": "real_archive",
+      "stratum": "clean",
+      "expected": [],
+      "predicted": [],
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 24.1,
+      "cost": {
+        "llm_calls": 15,
+        "cache_hits": 0,
+        "input_tokens": 45365,
+        "output_tokens": 224,
+        "llm_seconds": 31.87,
+        "slowest_llm_call_s": 2.75
+      },
+      "findings": []
+    },
+    {
+      "id": "real_w3c",
+      "stratum": "clean",
+      "expected": [],
+      "predicted": [],
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 27.6,
+      "cost": {
+        "llm_calls": 15,
+        "cache_hits": 0,
+        "input_tokens": 44639,
+        "output_tokens": 225,
+        "llm_seconds": 39.93,
+        "slowest_llm_call_s": 4.6
+      },
+      "findings": []
+    },
+    {
+      "id": "real_nasa",
+      "stratum": "clean",
+      "expected": [],
+      "predicted": [],
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 25.8,
+      "cost": {
+        "llm_calls": 15,
+        "cache_hits": 0,
+        "input_tokens": 45134,
+        "output_tokens": 284,
+        "llm_seconds": 36.14,
+        "slowest_llm_call_s": 3.13
+      },
+      "findings": []
+    },
+    {
+      "id": "real_mdn",
+      "stratum": "clean",
+      "expected": [],
+      "predicted": [],
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 40.3,
+      "cost": {
+        "llm_calls": 17,
+        "cache_hits": 0,
+        "input_tokens": 52358,
+        "output_tokens": 369,
+        "llm_seconds": 82.18,
+        "slowest_llm_call_s": 13.87
+      },
+      "findings": []
+    },
+    {
+      "id": "real_osm",
+      "stratum": "clean",
+      "expected": [],
+      "predicted": [],
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 35.0,
+      "cost": {
+        "llm_calls": 20,
+        "cache_hits": 0,
+        "input_tokens": 28752,
+        "output_tokens": 577,
+        "llm_seconds": 45.08,
+        "slowest_llm_call_s": 3.21
+      },
+      "findings": []
+    },
+    {
+      "id": "real_github_docs",
+      "stratum": "clean",
+      "expected": [],
+      "predicted": [],
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 29.4,
+      "cost": {
+        "llm_calls": 18,
+        "cache_hits": 0,
+        "input_tokens": 43817,
+        "output_tokens": 443,
+        "llm_seconds": 40.6,
+        "slowest_llm_call_s": 3.82
+      },
+      "findings": []
+    }
+  ],
+  "tag": "big39-verify-r1",
+  "ran_at": "2026-11-25T17:25:07",
+  "models": {
+    "vision": "nvidia/nemotron-3.5-super-vl-120b-a12b",
+    "llm": "nvidia/nemotron-3.5-super-vl-120b-a12b"
+  }
+}

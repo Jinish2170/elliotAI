@@ -1,0 +1,1638 @@
+{
+  "suite": "vision",
+  "skipped": [],
+  "micro": {
+    "precision": 0.333,
+    "recall": 0.762,
+    "f1": 0.464,
+    "tp": 16,
+    "fp": 32,
+    "fn": 5,
+    "precision_ci95": [
+      0.217,
+      0.475
+    ],
+    "recall_ci95": [
+      0.549,
+      0.894
+    ]
+  },
+  "per_category": {
+    "false_urgency": {
+      "precision": 0.75,
+      "recall": 0.75,
+      "f1": 0.75,
+      "tp": 3,
+      "fp": 1,
+      "fn": 1
+    },
+    "forced_continuity": {
+      "precision": 0.75,
+      "recall": 0.6,
+      "f1": 0.667,
+      "tp": 3,
+      "fp": 1,
+      "fn": 2
+    },
+    "sneaking": {
+      "precision": 0.375,
+      "recall": 0.75,
+      "f1": 0.5,
+      "tp": 3,
+      "fp": 5,
+      "fn": 1
+    },
+    "social_engineering": {
+      "precision": 0.75,
+      "recall": 0.75,
+      "f1": 0.75,
+      "tp": 3,
+      "fp": 1,
+      "fn": 1
+    },
+    "visual_interference": {
+      "precision": 0.143,
+      "recall": 1.0,
+      "f1": 0.25,
+      "tp": 4,
+      "fp": 24,
+      "fn": 0
+    }
+  },
+  "clean_pages_without_false_alarm": "4/18",
+  "n_cases": 39,
+  "rows": [
+    {
+      "id": "clean_basic",
+      "stratum": "clean",
+      "expected": [],
+      "predicted": [
+        "visual_interference"
+      ],
+      "tp": 0,
+      "fp": 1,
+      "fn": 0,
+      "seconds": 28.6,
+      "cost": {
+        "llm_calls": 15,
+        "cache_hits": 0,
+        "input_tokens": 21594,
+        "output_tokens": 584,
+        "llm_seconds": 25.16,
+        "slowest_llm_call_s": 3.02
+      },
+      "findings": [
+        {
+          "category": "visual_interference",
+          "pattern_type": "misdirected_click",
+          "confidence": 0.95,
+          "evidence": "element: Add to Cart button vs Save for Later button | The 'Add to Cart' button is green and significantly more prominent than the 'Save for Later' button, whic"
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.9,
+          "evidence": "element: Unsubscribe link in footer navigation bar | The 'Unsubscribe' link is located in the footer among other legal links, in small gray text, making it less"
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.85,
+          "evidence": "element: Unsubscribe link text styling | The 'Unsubscribe' link appears in light gray text (#666 or similar) against white background, creating low contrast com"
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.8,
+          "evidence": "element: Unsubscribe link font size | The footer links including 'Unsubscribe' appear to use a smaller font size than main content text, estimated around 12-14p"
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.75,
+          "evidence": "element: Unsubscribe link position in page footer | The 'Unsubscribe' link is positioned at the bottom of the page in the footer, separated from main content an"
+        }
+      ]
+    },
+    {
+      "id": "clean_portfolio",
+      "stratum": "clean",
+      "expected": [],
+      "predicted": [],
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 19.8,
+      "cost": {
+        "llm_calls": 15,
+        "cache_hits": 0,
+        "input_tokens": 21594,
+        "output_tokens": 222,
+        "llm_seconds": 20.05,
+        "slowest_llm_call_s": 1.64
+      },
+      "findings": []
+    },
+    {
+      "id": "dp_fake_countdown",
+      "stratum": "dark_pattern",
+      "expected": [
+        "false_urgency"
+      ],
+      "predicted": [
+        "false_urgency",
+        "sneaking"
+      ],
+      "tp": 1,
+      "fp": 1,
+      "fn": 0,
+      "seconds": 20.0,
+      "cost": {
+        "llm_calls": 15,
+        "cache_hits": 0,
+        "input_tokens": 21594,
+        "output_tokens": 426,
+        "llm_seconds": 20.92,
+        "slowest_llm_call_s": 1.79
+      },
+      "findings": [
+        {
+          "category": "sneaking",
+          "pattern_type": "hidden_costs",
+          "confidence": 0.9,
+          "evidence": "element: Wireless Earbuds Pro \u2014 \u20b99,999 \u20b9999 | Only product price \u20b9999 is shown; no shipping, tax, or additional fees are visible on this page."
+        },
+        {
+          "category": "false_urgency",
+          "pattern_type": "fake_scarcity",
+          "confidence": 0.7,
+          "evidence": "Scarcity indicator shows 'Only 2 left in stock! 37 people are viewing this right now.' at both time points \u2014 static value suggests fake scarcity messaging"
+        }
+      ]
+    },
+    {
+      "id": "dp_guilt_tripping",
+      "stratum": "dark_pattern",
+      "expected": [
+        "forced_continuity"
+      ],
+      "predicted": [
+        "forced_continuity",
+        "visual_interference"
+      ],
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 20.2,
+      "cost": {
+        "llm_calls": 15,
+        "cache_hits": 0,
+        "input_tokens": 21594,
+        "output_tokens": 683,
+        "llm_seconds": 22.34,
+        "slowest_llm_call_s": 3.78
+      },
+      "findings": [
+        {
+          "category": "visual_interference",
+          "pattern_type": "misdirected_click",
+          "confidence": 0.95,
+          "evidence": "element: YES, SEND MY DISCOUNT button vs 'No thanks, I'd rather pay full price because I don't like saving money' text link | The green button is significantly "
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.95,
+          "evidence": "element: Opt-out link below the main button in the popup modal | The link 'No thanks, I'd rather pay full price because I don't like saving money' is styled in "
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.9,
+          "evidence": "element: Opt-out link text | The text 'No thanks, I'd rather pay full price because I don't like saving money' appears to be a clickable link but is rendered in"
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.85,
+          "evidence": "element: Positioning of the opt-out link | The opt-out link is placed directly beneath the primary action button in a way that makes it secondary and easy to ov"
+        },
+        {
+          "category": "forced_continuity",
+          "pattern_type": "guilt_tripping",
+          "confidence": 0.95,
+          "evidence": "element: link text 'No thanks, I'd rather pay full price because I don't like saving money' | The link text 'No thanks, I'd rather pay full price because I don'"
+        }
+      ]
+    },
+    {
+      "id": "dp_preselected_addons",
+      "stratum": "dark_pattern",
+      "expected": [
+        "sneaking"
+      ],
+      "predicted": [
+        "sneaking",
+        "visual_interference"
+      ],
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 19.7,
+      "cost": {
+        "llm_calls": 15,
+        "cache_hits": 0,
+        "input_tokens": 21594,
+        "output_tokens": 681,
+        "llm_seconds": 22.07,
+        "slowest_llm_call_s": 3.87
+      },
+      "findings": [
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.95,
+          "evidence": "element: Convenience fee \u20b9650 and service charge \u20b9350 added at payment. text above Pay now button | The text 'Convenience fee \u20b9650 and service charge \u20b9350 added"
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.85,
+          "evidence": "element: Subscribe to TravelNow Plus checkbox | The checkbox labeled 'Subscribe to TravelNow Plus \u2014 \u20b9299/month, cancel anytime' is pre-checked by default. While"
+        },
+        {
+          "category": "sneaking",
+          "pattern_type": "pre_selected_options",
+          "confidence": 0.95,
+          "evidence": "element: checkboxes | Three checkboxes are visibly checked by default: 'Add travel insurance (\u20b9899)', 'Priority boarding (\u20b9499)', and 'Subscribe to TravelNow Pl"
+        },
+        {
+          "category": "sneaking",
+          "pattern_type": "hidden_costs",
+          "confidence": 0.95,
+          "evidence": "element: Checkout page with price breakdown and hidden fees | The prominently displayed price is \u20b94,200 for Flight BOM \u2192 DEL, but additional charges of \u20b9650 con"
+        }
+      ]
+    },
+    {
+      "id": "dp_fake_badges",
+      "stratum": "dark_pattern",
+      "expected": [
+        "social_engineering"
+      ],
+      "predicted": [
+        "social_engineering"
+      ],
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 20.7,
+      "cost": {
+        "llm_calls": 15,
+        "cache_hits": 0,
+        "input_tokens": 21594,
+        "output_tokens": 451,
+        "llm_seconds": 21.86,
+        "slowest_llm_call_s": 1.74
+      },
+      "findings": [
+        {
+          "category": "social_engineering",
+          "pattern_type": "fake_badges",
+          "confidence": 0.95,
+          "evidence": "element: badge row | The page displays four badge-like elements: 'Norton SECURED', 'McAfee SECURE', 'Verified by Visa', and 'SEC Approved'. These are presented "
+        },
+        {
+          "category": "social_engineering",
+          "pattern_type": "fake_authority",
+          "confidence": 0.95,
+          "evidence": "element: text and badge elements near top of page | Page displays 'As seen on: Forbes \u00b7 CNBC \u00b7 Bloomberg' without links or logos, and four unverified security b"
+        }
+      ]
+    },
+    {
+      "id": "dp_hidden_unsubscribe",
+      "stratum": "dark_pattern",
+      "expected": [
+        "visual_interference"
+      ],
+      "predicted": [
+        "forced_continuity",
+        "visual_interference"
+      ],
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 20.1,
+      "cost": {
+        "llm_calls": 15,
+        "cache_hits": 0,
+        "input_tokens": 21594,
+        "output_tokens": 669,
+        "llm_seconds": 22.41,
+        "slowest_llm_call_s": 3.01
+      },
+      "findings": [
+        {
+          "category": "visual_interference",
+          "pattern_type": "misdirected_click",
+          "confidence": 0.95,
+          "evidence": "element: UPGRADE TO PREMIUM button vs No thanks link | The 'UPGRADE TO PREMIUM' button is visually dominant with high contrast blue background and white text, w"
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.9,
+          "evidence": "element: Text link below the upgrade button | The text 'No thanks, I prefer limited features and a worse experience' is very small and light gray against a whit"
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.85,
+          "evidence": "element: Footer navigation links | The footer links 'Account Settings \u00b7 Billing \u00b7 Help Center \u00b7 ...' are extremely small and light gray, nearly invisible agains"
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.8,
+          "evidence": "element: Subtitle under plan name | The text 'Limited features. Upgrade to unlock everything!' is small and gray, potentially easy to overlook."
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.75,
+          "evidence": "element: Price unit text | The text '/month' next to the price is smaller than the price itself."
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.7,
+          "evidence": "element: Header title | The text 'PremiumService\u2122 \u2014 Account Management' in the header is small and white on blue, but still readable."
+        },
+        {
+          "category": "forced_continuity",
+          "pattern_type": "guilt_tripping",
+          "confidence": 0.95,
+          "evidence": "element: link below upgrade button | No thanks, I prefer limited features and a worse experience"
+        }
+      ]
+    },
+    {
+      "id": "dp_vi_disguised_ad",
+      "stratum": "dark_pattern",
+      "expected": [
+        "visual_interference"
+      ],
+      "predicted": [
+        "visual_interference"
+      ],
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 19.9,
+      "cost": {
+        "llm_calls": 15,
+        "cache_hits": 0,
+        "input_tokens": 21594,
+        "output_tokens": 500,
+        "llm_seconds": 20.3,
+        "slowest_llm_call_s": 1.77
+      },
+      "findings": [
+        {
+          "category": "visual_interference",
+          "pattern_type": "misdirected_click",
+          "confidence": 0.9,
+          "evidence": "element: Download buttons section | Two green download buttons are visually identical in size, color, and prominence, but 'START DOWNLOAD' is likely an ad/spons"
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.95,
+          "evidence": "element: footer links 'Privacy' and 'Terms' | The footer contains small, low-contrast text links for 'Privacy' and 'Terms' which are typical dark pattern elemen"
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "disguised_ads",
+          "confidence": 0.95,
+          "evidence": "element: Green 'DOWNLOAD NOW' and 'START DOWNLOAD' buttons | Two green buttons labeled 'DOWNLOAD NOW' and 'START DOWNLOAD' appear prominently below the VLC Medi"
+        }
+      ]
+    },
+    {
+      "id": "dp_vi_trick_question",
+      "stratum": "dark_pattern",
+      "expected": [
+        "visual_interference"
+      ],
+      "predicted": [
+        "sneaking",
+        "visual_interference"
+      ],
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 22.0,
+      "cost": {
+        "llm_calls": 15,
+        "cache_hits": 0,
+        "input_tokens": 21594,
+        "output_tokens": 660,
+        "llm_seconds": 28.18,
+        "slowest_llm_call_s": 5.42
+      },
+      "findings": [
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.9,
+          "evidence": "element: Pre-checked opt-out checkbox for partner offers | The checkbox labeled 'Unclick this box if you would prefer not to stop receiving offers from our part"
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.85,
+          "evidence": "element: Confusingly worded newsletter opt-out checkbox | The checkbox labeled 'Do not uncheck if you don't want to opt out of the newsletter.' uses confusing d"
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.75,
+          "evidence": "element: Footer privacy and terms links | The footer contains small text links for 'Privacy' and 'Terms' that are difficult to read due to their small size and "
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.7,
+          "evidence": "element: Copyright text in footer | The copyright text '\u00a9 2026 Travelio. All rights reserved.' appears in small font at the bottom of the page, making it diffic"
+        },
+        {
+          "category": "sneaking",
+          "pattern_type": "pre_selected_options",
+          "confidence": 0.95,
+          "evidence": "element: checkbox | The checkbox labeled 'Untick this box if you would prefer not to stop receiving offers from our partners.' is pre-checked by default."
+        },
+        {
+          "category": "sneaking",
+          "pattern_type": "pre_selected_options",
+          "confidence": 0.95,
+          "evidence": "element: checkbox | The checkbox labeled 'Do not uncheck if you don't want to opt out of the newsletter.' is pre-checked by default."
+        }
+      ]
+    },
+    {
+      "id": "dp_vi_cookie_hierarchy",
+      "stratum": "dark_pattern",
+      "expected": [
+        "visual_interference"
+      ],
+      "predicted": [
+        "visual_interference"
+      ],
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 23.4,
+      "cost": {
+        "llm_calls": 15,
+        "cache_hits": 0,
+        "input_tokens": 21594,
+        "output_tokens": 507,
+        "llm_seconds": 27.85,
+        "slowest_llm_call_s": 3.24
+      },
+      "findings": [
+        {
+          "category": "visual_interference",
+          "pattern_type": "misdirected_click",
+          "confidence": 0.9,
+          "evidence": "element: cookie consent banner at bottom of page | The 'ACCEPT ALL' button is bright green and significantly larger than the 'manage preferences' link, which is"
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.95,
+          "evidence": "element: manage preferences link in cookie banner at bottom left | The 'manage preferences' link is small, low contrast, and positioned next to a prominent 'ACC"
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.9,
+          "evidence": "element: Privacy and Terms links in footer | The 'Privacy' and 'Terms' links in the footer are small and low contrast against the light background."
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.85,
+          "evidence": "element: Ready in 15 min text under Lemon garlic pasta | The 'Ready in 15 min' text under the recipe title is small and low contrast, potentially hiding importa"
+        }
+      ]
+    },
+    {
+      "id": "dp_fu_hotel_scarcity",
+      "stratum": "dark_pattern",
+      "expected": [
+        "false_urgency"
+      ],
+      "predicted": [
+        "false_urgency",
+        "visual_interference"
+      ],
+      "tp": 1,
+      "fp": 1,
+      "fn": 0,
+      "seconds": 37.2,
+      "cost": {
+        "llm_calls": 15,
+        "cache_hits": 0,
+        "input_tokens": 21594,
+        "output_tokens": 312,
+        "llm_seconds": 72.43,
+        "slowest_llm_call_s": 18.83
+      },
+      "findings": [
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.95,
+          "evidence": "element: footer links (Privacy, Terms) | The footer contains small, low-contrast text links for 'Privacy' and 'Terms' that are difficult to read against the lig"
+        },
+        {
+          "category": "false_urgency",
+          "pattern_type": "fake_scarcity",
+          "confidence": 0.7,
+          "evidence": "Scarcity indicator shows 'Only 1 room left at this price!' at both time points \u2014 static value suggests fake scarcity messaging"
+        }
+      ]
+    },
+    {
+      "id": "dp_fu_expiring_coupon",
+      "stratum": "dark_pattern",
+      "expected": [
+        "false_urgency"
+      ],
+      "predicted": [
+        "visual_interference"
+      ],
+      "tp": 0,
+      "fp": 1,
+      "fn": 1,
+      "seconds": 29.8,
+      "cost": {
+        "llm_calls": 15,
+        "cache_hits": 0,
+        "input_tokens": 21594,
+        "output_tokens": 381,
+        "llm_seconds": 32.4,
+        "slowest_llm_call_s": 11.34
+      },
+      "findings": [
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.95,
+          "evidence": "element: footer links (Privacy, Terms) | The footer contains small text links for 'Privacy' and 'Terms' which are standard legal links but could be considered h"
+        }
+      ]
+    },
+    {
+      "id": "dp_fu_live_activity",
+      "stratum": "dark_pattern",
+      "expected": [
+        "false_urgency"
+      ],
+      "predicted": [
+        "false_urgency",
+        "sneaking",
+        "visual_interference"
+      ],
+      "tp": 1,
+      "fp": 2,
+      "fn": 0,
+      "seconds": 34.4,
+      "cost": {
+        "llm_calls": 15,
+        "cache_hits": 0,
+        "input_tokens": 21594,
+        "output_tokens": 393,
+        "llm_seconds": 40.65,
+        "slowest_llm_call_s": 11.93
+      },
+      "findings": [
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.95,
+          "evidence": "element: footer links (Privacy, Terms) | The footer contains 'Privacy' and 'Terms' links in light gray text on a white background, which may be difficult to rea"
+        },
+        {
+          "category": "sneaking",
+          "pattern_type": "hidden_costs",
+          "confidence": 0.95,
+          "evidence": "element: Product price display for Stride Runner X1 | Product page shows price \u20b94,299 prominently. No shipping, tax, or additional fees are visible on this prod"
+        },
+        {
+          "category": "false_urgency",
+          "pattern_type": "fake_scarcity",
+          "confidence": 0.7,
+          "evidence": "Scarcity indicator shows 'Ananya from Delhi just bought this' at both time points \u2014 static value suggests fake scarcity messaging"
+        }
+      ]
+    },
+    {
+      "id": "dp_fc_trial_autorenew",
+      "stratum": "dark_pattern",
+      "expected": [
+        "forced_continuity"
+      ],
+      "predicted": [
+        "sneaking",
+        "visual_interference"
+      ],
+      "tp": 0,
+      "fp": 1,
+      "fn": 1,
+      "seconds": 25.3,
+      "cost": {
+        "llm_calls": 15,
+        "cache_hits": 0,
+        "input_tokens": 21594,
+        "output_tokens": 705,
+        "llm_seconds": 41.55,
+        "slowest_llm_call_s": 8.97
+      },
+      "findings": [
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.95,
+          "evidence": "element: Fine print cancellation terms below card input field | Fine print text at bottom of card form states 'After 7 days your membership automatically renews"
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.9,
+          "evidence": "element: Footer privacy and terms links | Footer contains small gray text links 'Privacy' and 'Terms' that are low contrast against light gray background"
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.85,
+          "evidence": "element: Cancel anytime text with asterisk reference | Asterisk next to 'Cancel anytime*' refers to fine print terms that are difficult to read due to small siz"
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.8,
+          "evidence": "element: Fine print cancellation terms text | Fine print text is approximately 8-10px font size and light gray color, making it hard to read against white backg"
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.75,
+          "evidence": "element: Missing unsubscribe/cancel button | No visible unsubscribe link or cancel button on the page; cancellation requires calling support line per fine print"
+        },
+        {
+          "category": "sneaking",
+          "pattern_type": "hidden_subscription",
+          "confidence": 0.95,
+          "evidence": "element: Card number input field, 'Start FREE trial' button, fine print disclosure text below button | Page states 'Watch free for 7 days' and 'Start FREE trial"
+        }
+      ]
+    },
+    {
+      "id": "dp_fc_cancel_maze",
+      "stratum": "dark_pattern",
+      "expected": [
+        "forced_continuity"
+      ],
+      "predicted": [
+        "forced_continuity",
+        "visual_interference"
+      ],
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 32.8,
+      "cost": {
+        "llm_calls": 15,
+        "cache_hits": 0,
+        "input_tokens": 21594,
+        "output_tokens": 494,
+        "llm_seconds": 42.12,
+        "slowest_llm_call_s": 9.83
+      },
+      "findings": [
+        {
+          "category": "visual_interference",
+          "pattern_type": "misdirected_click",
+          "confidence": 0.9,
+          "evidence": "element: button pair: Pause for 1 month instead / Switch to a cheaper plan | The green 'Switch to a cheaper plan' button is more prominent than the blue 'Pause "
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.95,
+          "evidence": "element: membership cancellation instructions text below buttons | The page contains text 'To end your membership, please call our retention team on 1800-000-00"
+        },
+        {
+          "category": "forced_continuity",
+          "pattern_type": "hidden_cancel",
+          "confidence": 0.95,
+          "evidence": "element: Page content showing membership options and cancellation instructions | No visible 'Cancel' button or link on the membership page. Text instructs users"
+        }
+      ]
+    },
+    {
+      "id": "dp_fc_forced_account",
+      "stratum": "dark_pattern",
+      "expected": [
+        "forced_continuity"
+      ],
+      "predicted": [
+        "sneaking",
+        "visual_interference"
+      ],
+      "tp": 0,
+      "fp": 2,
+      "fn": 1,
+      "seconds": 49.1,
+      "cost": {
+        "llm_calls": 15,
+        "cache_hits": 0,
+        "input_tokens": 21594,
+        "output_tokens": 367,
+        "llm_seconds": 69.49,
+        "slowest_llm_call_s": 11.23
+      },
+      "findings": [
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.95,
+          "evidence": "element: footer links (Privacy, Terms) | The footer contains small, low-contrast text links for 'Privacy' and 'Terms' which are difficult to read against the li"
+        },
+        {
+          "category": "sneaking",
+          "pattern_type": "hidden_costs",
+          "confidence": 0.95,
+          "evidence": "element: yellow banner message and blue 'Create account & see price' button | The page states 'Prices and delivery dates are only visible to members' and requir"
+        }
+      ]
+    },
+    {
+      "id": "dp_fc_confirmshaming",
+      "stratum": "dark_pattern",
+      "expected": [
+        "forced_continuity"
+      ],
+      "predicted": [
+        "forced_continuity",
+        "visual_interference"
+      ],
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 33.0,
+      "cost": {
+        "llm_calls": 15,
+        "cache_hits": 0,
+        "input_tokens": 21594,
+        "output_tokens": 610,
+        "llm_seconds": 49.53,
+        "slowest_llm_call_s": 11.35
+      },
+      "findings": [
+        {
+          "category": "visual_interference",
+          "pattern_type": "misdirected_click",
+          "confidence": 0.95,
+          "evidence": "element: modal dialog with 'Get our free buying guide' heading, blue 'Yes, send me the guide' button, and 'No thanks, I enjoy wasting money on bad laptops' text"
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.9,
+          "evidence": "element: No thanks, I enjoy wasting money on bad laptops link at bottom of modal dialog | The 'No thanks' link is small text at the bottom of the modal, below t"
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.85,
+          "evidence": "element: No thanks, I enjoy wasting money on bad laptops link | The link text is small and gray, positioned below the main call-to-action button, reducing its v"
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.8,
+          "evidence": "element: No thanks, I enjoy wasting money on bad laptops link | The link is positioned at the bottom of the modal, away from the primary action button, making i"
+        },
+        {
+          "category": "forced_continuity",
+          "pattern_type": "guilt_tripping",
+          "confidence": 0.95,
+          "evidence": "element: dismiss link in modal | The dismiss link text 'No thanks, I enjoy wasting money on bad laptops' sarcastically frames declining the offer as a foolish c"
+        }
+      ]
+    },
+    {
+      "id": "dp_sn_drip_pricing",
+      "stratum": "dark_pattern",
+      "expected": [
+        "sneaking"
+      ],
+      "predicted": [],
+      "tp": 0,
+      "fp": 0,
+      "fn": 1,
+      "seconds": 34.6,
+      "cost": {
+        "llm_calls": 15,
+        "cache_hits": 0,
+        "input_tokens": 21594,
+        "output_tokens": 226,
+        "llm_seconds": 51.23,
+        "slowest_llm_call_s": 10.58
+      },
+      "findings": []
+    },
+    {
+      "id": "dp_sn_hidden_subscription",
+      "stratum": "dark_pattern",
+      "expected": [
+        "sneaking"
+      ],
+      "predicted": [
+        "sneaking",
+        "visual_interference"
+      ],
+      "tp": 1,
+      "fp": 1,
+      "fn": 0,
+      "seconds": 42.4,
+      "cost": {
+        "llm_calls": 15,
+        "cache_hits": 0,
+        "input_tokens": 21594,
+        "output_tokens": 563,
+        "llm_seconds": 55.75,
+        "slowest_llm_call_s": 13.25
+      },
+      "findings": [
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.95,
+          "evidence": "element: Pre-checked subscription checkbox with small grey text below the product price. | The checkbox text 'Add VitaLife Plus membership (\u20b9299/month, billed m"
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.9,
+          "evidence": "element: Footer text containing 'Privacy' and 'Terms' links at the bottom center of the page. | The footer links 'Privacy' and 'Terms' are very small and low co"
+        },
+        {
+          "category": "sneaking",
+          "pattern_type": "pre_selected_options",
+          "confidence": 0.95,
+          "evidence": "element: checkbox | A checkbox labeled 'Add VitaLife Plus membership (\u20b9299/month, billed monthly until cancelled)' is visibly checked with a blue checkmark in t"
+        },
+        {
+          "category": "sneaking",
+          "pattern_type": "pre_selected_options",
+          "confidence": 0.95,
+          "evidence": "element: checkbox | The membership option is pre-selected without user action, appearing as an add-on to the main purchase of Vitamin D3 (60 tablets) for \u20b9499."
+        }
+      ]
+    },
+    {
+      "id": "dp_sn_bait_switch",
+      "stratum": "dark_pattern",
+      "expected": [
+        "sneaking"
+      ],
+      "predicted": [
+        "false_urgency",
+        "sneaking",
+        "social_engineering",
+        "visual_interference"
+      ],
+      "tp": 1,
+      "fp": 3,
+      "fn": 0,
+      "seconds": 23.0,
+      "cost": {
+        "llm_calls": 15,
+        "cache_hits": 0,
+        "input_tokens": 21594,
+        "output_tokens": 611,
+        "llm_seconds": 34.76,
+        "slowest_llm_call_s": 10.31
+      },
+      "findings": [
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.95,
+          "evidence": "element: footer links 'Privacy' and 'Terms' | The footer contains small text links for 'Privacy' and 'Terms' which are standard legal links but could be conside"
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.9,
+          "evidence": "element: footer copyright text | The footer text '\u00a9 2026 PhoneZone. All rights reserved.' is small and centered at the bottom, making it less prominent."
+        },
+        {
+          "category": "sneaking",
+          "pattern_type": "hidden_costs",
+          "confidence": 0.95,
+          "evidence": "element: Galaxy A-Lite for just \u20b91,999! / Sorry, the \u20b91,999 model is out of stock in your area. / We recommend instead / Galaxy A-Pro \u20b924,999 | The page adverti"
+        },
+        {
+          "category": "social_engineering",
+          "pattern_type": "fake_authority",
+          "confidence": 0.9,
+          "evidence": "element: text 'As advertised on TV' located below the main headline 'Galaxy A-Lite for just \u20b91,999!' | The page claims 'As advertised on TV' but provides no lin"
+        },
+        {
+          "category": "false_urgency",
+          "pattern_type": "fake_scarcity",
+          "confidence": 0.7,
+          "evidence": "Scarcity indicator shows 'Sorry, the \u20b91,999 model is out of stock in your area.' at both time points \u2014 static value suggests fake scarcity messaging"
+        }
+      ]
+    },
+    {
+      "id": "dp_se_fake_reviews",
+      "stratum": "dark_pattern",
+      "expected": [
+        "social_engineering"
+      ],
+      "predicted": [
+        "social_engineering",
+        "visual_interference"
+      ],
+      "tp": 1,
+      "fp": 1,
+      "fn": 0,
+      "seconds": 32.3,
+      "cost": {
+        "llm_calls": 15,
+        "cache_hits": 0,
+        "input_tokens": 21594,
+        "output_tokens": 370,
+        "llm_seconds": 48.67,
+        "slowest_llm_call_s": 5.93
+      },
+      "findings": [
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.95,
+          "evidence": "element: footer links (Privacy, Terms) | The footer contains 'Privacy' and 'Terms' links in small gray text on a light gray background, which could be considere"
+        },
+        {
+          "category": "social_engineering",
+          "pattern_type": "fake_reviews",
+          "confidence": 0.95,
+          "evidence": "element: review section | Duplicate reviews with identical text, names, dates, and 5-star ratings appear multiple times. No profile photos are visible."
+        }
+      ]
+    },
+    {
+      "id": "dp_se_fake_authority",
+      "stratum": "dark_pattern",
+      "expected": [
+        "social_engineering"
+      ],
+      "predicted": [
+        "social_engineering",
+        "visual_interference"
+      ],
+      "tp": 1,
+      "fp": 1,
+      "fn": 0,
+      "seconds": 29.4,
+      "cost": {
+        "llm_calls": 15,
+        "cache_hits": 0,
+        "input_tokens": 21594,
+        "output_tokens": 494,
+        "llm_seconds": 45.19,
+        "slowest_llm_call_s": 6.15
+      },
+      "findings": [
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.95,
+          "evidence": "element: footer links (Privacy, Terms) | The footer contains small, low-contrast text links for 'Privacy' and 'Terms' that are difficult to read against the lig"
+        },
+        {
+          "category": "social_engineering",
+          "pattern_type": "fake_badges",
+          "confidence": 0.95,
+          "evidence": "element: WHO APPROVED / RECOMMENDED BY NASA / GOVERNMENT CERTIFIED badges | Three badge-like labels appear under the product title: 'WHO APPROVED', 'RECOMMENDED"
+        },
+        {
+          "category": "social_engineering",
+          "pattern_type": "fake_authority",
+          "confidence": 0.95,
+          "evidence": "element: badges under product title | Three badges claim 'WHO APPROVED', 'RECOMMENDED BY NASA', and 'GOVERNMENT CERTIFIED' with no links or verifiable proof vis"
+        }
+      ]
+    },
+    {
+      "id": "dp_se_fake_counters",
+      "stratum": "dark_pattern",
+      "expected": [
+        "social_engineering"
+      ],
+      "predicted": [
+        "sneaking",
+        "visual_interference"
+      ],
+      "tp": 0,
+      "fp": 2,
+      "fn": 1,
+      "seconds": 36.3,
+      "cost": {
+        "llm_calls": 15,
+        "cache_hits": 0,
+        "input_tokens": 21594,
+        "output_tokens": 484,
+        "llm_seconds": 50.98,
+        "slowest_llm_call_s": 6.28
+      },
+      "findings": [
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.95,
+          "evidence": "element: footer links (Privacy, Terms) | The footer contains small, low-contrast text links for 'Privacy' and 'Terms' that are difficult to read against the lig"
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "disguised_ads",
+          "confidence": 0.95,
+          "evidence": "element: Main promotional banner with earning claims and 'Join free' button | The main banner claims 'Earn \u20b950,000 a day from home' with statistics about member"
+        },
+        {
+          "category": "sneaking",
+          "pattern_type": "hidden_subscription",
+          "confidence": 0.95,
+          "evidence": "element: Join free button and surrounding claims | The page prominently features a 'Join free' button and claims users can 'Earn \u20b950,000 a day from home', but t"
+        }
+      ]
+    },
+    {
+      "id": "clean_honest_sale",
+      "stratum": "clean",
+      "expected": [],
+      "predicted": [
+        "visual_interference"
+      ],
+      "tp": 0,
+      "fp": 1,
+      "fn": 0,
+      "seconds": 36.6,
+      "cost": {
+        "llm_calls": 15,
+        "cache_hits": 0,
+        "input_tokens": 21594,
+        "output_tokens": 374,
+        "llm_seconds": 41.98,
+        "slowest_llm_call_s": 8.18
+      },
+      "findings": [
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.95,
+          "evidence": "element: footer links 'Privacy' and 'Terms' | The footer contains small, low-contrast text links for 'Privacy' and 'Terms' which are typical locations for unsub"
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.85,
+          "evidence": "element: text 'Free returns within 30 days.' | The text 'Free returns within 30 days.' is small and low contrast, potentially hiding important opt-out or cancel"
+        }
+      ]
+    },
+    {
+      "id": "clean_transparent_checkout",
+      "stratum": "clean",
+      "expected": [],
+      "predicted": [
+        "visual_interference"
+      ],
+      "tp": 0,
+      "fp": 1,
+      "fn": 0,
+      "seconds": 37.7,
+      "cost": {
+        "llm_calls": 15,
+        "cache_hits": 0,
+        "input_tokens": 21594,
+        "output_tokens": 636,
+        "llm_seconds": 52.36,
+        "slowest_llm_call_s": 10.22
+      },
+      "findings": [
+        {
+          "category": "visual_interference",
+          "pattern_type": "misdirected_click",
+          "confidence": 0.9,
+          "evidence": "element: Pay \u20b91,300 button | The 'Pay \u20b91,300' button is styled as a solid blue button with white text, making it visually dominant. The 'Continue as guest' butt"
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "misdirected_click",
+          "confidence": 0.9,
+          "evidence": "element: Continue as guest button | The 'Pay \u20b91,300' button is styled as a solid blue button with white text, making it visually dominant. The 'Continue as gues"
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.95,
+          "evidence": "element: footer text links Privacy and Terms | The footer contains small text links 'Privacy' and 'Terms' which are standard legal links but not unsubscribe lin"
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.9,
+          "evidence": "element: Add gift wrap checkbox | The checkbox for 'Add gift wrap' is optional and not related to unsubscribing. No opt-out checkboxes are visible."
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.85,
+          "evidence": "element: Continue as guest button | The 'Continue as guest' button is a standard checkout option, not a cancel or dismiss button. No close/dismiss buttons are v"
+        }
+      ]
+    },
+    {
+      "id": "clean_saas_pricing",
+      "stratum": "clean",
+      "expected": [],
+      "predicted": [
+        "forced_continuity",
+        "sneaking",
+        "visual_interference"
+      ],
+      "tp": 0,
+      "fp": 3,
+      "fn": 0,
+      "seconds": 28.6,
+      "cost": {
+        "llm_calls": 15,
+        "cache_hits": 0,
+        "input_tokens": 21594,
+        "output_tokens": 590,
+        "llm_seconds": 47.49,
+        "slowest_llm_call_s": 6.75
+      },
+      "findings": [
+        {
+          "category": "visual_interference",
+          "pattern_type": "visual_hierarchy_manipulation",
+          "confidence": 0.95,
+          "evidence": "element: Choose Pro button vs Choose Free and Choose Team buttons | The 'Choose Pro' button is filled with blue color while 'Choose Free' and 'Choose Team' butt"
+        },
+        {
+          "category": "forced_continuity",
+          "pattern_type": "forced_registration",
+          "confidence": 0.8,
+          "evidence": "element: Choose Free, Choose Pro, Choose Team buttons | The page presents three pricing tiers (Free, Pro, Team) each requiring user selection via 'Choose' butto"
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "misdirected_click",
+          "confidence": 0.7,
+          "evidence": "element: Choose Pro button positioning and styling | The 'Choose Pro' button is centrally positioned and visually emphasized with solid blue fill, potentially d"
+        },
+        {
+          "category": "sneaking",
+          "pattern_type": "hidden_subscription",
+          "confidence": 0.95,
+          "evidence": "element: Free plan card with \u20b90 pricing and 'Choose Free' button, plus renewal disclosure text below cards | The page displays a 'Free' plan at \u20b90 per month wit"
+        }
+      ]
+    },
+    {
+      "id": "clean_balanced_cookies",
+      "stratum": "clean",
+      "expected": [],
+      "predicted": [
+        "visual_interference"
+      ],
+      "tp": 0,
+      "fp": 1,
+      "fn": 0,
+      "seconds": 25.8,
+      "cost": {
+        "llm_calls": 15,
+        "cache_hits": 0,
+        "input_tokens": 21594,
+        "output_tokens": 678,
+        "llm_seconds": 38.08,
+        "slowest_llm_call_s": 9.2
+      },
+      "findings": [
+        {
+          "category": "visual_interference",
+          "pattern_type": "misdirected_click",
+          "confidence": 0.95,
+          "evidence": "element: cookie consent banner buttons at bottom of page | The 'Accept all' button is styled with a solid blue background and white text, making it visually dom"
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "misdirected_click",
+          "confidence": 0.9,
+          "evidence": "element: cookie consent banner buttons at bottom of page | The 'Accept all' button is positioned first (leftmost) in the button group, which is the conventional"
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.9,
+          "evidence": "element: Privacy and Terms links in footer | The footer contains 'Privacy' and 'Terms' links in light gray text on a light gray background, making them difficul"
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.85,
+          "evidence": "element: Customise button in cookie banner | The cookie consent banner at the bottom of the page has a 'Customise' button that is less prominent than the 'Accep"
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.75,
+          "evidence": "element: Cookie consent text | The cookie consent text 'We use cookies for analytics. You can accept or reject non-essential cookies.' is in a smaller font size"
+        }
+      ]
+    },
+    {
+      "id": "clean_labelled_ad",
+      "stratum": "clean",
+      "expected": [],
+      "predicted": [
+        "visual_interference"
+      ],
+      "tp": 0,
+      "fp": 1,
+      "fn": 0,
+      "seconds": 29.1,
+      "cost": {
+        "llm_calls": 15,
+        "cache_hits": 0,
+        "input_tokens": 21594,
+        "output_tokens": 298,
+        "llm_seconds": 32.91,
+        "slowest_llm_call_s": 5.7
+      },
+      "findings": [
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.95,
+          "evidence": "element: footer links 'Privacy' and 'Terms' | The footer contains small, low-contrast text links for 'Privacy' and 'Terms' which are typical locations for hidde"
+        }
+      ]
+    },
+    {
+      "id": "clean_real_reviews",
+      "stratum": "clean",
+      "expected": [],
+      "predicted": [
+        "visual_interference"
+      ],
+      "tp": 0,
+      "fp": 1,
+      "fn": 0,
+      "seconds": 38.5,
+      "cost": {
+        "llm_calls": 15,
+        "cache_hits": 0,
+        "input_tokens": 21594,
+        "output_tokens": 293,
+        "llm_seconds": 43.98,
+        "slowest_llm_call_s": 11.25
+      },
+      "findings": [
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.95,
+          "evidence": "element: footer links (Privacy, Terms) | The footer contains small, low-contrast text links for 'Privacy' and 'Terms' that are difficult to read against the lig"
+        }
+      ]
+    },
+    {
+      "id": "real_wikipedia",
+      "stratum": "clean",
+      "expected": [],
+      "predicted": [
+        "visual_interference"
+      ],
+      "tp": 0,
+      "fp": 1,
+      "fn": 0,
+      "seconds": 50.9,
+      "cost": {
+        "llm_calls": 15,
+        "cache_hits": 0,
+        "input_tokens": 44045,
+        "output_tokens": 479,
+        "llm_seconds": 95.64,
+        "slowest_llm_call_s": 10.43
+      },
+      "findings": [
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.95,
+          "evidence": "element: Unsubscribe link in footer | The page contains a footer section with a 'Unsubscribe' link that is very small and has low contrast against the backgroun"
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.9,
+          "evidence": "element: Cancel button in subscription management | There is a 'Cancel' button in the subscription management area that is small and blends with the background,"
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.85,
+          "evidence": "element: Close/dismiss button for notifications | The 'Close' or 'Dismiss' button for notifications is small and positioned in a corner, making it easy to miss."
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.8,
+          "evidence": "element: Opt-out checkbox in settings | There is an opt-out checkbox in the settings area that is small and has low contrast, making it difficult to see and int"
+        }
+      ]
+    },
+    {
+      "id": "real_python",
+      "stratum": "clean",
+      "expected": [],
+      "predicted": [
+        "visual_interference"
+      ],
+      "tp": 0,
+      "fp": 1,
+      "fn": 0,
+      "seconds": 26.1,
+      "cost": {
+        "llm_calls": 15,
+        "cache_hits": 0,
+        "input_tokens": 44034,
+        "output_tokens": 322,
+        "llm_seconds": 39.29,
+        "slowest_llm_call_s": 6.69
+      },
+      "findings": [
+        {
+          "category": "visual_interference",
+          "pattern_type": "misdirected_click",
+          "confidence": 0.9,
+          "evidence": "element: Donate button vs GO button | The 'Donate' button is visually emphasized with a bright yellow color and prominent placement in the top navigation bar, w"
+        }
+      ]
+    },
+    {
+      "id": "real_govuk",
+      "stratum": "clean",
+      "expected": [],
+      "predicted": [
+        "visual_interference"
+      ],
+      "tp": 0,
+      "fp": 1,
+      "fn": 0,
+      "seconds": 28.4,
+      "cost": {
+        "llm_calls": 15,
+        "cache_hits": 0,
+        "input_tokens": 44562,
+        "output_tokens": 298,
+        "llm_seconds": 42.87,
+        "slowest_llm_call_s": 5.77
+      },
+      "findings": [
+        {
+          "category": "visual_interference",
+          "pattern_type": "misdirected_click",
+          "confidence": 0.9,
+          "evidence": "element: cookie consent banner buttons | The 'Accept additional cookies' button is green and positioned first, while 'Reject additional cookies' is white with a"
+        }
+      ]
+    },
+    {
+      "id": "real_mozilla",
+      "stratum": "clean",
+      "expected": [],
+      "predicted": [],
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 28.8,
+      "cost": {
+        "llm_calls": 15,
+        "cache_hits": 0,
+        "input_tokens": 44474,
+        "output_tokens": 226,
+        "llm_seconds": 49.91,
+        "slowest_llm_call_s": 7.07
+      },
+      "findings": []
+    },
+    {
+      "id": "real_archive",
+      "stratum": "clean",
+      "expected": [],
+      "predicted": [],
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 31.5,
+      "cost": {
+        "llm_calls": 15,
+        "cache_hits": 0,
+        "input_tokens": 45266,
+        "output_tokens": 224,
+        "llm_seconds": 45.11,
+        "slowest_llm_call_s": 4.79
+      },
+      "findings": []
+    },
+    {
+      "id": "real_w3c",
+      "stratum": "clean",
+      "expected": [],
+      "predicted": [],
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "seconds": 30.6,
+      "cost": {
+        "llm_calls": 15,
+        "cache_hits": 0,
+        "input_tokens": 44639,
+        "output_tokens": 225,
+        "llm_seconds": 43.38,
+        "slowest_llm_call_s": 5.76
+      },
+      "findings": []
+    },
+    {
+      "id": "real_nasa",
+      "stratum": "clean",
+      "expected": [],
+      "predicted": [
+        "visual_interference"
+      ],
+      "tp": 0,
+      "fp": 1,
+      "fn": 0,
+      "seconds": 30.4,
+      "cost": {
+        "llm_calls": 15,
+        "cache_hits": 0,
+        "input_tokens": 45134,
+        "output_tokens": 477,
+        "llm_seconds": 44.38,
+        "slowest_llm_call_s": 4.07
+      },
+      "findings": [
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.9,
+          "evidence": "element: NASA Newsletters link in footer | The footer contains a 'NASA Newsletters' link under 'More NASA Social Accounts', which is a small text link in a dark"
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.85,
+          "evidence": "element: Privacy Policy link in footer | The 'Privacy Policy' link in the footer is small text on a dark background, potentially low contrast and hard to find."
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "hidden_unsubscribe",
+          "confidence": 0.8,
+          "evidence": "element: Sign Up button in newsletter section | The 'Sign Up' button in the newsletter section is small and may be easy to miss, though it's not particularly lo"
+        }
+      ]
+    },
+    {
+      "id": "real_mdn",
+      "stratum": "clean",
+      "expected": [],
+      "predicted": [
+        "visual_interference"
+      ],
+      "tp": 0,
+      "fp": 1,
+      "fn": 0,
+      "seconds": 32.5,
+      "cost": {
+        "llm_calls": 15,
+        "cache_hits": 0,
+        "input_tokens": 45200,
+        "output_tokens": 388,
+        "llm_seconds": 45.41,
+        "slowest_llm_call_s": 6.06
+      },
+      "findings": [
+        {
+          "category": "visual_interference",
+          "pattern_type": "disguised_ads",
+          "confidence": 0.95,
+          "evidence": "element: MongoDB advertisement banner | MongoDB banner ad with 'Start Building' button styled as a call-to-action, located in the main content area below the he"
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "disguised_ads",
+          "confidence": 0.95,
+          "evidence": "element: MongoDB advertisement banner at bottom of page | MongoDB advertisement banner at the bottom of the page with 'Start Building' button, styled similarly "
+        }
+      ]
+    },
+    {
+      "id": "real_osm",
+      "stratum": "clean",
+      "expected": [],
+      "predicted": [
+        "visual_interference"
+      ],
+      "tp": 0,
+      "fp": 1,
+      "fn": 0,
+      "seconds": 34.4,
+      "cost": {
+        "llm_calls": 15,
+        "cache_hits": 0,
+        "input_tokens": 21594,
+        "output_tokens": 295,
+        "llm_seconds": 57.79,
+        "slowest_llm_call_s": 8.06
+      },
+      "findings": [
+        {
+          "category": "visual_interference",
+          "pattern_type": "misdirected_click",
+          "confidence": 0.9,
+          "evidence": "element: Start Mapping button | The 'Start Mapping' button is visually emphasized with a blue background, while 'Learn More' has a white background, potentially"
+        }
+      ]
+    },
+    {
+      "id": "real_github_docs",
+      "stratum": "clean",
+      "expected": [],
+      "predicted": [
+        "visual_interference"
+      ],
+      "tp": 0,
+      "fp": 1,
+      "fn": 0,
+      "seconds": 27.2,
+      "cost": {
+        "llm_calls": 15,
+        "cache_hits": 0,
+        "input_tokens": 35674,
+        "output_tokens": 416,
+        "llm_seconds": 40.83,
+        "slowest_llm_call_s": 6.59
+      },
+      "findings": [
+        {
+          "category": "visual_interference",
+          "pattern_type": "misdirected_click",
+          "confidence": 0.95,
+          "evidence": "element: Yes button in feedback section | The 'Yes' button is visually emphasized with a blue background while 'No' is gray, potentially steering users toward p"
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "misdirected_click",
+          "confidence": 0.9,
+          "evidence": "element: Make a contribution button | The 'Make a contribution' button is styled as a primary action button while other links are plain text, potentially encour"
+        },
+        {
+          "category": "visual_interference",
+          "pattern_type": "misdirected_click",
+          "confidence": 0.85,
+          "evidence": "element: Sign up button | The 'Sign up' button in the top right is styled as a prominent button while other navigation elements are links or dropdowns, emphasiz"
+        }
+      ]
+    }
+  ],
+  "tag": "big39-noverify-r1",
+  "ran_at": "2026-11-25T17:46:14",
+  "models": {
+    "vision": "nvidia/nemotron-3.5-super-vl-120b-a12b",
+    "llm": "nvidia/nemotron-3.5-super-vl-120b-a12b"
+  }
+}
