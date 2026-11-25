@@ -21,6 +21,7 @@ Patterns from:
 """
 
 import enum
+import asyncio
 import json
 import re
 import logging
@@ -144,6 +145,12 @@ def get_pass_prompt(pass_num: int, temporal_result: Optional[dict] = None) -> st
 # ============================================================
 # Vision Event Emitter
 # ============================================================
+
+def _progress_line(event: dict) -> None:
+    """Typed event to the backend runner via the ##PROGRESS stdout channel."""
+    event.setdefault("timestamp", time.strftime("%H:%M:%S"))
+    print(f"##PROGRESS:{json.dumps(event)}", flush=True)
+
 
 class VisionEventEmitter:
     """Manages vision WebSocket events with throttling and batching.
@@ -352,6 +359,7 @@ class VisionResult:
 
     # Stats
     screenshots_analyzed: int = 0
+    pages_total: int = 0                # pages Scout offered for static analysis
     prompts_sent: int = 0
     nim_calls_made: int = 0
     cache_hits: int = 0
@@ -508,12 +516,21 @@ class VisionAgent:
         # One screenshot per scanned page (homepage first). Previously only the
         # homepage was analysed, so "8 pages scanned" meant 1 page seen by the VLM.
         # Cost stays bounded by the tier's vision NIM budget; repeats hit the cache.
-        for static_shot in self._select_static_screenshots(screenshots, screenshot_labels):
+        static_shots = self._select_static_screenshots(screenshots, screenshot_labels)
+        pages_analyzed = 0
+        for page_no, static_shot in enumerate(static_shots, start=1):
             if nim_budget is not None and self._nim.call_count >= nim_budget:
                 break
             await self._analyze_static_patterns(
                 static_shot, active_taxonomy, result
             )
+            pages_analyzed = page_no
+            # Vision is the longest phase; without this the UI sat silent for minutes.
+            _progress_line({"type": "log_entry", "agent": "Visual Intelligence",
+                            "message": f"Page {page_no}/{len(static_shots)} analysed: "
+                                       f"{len(result.dark_patterns)} pattern(s) so far, "
+                                       f"{self._nim.call_count} AI calls", "level": "info"})
+            _progress_line({"type": "stats_update", "stats": {"ai_calls": self._nim.call_count}})
 
         # -----------------------------------------------------------
         # Phase 2: Temporal analysis (Screenshot_A vs Screenshot_B)
@@ -572,7 +589,10 @@ class VisionAgent:
         # -----------------------------------------------------------
         result.visual_score = self._compute_visual_score(result.dark_patterns)
         result.temporal_score = self._compute_temporal_score(result.temporal_findings)
-        result.screenshots_analyzed = len(screenshots)
+        # What the model actually looked at, not what Scout captured: the NIM
+        # budget can stop the page loop early (quick_scan: 1 of 4 pages).
+        result.screenshots_analyzed = pages_analyzed
+        result.pages_total = len(static_shots)
 
         # Capture NIM stats
         nim_stats = self._nim.get_stats()
@@ -945,39 +965,47 @@ class VisionAgent:
     ):
         """
         Run all non-temporal VLM prompts against a screenshot.
-        Each category's prompts are sent sequentially (batched per image).
+
+        The prompts are independent, so they run concurrently (bounded by
+        settings.VISION_CONCURRENCY). They used to run one by one; at ~10-30 s
+        per NIM call that made Vision 70-80 % of audit time. The NIM client
+        reserves budget atomically, so concurrency cannot overspend the tier.
+        Findings keep the original category/prompt order.
         """
-        for cat_id, category in taxonomy.items():
-            # Skip temporal-only categories in static analysis
-            if category.detection_method == "temporal":
-                continue
+        jobs = [
+            (cat_id, category, prompt)
+            for cat_id, category in taxonomy.items()
+            if category.detection_method != "temporal"   # temporal has its own pass
+            for prompt in category.vlm_prompts
+        ]
+        if hasattr(self, "_nim_budget") and self._nim_budget is not None:
+            remaining = max(0, self._nim_budget - self._nim.call_count)
+            if remaining < len(jobs):
+                logger.warning(f"NIM budget allows {remaining}/{len(jobs)} prompts on this page")
+            jobs = jobs[:remaining]
+        from elliot.config import settings as _s
+        sem = asyncio.Semaphore(max(1, int(getattr(_s, "VISION_CONCURRENCY", 4))))
 
-            for prompt in category.vlm_prompts:
-                # Budget guard
-                if hasattr(self, '_nim_budget') and self._nim.call_count >= self._nim_budget:
-                    logger.warning(f"NIM budget exhausted ({self._nim_budget}) during static analysis")
-                    return
+        async def run_one(cat_id, category, prompt):
+            async with sem:
                 result.prompts_sent += 1
-
                 try:
                     vlm_result = await self._structured_vlm(
                         image_path=screenshot_path,
                         prompt=prompt,
                         category_hint=cat_id,
                     )
-
-                    findings = self._parse_vlm_response(
-                        vlm_result, cat_id, category, screenshot_path
-                    )
-                    result.dark_patterns.extend(findings)
-
                     if vlm_result.get("fallback_mode"):
                         result.fallback_used = True
-
+                    return self._parse_vlm_response(vlm_result, cat_id, category, screenshot_path)
                 except Exception as e:
                     error_msg = f"VLM analysis failed for {cat_id}: {e}"
                     logger.error(error_msg)
                     result.errors.append(error_msg)
+                    return []
+
+        for findings in await asyncio.gather(*(run_one(*j) for j in jobs)):
+            result.dark_patterns.extend(findings)
 
     # ================================================================
     # Private: Temporal Pattern Analysis

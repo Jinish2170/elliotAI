@@ -83,3 +83,41 @@ def test_cvss_unknown_tls_is_not_treated_as_no_https():
     detail = {d["abbr"]: d for d in no_tls["metrics_detail"]}
     assert len(detail) == 8 and "HTTPS" in detail["C"]["why"]
     assert no_tls["calculator_url"].endswith(no_tls["vector_string"])
+
+
+# --- 2026-11-25: an 82/100 with no explanation (graph crash scored as evidence) ---
+
+def test_meta_score_survives_missing_registrar():
+    from elliot.agents.graph_investigator import DomainIntel, GraphInvestigator
+    intel = DomainIntel(domain="x.vercel.app", ssl_issuer="Google Trust Services")
+    intel.registrar = None  # what the OSINT WHOIS source reports on a miss
+    gi = GraphInvestigator.__new__(GraphInvestigator)
+    assert 0.0 <= gi._compute_meta_score(intel) <= 1.0  # used to raise AttributeError
+
+
+def test_score_breakdown_accounts_for_every_point():
+    s = {"visual": SubSignal("visual", 1.0, 0.85), "temporal": SubSignal("temporal", 0.85, 0.3, details={"unverified": True}),
+         "graph": SubSignal("graph", 0.4, 0.7), "meta": SubSignal("meta", 0.95, 0.85),
+         "structural": SubSignal("structural", 0.95, 0.85), "security": SubSignal("security", 0.95, 0.85)}
+    r = compute_trust_score(s)
+    b = r.score_breakdown
+    earned = sum(x["earned_points"] for x in b["signals"])
+    assert abs(earned + b["rounding"] - r.pre_override_score) < 0.01
+    temporal = next(x for x in b["signals"] if x["signal"] == "temporal")
+    # A no-data signal at the prior loses points only to uncertainty, never to "findings".
+    assert temporal["lost_to_findings"] == 0 and temporal["lost_to_uncertainty"] > 0
+
+
+def test_override_points_are_reported():
+    s = {n: SubSignal(n, 0.95, 0.9) for n in ["visual", "structural", "temporal", "graph", "meta", "security"]}
+    r = compute_trust_score(s, ssl_status=False)
+    assert r.score_breakdown["overrides"], "no_ssl cap must show up in the breakdown"
+    assert sum(o["points"] for o in r.score_breakdown["overrides"]) == r.pre_override_score - r.final_score
+
+
+def test_failed_graph_placeholder_is_not_scored_as_evidence():
+    agent = J.JudgeAgent.__new__(J.JudgeAgent)
+    ev = J.AuditEvidence(url="https://x.test", graph_result=None, graph_failure="Background check crashed: boom")
+    sig = agent._build_signals(ev)
+    assert sig["graph"].confidence <= 0.2 and sig["graph"].raw_score == J.SCORE_PRIOR
+    assert "crashed" in sig["meta"].details["reason"]

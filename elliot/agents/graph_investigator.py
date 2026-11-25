@@ -487,14 +487,17 @@ class GraphInvestigator:
                             )
 
                 # Enhance DomainIntel with OSINT data
+                # Only overwrite with real values: the source reports misses
+                # as None, and None here used to crash _compute_meta_score,
+                # which silently dropped the whole graph result to 0.5 defaults.
                 if result.domain_intel and "whois" in osint_results:
-                    whois_data = osint_results["whois"].get("data", {})
-                    result.domain_intel.age_days = whois_data.get(
-                        "age_days", result.domain_intel.age_days
-                    )
-                    result.domain_intel.registrar = whois_data.get(
-                        "registrar", result.domain_intel.registrar
-                    )
+                    whois_data = osint_results["whois"].get("data") or {}
+                    age = whois_data.get("age_days")
+                    if isinstance(age, int) and age >= 0:
+                        result.domain_intel.age_days = age
+                    registrar = whois_data.get("registrar")
+                    if registrar:
+                        result.domain_intel.registrar = str(registrar)
 
         if osint_results:
             src_count = len([k for k in osint_results if k != "_consensus"])
@@ -1914,7 +1917,7 @@ class GraphInvestigator:
 
         # Known registrars (positive signal)
         reputable_registrars = ["godaddy", "cloudflare", "namecheap", "google", "aws", "gandi"]
-        if any(r in intel.registrar.lower() for r in reputable_registrars):
+        if any(r in (intel.registrar or "").lower() for r in reputable_registrars):
             score += 0.05
 
         return round(max(0.0, min(1.0, score)), 3)

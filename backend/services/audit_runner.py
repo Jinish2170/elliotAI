@@ -266,8 +266,16 @@ class AuditRunner:
             summary_data = data.get("summary", {})
             if phase == "scout" and data.get("shot_files"):
                 await self._send_screenshots(data["shot_files"], send)
+            if phase == "scout" and isinstance(data.get("pages"), int):
+                # Live counter: page telemetry otherwise only arrives with the final result.
+                await send({"type": "stats_update", "stats": {"pages_scanned": data["pages"]}})
+            if phase == "scout" and data.get("visited"):
+                self._path_sent = True
+                await send({"type": "exploration_path", "base_url": self.url,
+                            "visited_urls": data["visited"], "breadcrumbs": data["visited"],
+                            "total_pages": len(data["visited"]), "total_time_ms": data.get("nav_ms", 0)})
             for k, v in data.items():
-                if k not in ["type", "phase", "step", "pct", "detail", "summary", "shot_files"]:
+                if k not in ["type", "phase", "step", "pct", "detail", "summary", "shot_files", "visited"]:
                     summary_data[k] = v
 
             await send({"type": "phase_complete", "phase": phase, "message": detail, "pct": pct, "label": label, "summary": summary_data or {}})
@@ -388,6 +396,7 @@ class AuditRunner:
             "risk_level": trust.get("risk_level"),
             "narrative": judge.get("narrative", ""),
             "signal_scores": signal_scores,
+            "score_breakdown": trust.get("score_breakdown") or {},
             "dark_pattern_summary": dark_pattern_summary,
             "recommendations": judge.get("recommendations", []),
             "green_flags": green_flags,
@@ -498,7 +507,7 @@ class AuditRunner:
             })
             await send({"type": "log_entry", "timestamp": time.strftime("%H:%M:%S"), "agent": "Browser Reconnaissance", "message": f"Navigation complete in {scout_result.get('navigation_time_ms', 0)}ms", "level": "info"})
 
-        if visited_urls:
+        if visited_urls and not getattr(self, "_path_sent", False):
             await send({
                 "type": "exploration_path",
                 "base_url": summary["url"],

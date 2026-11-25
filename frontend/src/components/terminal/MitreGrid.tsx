@@ -27,7 +27,7 @@ export function MitreGrid({ techniques, status }: { techniques: TechniqueMatch[]
         </div>
       );
     }
-    return <GhostPanel message="AWAITING CTI MAPPING" />;
+    return <GhostPanel message="FILLED AFTER THE BACKGROUND CHECK · STEP 4 OF 5" />;
   }
 
 	return (

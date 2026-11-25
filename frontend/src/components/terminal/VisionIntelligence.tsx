@@ -7,19 +7,51 @@ interface Props {
   darkPatterns: DarkPatternFinding[];
   temporal: TemporalFinding[];
   status?: string;
+  /** Latest per-page progress line from the Vision agent, if any. */
+  progress?: string;
+  aiCalls?: number;
+  phase?: string | null;
 }
 
-export function VisionIntelligence({ darkPatterns, temporal, status }: Props) {
+// The five families the vision model checks every analysed page for
+// (elliot/config/dark_patterns.py → DARK_PATTERN_TAXONOMY).
+const CATEGORIES = [
+  ["Visual interference", "hidden cancel buttons, misleading click targets, disguised ads"],
+  ["False urgency", "fake countdowns, fake scarcity, fake expiring offers"],
+  ["Forced continuity", "hidden cancellation, confirmshaming, forced sign-up"],
+  ["Sneaking", "hidden costs, pre-selected add-ons, bait and switch"],
+  ["Fake trust", "fake reviews, fake badges, fake authority claims"],
+];
+
+export function VisionIntelligence({ darkPatterns, temporal, status, progress, aiCalls, phase }: Props) {
   const isEmpty = !darkPatterns?.length && !temporal?.length;
   if (isEmpty) {
-    if (status === "complete") {
-      return (
-        <div className="w-full h-full flex flex-col items-center justify-center p-4 text-center bg-[var(--t-green)]/5">
-          <span className="text-[var(--t-green)]/50 font-mono text-[11px] uppercase tracking-widest">[ NO DECEPTIVE UX DETECTED ]</span>
+    const done = status === "complete";
+    const visionStarted = done || !!progress || ["vision", "graph", "judge"].includes(phase || "");
+    if (!visionStarted) return <GhostPanel message="WAITING FOR SCOUT SCREENSHOTS" />;
+    return (
+      <div className="w-full h-full overflow-y-auto p-3 font-mono text-[11px]">
+        <div className={done ? "text-[var(--t-green)] font-bold mb-1" : "text-[var(--t-amber)] font-bold mb-1"}>
+          {done ? "No manipulative design found" : "Vision AI is checking each page for:"}
         </div>
-      );
-    }
-    return <GhostPanel message="VISION ACTIVE - MONITORING DECEPTIVE UX" />;
+        {(progress || done) && (
+          <div className="text-[10px] text-[var(--t-dim)] mb-2">
+            {progress || `Analysis complete${aiCalls ? ` · ${aiCalls} AI calls` : ""}.`}
+          </div>
+        )}
+        <div className="flex flex-col gap-1">
+          {CATEGORIES.map(([name, examples]) => (
+            <div key={name} className="flex gap-2 items-start">
+              <span className={done ? "text-[var(--t-green)]" : "text-[var(--t-amber)] animate-pulse"}>{done ? "✓" : "…"}</span>
+              <span>
+                <span className="text-[var(--t-text)]">{name}</span>
+                <span className="text-[var(--t-dim)]"> · {examples}</span>
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
   }
 
   return (

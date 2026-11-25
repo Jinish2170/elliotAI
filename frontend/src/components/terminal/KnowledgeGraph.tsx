@@ -322,7 +322,7 @@ export function KnowledgeGraph({ findings = [], knowledgeGraph = null }: Advance
   const totalNodes = simNodes.length;
   const visibleCount = displayNodes.length;
   
-  if (totalNodes === 0) return <GhostPanel message="AWAITING TOPOLOGY MAP" />;
+  if (totalNodes === 0) return <GhostPanel message="ENTITY MAP BUILT BY THE BACKGROUND CHECK · STEP 4 OF 5" />;
 
   const handleCanvasMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;

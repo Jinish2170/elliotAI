@@ -144,6 +144,9 @@ async def force_verdict_node(state: AuditState) -> dict:
                 for s in tsr.sub_signals
             },
             "explanation": tsr.explanation,
+            "score_breakdown": tsr.score_breakdown,
+            "evidence_coverage": tsr.evidence_coverage,
+            "abstained": tsr.abstained,
         },
     }
 

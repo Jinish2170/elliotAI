@@ -100,6 +100,46 @@ The higher cost after the fix is the honest price of analysing the pages the rep
 | D6 | Darknet tier forced Chromium through a Tor proxy that may not exist, which would fail every navigation | High | Code read before enabling the tier | The proxy is used only if a Tor daemon answers on the configured port; otherwise the audit runs direct and logs a warning. |
 | D7 | The UI said "Could not connect to backend" for any rejection (e.g. a disabled tier) | Medium | User screenshot | The server's own reason is shown. |
 
+### Found by watching a full audit in the browser (2026-11-25)
+
+Trigger: a user audited `takebloom.vercel.app`, got **82/100**, and nothing in the UI said where the 18 points went. Earlier fixes had been checked only through backend events and type-checks, never by watching a real audit end to end. Doing that exposed six bugs, each verified before and after on the same site.
+
+| # | Symptom | Root cause | Fix | Before → after (measured) |
+|---|---|---|---|---|
+| F1 | Score 82 with no explanation; narrative said "TLS was not verified" on an HTTPS site | `graph_investigator`: OSINT WHOIS returns `{"registrar": None}`; `dict.get("registrar", fallback)` returns `None` (the key exists), then `_compute_meta_score` called `None.lower()` → `AttributeError`. The graph node caught it and returned **placeholder** values (`graph 0.5, meta 0.5, has_ssl False`) | Only overwrite with real values; `None`-safe registrar | graph signal **0.50 → 0.86**, meta **0.50 → 0.95**, TLS detected (Google Trust Services). Same site: **82 → 91** |
+| F2 | A crashed agent looked like a slightly risky site | Placeholder dict went through the same path as real data; judge scored meta at 0.85 confidence | Fallback marked `failed: True`; judge treats it as *missing* (confidence ≤ 0.2) and names the failure in the reason | Of the 18 lost points, **11.0 (61 %) came from the crash placeholder** (graph 6.5 + meta 4.5), replayed exactly through `compute_trust_score` |
+| F3 | "No countdown timers" cost points as if it were a finding | No-data signals used raw **0.5**, but the formula's prior for "no evidence" is **0.85**; 0.5 reads as evidence of a problem | No-data signals use the prior and are flagged `unverified` | Temporal: **3.8 points lost "to findings" → 0** (2.25 now shown honestly as "could not verify") |
+| F4 | UI showed no reasons | `_summary()` dropped the judge's breakdown; live page never rendered signal scores | Exact per-signal points split into *lost to findings* `w·c·(1−raw)` and *could not verify* `w·(1−c)·(1−prior)`, plus override deltas; persisted (new nullable column, idempotent `ADD COLUMN`) and shown in a `SCORE.BREAKDOWN` panel with plain-English reasons | 0 → 6 of 6 signals explained; Σ earned + rounding = score (rounding **0.03**) |
+| F5 | Refreshing the page mid-audit restarted it from zero; rows stuck `RUNNING` | The WebSocket route made "each connection own its run" and cancelled the run on disconnect (an earlier fix for React StrictMode double runs) | Run is a background task with its own DB session; events go to a per-audit log + subscriber queues; reconnects replay then follow live; disconnect only unsubscribes. Startup marks orphaned rows as interrupted | Observed before: ~5 min of work discarded, new process spawned. After: refresh at 60 s → same PID, full state restored, **1 run per audit**. Stuck rows **3 → 0** |
+| F6 | Live counters frozen: timer `T+0.0S`, pages 0, Scout telemetry empty, Vision silent for minutes | Page count, elapsed time and Vision progress were only sent with the final result (same class as D2, late screenshots) | `stats_update` after Scout; ticking client timer; per-page Vision progress log + AI-call counter; `stats_update` no longer resets fields it doesn't carry | Pages shown at **~50 s instead of ~7 min**; timer ticks; Vision reports each page |
+| F7 | QUICK SCAN promised "2 pages" but scanned 4 | Scout prefetched `SCOUT_PREFETCH_LINKS=3` extra pages regardless of the tier's page budget | Prefetch capped at `tier_pages − 1` | Quick scan: pages **4 → 2**, screenshots **17 → 9**, run time **116 s → 93 s** (same site, back to back) |
+| F8 | Report said "no patterns in 17 screenshots" when the model had looked at 1 page | `screenshots_analyzed = len(screenshots)` counted what Scout captured, not what the VLM saw; the NIM budget stops the page loop early | Count pages actually analysed; reason says "1 of 2 pages (AI budget for this tier ran out)" | Claim accuracy: **17 → 1** for quick scan (the true number) |
+| F9 | Every History link after a server restart opened an empty, all-`ABORTED` dashboard | Audits lived only in process memory; most panels are fed by streamed events, which were never stored | On completion the event log is written to `backend/data/events/<id>.jsonl` (base64 stripped); replay re-reads images, only from the screenshot folders, only for well-formed IDs | Panels filled on reopen after restart: **0 → all** (new audits); path-traversal guarded and tested |
+| F10 | Panels looked broken while waiting | Placeholders said "AWAITING …" with no hint of when; Vision showed nothing until it finished; verdict showed generic fallback text and labelled a "trusted" site `NOMINAL`; badge said `CALIBRATING` forever | Each placeholder names the step that fills it; Vision shows the 5 categories it checks + per-page progress; verdict wired to the judge's narrative, recommendations and real risk level; badge shows the running phase | Qualitative (screenshots before/after in the session) |
+| F11 | Full audits took 12+ minutes; UI sat on Vision | Vision ran every prompt for a page one after another (11–15 per page, ~19 s per NIM call on the day measured): **86 % of the audit** (662 of 768 s) | Prompts on a page are independent → run concurrently (`VISION_CONCURRENCY=4`); the NIM client already rate-limits and reserves budget atomically, so the tier's call budget cannot be overspent; findings keep their original order | Same site, same tier, same day: Vision **662 s → 239 s (2.8×)**, whole audit **768 s → 293 s (−62 %)**, AI calls **35 → 35** |
+| F12 | Executive summary ended "Other concerns: mi" | `', '.join(types)[:2]` sliced the *joined string* to 2 characters instead of taking 2 items | Slice the list, humanise names, skip when empty | Fixed (one occurrence in the codebase) |
+
+**Score attribution for the same site, before vs after** (site-type weights for `saas_subscription`):
+
+| Signal (max pts) | Lost before | Lost after | Why it changed |
+|---|---|---|---|
+| Background check / graph (20) | 6.50 | 2.89 | F1/F2: real investigation instead of crash placeholder (1 claim, not confirmed) |
+| Domain records / meta (10) | 4.47 | 0.65 | F1: real certificate + no age penalty for a platform subdomain |
+| Fake timers / temporal (15) | 3.82 | 2.25 | F3: "nothing to test" is unverified, not a finding |
+| Security setup (20) | 1.32 | 1.81 | real: 5 missing security headers (header check 74 %) |
+| Page structure (15) | 0.98 | 0.98 | check tops out at 95 % by design |
+| Manipulative design / visual (20) | 0.45 | 0.45 | 0 patterns in 17 screenshots |
+| **Score** | **82** | **91** | |
+
+**How each claim was verified**
+- Crash reproduced by calling `GraphInvestigator.investigate()` directly on the site: `AttributeError: 'NoneType' object has no attribute 'lower'`; after the fix the same call returns graph 0.857 / meta 0.95.
+- The before-attribution comes from replaying the stored signal values through `compute_trust_score`; it reproduces **82** exactly.
+- After-numbers come from a full audit run in Chrome (`vrts_607f1abe`, standard tier, 442 s, 35 NIM calls, 0 dark patterns), and the persisted `score_breakdown` row.
+- Reconnect verified live (page reload mid-Vision, `ps` showed one process with an unchanged start time) and by four route tests (`backend/tests/test_audit_stream_disconnect.py`).
+- Regression tests added: `test_meta_score_survives_missing_registrar`, `test_score_breakdown_accounts_for_every_point`, `test_override_points_are_reported`, `test_failed_graph_placeholder_is_not_scored_as_evidence`.
+
+**Lesson:** 446 passing tests and a green type-check did not catch any of these. All six were visible within ten minutes of watching one real audit. The two worst (F1, F5) were *silent*: a swallowed exception turned into plausible-looking numbers, and a "cancel on disconnect" fix for one bug created another.
+
 ### Found earlier (setup, 2026-11-05)
 
 | # | Bug | Sev | How found | Fix |
@@ -166,7 +206,9 @@ Project `elliotai`. Useful views:
 | No phishing **recall** measurement: needs live phishing captures (not collected without explicit approval) | High | Open |
 | Eval sets are small (7 / 3 / 4); confidence intervals are wide | Medium | Open |
 | Graph OSINT still re-runs once per iteration (now 2×, was 5×) | Low | Open |
-| Vision is ~70 % of audit latency (15 prompts × page); batching prompts per screenshot is the next optimisation | Medium | Open |
+| Vision latency: fixed by concurrency (F11) but still bounded by NIM free-tier latency, which varied 10–30 s per call across one day; single before/after pair, not a benchmark | Medium | Partly mitigated |
+| Vision output is unstable run to run: the same page gave 0 findings in one run and a HIGH 'misdirected click' in the next (score 91 vs 89) | Medium | Open — needs self-consistency (vote over 2–3 samples) or a stricter prompt |
+| Abandoned audits now run to completion (by design, so reloads don't lose work); they still hold the concurrency slot until done | Low | Accepted |
 | mindlyticai score moved 90 → 84 after full-page + all-module analysis; per-finding attribution not yet itemised | Low | Open |
 | Retry × timeout worst case (~4.5 min per call) not reproduced; observable now | Medium | UNVERIFIED |
 | SSRF guard checks the submitted URL only, not redirects / DNS rebinding mid-crawl | Medium | Open |
@@ -183,3 +225,6 @@ Project `elliotai`. Useful views:
 - A schema guarantees shape, not truth: with `type ∈ {company, person}`, the model labelled "Paris" a company → every enum got an escape value.
 - Spotlighting alone did not stop injection; context minimisation did — measured, one variable at a time.
 - A deployed auditor is an SSRF target and a cost target: guards are part of the AI system, not an afterthought.
+- *"Why 82?"* had no answer until the score carried its own arithmetic. Splitting lost points into "found a problem" vs "could not verify" exposed a crash that had been costing **11 of 18 points** (F1–F4).
+- Fallback values are the most dangerous output an agent has: they look like data. A failed agent must be *absent* evidence, never neutral evidence (F2).
+- Coupling a long job's lifetime to a WebSocket made every refresh throw away the job; the fix was an event log with replay, which is a standard pattern (F5).

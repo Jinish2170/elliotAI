@@ -135,7 +135,10 @@ class SaaSSubscriptionScoringStrategy(ScoringStrategy):
             narrative_template += "Account security concerns. "
 
         if len(context.dark_pattern_types) > 0:
-            narrative_template += f"Other concerns: {', '.join(set(context.dark_pattern_types) - set(['hidden_cancel', 'roach_motel']))[:2]}"
+            # Slice the list, not the joined string (was "Other concerns: mi").
+            others = sorted(set(context.dark_pattern_types) - {"hidden_cancel", "roach_motel"})[:2]
+            if others:
+                narrative_template += f"Other concerns: {', '.join(o.replace('_', ' ') for o in others)}."
 
         explanation = (
             "SaaS subscription evaluation focuses on cancellation barrier detection. "

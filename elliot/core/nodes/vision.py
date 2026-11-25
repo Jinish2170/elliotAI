@@ -109,6 +109,7 @@ async def vision_node(state: AuditState) -> dict:
                 for tf in result.temporal_findings
             ],
             "screenshots_analyzed": result.screenshots_analyzed,
+            "pages_total": getattr(result, "pages_total", 0),
             "prompts_sent": result.prompts_sent,
             "nim_calls_made": result.nim_calls_made,
             "fallback_used": result.fallback_used,

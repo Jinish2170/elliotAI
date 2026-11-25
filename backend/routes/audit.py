@@ -3,11 +3,13 @@ Audit routes — Start + WebSocket stream.
 """
 
 import asyncio
+import base64
 import contextlib
 import json
 import logging
 import re
 from datetime import datetime
+from pathlib import Path
 from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, WebSocket, WebSocketDisconnect
@@ -121,112 +123,204 @@ async def start_audit(req: AuditStartRequest, request: Request, db: DbSession):
     )
 
 
+_DATA_DIR = Path(__file__).resolve().parents[1] / "data"
+_EVENTS_DIR = _DATA_DIR / "events"
+_AUDIT_ID_RE = re.compile(r"^vrts_[0-9a-f]{8}$")
+
+
+def _screenshot_roots() -> list[Path]:
+    from elliot.config import settings
+    return [(_DATA_DIR / "screenshots").resolve(), Path(settings.EVIDENCE_DIR).resolve()]
+
+
+def _save_event_log(audit_id: str, events: list[dict]) -> None:
+    """Persist the event log so a finished audit replays fully after a restart
+    (History links used to open an empty, all-ABORTED dashboard)."""
+    if not _AUDIT_ID_RE.match(audit_id):
+        return
+    try:
+        _EVENTS_DIR.mkdir(parents=True, exist_ok=True)
+        with open(_EVENTS_DIR / f"{audit_id}.jsonl", "w", encoding="utf-8") as fh:
+            for ev in events:
+                if ev.get("type") == "screenshot":
+                    ev = {k: v for k, v in ev.items() if k != "data"}  # image stays on disk
+                fh.write(json.dumps(ev, default=str) + "\n")
+    except Exception as e:
+        logger.warning(f"[{audit_id}] could not persist event log: {e}")
+
+
+def _load_event_log(audit_id: str) -> Optional[list[dict]]:
+    if not _AUDIT_ID_RE.match(audit_id):
+        return None
+    path = _EVENTS_DIR / f"{audit_id}.jsonl"
+    if not path.is_file():
+        return None
+    roots = _screenshot_roots()
+    events = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        try:
+            ev = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if ev.get("type") == "screenshot" and ev.get("url"):
+            img = Path(str(ev["url"])).resolve()
+            # Only re-read images from our own screenshot folders.
+            if img.is_file() and any(img.is_relative_to(r) for r in roots):
+                ev["data"] = base64.b64encode(img.read_bytes()).decode("ascii")
+        events.append(ev)
+    return events
+
+
+# Completed audits whose full event log (incl. screenshots) stays in memory
+# for replay. Older ones fall back to replaying just the stored result.
+_EVENT_LOG_KEEP = 5
+
+
+def _evict_event_logs() -> None:
+    done = [a for a in _audits.values() if a.get("events") is not None and a.get("status") != "running"]
+    for info in done[:-_EVENT_LOG_KEEP]:
+        info["events"] = None
+
+
+async def _run_audit(audit_id: str, audit_info: dict) -> None:
+    """Run one audit to completion, independent of any WebSocket.
+
+    Every event is appended to audit_info["events"] and fanned out to the
+    connected subscribers. A client that disconnects (page refresh, network
+    blip, React StrictMode remount) only stops listening; it used to cancel
+    the run, which threw away minutes of work and left the row "running".
+    """
+    from elliot.db import AsyncSessionLocal  # own session: the request's closes with its socket
+
+    def publish(event: Optional[dict]) -> None:
+        if event is not None and audit_info.get("events") is not None:
+            audit_info["events"].append(event)
+        for queue in list(audit_info["subscribers"]):
+            queue.put_nowait(event)
+
+    async with AsyncSessionLocal() as db:
+        await on_audit_started(audit_id, audit_info, db)
+        runner = AuditRunner(
+            audit_id=audit_id,
+            url=audit_info["url"],
+            tier=audit_info["tier"],
+            verdict_mode=audit_info["verdict_mode"],
+            security_modules=audit_info.get("security_modules"),
+        )
+
+        async def send_event(data: dict):
+            event_type = data.get("type")
+            if event_type == "audit_result":
+                audit_info["result"] = data.get("result")
+            elif event_type == "audit_error":
+                audit_info["error"] = data.get("error")
+            elif event_type == "screenshot":
+                await _handle_screenshot_event(audit_id, data, db)
+            publish(data)
+
+        try:
+            await runner.run(send_event)
+            if audit_info.get("result"):
+                audit_info["status"] = "completed"
+                await on_audit_completed(audit_id, audit_info["result"], db)
+            else:
+                audit_info["status"] = "error"
+                await on_audit_error(audit_id, audit_info.get("error") or "Audit produced no result", db)
+        except asyncio.CancelledError:
+            audit_info["status"] = "error"
+            raise
+        except Exception as e:
+            error_msg = str(e)
+            if isinstance(e, TimeoutError) or "timed out" in error_msg.lower():
+                error_msg = f"Audit timed out while scanning {audit_info.get('url', 'target')}. The site may be too slow or blocking automated requests."
+            logger.error(f"[{audit_id}] Audit failed: {error_msg}", exc_info=True)
+            audit_info["status"] = "error"
+            await on_audit_error(audit_id, error_msg, db)
+            publish({"type": "audit_error", "audit_id": audit_id, "error": error_msg})
+        finally:
+            publish(None)  # end of stream for every listener
+            if audit_info.get("events"):
+                await asyncio.to_thread(_save_event_log, audit_id, list(audit_info["events"]))
+            _evict_event_logs()
+
+
 @router.websocket("/audit/stream/{audit_id}")
-async def stream_audit(ws: WebSocket, audit_id: str, db: DbSession):
-    """
-    WebSocket endpoint that runs the audit and streams events.
-    The audit starts when the client connects.
-    """
+async def stream_audit(ws: WebSocket, audit_id: str):
+    """Stream an audit's events. The first connection starts the run; later
+    connections (reloads, reconnects) get every event so far, then live ones."""
     await ws.accept()
 
     audit_info = _audits.get(audit_id)
+    if not audit_info or (audit_info.get("status") != "queued" and audit_info.get("events") is None):
+        # Not running here (finished earlier, or the server restarted):
+        # replay the persisted event log so every panel fills in again.
+        log = await asyncio.to_thread(_load_event_log, audit_id)
+        if log:
+            for event in log:
+                await ws.send_json(event)
+            if not any(e.get("type") == "audit_complete" for e in log):
+                await ws.send_json({"type": "audit_complete", "audit_id": audit_id, "replayed": True})
+            await ws.close()
+            return
     if not audit_info:
         await ws.send_json({"type": "audit_error", "error": "Audit ID not found"})
         await ws.close()
         return
 
-    # Finished audit (e.g. the audit page was reloaded): replay the stored
-    # result instead of re-running the whole audit and resetting its status.
-    if audit_info.get("status") == "completed" and audit_info.get("result"):
-        await ws.send_json({"type": "audit_result", "audit_id": audit_id, "result": audit_info["result"]})
-        await ws.send_json({"type": "audit_complete", "audit_id": audit_id, "replayed": True})
+    if audit_info.get("task") is None and audit_info.get("status") == "queued":
+        audit_info["status"] = "running"
+        audit_info["events"] = []
+        audit_info["subscribers"] = set()
+        audit_info["task"] = asyncio.create_task(_run_audit(audit_id, audit_info))
+
+    task = audit_info.get("task")
+    events = audit_info.get("events")
+    if task is None or (task.done() and events is None):
+        # Finished earlier (or before a restart) and its event log is gone:
+        # replay the stored result instead of re-running the audit.
+        if audit_info.get("result"):
+            await ws.send_json({"type": "audit_result", "audit_id": audit_id, "result": audit_info["result"]})
+            await ws.send_json({"type": "audit_complete", "audit_id": audit_id, "replayed": True})
+        elif audit_info.get("error"):
+            await ws.send_json({"type": "audit_error", "audit_id": audit_id, "error": audit_info["error"]})
         await ws.close()
         return
 
-    # Each connection owns the run it starts. A newer connection to the same
-    # audit (e.g. React StrictMode remount) takes ownership; the older one's
-    # run is cancelled when its socket closes and must not overwrite status.
-    owner = object()
-    audit_info["owner"] = owner
-    audit_info["status"] = "running"
-    # Save to database when audit starts (implementation in Plan 05-04)
-    await on_audit_started(audit_id, audit_info, db)
-
-    runner = AuditRunner(
-        audit_id=audit_id,
-        url=audit_info["url"],
-        tier=audit_info["tier"],
-        verdict_mode=audit_info["verdict_mode"],
-        security_modules=audit_info.get("security_modules"),
-    )
-
-    _ws_closed = False
-
-    async def send_event(data: dict):
-        """Send a JSON event to the WebSocket client."""
-        nonlocal _ws_closed
-        event_type = data.get("type")
-        if event_type == "audit_result":
-            audit_info["result"] = data.get("result")
-        elif event_type == "audit_error":
-            audit_info["error"] = data.get("error")
-        elif event_type == "screenshot":
-            # Handle screenshot persistence (Plan 05-04)
-            await _handle_screenshot_event(audit_id, data, db)
-
-        # Guard: don't attempt to send on a closed/closing WebSocket
-        if _ws_closed:
-            return
-        try:
-            await ws.send_json(data)
-        except Exception as e:
-            _ws_closed = True
-            logger.warning(f"[{audit_id}] Failed to send WS event (marking closed): {e}")
+    # Snapshot + subscribe with no await in between: no event can fall in the gap.
+    queue: asyncio.Queue = asyncio.Queue()
+    backlog = list(events or [])
+    live = not task.done()
+    if live:
+        audit_info["subscribers"].add(queue)
 
     async def wait_for_disconnect():
-        # The client never sends; receive() returns only on disconnect.
         while (await ws.receive())["type"] != "websocket.disconnect":
             pass
 
-    run_task = asyncio.create_task(runner.run(send_event))
-    disconnect_task = asyncio.create_task(wait_for_disconnect())
+    disconnect = asyncio.create_task(wait_for_disconnect())
     try:
-        await asyncio.wait({run_task, disconnect_task}, return_when=asyncio.FIRST_COMPLETED)
-        if not run_task.done():
-            # Client left: stop the run (runner.run's finally terminates the subprocess).
-            run_task.cancel()
-            with contextlib.suppress(asyncio.CancelledError):
-                await run_task
-            raise WebSocketDisconnect()
-        disconnect_task.cancel()
-        run_task.result()
-        audit_info["status"] = "completed" if audit_info.get("result") else "error"
-        if audit_info["status"] == "completed":
-            # Save result to database when audit completes (implementation in Plan 05-04)
-            await on_audit_completed(audit_id, audit_info.get("result"), db)
-    except WebSocketDisconnect:
-        logger.info(f"[{audit_id}] Client disconnected; run cancelled")
-        if audit_info.get("owner") is owner:
-            audit_info["status"] = "disconnected"
+        for event in backlog:
+            await ws.send_json(event)
+        while live:
+            getter = asyncio.create_task(queue.get())
+            done, _ = await asyncio.wait({getter, disconnect}, return_when=asyncio.FIRST_COMPLETED)
+            if getter not in done:
+                getter.cancel()
+                break  # client left; the run carries on
+            event = getter.result()
+            if event is None:
+                break
+            await ws.send_json(event)
+    except (WebSocketDisconnect, RuntimeError):
+        pass
     except Exception as e:
-        error_msg = str(e)
-        # Provide a friendlier message for common timeout errors
-        if isinstance(e, TimeoutError) or "timed out" in error_msg.lower():
-            error_msg = f"Audit timed out while scanning {audit_info.get('url', 'target')}. The site may be too slow or blocking automated requests."
-        logger.error(f"[{audit_id}] Audit failed: {error_msg}", exc_info=True)
-        audit_info["status"] = "error"
-        # Save error to database when audit fails (implementation in Plan 05-04)
-        await on_audit_error(audit_id, error_msg, db)
-        if not _ws_closed:
-            try:
-                await ws.send_json({"type": "audit_error", "error": error_msg})
-            except Exception:
-                pass
+        logger.warning(f"[{audit_id}] stream send failed: {e}")
     finally:
-        try:
+        disconnect.cancel()
+        audit_info.get("subscribers", set()).discard(queue)
+        with contextlib.suppress(Exception):
             await ws.close()
-        except Exception:
-            pass
+
 
 @router.get("/audit/{audit_id}/status")
 async def audit_status(audit_id: str, db: DbSession):
@@ -267,6 +361,7 @@ async def audit_status(audit_id: str, db: DbSession):
                     "trust_score": audit.trust_score,
                     "risk_level": audit.risk_level,
                     "signal_scores": audit.signal_scores,
+                    "score_breakdown": audit.score_breakdown or {},
                     "narrative": audit.narrative,
                     "site_type": audit.site_type,
                     "site_type_confidence": audit.site_type_confidence,
@@ -557,6 +652,7 @@ async def on_audit_completed(audit_id: str, result: dict, db: AsyncSession) -> N
         audit.risk_level = result.get("risk_level")
         audit.narrative = result.get("narrative")
         audit.signal_scores = result.get("signal_scores", {})
+        audit.score_breakdown = result.get("score_breakdown") or None
         audit.site_type = result.get("site_type")
         audit.site_type_confidence = result.get("site_type_confidence")
         audit.security_results = result.get("security_results", {})

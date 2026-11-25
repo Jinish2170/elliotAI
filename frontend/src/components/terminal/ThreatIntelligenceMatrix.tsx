@@ -37,7 +37,7 @@ export function ThreatIntelligenceMatrix({ osintResults, marketplaceThreats, sta
         </div>
       );
     }
-    return <GhostPanel message="THREAT MATRIX - DEEP SCANNING" />;
+    return <GhostPanel message="THREAT FEEDS QUERIED IN THE BACKGROUND CHECK · STEP 4 OF 5" />;
   }
 
   return (

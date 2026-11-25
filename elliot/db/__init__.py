@@ -68,6 +68,19 @@ async def init_database() -> None:
         await conn.execute(text("PRAGMA wal_autocheckpoint=1000"))
         # Create all tables from models
         await conn.run_sync(Base.metadata.create_all)
+        # create_all never alters existing tables: add later nullable columns
+        # in place. Idempotent; existing rows just get NULL.
+        cols = {row[1] for row in (await conn.execute(text("PRAGMA table_info(audits)"))).fetchall()}
+        if cols and "score_breakdown" not in cols:
+            await conn.execute(text("ALTER TABLE audits ADD COLUMN score_breakdown JSON"))
+        # Runs live in this process's memory, so at startup none can still be
+        # in flight: rows left RUNNING/QUEUED were orphaned by a restart.
+        if cols:
+            await conn.execute(text(
+                "UPDATE audits SET status = 'ERROR', "
+                "error_message = 'Interrupted: the server restarted while this audit was running' "
+                "WHERE status IN ('RUNNING', 'QUEUED')"
+            ))
 
 
 # Export public API

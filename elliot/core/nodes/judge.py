@@ -73,6 +73,7 @@ async def judge_node(state: AuditState) -> dict:
             dark_patterns=dark_patterns,
             temporal_findings=temporal_findings,
             screenshots_analyzed=vr_dict.get("screenshots_analyzed", 0),
+            pages_total=vr_dict.get("pages_total", 0),
             prompts_sent=vr_dict.get("prompts_sent", 0),
             nim_calls_made=vr_dict.get("nim_calls_made", 0),
             fallback_used=vr_dict.get("fallback_used", False),
@@ -81,7 +82,13 @@ async def judge_node(state: AuditState) -> dict:
 
     # Reconstruct GraphResult from serialized dict
     graph_result = None
+    graph_failure = ""
     gr_dict = state.get("graph_result")
+    if gr_dict and gr_dict.get("failed"):
+        # Placeholder values from a crash/timeout are not evidence: score the
+        # graph and meta signals as unknown instead (see AuditEvidence).
+        graph_failure = gr_dict.get("failure_reason") or "Background check did not complete."
+        gr_dict = None
     if gr_dict:
         from elliot.agents.graph_investigator import (DomainIntel, EntityClaim,
                                                GraphInconsistency,
@@ -143,6 +150,7 @@ async def judge_node(state: AuditState) -> dict:
         scout_results=scout_results,
         vision_result=vision_result,
         graph_result=graph_result,
+        graph_failure=graph_failure,
         iteration=iteration,
         max_iterations=max_iterations,
         max_pages=state.get("max_pages", 5),
@@ -216,6 +224,9 @@ async def judge_node(state: AuditState) -> dict:
                         for s in tsr.sub_signals
                     },
                     "explanation": tsr.explanation,
+                    "score_breakdown": tsr.score_breakdown,
+                    "evidence_coverage": tsr.evidence_coverage,
+                    "abstained": tsr.abstained,
                 }
 
             return {

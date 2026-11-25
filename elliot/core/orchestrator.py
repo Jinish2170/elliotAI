@@ -589,8 +589,11 @@ class ElliotOrchestrator:
                         {"path": path, "label": (sr.get("screenshot_labels") or [])[i] if i < len(sr.get("screenshot_labels") or []) else f"page_{i + 1}"}
                         for sr in state.get("scout_results", []) for i, path in enumerate(sr.get("screenshots", []) or [])
                     ]
+                    n_pages = sum(1 for sr in state.get("scout_results", []) if sr.get("status") == "SUCCESS")
                     self._emit("scout", "done", 25, f"Captured {n_shots} screenshots", screenshots=n_shots,
-                               shot_files=shot_files, iteration=state["iteration"])
+                               pages=n_pages, shot_files=shot_files, iteration=state["iteration"],
+                               visited=[sr.get("url") for sr in state.get("scout_results", []) if sr.get("url")],
+                               nav_ms=int(sum(float(sr.get("navigation_time_ms") or 0) for sr in state.get("scout_results", []))))
 
                     # Emit Scout completion via ProgressEmitter
                     if self.use_progress_streaming and self._progress_emitter:

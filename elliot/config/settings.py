@@ -136,6 +136,8 @@ TEMPORAL_DELAY: int = int(os.getenv("TEMPORAL_DELAY", "10"))
 # before the first Judge call — instead of the Judge having to loop to get it.
 # Set to 0 to disable prefetch and restore single-page first-pass behavior.
 SCOUT_PREFETCH_LINKS: int = int(os.getenv("SCOUT_PREFETCH_LINKS", "3"))
+# Concurrent VLM prompts per page (the NIM client still rate-limits and budgets).
+VISION_CONCURRENCY: int = int(os.getenv("VISION_CONCURRENCY", "4"))
 CONFIDENCE_THRESHOLD: float = float(os.getenv("CONFIDENCE_THRESHOLD", "0.6"))
 MIN_EVIDENCE_COUNT: int = int(os.getenv("MIN_EVIDENCE_COUNT", "3"))
 

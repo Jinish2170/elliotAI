@@ -14,6 +14,7 @@ import {
   ScoutImagery,
   KnowledgeGraph,
   ScoutTelemetry,
+  ScoreBreakdownPanel,
   VisionIntelligence,
   ThreatIntelligenceMatrix,
   FinalAuditReport,
@@ -68,6 +69,18 @@ function AuditPageContent({ id }: { id: string }) {
   const store = useAuditStream(id, url, tier);
   const [showReport, setShowReport] = useState(false);
 
+  // Local ticking clock while running; the server's elapsed time only
+  // arrives with the final stats, which left the header stuck at T+0.0S.
+  const [startedAt] = useState(() => Date.now());
+  const [now, setNow] = useState(() => Date.now());
+  const running = store.status !== "complete" && store.status !== "error";
+  useEffect(() => {
+    if (!running) return;
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [running]);
+  const elapsed = running ? (now - startedAt) / 1000 : store.stats.elapsed_seconds || (now - startedAt) / 1000;
+
   useEffect(() => {
     if (store.status === "complete" && store.result) {
       saveAuditToHistory({
@@ -80,6 +93,15 @@ function AuditPageContent({ id }: { id: string }) {
       });
     }
   }, [store.status, store.result, id, tier]);
+
+  // Latest per-page line from the Vision agent ("Page 2/4 analysed: ...").
+  const visionProgress = useMemo(() => {
+    for (let i = store.logs.length - 1; i >= 0; i--) {
+      const m = store.logs[i]?.message || "";
+      if (/^Page \d+\/\d+ analysed/.test(m)) return m;
+    }
+    return undefined;
+  }, [store.logs]);
 
   const activeAgent: AgentId | undefined = useMemo(() => {
     if (!store.currentPhase || store.currentPhase === "init") return undefined;
@@ -108,7 +130,7 @@ function AuditPageContent({ id }: { id: string }) {
 
       <div className="elliot-terminal">
         {/* ZONE 1: TACTICAL HEADER */}
-        <TerminalHeader url={store.url || undefined} elapsed={store.stats.elapsed_seconds} />
+        <TerminalHeader url={store.url || undefined} elapsed={elapsed} />
 
         {store.status === "complete" && !showReport && (
           <div className="absolute top-2 right-4 z-40">
@@ -176,7 +198,10 @@ function AuditPageContent({ id }: { id: string }) {
             {store.status === "complete" ? (
               <TerminalPanel title="VERDICT.MATRIX" className="flex-[2] min-h-0">
                 <VerdictPanel
-                  verdict={store.dualVerdict ? {
+                  verdict={store.dualVerdict || store.result ? {
+                    forensic_narrative: store.result?.narrative,
+                    recommendations: store.result?.recommendations,
+                    trust_score_result: { risk_level: (store.result?.risk_level || "").replace(/_/g, " ") },
                     verdict_technical: {
                       trust_score: store.dualVerdict?.trust_score,
                       risk_level: store.dualVerdict?.non_technical?.risk_level || store.result?.risk_level || 'unknown'
@@ -211,7 +236,7 @@ function AuditPageContent({ id }: { id: string }) {
                   </div>
                 </div>
                 <div className="absolute top-2 right-4 text-[11px] text-[var(--t-amber)] font-mono animate-pulse">
-                  [ CALIBRATING ]
+                  [ {store.currentPhase && store.currentPhase !== "init" ? `${store.currentPhase.toUpperCase()} RUNNING` : "STARTING"} ]
                 </div>
               </TerminalPanel>
             )}
@@ -233,15 +258,21 @@ function AuditPageContent({ id }: { id: string }) {
               </div>
             </TerminalPanel>
 
-            <TerminalPanel title="SCOUT.TELEMETRY" className="flex-none h-[180px]">
-              <ScoutTelemetry 
-                explorationPath={store.explorationPath}
-                formDetections={store.formDetections || []}
-                captchaResults={store.captchaResults || []}
-                pagesScanned={store.stats.pages_scanned}
-                domHealth={store.domHealth}
-              />
-            </TerminalPanel>
+            {store.status === "complete" ? (
+              <TerminalPanel title="SCORE.BREAKDOWN" className="flex-[2] min-h-[220px]">
+                <ScoreBreakdownPanel breakdown={store.result?.score_breakdown} status={store.status} />
+              </TerminalPanel>
+            ) : (
+              <TerminalPanel title="SCOUT.TELEMETRY" className="flex-none h-[180px]">
+                <ScoutTelemetry
+                  explorationPath={store.explorationPath}
+                  formDetections={store.formDetections || []}
+                  captchaResults={store.captchaResults || []}
+                  pagesScanned={store.stats.pages_scanned}
+                  domHealth={store.domHealth}
+                />
+              </TerminalPanel>
+            )}
 
             {/* Zone Center Bottom: Log Stream */}
             <TerminalPanel title="SYS.LOG.STREAM" className="flex-1 min-h-[120px]">
@@ -259,6 +290,9 @@ function AuditPageContent({ id }: { id: string }) {
                  darkPatterns={store.darkPatternFindings || []}
                  temporal={store.temporalFindings || []}
                  status={store.status}
+                 progress={visionProgress}
+                 aiCalls={store.stats.ai_calls}
+                 phase={store.currentPhase}
               />
             </TerminalPanel>
             <TerminalPanel title="KNOWLEDGE.GRAPH" className="flex-1 min-h-[180px]">

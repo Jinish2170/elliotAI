@@ -669,7 +669,7 @@ function processSingleEvent(
       const stats = (event.stats as Record<string, unknown>) || {};
       set({
         stats: {
-          pages_scanned: (stats.pages_scanned as number) || 0,
+          pages_scanned: (stats.pages_scanned as number) || state.stats.pages_scanned,
           screenshots: (stats.screenshots as number) || state.stats.screenshots,
           findings: (stats.findings as number) || (stats.findings_detected as number) || state.stats.findings,
           ai_calls: (stats.ai_calls as number) || state.stats.ai_calls,

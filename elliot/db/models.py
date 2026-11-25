@@ -56,6 +56,7 @@ class Audit(Base):
     trust_score = Column(Float, nullable=True)
     risk_level = Column(String(50), nullable=True)
     signal_scores = Column(JSON, default=dict)
+    score_breakdown = Column(JSON, nullable=True)  # where every point went (UI)
     narrative = Column(Text, nullable=True)
 
     # Site classification from Scout agent

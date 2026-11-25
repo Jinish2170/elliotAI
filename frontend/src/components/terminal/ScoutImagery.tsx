@@ -13,7 +13,7 @@ export function ScoutImagery({
 	const [imgIndex, setImgIndex] = useState(0);
 
 	if (!screenshots || screenshots.length === 0) {
-		return <GhostPanel message="OPTICAL_SENSOR_OFFLINE" />;
+		return <GhostPanel message="SCREENSHOTS APPEAR WHEN SCOUT FINISHES · STEP 1 OF 5" />;
 	}
 
 	const currentImg = screenshots[imgIndex];

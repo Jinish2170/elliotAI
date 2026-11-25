@@ -46,6 +46,11 @@ RISK_LEVEL_THRESHOLDS: dict[RiskLevel, tuple[int, int]] = {
 }
 
 
+# Score a signal falls back to when there is no evidence for it (Beta-prior
+# mean). A "no data" signal must use this, not 0.5: 0.5 reads as evidence of
+# a problem and costs points that the UI would then mis-report as findings.
+SCORE_PRIOR = 0.85
+
 # Minimum Σ(weight × confidence) needed to issue a verdict (see compute_trust_score).
 MIN_EVIDENCE_COVERAGE = 0.25
 
@@ -297,6 +302,9 @@ class TrustScoreResult:
     explanation: str                # Human-readable explanation
     evidence_coverage: float = 1.0  # Σ weight × confidence over signals (0-1)
     abstained: bool = False         # True → risk_level is INSUFFICIENT_EVIDENCE
+    # Where every point went, for the UI. One row per signal (see
+    # _score_breakdown) plus one per override that changed the score.
+    score_breakdown: dict = field(default_factory=dict)
 
 
 def compute_trust_score(
@@ -348,7 +356,7 @@ def compute_trust_score(
     # When confidence → 0  →  effective ≈ 0.85 (no information → innocent until proven guilty)
     # This prevents low-confidence signals from dragging the score
     # toward zero, which would be a false accusation.
-    PRIOR = 0.85  # Optimistic prior (sites are safe by default without evidence)
+    PRIOR = SCORE_PRIOR
 
     weighted_breakdown = {}
     raw_total = 0.0
@@ -470,7 +478,12 @@ def compute_trust_score(
         f"Signal breakdown:\n" + "\n".join(explanations)
     )
 
+    breakdown = _score_breakdown(
+        signals, weight_map, PRIOR, pre_override, final_score, overrides_applied
+    )
+
     return TrustScoreResult(
+        score_breakdown=breakdown,
         final_score=final_score,
         risk_level=risk_level,
         sub_signals=list(signals.values()),
@@ -482,3 +495,77 @@ def compute_trust_score(
         abstained=abstained,
     )
 
+
+
+def _score_breakdown(
+    signals: dict,
+    weight_map: dict,
+    prior: float,
+    pre_override: int,
+    final_score: int,
+    overrides_applied: list,
+) -> dict:
+    """Account for every point between 100 and the final score.
+
+    Per signal, max points = weight × 100. Because
+    effective = raw × c + prior × (1 − c), the points not earned split exactly:
+
+        lost_to_findings    = weight × c × (1 − raw)       evidence of a problem
+        lost_to_uncertainty = weight × (1 − c) × (1 − prior)  could not verify
+
+    The UI needs that split: "we found a problem" and "we could not check"
+    mean very different things to a reader, and they used to look the same.
+    """
+    rows = []
+    for name, weight in weight_map.items():
+        sig = signals.get(name)
+        raw = sig.raw_score if sig else prior
+        conf = sig.confidence if sig else 0.0
+        details = (sig.details if sig else {}) or {}
+        max_pts = weight * 100
+        lost_findings = weight * conf * (1.0 - raw) * 100
+        lost_uncertainty = weight * (1.0 - conf) * (1.0 - prior) * 100
+        if sig is None or details.get("unverified"):
+            # No evidence at all: whatever it costs is "could not check".
+            lost_uncertainty += lost_findings
+            lost_findings = 0.0
+        rows.append({
+            "signal": name,
+            "max_points": round(max_pts, 2),
+            "earned_points": round(max_pts - lost_findings - lost_uncertainty, 2),
+            "lost_to_findings": round(lost_findings, 2),
+            "lost_to_uncertainty": round(lost_uncertainty, 2),
+            "raw_score": round(raw, 3),
+            "confidence": round(conf, 3),
+            "reason": details.get("reason") or details.get("note") or "",
+            "unverified": sig is None or bool(details.get("unverified")),
+        })
+
+    overrides = []
+    running = pre_override
+    for rule in overrides_applied:
+        if rule.action == "cap_at":
+            after = min(running, rule.value)
+        elif rule.action == "force_below":
+            after = min(running, rule.value - 1)
+        elif rule.action == "deduct":
+            after = max(0, running - rule.value)
+        else:
+            after = running
+        overrides.append({
+            "name": rule.name,
+            "description": rule.description,
+            "points": running - after,
+        })
+        running = after
+
+    exact = sum(r["earned_points"] for r in rows)
+    return {
+        "signals": rows,
+        "overrides": overrides,
+        "prior": prior,
+        "pre_override_score": pre_override,
+        "final_score": final_score,
+        # Shown so the arithmetic visibly adds up: Σ earned → rounded score.
+        "rounding": round(pre_override - exact, 2),
+    }

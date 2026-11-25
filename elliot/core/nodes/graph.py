@@ -109,6 +109,8 @@ async def graph_node(state: AuditState) -> dict:
             timeout_msg = f"Graph phase timeout after {graph_timeout_s}s"
             logger.error(timeout_msg)
             fallback_graph = {
+                "failed": True,
+                "failure_reason": f"Background check timed out after {graph_timeout_s}s.",
                 "graph_score": 0.5,
                 "meta_score": 0.5,
                 "meta_analysis": {},
@@ -208,10 +210,12 @@ async def graph_node(state: AuditState) -> dict:
         return {
             "errors": errors + [f"Graph exception: {str(e)}"],
             "graph_result": {
+                "failed": True,
+                "failure_reason": f"Background check crashed: {e}",
                 "graph_score": 0.5,
                 "meta_score": 0.5,
                 "domain_age_days": -1,
-                "has_ssl": False,
+                "has_ssl": None,
                 "claims_extracted": [],
                 "verifications": [],
                 "inconsistencies": [],

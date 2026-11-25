@@ -814,6 +814,7 @@ export interface AuditResult {
   trust_score: number;
   risk_level: string;
   signal_scores: Record<string, number>;
+  score_breakdown?: ScoreBreakdown;
   overrides: string[];
   narrative: string;
   recommendations: string[];
@@ -1348,4 +1349,26 @@ export function formatRelativeTime(timestamp: string): string {
   if (minutes < 60) return `${minutes}m ago`;
   if (hours < 24) return `${hours}h ago`;
   return new Date(timestamp).toLocaleDateString();
+}
+
+/** Where every trust-score point went (backend: trust_weights._score_breakdown). */
+export interface ScoreBreakdownSignal {
+  signal: string;
+  max_points: number;
+  earned_points: number;
+  lost_to_findings: number;
+  lost_to_uncertainty: number;
+  raw_score: number;
+  confidence: number;
+  reason: string;
+  unverified: boolean;
+}
+
+export interface ScoreBreakdown {
+  signals: ScoreBreakdownSignal[];
+  overrides: { name: string; description: string; points: number }[];
+  prior: number;
+  pre_override_score: number;
+  final_score: number;
+  rounding: number;
 }

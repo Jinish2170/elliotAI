@@ -13,7 +13,7 @@ interface Props {
 
 export function ScoutTelemetry({ explorationPath, formDetections, captchaResults, pagesScanned, domHealth }: Props) {
   const isEmpty = !explorationPath && !formDetections?.length && !captchaResults?.length && !pagesScanned && !domHealth;
-  if (isEmpty) return <GhostPanel message="SCOUT TELEMETRY - AWAITING DATA" />;
+  if (isEmpty) return <GhostPanel message="PAGES VISITED APPEAR WHEN SCOUT FINISHES · STEP 1 OF 5" />;
 
   const pageHealth = domHealth?.page_health;
 

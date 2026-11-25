@@ -156,3 +156,6 @@ elliot/data/
 .serena/
 .vscode/
 !frontend/vercel.json
+
+# Runtime audit data: SQLite DB, screenshots, event logs (never commit)
+backend/data/

@@ -58,7 +58,7 @@ function CvssRadarComponent({
         </div>
       );
     }
-    return <GhostPanel message="AWAITING VECTOR CALCULATION" />;
+    return <GhostPanel message="RISK SCORE CALCULATED BY THE JUDGE · STEP 5 OF 5" />;
   }
 
   const band = (meta?.severity || "").toLowerCase();

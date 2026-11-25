@@ -156,8 +156,10 @@ async def scout_node(state: AuditState) -> dict:
                 # Vision and Graph have multi-page evidence before the first Judge
                 # call — instead of the Judge looping just to gather it.
                 if result.status == "SUCCESS":
+                    # Never past the tier's page budget: quick_scan (2 pages)
+                    # used to prefetch 3 links and scan 4 pages.
                     prefetch_urls = _select_prefetch_urls(
-                        url, result, settings.SCOUT_PREFETCH_LINKS
+                        url, result, min(settings.SCOUT_PREFETCH_LINKS, max(0, tier_pages - 1))
                     )
                     for sub_url in prefetch_urls:
                         try:

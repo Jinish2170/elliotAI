@@ -30,7 +30,7 @@ from elliot.agents.graph_investigator import GraphResult
 from elliot.agents.scout import ScoutResult
 from elliot.agents.vision import VisionResult
 from elliot.config import settings
-from elliot.config.trust_weights import (DEFAULT_WEIGHTS, RiskLevel, SignalWeights,
+from elliot.config.trust_weights import (DEFAULT_WEIGHTS, SCORE_PRIOR, RiskLevel, SignalWeights,
                                   SubSignal, TrustScoreResult,
                                   compute_trust_score)
 from elliot.core.nim_client import NIMClient
@@ -119,6 +119,9 @@ class AuditEvidence:
     scout_results: list[ScoutResult] = field(default_factory=list)
     vision_result: Optional[VisionResult] = None
     graph_result: Optional[GraphResult] = None
+    # Set when the graph agent crashed or timed out. graph_result is then None,
+    # so its placeholder values are never scored as if they were evidence.
+    graph_failure: str = ""
     iteration: int = 0
     max_iterations: int = 5
     max_pages: int = 5                 # Page budget from tier config
@@ -999,12 +1002,18 @@ class JudgeAgent:
                     "critical_patterns": len(vr.critical_patterns),
                     "screenshots_analyzed": vr.screenshots_analyzed,
                     "fallback_used": vr.fallback_used,
+                    "reason": (
+                        f"{vr.total_patterns_found} manipulative design pattern(s) found"
+                        f" ({len(vr.critical_patterns)} critical) across {self._pages_seen(vr)}."
+                        if vr.total_patterns_found else
+                        f"No manipulative design patterns found across {self._pages_seen(vr)}."
+                    ) + (" Vision model was unavailable, so a fallback was used." if vr.fallback_used else ""),
                 },
             )
         else:
             signals["visual"] = SubSignal(
-                name="visual", raw_score=0.5, confidence=0.2,
-                details={"note": "No visual analysis available"},
+                name="visual", raw_score=SCORE_PRIOR, confidence=0.2,
+                details={"unverified": True, "reason": "Screenshots could not be analysed, so this was not checked."},
             )
 
         # --- Temporal Signal ---
@@ -1016,6 +1025,11 @@ class JudgeAgent:
                 confidence=0.9 if vr.has_fake_timers else 0.7,
                 evidence_count=len(vr.temporal_findings),
                 details={
+                    "reason": (
+                        "A countdown or timer resets or is fake (pressure tactic)."
+                        if vr.has_fake_timers else
+                        f"{len(vr.temporal_findings)} timer(s) checked across screenshots; none looked fake."
+                    ),
                     "has_fake_timers": vr.has_fake_timers,
                     "findings": [
                         {"type": tf.finding_type, "suspicious": tf.is_suspicious}
@@ -1025,8 +1039,8 @@ class JudgeAgent:
             )
         else:
             signals["temporal"] = SubSignal(
-                name="temporal", raw_score=0.5, confidence=0.3,
-                details={"note": "No temporal data — single screenshot or no timers detected"},
+                name="temporal", raw_score=SCORE_PRIOR, confidence=0.3,
+                details={"unverified": True, "reason": "No countdown timers on the site, so there was nothing to test. Not a problem, just unverified."},
             )
 
         # --- Graph Signal ---
@@ -1054,12 +1068,13 @@ class JudgeAgent:
                     "denied": sum(1 for v in gr.verifications if v.status in ("denied", "contradicted")),
                     "graph_nodes": gr.graph_node_count,
                     "graph_edges": gr.graph_edge_count,
+                    "reason": self._graph_reason(gr),
                 },
             )
         else:
             signals["graph"] = SubSignal(
-                name="graph", raw_score=0.5, confidence=0.2,
-                details={"note": "No graph investigation completed"},
+                name="graph", raw_score=SCORE_PRIOR, confidence=0.2,
+                details={"unverified": True, "reason": evidence.graph_failure or "The background check (company, domain records, threat feeds) did not complete."},
             )
 
         # --- Meta Signal ---
@@ -1074,12 +1089,13 @@ class JudgeAgent:
                     "domain_age_days": gr.domain_age_days,
                     "has_ssl": gr.has_ssl,
                     "whois_available": gr.domain_intel is not None,
+                    "reason": self._meta_reason(gr),
                 },
             )
         else:
             signals["meta"] = SubSignal(
-                name="meta", raw_score=0.5, confidence=0.3,
-                details={"note": "No domain intelligence available"},
+                name="meta", raw_score=SCORE_PRIOR, confidence=0.3,
+                details={"unverified": True, "reason": evidence.graph_failure or "Domain records (age, certificate, registrar) could not be checked."},
             )
 
         # --- Structural Signal (from Scout DOM analysis) ---
@@ -1099,7 +1115,11 @@ class JudgeAgent:
                 h_score = headers.get("score", 1.0)
                 sec_score -= (1.0 - h_score) * 0.2  # Max 20% penalty for bad headers
                 sec_details["headers_score"] = h_score
-                sec_details["missing_headers"] = headers.get("missing_headers", [])
+                sec_details["missing_headers"] = headers.get("missing_headers") or [
+                    # The headers module reports misses as findings ("No X header found ...").
+                    str(f.get("evidence", "")).replace("No ", "", 1).split(" header")[0]
+                    for f in headers.get("findings", []) if isinstance(f, dict) and f.get("evidence")
+                ]
                 sec_evidence_count += 1
 
             # Phishing
@@ -1129,6 +1149,7 @@ class JudgeAgent:
                 sec_details["js_risk_score"] = js_risk
                 sec_evidence_count += 1
 
+            sec_details["reason"] = self._security_reason(sec_details)
             signals["security"] = SubSignal(
                 name="security",
                 raw_score=round(max(0.0, min(1.0, sec_score)), 3),
@@ -1138,11 +1159,94 @@ class JudgeAgent:
             )
         else:
             signals["security"] = SubSignal(
-                name="security", raw_score=0.9, confidence=0.3,
-                details={"note": "No security modules were run"},
+                name="security", raw_score=SCORE_PRIOR, confidence=0.3,
+                details={"unverified": True, "reason": "Security checks did not run, so this was not checked."},
             )
 
         return signals
+
+    # ================================================================
+    # Private: plain-English reasons per signal (shown in the score panel)
+    # ================================================================
+
+    @staticmethod
+    def _pages_seen(vr) -> str:
+        seen, total = vr.screenshots_analyzed, getattr(vr, "pages_total", 0) or 0
+        if total and seen < total:
+            return f"{seen} of {total} pages (AI budget for this tier ran out)"
+        return f"{seen} page(s)"
+
+    @staticmethod
+    def _graph_reason(gr) -> str:
+        n = len(gr.verifications)
+        confirmed = sum(1 for v in gr.verifications if v.status == "confirmed")
+        parts = []
+        if n:
+            parts.append(f"{confirmed} of {n} claims on the site (company, address, contacts) were confirmed elsewhere.")
+        else:
+            parts.append("The site makes no checkable claims (company name, address, registration), so nothing could be confirmed.")
+        if gr.inconsistencies:
+            parts.append(f"{len(gr.inconsistencies)} claim(s) contradicted by outside records.")
+        return " ".join(parts)
+
+    @staticmethod
+    def _meta_reason(gr) -> str:
+        parts = []
+        age = gr.domain_age_days
+        if isinstance(age, int) and age >= 0:
+            parts.append(f"Domain registered {age} days ago.")
+        else:
+            host = (gr.domain_intel.domain if gr.domain_intel else "") or ""
+            shared = any(host.endswith(sfx) for sfx in (
+                ".vercel.app", ".netlify.app", ".github.io", ".pages.dev", ".web.app",
+                ".firebaseapp.com", ".herokuapp.com", ".onrender.com", ".wixsite.com",
+                ".blogspot.com", ".wordpress.com", ".myshopify.com",
+            ))
+            parts.append(
+                "Hosted on a shared platform subdomain, so it has no domain registration record of its own; age unknown."
+                if shared else "Domain age could not be found in public registration records."
+            )
+        if gr.has_ssl is True:
+            parts.append("Valid HTTPS certificate.")
+        elif gr.has_ssl is False:
+            parts.append("No valid HTTPS certificate.")
+        parts.append("Full marks need a domain 3+ years old or a known registrar.")
+        return " ".join(parts)
+
+    @staticmethod
+    def _security_reason(d: dict) -> str:
+        parts = []
+        missing = d.get("missing_headers") or []
+        if missing:
+            parts.append(f"Missing {len(missing)} recommended security header(s): {', '.join(map(str, missing[:5]))}.")
+        elif d.get("headers_score", 1.0) < 1.0:
+            parts.append(f"Security headers check scored {round(d['headers_score'] * 100)}%.")
+        if d.get("phishing_alert"):
+            parts.append("Matched a phishing database.")
+        if d.get("suspicious_redirects"):
+            parts.append("Suspicious redirect chain.")
+        if (d.get("js_risk_score") or 0) > 0.5:
+            parts.append("Risky or obfuscated JavaScript.")
+        return " ".join(parts) or "No security problems found by the checks that ran."
+
+    @staticmethod
+    def _structural_reason(d: dict, pages: int) -> str:
+        if not pages:
+            return "No pages loaded successfully, so page structure was not checked."
+        parts = []
+        if d.get("ssl") is False:
+            parts.append("Pages served without HTTPS.")
+        if d.get("password_without_ssl"):
+            parts.append("Password form without HTTPS.")
+        if d.get("credit_card_without_ssl"):
+            parts.append("Card form without HTTPS.")
+        if d.get("excessive_scripts"):
+            parts.append(f"{d['excessive_scripts']} third-party scripts on one page.")
+        if d.get("high_external_link_ratio"):
+            parts.append("Most links point to other sites.")
+        return " ".join(parts) or (
+            f"Page structure looked normal across {pages} page(s). "
+            "This check tops out at 95%: a normal page proves little on its own.")
 
     def _compute_structural_score(self, evidence: AuditEvidence) -> SubSignal:
         """
@@ -1210,6 +1314,7 @@ class JudgeAgent:
             score += scout.trust_modifier
 
         score = max(0.0, min(1.0, score))
+        details["reason"] = self._structural_reason(details, evidence_count)
 
         return SubSignal(
             name="structural",
