@@ -38,6 +38,7 @@ from playwright.async_api import (Browser, BrowserContext, Page, Playwright,
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from elliot.config import settings
+from elliot.core import net_guard
 from elliot.config.site_types import SiteType, classify_site_type
 
 logger = logging.getLogger("elliot.scout")
@@ -288,6 +289,13 @@ class StealthScout:
                     f"StealthScout: Tor requested but no proxy at {tor_host}:{tor_port}; continuing without Tor"
                 )
 
+        # SSRF egress guard (public deployments): every browser connection,
+        # including redirect hops, goes through a proxy that refuses private IPs.
+        self._egress = None
+        if net_guard.enabled() and not self.tor_active:
+            self._egress = await net_guard.EgressProxy().start()
+            launch_args.extend(net_guard.chromium_args(self._egress))
+
         self._browser = await self._playwright.chromium.launch(
             headless=settings.BROWSER_HEADLESS,
             args=launch_args,
@@ -309,6 +317,8 @@ class StealthScout:
             await self._browser.close()
         if self._playwright:
             await self._playwright.stop()
+        if getattr(self, "_egress", None):
+            await self._egress.stop()
         logger.info("StealthScout browser closed")
 
     # ================================================================

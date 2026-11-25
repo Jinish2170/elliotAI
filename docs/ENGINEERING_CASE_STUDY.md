@@ -29,7 +29,8 @@ Every number below was measured in this project (same site / same eval set befor
 | Live feedback | timer frozen, counters 0 until the end | pages ~50 s, security checks ~35 s, per-page Vision progress | Browser (F6, F15) |
 | Prompt-injection attack success | 1/3 | 0/3 | Matched pairs (section 5) |
 | Scoring policy checks | 2/5 | 5/5 (CI gate) | Deterministic suite |
-| Automated tests | 446 | 455 | `pytest backend/tests elliot/tests` |
+| SSRF via redirects / embedded requests | public→public→private redirect reached private service | refused at the egress proxy, +0.9 s overhead | Controlled redirect test + live audit (F18) |
+| Automated tests | 446 | 458 | `pytest backend/tests elliot/tests` |
 
 ---
 
@@ -147,6 +148,7 @@ Trigger: a user audited `takebloom.vercel.app`, got **82/100**, and nothing in t
 | F15 | CVSS radar looked identical on every audit; MITRE grid always empty | CVSS scores *one vulnerability*, not a website: with no findings it is always 0.0 with a near-constant vector. The MITRE mapper (correctly) needs ≥ 2 distinct markers per technique, so it only fires on malicious sites | Replaced with `SECURITY.CHECKS` (8 checks in plain English, evidence + fix, live ~35 s in; CVSS kept as one verifiable line when > 0; MITRE matches shown as an alert block when present) and `DOMAIN.FACTS` (age, registrar, certificate issuer, IP, hosting country, identity) | Security results visible at **~35 s instead of at the end**; two always-empty panels → two always-populated ones |
 | F16 | "Is there a faster vision model?" | Surveyed every image-capable model on the NIM account with raw, uncached calls through the production path (thinking off, same JSON schema) | Kept `nemotron-3.5-super-vl-120b`; the earlier 19–30 s per call was free-tier queueing at busy hours, not model size | super-vl **1.6–2.0 s**; nano-omni-30b 1.7–2.0 s (no faster, **6 vs 2 false alarms**, F1 0.63 vs 0.83); step-5 8.5 s; kimi-k3.1 > 100 s; Gemma-3 4B/12B and Cosmos-8B listed but **404** |
 | F17 | Same clean page flagged in one run, clean in the next | Single VLM calls over-report on clean pages (e.g. a green "Add to Cart" called a misdirected click) | Each *positive* finding gets one targeted re-check; dropped if not reproduced (kept if the verifier itself fails). Clean pages cost nothing extra | Labelled set, 2 runs each, fresh cache: precision **0.71 → 1.00**, false alarms **2 → 0**, clean pages flagged **1/2 → 0/2**, F1 **0.83 → 0.89**, recall 1.00 → 0.80, AI calls +15 %, wall time unchanged (163 s) |
+| F18 | SSRF: a public page could make the audit browser load the host's private services (e.g. a redirect to `http://127.0.0.1:8000`) | The guard checked only the submitted URL. First fix (Playwright `page.route`) was **tested and found leaky**: Playwright routes only the first URL of a redirect chain, so public → public → private still served the secret | Local **egress proxy** (Smokescreen pattern): Chromium sends all traffic through it (`--proxy-bypass-list=<-loopback>` so localhost can't skip it); it resolves each host itself, refuses non-public IPs, and dials the exact IP it checked (closes DNS rebinding). Checked IPs cached 60 s | Controlled test: redirect, 2-hop redirect and embedded image to a "private" server → **0 hits** (route version: leaked on 2-hop). Real public HTTPS works; `127.0.0.1:8010` and `169.254.169.254` refused. Overhead **+0.9 s** per Scout run (23.0 → 23.9 s) |
 
 **Score attribution for the same site, before vs after** (site-type weights for `saas_subscription`):
 
@@ -250,7 +252,7 @@ Project `elliotai`. Useful views:
 | Abandoned audits now run to completion (by design, so reloads don't lose work); they still hold the concurrency slot until done | Low | Accepted |
 | mindlyticai score moved 90 → 84 after full-page + all-module analysis; per-finding attribution not yet itemised | Low | Open |
 | Retry × timeout worst case (~4.5 min per call) not reproduced; observable now | Medium | UNVERIFIED |
-| SSRF guard checks the submitted URL only, not redirects / DNS rebinding mid-crawl | Medium | Open |
+| SSRF: browser traffic now goes through an egress proxy (F18). Not covered: WebRTC/UDP from page scripts; the darknet tier skips the proxy when Tor is active (Tor exits refuse private addresses) | Low | Mitigated |
 | Rate limiter is in-memory (single instance) | Low | By design for free tier |
 | Vision false alarm on `clean_basic` | Low | Open |
 
@@ -269,4 +271,5 @@ Project `elliotai`. Useful views:
 - Coupling a long job's lifetime to a WebSocket made every refresh throw away the job; the fix was an event log with replay, which is a standard pattern (F5).
 - Model choice was measured, not assumed: six image models probed through the production path with the cache bypassed. The bigger model stayed: it was as fast as the 30B one and had a third of the false alarms. The real latency problem was free-tier queueing, solved with concurrency (F11, F16).
 - Verify the positives, not everything: a second look only at claimed findings removed all false alarms for +15 % calls and no extra wall time, because clean pages (the common case) need no second call. It cost one true detection; I stopped there rather than tune a 7-page test set (F17).
+- Test the security fix against the attack, not against the function: the first SSRF fix passed its own logic but a controlled 2-hop redirect still reached the private server, which moved the guard from request interception to an egress proxy (F18).
 - Probes need guards against their own shortcuts: a silent fallback model and a response cache both made broken or repeated calls look healthy until the probe checked which model answered and bypassed the cache.
