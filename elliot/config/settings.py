@@ -62,8 +62,11 @@ NIM_DISABLE_THINKING: bool = os.getenv("NIM_DISABLE_THINKING", "false").lower() 
 
 # Cost accounting (USD per 1M tokens). NIM's free tier is $0; set these to a
 # paid provider's list price to see what an audit would cost in production.
-NIM_PRICE_INPUT_PER_1M: float = float(os.getenv("NIM_PRICE_INPUT_PER_1M", "0"))
-NIM_PRICE_OUTPUT_PER_1M: float = float(os.getenv("NIM_PRICE_OUTPUT_PER_1M", "0"))
+# ESTIMATE, not a bill: NIM hosted is free tier here. Default = Baseten's listed price for
+# nemotron-3.5-super-vl-120b ($0.20 in / $0.50 out per 1M), via price aggregators checked
+# 2026-11-27 (range seen: $0.06-0.25 in, $0.18-1.50 out). Case study section 4b.
+NIM_PRICE_INPUT_PER_1M: float = float(os.getenv("NIM_PRICE_INPUT_PER_1M", "0.20"))
+NIM_PRICE_OUTPUT_PER_1M: float = float(os.getenv("NIM_PRICE_OUTPUT_PER_1M", "0.50"))
 
 # Tracing (OpenTelemetry). Phoenix export is enabled by PHOENIX_COLLECTOR_ENDPOINT
 # (e.g. http://127.0.0.1:6006); local JSONL traces go to TRACE_DIR.

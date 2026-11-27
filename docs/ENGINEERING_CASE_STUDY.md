@@ -31,6 +31,8 @@ Every number below was measured in this project (same site / same eval set befor
 | Prompt-injection attack success | 1/3 | 0/3 | Matched pairs (section 5) |
 | Scoring policy checks | 2/5 | 5/5 (CI gate) | Deterministic suite |
 | SSRF via redirects / embedded requests | public→public→private redirect reached private service | refused at the egress proxy, +0.9 s overhead | Controlled redirect test + live audit (F18) |
+| Cost per audit (estimate, n=5/tier) | never measured ($0 config) | quick **$0.008**, standard **$0.026** at a cited public price; vision = 93–98 % of tokens | Trace spans, section 4b |
+| Latency per audit (n=5/tier, quiet hour) | single uncontrolled runs | quick p50 82 s / p95 88 s; standard p50 111 s / p95 180 s | Section 4b |
 | Automated tests | 446 | 458 | `pytest backend/tests elliot/tests` |
 
 ---
@@ -216,6 +218,30 @@ baseline ............................ ASR 1/3  (meta → "Microsoft Corporation,
 + spotlighting (fenced untrusted text + system rule) ... ASR 1/3  (3 injected entities → 1)
 + quarantine (drop fields the detector flags) .......... ASR 0/3
 ```
+
+---
+
+## 4b. Cost and latency per audit (2026-11-27)
+
+**Method.** n = 5 audits per tier on a fixed site set (takebloom.vercel.app, example.com, wikipedia.org, mindlyticai.com, syntharatechnologies.com), quick and standard interleaved so API-load drift hits both tiers; each audit with a **cold cache** (fresh `ELLIOT_CACHE_DIR`) and its own trace dir; run through the CLI on the dev PC (not the live backend slot). Tokens come from OpenInference spans (`llm.token_count.*`), attributed to agents by walking each LLM span up to its `agent.*` ancestor. Latency = the `audit` root span.
+
+| | Quick scan | Standard audit |
+|---|---|---|
+| Latency p50 / p95 (min) | **82 s / 88 s** (48 s) | **111 s / 180 s** (57 s) |
+| Tokens per audit, p50 | 37.5 k (37.0 k in / 0.6 k out) | 127.6 k (126.8 k in / 0.8 k out) |
+| LLM calls, p50 | 14 | 38 |
+| Est. cost per audit, p50 | **$0.0077** (range $0.0023–0.0100) | **$0.0258** (range $0.0078–0.0330) |
+| Stage time p50 | scout 36 s · vision 20 s · graph 13 s · judge 7 s · security 1 s | scout 45 s · vision 44 s · graph 12 s · judge 7 s |
+| Tokens by agent, p50 | vision 35.1 k · judge 1.3 k · graph 1.1 k | vision 125.8 k · judge 1.4 k · graph 1.1 k |
+
+**Price basis (estimate, not a bill).** NIM hosted is free tier for this project, so no money is spent. Cost is estimated with public per-token prices for the same model on paid providers, via price aggregators checked 2026-11-27 (not verified on the providers' own pages): central = Baseten $0.20 in / $0.50 out per 1M; low = Bitdeer $0.06 / $0.18; high = Weights & Biases $0.25 / $1.50. The mistral-large-4 fallback would be $1.36 / $4.18 (Mistral list) but was never used in these runs. NVIDIA's own paid price was not found. Defaults now set in `NIM_PRICE_*_PER_1M`, so every audit's `trace_summary.est_cost_usd` reports this estimate.
+
+**Findings.**
+- Vision is **93–98 % of tokens**, almost all input: each of ~11–15 prompts per page re-sends the same screenshot (~3.3 k tokens per call). Batching a page's prompts into one call is the obvious cost lever (not done: it changes detection behaviour and needs the 39-page eval before/after).
+- At the central price, 1,000 standard audits ≈ **$26**; a quick scan costs under a cent.
+- Scout (browser) is now the slowest stage, not the LLM: concurrency (F11) moved the bottleneck.
+
+**Limits.** n = 5 per tier, one quiet API hour (earlier the same model took 19–30 s per call at busy hours, see F11/F16); sites are small; dev-PC network; cold cache (a warm cache would be cheaper); prices are third-party listings; RSS memory peak for one audit's process tree ≈ 1.0 GB (sampled, upper estimate).
 
 ---
 
